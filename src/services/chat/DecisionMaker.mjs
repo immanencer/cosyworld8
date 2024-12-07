@@ -1,6 +1,7 @@
 import { sendAsWebhook } from "../discordService.mjs";
 
 const DECISION_MODEL = 'meta-llama/llama-3.2-1b-instruct';
+const MINIMUM_RESPONSE_PERCENTAGE = 0.05;
 
 export class DecisionMaker {
   constructor(aiService, logger) {
@@ -43,12 +44,12 @@ export class DecisionMaker {
     }
 
     // get the latest few messages in the channel
-    const channelMessages = await channel.messages.fetch({ limit: 8 });
+    const messages = await channel.messages.fetch({ limit: 8 });
     // calculate the percentage of messages that are from .bot
-    const botMessageCount = channelMessages.filter(m => m.author.bot).size;
-    const botMessagePercentage = botMessageCount / channelMessages.size;
+    const botMessageCount = messages.filter(m => m.author.bot).size;
+    const botMessagePercentage = ( botMessageCount / messages.size) - MINIMUM_RESPONSE_PERCENTAGE;
 
-    const lastMessage = channelMessages.first();
+    const lastMessage = messages.first();
 
     // if the author username is the same as the avatar name, don't respond
     if (lastMessage.author.username.toLowerCase() === avatar.name.toLowerCase()) {
@@ -67,68 +68,16 @@ export class DecisionMaker {
 
     try {
       // Get recent messages for context
-      const messages = await channel.messages.fetch({ limit: 5 });
-      const latestMessage = messages.first();
-      if (!latestMessage) {
+      if (!lastMessage) {
         return false;
       }
-      if (latestMessage.author.bot && latestMessage.author.username.toLowerCase() === avatar.name.toLowerCase()) {
+      if (lastMessage.author.bot && lastMessage.author.username.toLowerCase() === avatar.name.toLowerCase()) {
         return false;
       }
       const context = messages.reverse().map(m => ({
         role: m.author.bot ? 'assistant' : 'user',
         content: `${m.author.username}: ${m.content}`
       }));
-
-      if (!avatar.innerMonologueChannel) {
-        // Find #avatars channel
-        const avatarsChannel = channel.guild.channels.cache.find(c => c.name === 'avatars');
-        if (avatarsChannel) {
-          // Find a thread called avatar.name Narratives
-          const innerMonologueChannel = avatarsChannel.threads.cache.find(t => t.name === `${avatar.name} Narratives`);
-          if (innerMonologueChannel) {
-            avatar.innerMonologueChannel = innerMonologueChannel.id;
-          }
-          // Otherwise create a new thread
-          else {
-            const newThread = await avatarsChannel.threads.create({
-              name: `${avatar.name} Narratives`,
-              autoArchiveDuration: 60,
-              reason: 'Create inner monologue thread for avatar'
-            });
-            avatar.innerMonologueChannel = newThread.id;
-
-            // Post the avatars image to the inner monologue channel
-            sendAsWebhook(
-              avatar.innerMonologueChannel,
-              avatar.imageUrl,
-              avatar.name, avatar.imageUrl
-            );
-
-            // Post the avatars description to the inner monologue channel
-            sendAsWebhook(
-              avatar.innerMonologueChannel,
-              avatar.description,
-              avatar.name, avatar.imageUrl
-            );
-
-            // Post the avatars personality to the inner monologue channel
-            sendAsWebhook(
-              avatar.innerMonologueChannel,
-              `Personality: ${avatar.personality}`,
-              avatar.name, avatar.imageUrl
-            );
-
-
-            // Post the avatars Dynamic Personality to the inner monologue channel
-            sendAsWebhook(
-              avatar.innerMonologueChannel,
-              `Dynamic Personality: ${avatar.dynamicPersonality}`,
-              avatar.name, avatar.imageUrl
-            );
-          }
-        }
-      }
 
       const decision = await this.makeDecision(avatar, context, client);
       return decision.decision === 'YES';
@@ -147,20 +96,10 @@ export class DecisionMaker {
       timestamp: Date.now()
     }
 
-    // if the last decision was made less than 5 minutes ago, return the same decision
-    if (Date.now() - this.avatarLastCheck[avatar._id].timestamp < 5 * 60 * 1000) {
-      return this.avatarLastCheck[avatar._id];
-    }
-
 
     // if the last message was from the avatar, don't respond
     if (context.length && context[context.length - 1].role === 'assistant' && `${context[context.length - 1].content}`.startsWith(avatar.name + ':')) {
       return { decision: 'NO', reason: 'Last message was from the avatar.' };
-    }
-
-    // if the last four messages were from bots, don't respond
-    if (context.length >= 4 && context.every(m => m.role === 'assistant')) {
-      return { decision: 'NO', reason: 'Last four messages were from bots.' };
     }
 
     // if the last message mentioned the avatar, respond
@@ -172,6 +111,12 @@ export class DecisionMaker {
     if (context.length && `${context[context.length - 1].content}`.includes(avatar.emoji)) {
       return { decision: 'YES', reason: 'Last message mentioned the avatar emoji.' };
     }
+
+    // if the last decision was made less than 5 minutes ago, return the same decision
+    if (Date.now() - this.avatarLastCheck[avatar._id].timestamp < 5 * 60 * 1000) {
+      return this.avatarLastCheck[avatar._id];
+    }
+
 
 
     try {

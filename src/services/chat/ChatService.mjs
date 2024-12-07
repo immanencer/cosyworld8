@@ -5,7 +5,7 @@ import { MessageProcessor } from './MessageProcessor.mjs';
 
 import { DungeonService } from '../dungeon/DungeonService.mjs'; // Added import
 
-const RESPONSE_RATE = process.env.RESPONSE_RATE || 0.005; // 20% response rate
+const RESPONSE_RATE = process.env.RESPONSE_RATE || 0.5; // 20% response rate
 
 export class ChatService {
   constructor(client, db, options = {}) {
@@ -71,7 +71,7 @@ export class ChatService {
     this.RESPONSE_DELAY = 3000; // Wait 3 seconds before processing responses
 
     // Remove complex tracking properties
-    this.AMBIENT_CHECK_INTERVAL = 1 * 60 * 1000; // Check for ambient responses every minute
+    this.AMBIENT_CHECK_INTERVAL = 5 * 60 * 1000; // Check for ambient responses every minute
   }
 
   async setupWithRetry(attempt = 1) {
@@ -219,7 +219,7 @@ export class ChatService {
         continue;
       }
 
-      if (Math.random > RESPONSE_RATE) {
+      if (Math.random() > RESPONSE_RATE) {
         continue;
       }
 
@@ -247,7 +247,58 @@ export class ChatService {
       this.logger.info(`Attempting to respond as avatar ${avatar.name} in channel ${channel.id} (force: ${force})`);
       let decision = true;
       try {
-        decision = force || await this.decisionMaker.shouldRespond(channel, avatar, this.client);
+
+        if (!avatar.innerMonologueChannel) {
+          // Find #avatars channel
+          const avatarsChannel = channel.guild.channels.cache.find(c => c.name === 'avatars');
+          if (avatarsChannel) {
+            // Find a thread called avatar.name Narratives
+            const innerMonologueChannel = avatarsChannel.threads.cache.find(t => t.name === `${avatar.name} Narratives`);
+            if (innerMonologueChannel) {
+              avatar.innerMonologueChannel = innerMonologueChannel.id;
+            }
+            // Otherwise create a new thread
+            else {
+              const newThread = await avatarsChannel.threads.create({
+                name: `${avatar.name} Narratives`,
+                autoArchiveDuration: 60,
+                reason: 'Create inner monologue thread for avatar'
+              });
+              avatar.innerMonologueChannel = newThread.id;
+
+              // Post the avatars image to the inner monologue channel
+              sendAsWebhook(
+                avatar.innerMonologueChannel,
+                avatar.imageUrl,
+                avatar.name, avatar.imageUrl
+              );
+
+              // Post the avatars description to the inner monologue channel
+              sendAsWebhook(
+                avatar.innerMonologueChannel,
+                avatar.description,
+                avatar.name, avatar.imageUrl
+              );
+
+              // Post the avatars personality to the inner monologue channel
+              sendAsWebhook(
+                avatar.innerMonologueChannel,
+                `Personality: ${avatar.personality}`,
+                avatar.name, avatar.imageUrl
+              );
+
+
+              // Post the avatars Dynamic Personality to the inner monologue channel
+              sendAsWebhook(
+                avatar.innerMonologueChannel,
+                `Dynamic Personality: ${avatar.dynamicPersonality}`,
+                avatar.name, avatar.imageUrl
+              );
+            }
+          }
+          avatar = await this.avatarService.updateAvatar(avatar);
+        }
+        decision = force || await this.decisionMaker.shouldRespond(channel, avatar, this.client, this.avatarService);
       } catch (error) {
         this.logger.error(`Error in decision maker: ${error.message}`);
       }
