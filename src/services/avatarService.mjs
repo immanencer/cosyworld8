@@ -6,7 +6,6 @@ import { OpenRouterService as AIService } from './openrouterService.mjs';
 
 import process from 'process';
 import winston from 'winston';
-import { v2 as cloudinary } from 'cloudinary';
 import { extractJSON } from './utils.mjs';
 
 import { uploadImage } from './s3imageService.mjs';
@@ -38,15 +37,10 @@ export class AvatarGenerationService {
       ],
     });
 
-    this.COLLECTION_NAME = process.env.MONGO_COLLECTION_NAME || 'requests';
+    this.IMAGE_URL_COLLECTION = process.env.IMAGE_URL_COLLECTION || 'image_urls';
+    
     this.AVATARS_COLLECTION = process.env.AVATARS_COLLECTION || 'avatars';
 
-    // Initialize Cloudinary
-    cloudinary.config({
-      cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
-      api_key: process.env.CLOUDINARY_API_KEY,
-      api_secret: process.env.CLOUDINARY_API_SECRET,
-    });
 
     this.arweaveService = new ArweaveService();
     this.prompts = null;
@@ -303,7 +297,7 @@ export class AvatarGenerationService {
    */
   async checkDailyLimit(channelId) {
     try {
-      const collection = this.db.collection(this.COLLECTION_NAME);
+      const collection = this.db.collection(this.IMAGE_URL_COLLECTION);
       const today = new Date();
       today.setHours(0, 0, 0, 0); // Start of the day
 
@@ -323,17 +317,17 @@ export class AvatarGenerationService {
   /**
    * Inserts a new request record into MongoDB.
    * @param {string} prompt - The prompt used for image generation.
-   * @param {string} result - The Cloudinary URL of the image.
+   * @param {string} imageUrl - The URL of the image.
    * @param {string} channelId - The Discord channel ID associated with the avatar.
    */
-  async insertRequestIntoMongo(prompt, result, channelId) {
+  async insertRequestIntoMongo(prompt, imageUrl, channelId) {
     try {
-      const collection = this.db.collection(this.COLLECTION_NAME);
+      const collection = this.db.collection(this.IMAGE_URL_COLLECTION);
       const now = new Date();
 
       const record = {
         prompt,
-        result,
+        imageUrl: result.imageUrl,
         channelId,
         date: now,
       };
