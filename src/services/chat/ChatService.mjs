@@ -5,7 +5,7 @@ import { MessageProcessor } from './MessageProcessor.mjs';
 
 import { DungeonService } from '../dungeon/DungeonService.mjs'; // Added import
 
-const RESPONSE_RATE = process.env.RESPONSE_RATE || 0.5; // 20% response rate
+const RESPONSE_RATE = process.env.RESPONSE_RATE || 0.1; // 20% response rate
 
 export class ChatService {
   constructor(client, db, options = {}) {
@@ -71,7 +71,7 @@ export class ChatService {
     this.RESPONSE_DELAY = 3000; // Wait 3 seconds before processing responses
 
     // Remove complex tracking properties
-    this.AMBIENT_CHECK_INTERVAL = 5 * 60 * 1000; // Check for ambient responses every minute
+    this.AMBIENT_CHECK_INTERVAL = 15 * 60 * 1000; // Check for ambient responses every minute
   }
 
   async setupWithRetry(attempt = 1) {
