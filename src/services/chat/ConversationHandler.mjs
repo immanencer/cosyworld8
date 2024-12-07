@@ -17,16 +17,7 @@ export class ConversationHandler {
     this.avatarService = avatarService;
     this.dungeonService = dungeonService;
     this.memoryService = new MemoryService(this.logger);
-
-    // Add response cooldown tracking
-    this.responseCooldowns = new Map(); // avatarId -> channelId -> timestamp
-    this.RESPONSE_COOLDOWN = 5 * 1000; // 5 seconds between responses in same channel
-
-    // Add bot message handling
-    this.botMessageQueue = new Map(); // channelId -> [{avatar, message, timestamp}]
-    this.BOT_RESPONSE_INTERVAL = 10 * 1000; // Check every five minutes
-    this.BOT_RESPONSE_CHANCE = 0.3; // 30% chance to respond to bot messages
-
+ 
     // Update cooldown times
     this.HUMAN_RESPONSE_COOLDOWN = 5000;  // 5 seconds for human messages
     this.BOT_RESPONSE_COOLDOWN = 300000;  // 5 minutes for bot messages
@@ -308,13 +299,6 @@ export class ConversationHandler {
       this.logger.error(`Error sending response for ${avatar.name}: ${error.message}`);
       throw error;
     }
-  }
-
-  updateResponseCooldown(avatarId, channelId) {
-    if (!this.responseCooldowns.has(avatarId)) {
-      this.responseCooldowns.set(avatarId, new Map());
-    }
-    this.responseCooldowns.get(avatarId).set(channelId, Date.now());
   }
 
   async buildSystemPrompt(avatar) {

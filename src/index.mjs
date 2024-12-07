@@ -294,8 +294,8 @@ async function handleSummmonCommand(message, args, breed = false, attributes = {
 
     // If no existing avatar found, proceed with creating new one
     // If no prompt provided, check for default Arweave prompt URL in env
-    if (!prompt && process.env.DEFAULT_AVATAR_PROMPT_URL) {
-      prompt = process.env.DEFAULT_AVATAR_PROMPT_URL;
+    if (!prompt && process.env.DEFAULT_AVATAR_PROMPT) {
+      prompt = process.env.DEFAULT_AVATAR_PROMPT;
     } else if (!prompt) {
       prompt = 'create a new avatar, use your imagination!';
     }
