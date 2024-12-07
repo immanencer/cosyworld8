@@ -17,7 +17,7 @@ export class ConversationHandler {
     this.avatarService = avatarService;
     this.dungeonService = dungeonService;
     this.memoryService = new MemoryService(this.logger);
- 
+
     // Update cooldown times
     this.HUMAN_RESPONSE_COOLDOWN = 5000;  // 5 seconds for human messages
     this.BOT_RESPONSE_COOLDOWN = 300000;  // 5 minutes for bot messages
@@ -320,9 +320,6 @@ export class ConversationHandler {
           avatar.imageUrl
         );
       }
-
-      // Update cooldown
-      this.updateResponseCooldown(avatar._id, channel.id);
 
       return response;
 
