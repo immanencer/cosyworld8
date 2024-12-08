@@ -5,7 +5,7 @@ import { MessageProcessor } from './MessageProcessor.mjs';
 
 import { DungeonService } from '../dungeon/DungeonService.mjs'; // Added import
 
-const RESPONSE_RATE = parseFloat(process.env.RESPONSE_RATE) || 0.1; // 20% response rate
+const RESPONSE_RATE = parseFloat(process.env.RESPONSE_RATE) || 0.01; // 20% response rate
 
 export class ChatService {
   constructor(client, db, options = {}) {
