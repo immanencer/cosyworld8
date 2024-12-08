@@ -7,6 +7,7 @@ import { DefendTool } from './tools/DefendTool.mjs';
 import { MoveTool } from './tools/MoveTool.mjs';
 import { RememberTool } from './tools/RememberTool.mjs';
 import { CreationTool } from './tools/CreationTool.mjs';
+import { XPostTool } from './tools/XPostTool.mjs';
 
 export class DungeonService {
   constructor(client, logger, avatarService = null) {
@@ -49,7 +50,7 @@ export class DungeonService {
       // Look for !command pattern anywhere in the line
       const commandMatch = line.match(/!(\w+)(\s+[^!]*)?/g);
       // Look for !command pattern at the start of the line
-      // const commandMatch = line.match(/^!(\w+)(\s+[^!]*)?/g);
+      //const commandMatch = line.match(/^!(\w+)(\s+[^!]*)?/g);
       
       if (commandMatch) {
         // Store the full line containing commands
@@ -142,6 +143,7 @@ export class DungeonService {
     this.tools.set('defend', new DefendTool(this));
     this.tools.set('move', new MoveTool(this));
     this.tools.set('remember', new RememberTool(this));
+    this.tools.set('xpost', new XPostTool(this));
   }
 
   async getLocationDescription(locationId, locationName) {

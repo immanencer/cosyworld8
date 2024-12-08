@@ -287,8 +287,86 @@ function StatsDisplay({ stats, size = "small" }) {
   );
 }
 
+
+function XAuthButton({ avatarId, walletAddress, onAuthChange }) {
+  const [authStatus, setAuthStatus] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  const checkAuthStatus = useCallback(async () => {
+    try {
+      const response = await fetch(`/api/xauth/status/${avatarId}`);
+      const data = await response.json();
+      setAuthStatus(data);
+      onAuthChange?.(data.authorized);
+    } catch (error) {
+      console.error('Error checking auth status:', error);
+    } finally {
+      setLoading(false);
+    }
+  }, [avatarId, onAuthChange]);
+
+  useEffect(() => {
+    if (avatarId) {
+      checkAuthStatus();
+    }
+  }, [avatarId, checkAuthStatus]);
+
+  const handleAuth = async () => {
+    try {
+      // Get auth URL
+      const response = await fetch(`/api/xauth/auth-url?walletAddress=${walletAddress}&avatarId=${avatarId}`);
+      const { url } = await response.json();
+
+      // Open popup for auth
+      const popup = window.open(url, 'x-auth', 'width=600,height=800');
+
+      // Listen for auth completion
+      window.addEventListener('message', async (event) => {
+        if (event.data.type === 'X_AUTH_SUCCESS') {
+          await checkAuthStatus();
+          popup.close();
+        } else if (event.data.type === 'X_AUTH_ERROR') {
+          console.error('X auth error:', event.data.error);
+          popup.close();
+        }
+      });
+
+    } catch (error) {
+      console.error('Error starting auth:', error);
+    }
+  };
+
+  if (loading) {
+    return (
+      <button className="bg-gray-600 px-4 py-2 rounded opacity-50 cursor-not-allowed">
+        Loading...
+      </button>
+    );
+  }
+
+  if (authStatus?.authorized) {
+    return (
+      <button 
+        className="bg-blue-600 px-4 py-2 rounded flex items-center gap-2"
+        title={`Authorized until ${new Date(authStatus.expiresAt).toLocaleString()}`}
+      >
+        <span>🐦 Connected</span>
+      </button>
+    );
+  }
+
+  return (
+    <button
+      onClick={handleAuth}
+      className="bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded flex items-center gap-2"
+    >
+      <span>🐦 Connect X Account</span>
+    </button>
+  );
+}
+
 // Update the modal layout
-function AvatarDetailModal({ avatar, onClose }) {
+function AvatarDetailModal({ avatar, onClose, wallet }) {  // Add wallet prop
   const [currentVariantIndex, setCurrentVariantIndex] = useState(0);
   const [activityData, setActivityData] = useState({
     messages: [],
@@ -422,6 +500,19 @@ function AvatarDetailModal({ avatar, onClose }) {
             <div className="bg-gray-700 rounded-lg p-4">
               <h3 className="text-xl font-bold mb-4">Stats</h3>
               <StatsDisplay stats={avatar.stats} size="large" />
+              
+              {/* Add wallet check before showing XAuthButton */}
+              {wallet && (
+                <div className="mt-4">
+                  <XAuthButton 
+                    avatarId={avatar._id}
+                    walletAddress={wallet.publicKey.toString()}
+                    onAuthChange={(authorized) => {
+                      // Optionally update UI to show X posting capability
+                    }}
+                  />
+                </div>
+              )}
             </div>
           </div>
 
@@ -927,7 +1018,7 @@ function TribesView({ onAvatarSelect }) {
 }
 
 // Add these new components at the top with other component definitions
-function WalletButton() {
+function WalletButton({ onWalletChange }) {
   const [wallet, setWallet] = useState(null);
   const [address, setAddress] = useState(null);
 
@@ -942,6 +1033,7 @@ function WalletButton() {
       const resp = await window.solana.connect();
       setWallet(window.solana);
       setAddress(resp.publicKey.toString());
+      onWalletChange?.(window.solana);  // Notify parent of wallet connection
     } catch (err) {
       console.error('Failed to connect wallet:', err);
     }
@@ -952,6 +1044,7 @@ function WalletButton() {
       wallet.disconnect();
       setWallet(null);
       setAddress(null);
+      onWalletChange?.(null);  // Notify parent of wallet disconnection
     }
   };
 
@@ -988,6 +1081,7 @@ function App() {
   const [selectedTier, setSelectedTier] = useState('All');
   const [currentView, setCurrentView] = useState('leaderboard');
   const [modalAvatar, setModalAvatar] = useState(null);
+  const [wallet, setWallet] = useState(null);
 
   const loadAvatars = async (isInitial = false) => {
     if (loading || (!hasMore && !isInitial)) return;
@@ -1070,7 +1164,7 @@ function App() {
 
   return (
     <div className="container mx-auto px-4 py-8">
-      <WalletButton />
+      <WalletButton onWalletChange={setWallet} />  {/* Update WalletButton to accept callback */}
       <h1 className="text-4xl font-bold mb-8 text-center">Avatar Dashboard</h1>
       <ViewToggle currentView={currentView} onViewChange={setCurrentView} />
       
@@ -1111,6 +1205,7 @@ function App() {
         <AvatarDetailModal 
           avatar={modalAvatar} 
           onClose={() => setModalAvatar(null)} 
+          wallet={wallet}  // Pass wallet to modal
         />
       )}
     </div>

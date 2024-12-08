@@ -360,7 +360,7 @@ export class ConversationHandler {
     `;
     const dungeonPrompt = `These commands are available in this location (you can also use breed and summon):
     
-    ${this.dungeonService.getCommandsDescription()}
+    ${this.dungeonService.getCommandsDescription(avatar)}
     
     You can use any of these commands on a new line at the end of your message.
   `;
