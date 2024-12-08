@@ -98,12 +98,9 @@ export class ConversationHandler {
         { role: 'user', content: prompt }
       ], { model: avatar.model });
 
-      const thread = await this.getOrCreateThread(avatar, true);
-      if (thread) {
-        await sendAsWebhook(thread.id, narrative, avatar.name, avatar.imageUrl);
-        await this.storeNarrative(thread, avatar._id, narrative);
-        this.updateNarrativeHistory(avatar, narrative, thread.guild.name);
-      }
+      // Store the narrative in the database and update the avatar
+      await this.storeNarrative(avatar._id, narrative);
+      this.updateNarrativeHistory(avatar, narrative, thread.guild.name);     
 
       // generate a new dynamic prompt for the avatar based on their system prompt and the generated narrative
       avatar.prompt = await this.buildSystemPrompt(avatar);
@@ -128,40 +125,12 @@ export class ConversationHandler {
     ${memoryPrompt}`;
   }
 
-  async getOrCreateThread(avatar, privateThread = false) {
-    try {
-      const guild = this.client.guilds.cache.first();
-      if (!guild) throw new Error('No guilds available');
-
-      const avatarChannel = guild.channels.cache.find(c => c.name === 'avatars');
-      if (!avatarChannel) throw new Error('Avatars channel not found');
-
-      const threadName = `${avatar.name} Narratives`;
-      const existingThread = avatarChannel.threads.cache.find(t => t.name === threadName);
-
-      if (existingThread) return existingThread;
-
-      return await avatarChannel.threads.create({
-        name: threadName,
-        autoArchiveDuration: 1440, // 24 hours
-        type: privateThread ? ChannelType.PrivateThread : ChannelType.PublicThread,
-        reason: `Unified narrative thread for ${avatar.name}`
-      });
-    } catch (error) {
-      this.logger.error(`Error creating thread for ${avatar.name}: ${error.message}`);
-      throw error;
-    }
-  }
-
-  async storeNarrative(thread, avatarId, content) {
+  async storeNarrative(avatarId, content) {
     try {
       const client = new MongoClient(process.env.MONGO_URI);
       await client.connect();
       const db = client.db(process.env.MONGO_DB_NAME);
       await db.collection('narratives').insertOne({
-        threadId: thread.id,
-        guildId: thread.guildId,
-        channelId: thread.parentId,
         avatarId,
         content,
         timestamp: Date.now()
