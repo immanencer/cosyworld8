@@ -11,6 +11,11 @@ const port = process.env.PORT || 3080;
 
 app.use(cors());
 app.use(express.json());
+
+// Add to app.mjs:
+import xauthRoutes from './routes/xauth.mjs';
+app.use('/api/xauth', xauthRoutes);
+
 app.use(express.static('public'));
 
 // Update MongoDB connection with better error handling

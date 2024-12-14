@@ -67,25 +67,34 @@ export class OpenRouterService {
   }
 
   // Method to have a chat with OpenRouter
-  async chat(messages, options = { model: 'meta-llama/llama-3.2-1b-instruct' }) {
+  async chat(messages, options = { model: 'meta-llama/llama-3.2-1b-instruct' }, retries = 3) {
+    try {
+      // verify that the model is available
+      let model = options.model || this.model;
+      if (!this.modelIsAvailable(model)) {
+        console.error('Invalid model provided to chat:', model);
+        model = this.model;
+      }
 
-    // verify that the model is available
-    let model = options.model || this.model;
-    if (!this.modelIsAvailable(model)) {
-      console.error('Invalid model provided to chat:', model);
-      model = this.model;
-    }
-
-    const response = await this.openai.chat
-      .completions.create({
-        model,
-        messages: messages.filter(T => T.content),
-        ...options,
-      });
-    if (!response || !response.choices || response.choices.length === 0) {
-      console.error('Invalid response from OpenRouter during chat.');
+      const response = await this.openai.chat
+        .completions.create({
+          model,
+          messages: messages.filter(T => T.content),
+          ...options,
+        });
+      if (!response || !response.choices || response.choices.length === 0) {
+        console.error('Invalid response from OpenRouter during chat.');
+        return null;
+      }
+      return response.choices[0].message.content.trim() || '...';
+    } catch (error) {
+      console.error('Error while chatting with OpenRouter:', error);
+      if (retries > 0) {
+        console.error('Retrying chat with OpenRouter in 5 seconds...');
+        await new Promise(resolve => setTimeout(resolve, 5000));
+        return this.chat(messages, options, retries - 1);
+      }
       return null;
     }
-    return response.choices[0].message.content.trim() || '...';
   }
 }

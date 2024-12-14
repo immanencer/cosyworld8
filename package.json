@@ -2,7 +2,7 @@
   "name": "cosyworld8",
   "version": "1.0.0",
   "main": "src/index.mjs",
-  "type":"module",
+  "type": "module",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
@@ -25,6 +25,7 @@
     "set-interval-async": "^3.0.3",
     "sharp": "^0.33.5",
     "string-similarity": "^4.0.4",
+    "twitter-api-v2": "^1.18.2",
     "winston": "^3.15.0"
   }
 }
