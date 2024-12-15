@@ -12,7 +12,7 @@ export default function (db) {
     const TEMP_AUTH_EXPIRY = 10 * 60 * 1000; // 10 minutes in milliseconds
 
     // Helper function to refresh token
-    async function refreshAccessToken(db, auth) {
+    async function refreshAccessToken(auth) {
         const client = new TwitterApi({
             clientId: TWITTER_CLIENT_ID,
             clientSecret: TWITTER_CLIENT_SECRET
@@ -39,7 +39,7 @@ export default function (db) {
     }
 
     // Cleanup expired temporary auth data
-    async function cleanupTempAuth(db) {
+    async function cleanupTempAuth() {
         const expiryTime = new Date(Date.now() - TEMP_AUTH_EXPIRY);
         await db.collection('x_auth_temp').deleteMany({
             createdAt: { $lt: expiryTime }
@@ -175,7 +175,7 @@ export default function (db) {
             // If token is expired but we have a refresh token, try to refresh
             if (new Date() >= new Date(auth.expiresAt) && auth.refreshToken) {
                 try {
-                    const { expiresAt } = await refreshAccessToken(db, auth);
+                    const { expiresAt } = await refreshAccessToken(auth);
                     return res.json({ authorized: true, expiresAt });
                 } catch (error) {
                     console.error('Token refresh error:', error);
@@ -196,7 +196,6 @@ export default function (db) {
 
     router.get('/verify-wallet/:avatarId', async (req, res) => {
         try {
-            const db = await getDb();
             const auth = await db.collection('x_auth').findOne({
                 avatarId: req.params.avatarId
             });
@@ -208,7 +207,7 @@ export default function (db) {
             // If token is expired but we have a refresh token, try to refresh
             if (new Date() >= new Date(auth.expiresAt) && auth.refreshToken) {
                 try {
-                    const { expiresAt } = await refreshAccessToken(db, auth);
+                    const { expiresAt } = await refreshAccessToken(auth);
                     return res.json({
                         authorized: true,
                         walletAddress: auth.walletAddress,

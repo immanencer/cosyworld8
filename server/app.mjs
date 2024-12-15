@@ -4,6 +4,7 @@ import { MongoClient, ObjectId } from 'mongodb';
 import models from '../src/models.config.mjs';
 import avatarRoutes from './routes/avatars.mjs';
 import familyRoutes from './routes/families.mjs'
+import xauthRoutes from './routes/xauth.mjs';
 import { thumbnailService } from './services/thumbnailService.mjs';
 
 const app = express();
@@ -13,8 +14,6 @@ app.use(cors());
 app.use(express.json());
 
 // Add to app.mjs:
-import xauthRoutes from './routes/xauth.mjs';
-app.use('/api/xauth', xauthRoutes);
 
 app.use(express.static('public'));
 
@@ -112,6 +111,7 @@ function escapeRegExp(string) {
 // API Routes
 app.use('/api/avatars', avatarRoutes(db));
 app.use('/api/tribes', familyRoutes(db));
+app.use('/api/xauth', xauthRoutes(db));
 
 app.get('/api/leaderboard', async (req, res) => {
   try {
@@ -600,4 +600,5 @@ app.listen(port, '0.0.0.0', () => {
   console.log('- GET /api/avatar/:id/narratives');
   console.log('- GET /api/dungeon/log');
   console.log('- GET /api/tribes');
+  console.log('- GET /api/xauth');
 });
