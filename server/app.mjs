@@ -4,7 +4,7 @@ import { MongoClient, ObjectId } from 'mongodb';
 import models from '../src/models.config.mjs';
 import avatarRoutes from './routes/avatars.mjs';
 import familyRoutes from './routes/families.mjs'
-import { generateThumbnail } from './routes/avatars.mjs';
+import { thumbnailService } from './services/thumbnailService.mjs';
 
 const app = express();
 const port = process.env.PORT || 3080;
@@ -218,7 +218,7 @@ app.get('/api/leaderboard', async (req, res) => {
       const variants = result.variants;
       const primaryAvatar = variants[0];
       const thumbnails = await Promise.all(
-        variants.map(v => generateThumbnail(v.imageUrl))
+        variants.map(v => thumbnailService.generateThumbnail(v.imageUrl))
       );
 
       // Get ancestry and stats for primary avatar
