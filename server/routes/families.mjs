@@ -1,5 +1,5 @@
 import express from 'express';
-import { generateThumbnail, ensureThumbnailDir } from './avatars.mjs';
+import { thumbnailService } from '../services/thumbnailService.mjs';
 
 const router = express.Router();
 
@@ -7,7 +7,7 @@ export default function(db) {
   // Get all avatars grouped by emoji
   router.get('/', async (req, res) => {
     try {
-      await ensureThumbnailDir();
+      await thumbnailService.ensureThumbnailDir();
 
       const pipeline = [
         {
@@ -42,7 +42,7 @@ export default function(db) {
           members: await Promise.all(
             tribe.members.map(async (member) => ({
               ...member,
-              thumbnailUrl: await generateThumbnail(member.imageUrl)
+              thumbnailUrl: await thumbnailService.generateThumbnail(member.imageUrl)
             }))
           )
         }))
