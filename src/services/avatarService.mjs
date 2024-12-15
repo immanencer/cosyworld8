@@ -8,7 +8,7 @@ import process from 'process';
 import winston from 'winston';
 import { extractJSON } from './utils.mjs';
 
-import { uploadImage } from './s3imageService.mjs';
+import { uploadImage } from './s3imageService/s3imageService.mjs';
 
 import { ObjectId } from 'mongodb';
 

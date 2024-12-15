@@ -4,3 +4,5 @@ node_modules
 images/*
 *.webp
 *.png
+logs
+*-wallet.json

@@ -2,6 +2,8 @@
 
 This module provides utilities for uploading images to Amazon S3 and downloading them through CloudFront. It includes secure API key handling, input validation, and error management.
 
+⚠️ These instructions haven't been fully tested. Feel free to open a PR for improvements.
+
 ## Prerequisites
 
 - AWS Account

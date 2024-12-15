@@ -1,6 +1,6 @@
 import Fuse from 'fuse.js';
 import { OpenRouterService } from '../openrouterService.mjs';
-import { uploadImage } from '../s3imageService.mjs';
+import { uploadImage } from '../s3imageService/s3imageService.mjs';
 import { sendAsWebhook } from '../discordService.mjs';
 import { MongoClient } from 'mongodb';
 import Replicate from 'replicate';

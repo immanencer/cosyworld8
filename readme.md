@@ -125,11 +125,12 @@ Access the web dashboard to manage and monitor your avatars:
 
 ## S3 Setup
 
-To enable image uploads, you must set up an S3-compatible storage bucket. This allows avatars to upload and store images used in the bot. Refer to [this guide](https://example.com/s3-setup-guide) for detailed instructions on creating and configuring an S3 bucket. You will need the following information:
+To enable image uploads, you must set up an S3-compatible storage bucket. This allows avatars to upload and store images used in the bot. Refer to [s3imageService.md](./src/services/s3imageService/s3imageService.md) in the module folder for detailed instructions on creating and configuring an S3 bucket. You will need the following information:
 
 - **S3 API Key**: Used for authentication.
 - **S3 API Endpoint**: The endpoint for your storage bucket.
 - **CloudFront Domain**: (Optional) A CDN domain to serve your images more efficiently.
+
 
 ## Contributing
 

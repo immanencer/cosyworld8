@@ -446,6 +446,14 @@ function extractMentionedAvatars(content, avatars) {
 async function handleCommands(message, args, commandLine) {
 
   if (commandLine.startsWith('!summon ')) {
+    const member = message.guild.members.cache.get(message.author.id); // Get the member object
+    const requiredRole = process.env.SUMMONER_ROLE || '🔮'; // Replace with the role ID or name you want to check
+  
+    if (!member || !member.roles.cache.some(role => role.id === requiredRole || role.name === requiredRole)) {
+      message.reply('You do not have the required role to use this command.');
+      return;
+    }
+  
     const args = message.content.slice(8).split(' ');
     await reactToMessage(client, message.channel.id, message.id, '🔮');
     await handleSummmonCommand(message, args);
