@@ -96,13 +96,6 @@ async function initializeIndexes(db) {
   }
 }
 
-// Remove TIER_THRESHOLDS constant
-
-const getModelRarity = (modelName) => {
-  const model = models.find(m => m.model === modelName);
-  return model?.rarity || 'common';
-};
-
 const rarityToTier = {
   'legendary': 'S',
   'rare': 'A',
