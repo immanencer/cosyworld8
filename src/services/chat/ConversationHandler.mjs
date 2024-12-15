@@ -53,21 +53,12 @@ export class ConversationHandler {
       return false;
     }
   }
-  async checkIdleUpdate(avatars) {
-    if (Date.now() - this.lastUpdate >= this.IDLE_TIME) {
-      const randomAvatar = avatars[Math.floor(Math.random() * avatars.length)];
-      await this.generateNarrative(randomAvatar);
-      this.lastUpdate = Date.now();
-    }
-  }
 
 
   /**
    * Unified method to generate a narrative for reflection or inner monologue.
    */
-  async generateNarrative(avatar) {
-
-    const memories = await this.memoryService.getMemories(avatar._id);
+  async generateNarrative(avatar, guildName) {
 
     try {
       const lastNarrative = await this.getLastNarrative(avatar._id);
@@ -91,7 +82,7 @@ export class ConversationHandler {
 
       // Store the narrative in the database and update the avatar
       await this.storeNarrative(avatar._id, narrative);
-      this.updateNarrativeHistory(avatar, narrative, thread.guild.name);     
+      this.updateNarrativeHistory(avatar, narrative, guildName);     
 
       // generate a new dynamic prompt for the avatar based on their system prompt and the generated narrative
       avatar.prompt = await this.buildSystemPrompt(avatar);

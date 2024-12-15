@@ -6,6 +6,7 @@ import { MessageProcessor } from './MessageProcessor.mjs';
 import { DungeonService } from '../dungeon/DungeonService.mjs'; // Added import
 
 const RESPONSE_RATE = parseFloat(process.env.RESPONSE_RATE) || 0.2; // 20% response rate
+const SERVER_NAME = "Moonstone Sanctum";
 
 export class ChatService {
   constructor(client, db, options = {}) {
@@ -331,7 +332,7 @@ export class ChatService {
       if (avatars.length > 0) {
         const randomAvatar = avatars[Math.floor(Math.random() * avatars.length)];
         this.logger.info(`🎯 Forcing startup reflection for ${randomAvatar.name}`);
-        await this.conversationHandler.generateNarrative(randomAvatar);
+        await this.conversationHandler.generateNarrative(randomAvatar, SERVER_NAME);
       }
 
       this.logger.info('✅ ChatService started.');
@@ -379,7 +380,7 @@ export class ChatService {
       const avatars = await this.messageProcessor.getActiveAvatars();
       avatars.sort(() => Math.random() - 0.5);
       for (const avatar of avatars) {
-        await this.conversationHandler.generateNarrative(avatar);
+        await this.conversationHandler.generateNarrative(avatar, SERVER_NAME);
       }
     }, this.REFLECTION_INTERVAL);
   }
