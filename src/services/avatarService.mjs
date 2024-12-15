@@ -128,12 +128,26 @@ export class AvatarGenerationService {
     }
   }
 
+  async getAvatarByName(name, includeStatus = 'alive') {
+    try {
+      const collection = this.db.collection(this.AVATARS_COLLECTION);
+      const query = { name };
+
+      // Only include alive avatars by default
+      if (includeStatus === 'alive') {
+        query.status = { $ne: 'dead' };
+      }
+
+      return await collection.findOne(query);
+
+    } catch (error) {
+      this.logger.error(`Error fetching avatar by name: ${error.message}`);
+      return [];
+    }
+  }
 
   avatarCache = [];
   async getAllAvatars(includeStatus = 'alive') {
-    if (this.avatarCache.length > 0) {
-      return this.avatarCache;
-    }
     try {
       const collection = this.db.collection(this.AVATARS_COLLECTION);
       const query = {

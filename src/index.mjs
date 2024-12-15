@@ -264,8 +264,7 @@ async function handleSummmonCommand(message, args, breed = false, attributes = {
 
   try {
     // First check if this might be summoning an existing avatar
-    const avatars = await avatarService.getAllAvatars();
-    existingAvatar = await findAvatarByName(prompt, avatars);
+    const existingAvatar = await avatarService.getAvatarByName(prompt);
 
     // Update the summon existing avatar logic
     if (existingAvatar) {
