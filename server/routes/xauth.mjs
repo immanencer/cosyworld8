@@ -1,6 +1,6 @@
 import express from 'express';
 import { TwitterApi } from 'twitter-api-v2';
-import { MongoClient } from 'mongodb';
+import { getDb } from '../services/dbConnection.mjs';
 
 const router = express.Router();
 
@@ -8,9 +8,6 @@ const router = express.Router();
 const TWITTER_CLIENT_ID = process.env.TWITTER_CLIENT_ID;
 const TWITTER_CLIENT_SECRET = process.env.TWITTER_CLIENT_SECRET;
 const TWITTER_CALLBACK_URL = process.env.TWITTER_CALLBACK_URL;
-
-// Initialize connection to MongoDB
-const mongoClient = new MongoClient(process.env.MONGO_URI);
 
 // Get authorization URL
 router.get('/auth-url', async (req, res) => {
@@ -36,8 +33,7 @@ router.get('/auth-url', async (req, res) => {
     );
 
     // Store code verifier temporarily
-    await mongoClient.connect();
-    const db = mongoClient.db(process.env.MONGO_DB_NAME);
+    const db = await getDb();
     await db.collection('x_auth_temp').updateOne(
       { avatarId },
       { 
@@ -53,8 +49,6 @@ router.get('/auth-url', async (req, res) => {
   } catch (error) {
     console.error('Error generating auth URL:', error);
     res.status(500).json({ error: error.message });
-  } finally {
-    await mongoClient.close();
   }
 });
 
@@ -79,8 +73,7 @@ router.get('/callback', async (req, res) => {
       throw new Error('Missing wallet address or avatar ID in state');
     }
 
-    await mongoClient.connect();
-    const db = mongoClient.db(process.env.MONGO_DB_NAME);
+    const db = await getDb();
 
     // Get stored code verifier
     const storedAuth = await db.collection('x_auth_temp').findOne({ avatarId });
@@ -127,7 +120,7 @@ router.get('/callback', async (req, res) => {
 
   } catch (error) {
     console.error('OAuth callback error:', error);
-    res.status(500).send(`
+    res.send(`
       <script>
         window.opener.postMessage({ 
           type: 'X_AUTH_ERROR', 
@@ -136,17 +129,13 @@ router.get('/callback', async (req, res) => {
         window.close();
       </script>
     `);
-  } finally {
-    await mongoClient.close();
   }
 });
 
 // Check auth status
 router.get('/status/:avatarId', async (req, res) => {
   try {
-    await mongoClient.connect();
-    const db = mongoClient.db(process.env.MONGO_DB_NAME);
-
+    const db = await getDb();
     const auth = await db.collection('x_auth').findOne({
       avatarId: req.params.avatarId
     });
@@ -159,17 +148,13 @@ router.get('/status/:avatarId', async (req, res) => {
   } catch (error) {
     console.error('Status check error:', error);
     res.status(500).json({ error: error.message });
-  } finally {
-    await mongoClient.close();
   }
 });
 
 // Add endpoint to verify wallet ownership
 router.get('/verify-wallet/:avatarId', async (req, res) => {
   try {
-    await mongoClient.connect();
-    const db = mongoClient.db(process.env.MONGO_DB_NAME);
-    
+    const db = await getDb();
     const auth = await db.collection('x_auth').findOne({
       avatarId: req.params.avatarId
     });
