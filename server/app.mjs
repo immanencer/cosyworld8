@@ -441,8 +441,8 @@ app.get('/api/dungeon/log', async (req, res) => {
       ]);
 
       const [actorThumb, targetThumb] = await Promise.all([
-        actor?.imageUrl ? generateThumbnail(actor.imageUrl) : null,
-        target?.imageUrl ? generateThumbnail(target.imageUrl) : null
+        actor?.imageUrl ? thumbnailService.generateThumbnail(actor.imageUrl) : null,
+        target?.imageUrl ? thumbnailService.generateThumbnail(target.imageUrl) : null
       ]);
 
       return {
@@ -562,7 +562,7 @@ app.get('/api/avatars/:id', async (req, res) => {
     ]);
 
     const thumbnails = await Promise.all(
-      variants.map(v => generateThumbnail(v.imageUrl))
+      variants.map(v => thumbnailService.generateThumbnail(v.imageUrl))
     );
 
     res.json({
