@@ -18,7 +18,7 @@ export default function (db) {
           .skip(skip)
           .limit(limit)
           .toArray(),
-        db.collection('avatars').countDocuments()
+        db.collection('avatars').estimatedDocumentCount()
       ]);
 
       // Ensure thumbnail directory exists
