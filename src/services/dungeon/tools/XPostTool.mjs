@@ -8,15 +8,61 @@ export class XPostTool extends BaseTool {
         this.emoji = '🐦';
     }
 
+    async refreshAccessToken(db, auth) {
+        try {
+            const client = new TwitterApi({
+                clientId: process.env.TWITTER_CLIENT_ID,
+                clientSecret: process.env.TWITTER_CLIENT_SECRET
+            });
+
+            const {
+                accessToken,
+                refreshToken: newRefreshToken,
+                expiresIn
+            } = await client.refreshOAuth2Token(auth.refreshToken);
+
+            // Calculate new expiration date
+            const expiresAt = new Date(Date.now() + expiresIn * 1000);
+
+            // Update the stored tokens
+            await db.collection('x_auth').updateOne(
+                { avatarId: auth.avatarId },
+                {
+                    $set: {
+                        accessToken,
+                        refreshToken: newRefreshToken,
+                        expiresAt
+                    }
+                }
+            );
+
+            return accessToken;
+        } catch (error) {
+            this.dungeonService.logger.error(`Error refreshing token: ${error.message}`);
+            throw error;
+        }
+    }
+
     async isAuthorized(avatar) {
         const client = new MongoClient(process.env.MONGO_URI);
         try {
             await client.connect();
             const db = client.db(process.env.MONGO_DB_NAME);
 
-            // Check if the avatar has X authorization
             const auth = await db.collection('x_auth').findOne({ avatarId: avatar._id.toString() });
-            return auth?.accessToken && new Date() < new Date(auth.expiresAt);
+            if (!auth?.accessToken) return false;
+
+            // If token is expired but we have a refresh token, try to refresh
+            if (new Date() >= new Date(auth.expiresAt) && auth.refreshToken) {
+                try {
+                    await this.refreshAccessToken(db, auth);
+                    return true;
+                } catch (error) {
+                    return false;
+                }
+            }
+
+            return new Date() < new Date(auth.expiresAt);
         } catch (error) {
             this.dungeonService.logger.error(`Error checking X authorization: ${error.message}`);
             return false;
@@ -35,19 +81,27 @@ export class XPostTool extends BaseTool {
             await client.connect();
             const db = client.db(process.env.MONGO_DB_NAME);
 
-            // Get auth tokens
             const auth = await db.collection('x_auth').findOne({ avatarId: avatar._id.toString() });
 
             if (!auth?.accessToken) {
                 return '❌ Not authorized to post on X. Please connect your account first.';
             }
 
-            if (new Date() > new Date(auth.expiresAt)) {
+            let accessToken = auth.accessToken;
+
+            // If token is expired but we have a refresh token, try to refresh
+            if (new Date() >= new Date(auth.expiresAt) && auth.refreshToken) {
+                try {
+                    accessToken = await this.refreshAccessToken(db, auth);
+                } catch (error) {
+                    return '❌ Failed to refresh X authorization. Please reconnect your account.';
+                }
+            } else if (new Date() >= new Date(auth.expiresAt)) {
                 return '❌ X authorization expired. Please reconnect your account.';
             }
 
             // Initialize Twitter client with access token
-            const twitterClient = new TwitterApi(auth.accessToken);
+            const twitterClient = new TwitterApi(accessToken);
             const v2Client = twitterClient.v2;
 
             // Post the tweet
