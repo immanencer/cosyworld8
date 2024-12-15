@@ -1,6 +1,6 @@
 import express from 'express';
 import { getDb } from '../services/dbConnection.mjs';
-import { thumbnailService } from './thumbnailService.mjs';
+import { thumbnailService } from '../services/thumbnailService.mjs';
 
 const router = express.Router();
 
