@@ -1,5 +1,5 @@
 import express from 'express';
-import { getDb } from './dbConnection.mjs';
+import { getDb } from '../services/dbConnection.mjs';
 import { thumbnailService } from './thumbnailService.mjs';
 
 const router = express.Router();
