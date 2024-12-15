@@ -398,7 +398,7 @@ app.get('/api/avatars/search', async (req, res) => {
     const avatarsWithThumbs = await Promise.all(
       avatars.map(async (avatar) => ({
         ...avatar,
-        thumbnailUrl: await generateThumbnail(avatar.imageUrl)
+        thumbnailUrl: await thumbnailService.generateThumbnail(avatar.imageUrl)
       }))
     );
 
@@ -508,7 +508,7 @@ app.get('/api/tribes', async (req, res) => {
         members: await Promise.all(
           tribe.members.map(async member => ({
             ...member,
-            thumbnailUrl: await generateThumbnail(member.imageUrl)
+            thumbnailUrl: await thumbnailService.generateThumbnail(member.imageUrl)
           }))
         )
       }))
