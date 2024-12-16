@@ -37,12 +37,14 @@ export default function (db) {
 
             return { accessToken, expiresAt };
         } catch (error) {
-            // If refresh fails, the token might have been revoked
-            // Remove the invalid auth entry
-            await db.collection('x_auth').deleteOne({ avatarId: auth.avatarId });
+            // Only delete the auth entry if it's specifically a token validation error
+            if (error.code === 401 || error.message?.includes('invalid_grant')) {
+                await db.collection('x_auth').deleteOne({ avatarId: auth.avatarId });
+            }
             throw error;
         }
     }
+
 
     // Cleanup expired temporary auth data
     async function cleanupTempAuth() {
@@ -170,47 +172,48 @@ export default function (db) {
         }
     });
 
-
     router.get('/status/:avatarId', async (req, res) => {
         try {
             const auth = await db.collection('x_auth').findOne({
                 avatarId: req.params.avatarId
             });
-
+    
             if (!auth) {
                 return res.json({ authorized: false });
             }
-
-            if (new Date() >= new Date(auth.expiresAt) && auth.refreshToken) {
-                try {
+    
+            try {
+                // If token is expired, try to refresh it
+                if (new Date() >= new Date(auth.expiresAt) && auth.refreshToken) {
                     const { expiresAt } = await refreshAccessToken(auth);
                     return res.json({ authorized: true, expiresAt });
-                } catch (error) {
-                    // Token refresh failed - auth has been deleted in refreshAccessToken
+                }
+    
+                // Verify the token with a test API call
+                const client = new TwitterApi(auth.accessToken);
+                await client.v2.me();
+    
+                return res.json({
+                    authorized: true,
+                    expiresAt: auth.expiresAt
+                });
+            } catch (error) {
+                // Only consider it unauthorized if it's specifically a token validation error
+                if (error.code === 401 || error.message?.includes('invalid_grant')) {
+                    // Clean up invalid token
+                    await db.collection('x_auth').deleteOne({ avatarId: req.params.avatarId });
                     return res.json({
                         authorized: false,
                         error: 'Token invalid or revoked',
                         requiresReauth: true
                     });
                 }
-            }
-
-            // Verify the token is still valid by making a test API call
-            try {
-                const client = new TwitterApi(auth.accessToken);
-                await client.v2.me(); // Light API call to verify token
-
-                res.json({
-                    authorized: new Date() < new Date(auth.expiresAt),
-                    expiresAt: auth.expiresAt
-                });
-            } catch (error) {
-                // If the API call fails, the token is invalid/revoked
-                await db.collection('x_auth').deleteOne({ avatarId: req.params.avatarId });
-                res.json({
-                    authorized: false,
-                    error: 'Token invalid or revoked',
-                    requiresReauth: true
+    
+                // For other errors, maintain the authorized state but return the error
+                return res.json({
+                    authorized: true,
+                    expiresAt: auth.expiresAt,
+                    error: 'Temporary API error'
                 });
             }
         } catch (error) {
