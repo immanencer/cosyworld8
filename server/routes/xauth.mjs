@@ -187,10 +187,10 @@ export default function (db) {
                     return res.json({ authorized: true, expiresAt });
                 } catch (error) {
                     // Token refresh failed - auth has been deleted in refreshAccessToken
-                    return res.json({ 
-                        authorized: false, 
+                    return res.json({
+                        authorized: false,
                         error: 'Token invalid or revoked',
-                        requiresReauth: true 
+                        requiresReauth: true
                     });
                 }
             }
@@ -199,7 +199,7 @@ export default function (db) {
             try {
                 const client = new TwitterApi(auth.accessToken);
                 await client.v2.me(); // Light API call to verify token
-                
+
                 res.json({
                     authorized: new Date() < new Date(auth.expiresAt),
                     expiresAt: auth.expiresAt
@@ -207,10 +207,10 @@ export default function (db) {
             } catch (error) {
                 // If the API call fails, the token is invalid/revoked
                 await db.collection('x_auth').deleteOne({ avatarId: req.params.avatarId });
-                res.json({ 
-                    authorized: false, 
+                res.json({
+                    authorized: false,
                     error: 'Token invalid or revoked',
-                    requiresReauth: true 
+                    requiresReauth: true
                 });
             }
         } catch (error) {
@@ -251,7 +251,7 @@ export default function (db) {
             try {
                 const client = new TwitterApi(auth.accessToken);
                 await client.v2.me();
-                
+
                 res.json({
                     authorized: new Date() < new Date(auth.expiresAt),
                     walletAddress: auth.walletAddress,
@@ -267,6 +267,23 @@ export default function (db) {
             }
         } catch (error) {
             console.error('Wallet verification error:', error);
+            res.status(500).json({ error: error.message });
+        }
+    });
+
+    // Add this route in your existing router
+    router.post('/disconnect/:avatarId', async (req, res) => {
+        try {
+            const result = await db.collection('x_auth').deleteOne({
+                avatarId: req.params.avatarId
+            });
+
+            res.json({
+                success: true,
+                disconnected: result.deletedCount > 0
+            });
+        } catch (error) {
+            console.error('Disconnect error:', error);
             res.status(500).json({ error: error.message });
         }
     });

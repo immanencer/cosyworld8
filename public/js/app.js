@@ -1,10 +1,6 @@
-const { useState, useEffect, useCallback } = React;
+import React, { useState, useCallback, useEffect } from 'react';
+import { AlertCircle, Twitter, Loader2 } from 'lucide-react';
 
-// Add this utility function near the top
-function sanitizeNumber(value, fallback = 0) {
-  const num = Number(value);
-  return !isNaN(num) && isFinite(num) ? num : fallback;
-}
 
 // Add this helper function for safe markdown rendering
 function MarkdownContent({ content }) {
@@ -18,29 +14,18 @@ function MarkdownContent({ content }) {
   );
 }
 
-// Add these helper functions at the top of the file
-const getModelRarity = (modelName) => {
-  // You might want to fetch this from an API or include models.config.mjs content
-  const modelRarities = {
-    'meta-llama/llama-3.2-1b-instruct': 'common',
-    'meta-llama/llama-3.2-3b-instruct': 'common',
-    'eva-unit-01/eva-qwen-2.5-72b': 'rare',
-    'openai/gpt-4o': 'legendary',
-    'meta-llama/llama-3.1-405b-instruct': 'legendary',
-    'anthropic/claude-3-opus:beta': 'legendary',
-    'anthropic/claude-3.5-sonnet:beta': 'legendary',
-    'anthropic/claude-3.5-haiku:beta': 'uncommon',
-    'neversleep/llama-3.1-lumimaid-70b': 'rare',
-    'nvidia/llama-3.1-nemotron-70b-instruct': 'rare',
-    'meta-llama/llama-3.1-70b-instruct': 'uncommon',
-    'pygmalionai/mythalion-13b': 'uncommon',
-    'mistralai/mistral-large-2411': 'uncommon',
-    'qwen/qwq-32b-preview': 'uncommon',
-    'gryphe/mythomax-l2-13b': 'common',
-    'google/gemini-flash-1.5-8b': 'common',
-    'x-ai/grok-beta': 'legendary'
-  };
-  return modelRarities[modelName] || 'common';
+const getModelRarity = async (modelName) => {
+  try {
+    const response = await fetch(`/api/models/${encodeURIComponent(modelName)}`);
+    if (!response.ok) {
+      throw new Error('Failed to fetch model rarity');
+    }
+    const data = await response.json();
+    return data.rarity;
+  } catch (error) {
+    console.error('Error fetching model rarity:', error);
+    return 'common'; // Default fallback
+  }
 };
 
 const rarityToTier = {
@@ -287,71 +272,154 @@ function StatsDisplay({ stats, size = "small" }) {
   );
 }
 
-
-function XAuthButton({ avatarId, walletAddress, onAuthChange }) {
+const XAuthButton = ({ avatarId, walletAddress, onAuthChange }) => {
   const [authStatus, setAuthStatus] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   const checkAuthStatus = useCallback(async () => {
+    if (!avatarId) return;
+    
     try {
+      setError(null);
       const response = await fetch(`/api/xauth/status/${avatarId}`);
       const data = await response.json();
       setAuthStatus(data);
       onAuthChange?.(data.authorized);
+
+      // If token is invalid/revoked, clear the status
+      if (data.requiresReauth) {
+        setAuthStatus(null);
+      }
     } catch (error) {
       console.error('Error checking auth status:', error);
+      setError('Failed to check connection status');
+      setAuthStatus(null);
     } finally {
       setLoading(false);
     }
   }, [avatarId, onAuthChange]);
 
+  // Poll status every minute to detect revoked access
   useEffect(() => {
     if (avatarId) {
       checkAuthStatus();
+      const interval = setInterval(checkAuthStatus, 60000);
+      return () => clearInterval(interval);
     }
   }, [avatarId, checkAuthStatus]);
 
   const handleAuth = async () => {
     try {
-      // Get auth URL
-      const response = await fetch(`/api/xauth/auth-url?walletAddress=${walletAddress}&avatarId=${avatarId}`);
-      const { url } = await response.json();
+      setError(null);
+      setLoading(true);
+      
+      const response = await fetch(
+        `/api/xauth/auth-url?walletAddress=${walletAddress}&avatarId=${avatarId}`
+      );
+      const { url, error } = await response.json();
+      
+      if (error) {
+        throw new Error(error);
+      }
 
       // Open popup for auth
-      const popup = window.open(url, 'x-auth', 'width=600,height=800');
+      const popup = window.open(
+        url, 
+        'x-auth', 
+        'width=600,height=800,left=100,top=100'
+      );
 
       // Listen for auth completion
-      window.addEventListener('message', async (event) => {
+      const handleMessage = async (event) => {
         if (event.data.type === 'X_AUTH_SUCCESS') {
           await checkAuthStatus();
-          popup.close();
+          popup?.close();
         } else if (event.data.type === 'X_AUTH_ERROR') {
-          console.error('X auth error:', event.data.error);
-          popup.close();
+          setError(event.data.error || 'Authentication failed');
+          popup?.close();
         }
-      });
+      };
+
+      window.addEventListener('message', handleMessage);
+      
+      // Cleanup listener when popup closes
+      const checkClosed = setInterval(() => {
+        if (popup?.closed) {
+          clearInterval(checkClosed);
+          window.removeEventListener('message', handleMessage);
+          setLoading(false);
+        }
+      }, 1000);
 
     } catch (error) {
       console.error('Error starting auth:', error);
+      setError(error.message || 'Failed to start authentication');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleDisconnect = async () => {
+    try {
+      setLoading(true);
+      await fetch(`/api/xauth/disconnect/${avatarId}`, { method: 'POST' });
+      setAuthStatus(null);
+      onAuthChange?.(false);
+    } catch (error) {
+      console.error('Error disconnecting:', error);
+      setError('Failed to disconnect');
+    } finally {
+      setLoading(false);
     }
   };
 
   if (loading) {
     return (
-      <button className="bg-gray-600 px-4 py-2 rounded opacity-50 cursor-not-allowed">
-        Loading...
+      <button className="bg-gray-600 px-4 py-2 rounded opacity-50 cursor-not-allowed flex items-center gap-2">
+        <Loader2 className="w-4 h-4 animate-spin" />
+        <span>Checking status...</span>
       </button>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex flex-col gap-2">
+        <button 
+          onClick={checkAuthStatus}
+          className="bg-red-600 hover:bg-red-700 px-4 py-2 rounded flex items-center gap-2"
+        >
+          <AlertCircle className="w-4 h-4" />
+          <span>Retry connection</span>
+        </button>
+        <p className="text-red-500 text-sm">{error}</p>
+      </div>
     );
   }
 
   if (authStatus?.authorized) {
     return (
-      <button 
-        className="bg-blue-600 px-4 py-2 rounded flex items-center gap-2"
-        title={`Authorized until ${new Date(authStatus.expiresAt).toLocaleString()}`}
-      >
-        <span>🐦 Connected</span>
-      </button>
+      <div className="flex flex-col gap-2">
+        <div className="flex items-center gap-2">
+          <button 
+            className="bg-blue-600 px-4 py-2 rounded flex items-center gap-2"
+            title={`Connected until ${new Date(authStatus.expiresAt).toLocaleString()}`}
+          >
+            <Twitter className="w-4 h-4" />
+            <span>Connected</span>
+          </button>
+          <button
+            onClick={handleDisconnect}
+            className="bg-gray-600 hover:bg-gray-700 px-3 py-2 rounded text-sm"
+          >
+            Disconnect
+          </button>
+        </div>
+        <p className="text-xs text-gray-400">
+          Expires: {new Date(authStatus.expiresAt).toLocaleString()}
+        </p>
+      </div>
     );
   }
 
@@ -360,10 +428,11 @@ function XAuthButton({ avatarId, walletAddress, onAuthChange }) {
       onClick={handleAuth}
       className="bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded flex items-center gap-2"
     >
-      <span>🐦 Connect X Account</span>
+      <Twitter className="w-4 h-4" />
+      <span>Connect X Account</span>
     </button>
   );
-}
+};
 
 // Update the modal layout
 function AvatarDetailModal({ avatar, onClose, wallet }) {  // Add wallet prop

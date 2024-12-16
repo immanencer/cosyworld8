@@ -20,6 +20,7 @@
     "dotenv": "^16.4.5",
     "express": "^4.21.1",
     "fuse.js": "^7.0.0",
+    "lucide-react": "^0.468.0",
     "mongodb": "^6.11.0",
     "ollama": "^0.5.9",
     "openai": "^4.73.0",
