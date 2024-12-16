@@ -11,31 +11,37 @@ export default function (db) {
     const DEFAULT_TOKEN_EXPIRY = 7200; // 2 hours in seconds
     const TEMP_AUTH_EXPIRY = 10 * 60 * 1000; // 10 minutes in milliseconds
 
-    // Helper function to refresh token
     async function refreshAccessToken(auth) {
         const client = new TwitterApi({
             clientId: TWITTER_CLIENT_ID,
             clientSecret: TWITTER_CLIENT_SECRET
         });
 
-        const { accessToken, refreshToken: newRefreshToken, expiresIn } =
-            await client.refreshOAuth2Token(auth.refreshToken);
+        try {
+            const { accessToken, refreshToken: newRefreshToken, expiresIn } =
+                await client.refreshOAuth2Token(auth.refreshToken);
 
-        const expiresAt = new Date(Date.now() + (expiresIn || DEFAULT_TOKEN_EXPIRY) * 1000);
+            const expiresAt = new Date(Date.now() + (expiresIn || DEFAULT_TOKEN_EXPIRY) * 1000);
 
-        await db.collection('x_auth').updateOne(
-            { avatarId: auth.avatarId },
-            {
-                $set: {
-                    accessToken,
-                    refreshToken: newRefreshToken,
-                    expiresAt,
-                    updatedAt: new Date()
+            await db.collection('x_auth').updateOne(
+                { avatarId: auth.avatarId },
+                {
+                    $set: {
+                        accessToken,
+                        refreshToken: newRefreshToken,
+                        expiresAt,
+                        updatedAt: new Date()
+                    }
                 }
-            }
-        );
+            );
 
-        return { accessToken, expiresAt };
+            return { accessToken, expiresAt };
+        } catch (error) {
+            // If refresh fails, the token might have been revoked
+            // Remove the invalid auth entry
+            await db.collection('x_auth').deleteOne({ avatarId: auth.avatarId });
+            throw error;
+        }
     }
 
     // Cleanup expired temporary auth data
@@ -45,13 +51,15 @@ export default function (db) {
             createdAt: { $lt: expiryTime }
         });
     }
-
     router.get('/auth-url', async (req, res) => {
         try {
             const { walletAddress, avatarId } = req.query;
             if (!walletAddress || !avatarId) {
                 return res.status(400).json({ error: 'Missing wallet address or avatar ID' });
             }
+
+            // Remove any existing auth entry for this avatar before starting new auth flow
+            await db.collection('x_auth').deleteOne({ avatarId });
 
             const client = new TwitterApi({
                 clientId: TWITTER_CLIENT_ID,
@@ -162,6 +170,7 @@ export default function (db) {
         }
     });
 
+
     router.get('/status/:avatarId', async (req, res) => {
         try {
             const auth = await db.collection('x_auth').findOne({
@@ -172,28 +181,45 @@ export default function (db) {
                 return res.json({ authorized: false });
             }
 
-            // If token is expired but we have a refresh token, try to refresh
             if (new Date() >= new Date(auth.expiresAt) && auth.refreshToken) {
                 try {
                     const { expiresAt } = await refreshAccessToken(auth);
                     return res.json({ authorized: true, expiresAt });
                 } catch (error) {
-                    console.error('Token refresh error:', error);
-                    return res.json({ authorized: false, error: 'Token refresh failed' });
+                    // Token refresh failed - auth has been deleted in refreshAccessToken
+                    return res.json({ 
+                        authorized: false, 
+                        error: 'Token invalid or revoked',
+                        requiresReauth: true 
+                    });
                 }
             }
 
-            res.json({
-                authorized: new Date() < new Date(auth.expiresAt),
-                expiresAt: auth.expiresAt
-            });
-
+            // Verify the token is still valid by making a test API call
+            try {
+                const client = new TwitterApi(auth.accessToken);
+                await client.v2.me(); // Light API call to verify token
+                
+                res.json({
+                    authorized: new Date() < new Date(auth.expiresAt),
+                    expiresAt: auth.expiresAt
+                });
+            } catch (error) {
+                // If the API call fails, the token is invalid/revoked
+                await db.collection('x_auth').deleteOne({ avatarId: req.params.avatarId });
+                res.json({ 
+                    authorized: false, 
+                    error: 'Token invalid or revoked',
+                    requiresReauth: true 
+                });
+            }
         } catch (error) {
             console.error('Status check error:', error);
             res.status(500).json({ error: error.message });
         }
     });
 
+    // Update verify-wallet route similarly to status route
     router.get('/verify-wallet/:avatarId', async (req, res) => {
         try {
             const auth = await db.collection('x_auth').findOne({
@@ -204,7 +230,6 @@ export default function (db) {
                 return res.json({ authorized: false });
             }
 
-            // If token is expired but we have a refresh token, try to refresh
             if (new Date() >= new Date(auth.expiresAt) && auth.refreshToken) {
                 try {
                     const { expiresAt } = await refreshAccessToken(auth);
@@ -214,19 +239,32 @@ export default function (db) {
                         expiresAt
                     });
                 } catch (error) {
-                    console.error('Token refresh error:', error);
                     return res.json({
                         authorized: false,
-                        error: 'Token refresh failed'
+                        error: 'Token invalid or revoked',
+                        requiresReauth: true
                     });
                 }
             }
 
-            res.json({
-                authorized: new Date() < new Date(auth.expiresAt),
-                walletAddress: auth.walletAddress,
-                expiresAt: auth.expiresAt
-            });
+            // Verify the token is still valid
+            try {
+                const client = new TwitterApi(auth.accessToken);
+                await client.v2.me();
+                
+                res.json({
+                    authorized: new Date() < new Date(auth.expiresAt),
+                    walletAddress: auth.walletAddress,
+                    expiresAt: auth.expiresAt
+                });
+            } catch (error) {
+                await db.collection('x_auth').deleteOne({ avatarId: req.params.avatarId });
+                res.json({
+                    authorized: false,
+                    error: 'Token invalid or revoked',
+                    requiresReauth: true
+                });
+            }
         } catch (error) {
             console.error('Wallet verification error:', error);
             res.status(500).json({ error: error.message });
