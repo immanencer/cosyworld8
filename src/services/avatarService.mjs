@@ -131,20 +131,23 @@ export class AvatarGenerationService {
   async getAvatarByName(name, includeStatus = 'alive') {
     try {
       const collection = this.db.collection(this.AVATARS_COLLECTION);
-      const query = { name };
-
+  
+      const query = {
+        name: { $regex: new RegExp(`^${name}$`, 'i') } // Case-insensitive exact match
+      };
+  
       // Only include alive avatars by default
       if (includeStatus === 'alive') {
         query.status = { $ne: 'dead' };
       }
-
+  
       return await collection.findOne(query);
-
+  
     } catch (error) {
       this.logger.error(`Error fetching avatar by name: ${error.message}`);
-      return [];
+      return null;
     }
-  }
+  }  
 
   avatarCache = [];
   async getAllAvatars(includeStatus = 'alive') {
