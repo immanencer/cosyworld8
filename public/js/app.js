@@ -1,6 +1,10 @@
-import React, { useState, useCallback, useEffect } from 'react';
-import { AlertCircle, Twitter, Loader2 } from 'lucide-react';
+const { useState, useEffect, useCallback } = React;
 
+// Add this utility function near the top
+function sanitizeNumber(value, fallback = 0) {
+  const num = Number(value);
+  return !isNaN(num) && isFinite(num) ? num : fallback;
+}
 
 // Add this helper function for safe markdown rendering
 function MarkdownContent({ content }) {
@@ -14,18 +18,29 @@ function MarkdownContent({ content }) {
   );
 }
 
-const getModelRarity = async (modelName) => {
-  try {
-    const response = await fetch(`/api/models/${encodeURIComponent(modelName)}`);
-    if (!response.ok) {
-      throw new Error('Failed to fetch model rarity');
-    }
-    const data = await response.json();
-    return data.rarity;
-  } catch (error) {
-    console.error('Error fetching model rarity:', error);
-    return 'common'; // Default fallback
-  }
+// Add these helper functions at the top of the file
+const getModelRarity = (modelName) => {
+  // You might want to fetch this from an API or include models.config.mjs content
+  const modelRarities = {
+    'meta-llama/llama-3.2-1b-instruct': 'common',
+    'meta-llama/llama-3.2-3b-instruct': 'common',
+    'eva-unit-01/eva-qwen-2.5-72b': 'rare',
+    'openai/gpt-4o': 'legendary',
+    'meta-llama/llama-3.1-405b-instruct': 'legendary',
+    'anthropic/claude-3-opus:beta': 'legendary',
+    'anthropic/claude-3.5-sonnet:beta': 'legendary',
+    'anthropic/claude-3.5-haiku:beta': 'uncommon',
+    'neversleep/llama-3.1-lumimaid-70b': 'rare',
+    'nvidia/llama-3.1-nemotron-70b-instruct': 'rare',
+    'meta-llama/llama-3.1-70b-instruct': 'uncommon',
+    'pygmalionai/mythalion-13b': 'uncommon',
+    'mistralai/mistral-large-2411': 'uncommon',
+    'qwen/qwq-32b-preview': 'uncommon',
+    'gryphe/mythomax-l2-13b': 'common',
+    'google/gemini-flash-1.5-8b': 'common',
+    'x-ai/grok-beta': 'legendary'
+  };
+  return modelRarities[modelName] || 'common';
 };
 
 const rarityToTier = {
@@ -323,14 +338,12 @@ const XAuthButton = ({ avatarId, walletAddress, onAuthChange }) => {
         throw new Error(error);
       }
 
-      // Open popup for auth
       const popup = window.open(
         url, 
         'x-auth', 
         'width=600,height=800,left=100,top=100'
       );
 
-      // Listen for auth completion
       const handleMessage = async (event) => {
         if (event.data.type === 'X_AUTH_SUCCESS') {
           await checkAuthStatus();
@@ -343,7 +356,6 @@ const XAuthButton = ({ avatarId, walletAddress, onAuthChange }) => {
 
       window.addEventListener('message', handleMessage);
       
-      // Cleanup listener when popup closes
       const checkClosed = setInterval(() => {
         if (popup?.closed) {
           clearInterval(checkClosed);
@@ -377,7 +389,7 @@ const XAuthButton = ({ avatarId, walletAddress, onAuthChange }) => {
   if (loading) {
     return (
       <button className="bg-gray-600 px-4 py-2 rounded opacity-50 cursor-not-allowed flex items-center gap-2">
-        <Loader2 className="w-4 h-4 animate-spin" />
+        <div className="animate-spin h-4 w-4 border-2 border-white rounded-full border-t-transparent"></div>
         <span>Checking status...</span>
       </button>
     );
@@ -390,7 +402,7 @@ const XAuthButton = ({ avatarId, walletAddress, onAuthChange }) => {
           onClick={checkAuthStatus}
           className="bg-red-600 hover:bg-red-700 px-4 py-2 rounded flex items-center gap-2"
         >
-          <AlertCircle className="w-4 h-4" />
+          ⚠️ {/* Replace AlertCircle with emoji */}
           <span>Retry connection</span>
         </button>
         <p className="text-red-500 text-sm">{error}</p>
@@ -406,7 +418,7 @@ const XAuthButton = ({ avatarId, walletAddress, onAuthChange }) => {
             className="bg-blue-600 px-4 py-2 rounded flex items-center gap-2"
             title={`Connected until ${new Date(authStatus.expiresAt).toLocaleString()}`}
           >
-            <Twitter className="w-4 h-4" />
+            𝕏 {/* Replace Twitter icon with X symbol */}
             <span>Connected</span>
           </button>
           <button
@@ -428,7 +440,7 @@ const XAuthButton = ({ avatarId, walletAddress, onAuthChange }) => {
       onClick={handleAuth}
       className="bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded flex items-center gap-2"
     >
-      <Twitter className="w-4 h-4" />
+      𝕏 {/* Replace Twitter icon with X symbol */}
       <span>Connect X Account</span>
     </button>
   );
