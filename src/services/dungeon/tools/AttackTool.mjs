@@ -8,7 +8,7 @@ export class AttackTool extends BaseTool {
     }
 
     const attackerId = message.author.id;
-    const targetName = params[0];
+    const targetName = params.join(' ');
     
     try {
       return await this.attack(message, targetName, attackerId);
