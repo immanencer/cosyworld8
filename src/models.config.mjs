@@ -23,13 +23,17 @@ const models = [
   { model: "eva-unit-01/eva-qwen-2.5-72b", rarity: "rare" },
   { model: "neversleep/llama-3.1-lumimaid-70b", rarity: "rare" },
   { model: "nvidia/llama-3.1-nemotron-70b-instruct", rarity: "rare" },
+  { model: "eva-unit-01/eva-llama-3.33-70b", rarity: "rare" },
+  { model: "amazon/nova-pro-v1", rarity: "rare" },
+
 
   // Legendary models
   { model: "openai/gpt-4o", rarity: "legendary" },
   { model: "meta-llama/llama-3.1-405b-instruct", rarity: "legendary" },
   { model: "anthropic/claude-3-opus:beta", rarity: "legendary" },
   { model: "anthropic/claude-3.5-sonnet:beta", rarity: "legendary" },
-  { model: "x-ai/grok-beta", rarity: "legendary" }
+  { model: "x-ai/grok-beta", rarity: "legendary" },
+  { model: "x-ai/grok-2-1212", rarity: "legendary" }
 ];
 
 export default models;
