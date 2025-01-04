@@ -1,0 +1,92 @@
+"use strict";
+
+function _slicedToArray(r, e) { return _arrayWithHoles(r) || _iterableToArrayLimit(r, e) || _unsupportedIterableToArray(r, e) || _nonIterableRest(); }
+function _nonIterableRest() { throw new TypeError("Invalid attempt to destructure non-iterable instance.\nIn order to be iterable, non-array objects must have a [Symbol.iterator]() method."); }
+function _unsupportedIterableToArray(r, a) { if (r) { if ("string" == typeof r) return _arrayLikeToArray(r, a); var t = {}.toString.call(r).slice(8, -1); return "Object" === t && r.constructor && (t = r.constructor.name), "Map" === t || "Set" === t ? Array.from(r) : "Arguments" === t || /^(?:Ui|I)nt(?:8|16|32)(?:Clamped)?Array$/.test(t) ? _arrayLikeToArray(r, a) : void 0; } }
+function _arrayLikeToArray(r, a) { (null == a || a > r.length) && (a = r.length); for (var e = 0, n = Array(a); e < a; e++) n[e] = r[e]; return n; }
+function _iterableToArrayLimit(r, l) { var t = null == r ? null : "undefined" != typeof Symbol && r[Symbol.iterator] || r["@@iterator"]; if (null != t) { var e, n, i, u, a = [], f = !0, o = !1; try { if (i = (t = t.call(r)).next, 0 === l) { if (Object(t) !== t) return; f = !1; } else for (; !(f = (e = i.call(t)).done) && (a.push(e.value), a.length !== l); f = !0); } catch (r) { o = !0, n = r; } finally { try { if (!f && null != t["return"] && (u = t["return"](), Object(u) !== u)) return; } finally { if (o) throw n; } } return a; } }
+function _arrayWithHoles(r) { if (Array.isArray(r)) return r; }
+var _React = React,
+  useState = _React.useState,
+  useEffect = _React.useEffect;
+function Wiki() {
+  var _useState = useState([]),
+    _useState2 = _slicedToArray(_useState, 2),
+    pages = _useState2[0],
+    setPages = _useState2[1];
+  var _useState3 = useState(null),
+    _useState4 = _slicedToArray(_useState3, 2),
+    currentPage = _useState4[0],
+    setCurrentPage = _useState4[1];
+  useEffect(function () {
+    fetch('/api/wiki/pages').then(function (res) {
+      return res.json();
+    }).then(function (data) {
+      return setPages(data);
+    });
+    mermaid.initialize({
+      startOnLoad: true,
+      theme: 'dark',
+      securityLevel: 'loose',
+      flowchart: {
+        curve: 'basis'
+      }
+    });
+  }, []);
+  var loadPage = function loadPage(path) {
+    fetch("/api/wiki/page?path=".concat(encodeURIComponent(path))).then(function (res) {
+      return res.json();
+    }).then(function (data) {
+      setCurrentPage(data);
+      setTimeout(function () {
+        mermaid.contentLoaded();
+      }, 100);
+    });
+  };
+  var renderMarkdown = function renderMarkdown(content) {
+    if (!content) return '';
+
+    // Configure marked to handle Mermaid
+    marked.setOptions({
+      highlight: function highlight(code, lang) {
+        if (lang === 'mermaid') {
+          return "<div class=\"mermaid\">".concat(code, "</div>");
+        }
+        return code;
+      }
+    });
+    return marked.parse(content);
+  };
+  return /*#__PURE__*/React.createElement("div", {
+    className: "container mx-auto px-4 py-8"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "flex gap-6"
+  }, /*#__PURE__*/React.createElement("nav", {
+    className: "w-64 flex-shrink-0"
+  }, /*#__PURE__*/React.createElement("h2", {
+    className: "text-xl font-bold mb-4"
+  }, "Documentation"), /*#__PURE__*/React.createElement("ul", {
+    className: "space-y-2"
+  }, pages.map(function (page) {
+    return /*#__PURE__*/React.createElement("li", {
+      key: page.path
+    }, /*#__PURE__*/React.createElement("button", {
+      onClick: function onClick() {
+        return loadPage(page.path);
+      },
+      className: "text-left hover:text-blue-400 w-full"
+    }, page.title));
+  }))), /*#__PURE__*/React.createElement("main", {
+    className: "flex-1"
+  }, currentPage ? /*#__PURE__*/React.createElement("div", {
+    className: "prose prose-invert max-w-none"
+  }, /*#__PURE__*/React.createElement("div", {
+    dangerouslySetInnerHTML: {
+      __html: renderMarkdown(currentPage.content)
+    }
+  })) : /*#__PURE__*/React.createElement("div", {
+    className: "text-center text-gray-500"
+  }, "Select a page from the navigation"))));
+}
+var rootElement = document.getElementById('root');
+ReactDOM.createRoot(rootElement).render(/*#__PURE__*/React.createElement(Wiki, null));

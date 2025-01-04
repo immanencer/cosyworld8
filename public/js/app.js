@@ -1358,7 +1358,6 @@ function App() {
 // Root render
 const rootElement = document.getElementById('root');
 ReactDOM.createRoot(rootElement).render(<App />);
-const { useState, useEffect } = React;
 
 function AvatarGallery() {
   const [avatars, setAvatars] = useState([]);
