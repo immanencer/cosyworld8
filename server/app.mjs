@@ -179,6 +179,55 @@ app.use('/api/tokens', (req, res, next) => {
  * - Looks up any avatars that match that username
  * - Returns a paginated + possibly tier-filtered leaderboard
  */
+app.get('/api/leaderboard/minted', async (req, res) => {
+  try {
+    if (!db) throw new Error('Database not connected');
+
+    const mintedAvatars = await db.collection('minted_nfts')
+      .aggregate([
+        {
+          $lookup: {
+            from: 'avatars',
+            localField: 'avatarId',
+            foreignField: '_id',
+            as: 'avatar'
+          }
+        },
+        { $unwind: '$avatar' },
+        {
+          $lookup: {
+            from: 'dungeon_stats',
+            localField: 'avatarId',
+            foreignField: 'avatarId',
+            as: 'stats'
+          }
+        },
+        { $unwind: { path: '$stats', preserveNullAndEmptyArrays: true } },
+        {
+          $project: {
+            _id: '$avatar._id',
+            name: '$avatar.name',
+            imageUrl: '$avatar.imageUrl',
+            thumbnailUrl: '$avatar.thumbnailUrl',
+            score: { 
+              $add: [
+                { $ifNull: ['$stats.wins', 0] },
+                { $multiply: [{ $ifNull: ['$stats.hp', 0] }, 10] }
+              ]
+            }
+          }
+        },
+        { $sort: { score: -1 } },
+        { $limit: 100 }
+      ]).toArray();
+
+    res.json(mintedAvatars);
+  } catch (error) {
+    console.error('Minted leaderboard error:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 app.get('/api/leaderboard', async (req, res) => {
   try {
     if (!db) throw new Error('Database not connected');

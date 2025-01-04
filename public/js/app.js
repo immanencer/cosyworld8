@@ -885,12 +885,79 @@ function CombatLog({ onAvatarSelect }) {
   );
 }
 
+function LeaderboardView() {
+  const [leaderboard, setLeaderboard] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchLeaderboard = async () => {
+      try {
+        const response = await fetch('/api/leaderboard/minted');
+        const data = await response.json();
+        setLeaderboard(data);
+      } catch (error) {
+        console.error('Error fetching leaderboard:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchLeaderboard();
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="text-center py-4">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-white mx-auto"></div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="max-w-4xl mx-auto">
+      <table className="w-full bg-gray-800 rounded-lg overflow-hidden">
+        <thead>
+          <tr className="bg-gray-700">
+            <th className="px-6 py-3 text-left">Rank</th>
+            <th className="px-6 py-3 text-left">Avatar</th>
+            <th className="px-6 py-3 text-left">Name</th>
+            <th className="px-6 py-3 text-right">Score</th>
+          </tr>
+        </thead>
+        <tbody>
+          {leaderboard.map((avatar, index) => (
+            <tr key={avatar._id} className="border-t border-gray-700 hover:bg-gray-700">
+              <td className="px-6 py-4">{index + 1}</td>
+              <td className="px-6 py-4">
+                <img 
+                  src={avatar.thumbnailUrl || avatar.imageUrl} 
+                  alt={avatar.name}
+                  className="w-10 h-10 rounded-full"
+                />
+              </td>
+              <td className="px-6 py-4">{avatar.name}</td>
+              <td className="px-6 py-4 text-right">{avatar.score || 0}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
 function ViewToggle({ currentView, onViewChange }) {
   return (
     <div className="flex justify-center gap-4 mb-8">
       <button
         className={`px-4 py-2 rounded ${
-          currentView === 'leaderboard' ? 'bg-blue-600 text-white' : 'bg-gray-700 text-gray-300'
+          currentView === 'collection' ? 'bg-blue-600 text-white' : 'bg-gray-700 text-gray-300'
+        }`}
+        onClick={() => onViewChange('collection')}
+      >
+        Collection
+      </button>
+      <button
+        className={`px-4 py-2 rounded ${
+          currentView === 'leaderboard' ? 'bg-purple-600 text-white' : 'bg-gray-700 text-gray-300'
         }`}
         onClick={() => onViewChange('leaderboard')}
       >
@@ -1318,7 +1385,7 @@ function App() {
       <h1 className="text-4xl font-bold mb-8 text-center">Avatar Dashboard</h1>
       <ViewToggle currentView={currentView} onViewChange={setCurrentView} />
       
-      {currentView === 'leaderboard' ? (
+      {currentView === 'collection' ? (
         <>
           <TierFilter 
             selectedTier={selectedTier} 
@@ -1345,6 +1412,8 @@ function App() {
             />
           )}
         </>
+      ) : currentView === 'leaderboard' ? (
+        <LeaderboardView />
       ) : currentView === 'combat' ? (
         <CombatLog onAvatarSelect={handleAvatarSelect} />
       ) : (
