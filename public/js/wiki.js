@@ -1,4 +1,3 @@
-
 const { useState, useEffect } = React;
 
 function Wiki() {
@@ -53,7 +52,7 @@ function Wiki() {
         <nav className="w-64 flex-shrink-0">
           <div className="nav-header">
             <div className="nav-logo">
-              🌙
+              <img src="https://moonstone-sanctum.com/moonstone.webp" alt="Moonstone Sanctum" className="w-full h-full object-contain" />
             </div>
             <h2 className="text-xl font-bold mb-4 text-purple-400">Documentation</h2>
           </div>
