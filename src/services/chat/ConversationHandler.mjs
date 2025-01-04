@@ -58,7 +58,7 @@ export class ConversationHandler {
   /**
    * Unified method to generate a narrative for reflection or inner monologue.
    */
-  async generateNarrative(avatar, guildName) {
+  async generateNarrative(avatar, thread = null) {
 
     try {
       const lastNarrative = await this.getLastNarrative(avatar._id);

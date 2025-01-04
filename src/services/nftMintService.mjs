@@ -89,6 +89,9 @@ export class NFTMintingService {
   }
   async insertRequestIntoMongo(walletAddress, imageUrl) {
     try {
+      if (!this.db) {
+        this.db = await getDb();
+      }
       const result = await this.db.collection('mint_requests').insertOne({
         walletAddress,
         imageUrl,

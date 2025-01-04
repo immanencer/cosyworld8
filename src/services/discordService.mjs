@@ -304,6 +304,11 @@ export async function sendAvatarProfileEmbedFromObject(avatar) {
  * @param {string} avatarUrl - The URL of the avatar to display for the webhook message.
  */
 export async function sendAsWebhook(channelId, content, username, avatarUrl) {
+  try {
+    const channel = await client.channels.fetch(channelId);
+    if (!channel || !channel.isTextBased()) {
+      throw new Error('Channel not accessible or not text-based');
+    }
   if (!channelId || typeof channelId !== 'string') {
     throw new Error(`Invalid channel ID: ${channelId}`);
   }
