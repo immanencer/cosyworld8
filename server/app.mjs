@@ -6,6 +6,7 @@ import avatarRoutes from './routes/avatars.mjs';
 import familyRoutes from './routes/families.mjs'
 import xauthRoutes from './routes/xauth.mjs';
 import wikiRoutes from './routes/wiki.mjs';
+import tokenRoutes from './routes/tokens.mjs';
 import { thumbnailService } from './services/thumbnailService.mjs';
 
 const app = express();
