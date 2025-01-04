@@ -87,6 +87,20 @@ class NFTMintingService {
     }
     return {name: 'Example Avatar'};
   }
+  async insertRequestIntoMongo(walletAddress, imageUrl) {
+    try {
+      const result = await this.db.collection('mint_requests').insertOne({
+        walletAddress,
+        imageUrl,
+        status: 'pending',
+        timestamp: new Date()
+      });
+      return result;
+    } catch (error) {
+      console.error('Error inserting mint request:', error);
+      throw error;
+    }
+  }
 }
 
 

@@ -1,4 +1,3 @@
-
 import { ConversationHandler } from './ConversationHandler.mjs';
 import { DecisionMaker } from './DecisionMaker.mjs';
 import { MessageProcessor } from './MessageProcessor.mjs';
@@ -214,7 +213,8 @@ export class ChatService {
         this.logger.error(`${avatar.name}: channel ${avatar.channelId} not found`);
         await this.dungeonService.processAction({
           channel,
-          author: { username: avatar.name }
+          author: { username: avatar.name },
+          thread: channel.isThread() ? channel : null
         }, 'move', 'moonstone sanctum'.split(' '), avatar);
         continue;
       }

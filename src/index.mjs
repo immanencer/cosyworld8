@@ -625,3 +625,12 @@ main().catch(error => {
   console.error('Unhandled startup error:', error);
   process.exit(1);
 });
+
+if (!process.env.DISCORD_TOKEN) {
+  console.error('DISCORD_TOKEN is required');
+  process.exit(1);
+}
+
+if (!process.env.DISCORD_CLIENT_ID) {
+  console.warn('DISCORD_CLIENT_ID is not set - some features may be limited');
+}
