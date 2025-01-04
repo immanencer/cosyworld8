@@ -5,6 +5,7 @@ import models from '../src/models.config.mjs';
 import avatarRoutes from './routes/avatars.mjs';
 import familyRoutes from './routes/families.mjs'
 import xauthRoutes from './routes/xauth.mjs';
+import wikiRoutes from './routes/wiki.mjs';
 import { thumbnailService } from './services/thumbnailService.mjs';
 
 const app = express();
@@ -124,6 +125,7 @@ function escapeRegExp(string) {
 app.use('/api/avatars', avatarRoutes(db));
 app.use('/api/tribes', familyRoutes(db));
 app.use('/api/xauth', xauthRoutes(db));
+app.use('/api/wiki', wikiRoutes);
 app.use('/api/tokens', tokenRoutes(db));
 
 app.get('/api/leaderboard', async (req, res) => {
