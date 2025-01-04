@@ -32,7 +32,6 @@ function Wiki() {
   const renderMarkdown = (content) => {
     if (!content) return '';
     
-    // Configure marked to handle Mermaid
     marked.setOptions({
       highlight: (code, lang) => {
         if (lang === 'mermaid') {
