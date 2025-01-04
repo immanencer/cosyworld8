@@ -1164,22 +1164,9 @@ function BurnTokenButton({ wallet, onSuccess }) {
 function WalletButton({ onWalletChange }) {
   const [wallet, setWallet] = useState(null);
   const [address, setAddress] = useState(null);
-  
-  const isDev = window.location.hostname.endsWith('.dev');
-  const mockWallet = {
-    publicKey: { toString: () => '11111111111111111111111111111111' },
-    signTransaction: async (tx) => tx,
-    disconnect: () => {},
-  };
 
   const connectWallet = async () => {
     try {
-      if (isDev) {
-        setWallet(mockWallet);
-        setAddress(mockWallet.publicKey.toString());
-        onWalletChange?.(mockWallet);
-        return;
-      }
 
       const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
       if (isMobile && !window.solana) {
