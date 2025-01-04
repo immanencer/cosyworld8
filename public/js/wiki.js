@@ -1,4 +1,6 @@
 
+const { useState, useEffect } = React;
+
 function Wiki() {
   const [pages, setPages] = useState([]);
   const [currentPage, setCurrentPage] = useState(null);
