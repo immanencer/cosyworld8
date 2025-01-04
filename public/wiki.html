@@ -60,7 +60,34 @@
             align-items: center;
             justify-content: center;
             overflow: hidden;
+            position: relative;
             box-shadow: 0 0 20px rgba(147, 51, 234, 0.3);
+            background: rgba(17, 24, 39, 0.9);
+          }
+          .nav-logo::before {
+            content: '';
+            position: absolute;
+            inset: -5px;
+            background: linear-gradient(45deg, #9333ea, #4f46e5);
+            border-radius: inherit;
+            z-index: -1;
+            animation: rotate 4s linear infinite;
+          }
+          .nav-logo img, .nav-logo video {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            mix-blend-mode: screen;
+            opacity: 0;
+            position: absolute;
+            transition: opacity 1s ease-in-out;
+          }
+          .nav-logo img.active, .nav-logo video.active {
+            opacity: 0.8;
+          }
+          @keyframes rotate {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
           }
         </style>
     </head>

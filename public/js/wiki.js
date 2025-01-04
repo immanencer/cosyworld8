@@ -52,7 +52,33 @@ function Wiki() {
         <nav className="w-64 flex-shrink-0">
           <div className="nav-header">
             <div className="nav-logo">
-              <img src="https://moonstone-sanctum.com/moonstone.webp" alt="Moonstone Sanctum" className="w-full h-full object-contain" />
+              <img 
+                src="https://moonstone-sanctum.com/moonstone.webp" 
+                alt="Moonstone Sanctum" 
+                className="active"
+                ref={imgRef => {
+                  if (imgRef && !imgRef.dataset.initialized) {
+                    imgRef.dataset.initialized = true;
+                    const video = document.createElement('video');
+                    video.src = 'https://moonstone-sanctum.com/intro.mp4';
+                    video.muted = true;
+                    video.loop = true;
+                    imgRef.parentElement.appendChild(video);
+                    
+                    setInterval(() => {
+                      imgRef.classList.remove('active');
+                      video.classList.add('active');
+                      video.play();
+                      
+                      setTimeout(() => {
+                        video.classList.remove('active');
+                        imgRef.classList.add('active');
+                        video.pause();
+                      }, 4000);
+                    }, 33000);
+                  }
+                }}
+              />
             </div>
             <h2 className="text-xl font-bold mb-4 text-purple-400">Documentation</h2>
           </div>
