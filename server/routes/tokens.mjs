@@ -52,12 +52,5 @@ if (process.env.SOLANA_RPC_URL) {
       res.status(500).json({ error: error.message || 'Internal server error' });
     }
   });
-} catch (error) {
-  console.error('Error initializing token services:', error);
-  // Add error middleware
-  router.use((req, res) => {
-    res.status(500).json({ error: 'Token services unavailable' });
-  });
-}
 
 export default router;
