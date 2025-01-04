@@ -166,7 +166,12 @@ app.use('/api/avatars', avatarRoutes(db));
 app.use('/api/tribes', familyRoutes(db));
 app.use('/api/xauth', xauthRoutes(db));
 app.use('/api/wiki', wikiRoutes);
-app.use('/api/tokens', tokenRoutes(db));
+app.use('/api/tokens', (req, res, next) => {
+  if (!db) {
+    return res.status(503).json({ error: 'Database not initialized' });
+  }
+  return tokenRoutes(db)(req, res, next);
+});
 
 /**
  * Leaderboard Endpoint
