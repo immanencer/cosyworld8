@@ -7,7 +7,7 @@ Required environment variables:
 - `OPENROUTER_API_TOKEN`: OpenRouter API access
 - `S3_API_KEY`: For image storage
 - `S3_API_ENDPOINT`: S3 endpoint URL
-- `DISCORD_TOKEN`: Bot authentication
+- `DISCORD_BOT_TOKEN`: Bot authentication
 
 ## Database Configuration
 1. Ensure MongoDB instance is running

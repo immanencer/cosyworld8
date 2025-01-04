@@ -1,6 +1,6 @@
 import { getDb } from '../../server/services/dbConnection.mjs';
 
-class NFTMintingService {
+export class NFTMintingService {
   constructor(connection) {
     this.connection = connection;
     this.burnAmount = process.env.BURN_AMOUNT || 1000; //Amount to burn for airdrop eligibility

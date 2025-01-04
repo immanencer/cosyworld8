@@ -57,8 +57,8 @@ if (!MONGO_URI) {
   process.exit(1);
 }
 
-const BOT_TOKEN = process.env.DISCORD_BOT_TOKEN;
-if (!BOT_TOKEN) {
+const DISCORD_BOT_TOKEN = process.env.DISCORD_BOT_TOKEN;
+if (!DISCORD_BOT_TOKEN) {
   logger.error('DISCORD_BOT_TOKEN is not defined in the environment variables.');
   process.exit(1);
 }
@@ -596,7 +596,7 @@ async function main() {
     messageHandler = new MessageHandler(chatService, avatarService, logger);
 
     // Login to Discord before starting services
-    await client.login(BOT_TOKEN);
+    await client.login(DISCORD_BOT_TOKEN);
     logger.info('✅ Logged into Discord successfully');
 
     // Wait for client to be ready
@@ -626,8 +626,8 @@ main().catch(error => {
   process.exit(1);
 });
 
-if (!process.env.DISCORD_TOKEN) {
-  console.error('DISCORD_TOKEN is required');
+if (!process.env.DISCORD_BOT_TOKEN) {
+  console.error('DISCORD_BOT_TOKEN is required');
   process.exit(1);
 }
 
