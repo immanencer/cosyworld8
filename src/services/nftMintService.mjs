@@ -47,11 +47,30 @@ export class NFTMintingService {
             as: 'mints'
           }
         },
-        { $match: { 'mints': { $size: 0 } } },
+        { $match: { 
+          'mints': { $size: 0 },
+          'status': { $ne: 'dead' }
+        }},
         { $sample: { size: 1 } }
       ]).toArray();
 
     return unmintedAvatars[0];
+  }
+
+  async getAvatarsByOwner(publicKey) {
+    const db = await getDb();
+    return db.collection('minted_nfts')
+      .aggregate([
+        { $match: { walletAddress: publicKey }},
+        { $lookup: {
+          from: 'avatars',
+          localField: 'avatarId',
+          foreignField: '_id',
+          as: 'avatar'
+        }},
+        { $unwind: '$avatar' },
+        { $replaceRoot: { newRoot: '$avatar' }}
+      ]).toArray();
   }
 
   async mintNFT(walletAddress, burnTransactionSignature) {

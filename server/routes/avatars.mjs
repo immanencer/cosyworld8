@@ -53,5 +53,22 @@ export default function (db) {
     }
   });
 
+  router.get('/owned/:publicKey', async (req, res) => {
+    try {
+      const { publicKey } = req.params;
+      if (!publicKey) {
+        return res.status(400).json({ error: 'Public key required' });
+      }
+
+      const nftMintService = new NFTMintingService(db);
+      const ownedAvatars = await nftMintService.getAvatarsByOwner(publicKey);
+
+      res.json(ownedAvatars);
+    } catch (error) {
+      console.error('Error fetching owned avatars:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
   return router;
 }

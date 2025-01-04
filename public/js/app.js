@@ -1358,3 +1358,98 @@ function App() {
 // Root render
 const rootElement = document.getElementById('root');
 ReactDOM.createRoot(rootElement).render(<App />);
+const { useState, useEffect } = React;
+
+function AvatarGallery() {
+  const [avatars, setAvatars] = useState([]);
+  const [publicKey, setPublicKey] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  const connectWallet = async () => {
+    try {
+      if (!window.solana) {
+        alert('Please install Phantom wallet');
+        return;
+      }
+      const resp = await window.solana.connect();
+      setPublicKey(resp.publicKey.toString());
+    } catch (err) {
+      console.error('Wallet connection error:', err);
+    }
+  };
+
+  const mintAvatar = async () => {
+    try {
+      const response = await fetch('/api/tokens/mint', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ walletAddress: publicKey })
+      });
+      const data = await response.json();
+      if (data.success) {
+        loadAvatars();
+      }
+    } catch (err) {
+      console.error('Minting error:', err);
+    }
+  };
+
+  const loadAvatars = async () => {
+    if (!publicKey) return;
+    try {
+      const response = await fetch(`/api/avatars/owned/${publicKey}`);
+      const data = await response.json();
+      setAvatars(data);
+    } catch (err) {
+      console.error('Error loading avatars:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (publicKey) {
+      loadAvatars();
+    }
+  }, [publicKey]);
+
+  if (!publicKey) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-screen bg-gray-900 text-white">
+        <button
+          onClick={connectWallet}
+          className="px-6 py-3 bg-blue-600 rounded-lg hover:bg-blue-700"
+        >
+          Connect Wallet
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="container mx-auto px-4 py-8">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        {avatars.map(avatar => (
+          <div key={avatar._id} className="bg-gray-800 rounded-lg p-4">
+            <img src={avatar.imageUrl} alt={avatar.name} className="w-full rounded-lg" />
+            <h3 className="text-xl font-bold mt-2">{avatar.name}</h3>
+            <p className="text-gray-400">{avatar.description}</p>
+          </div>
+        ))}
+        <div className="bg-gray-800 rounded-lg p-4 flex flex-col items-center justify-center">
+          <div className="w-48 h-48 bg-wood-pattern rounded-lg mb-4"></div>
+          <button
+            onClick={mintAvatar}
+            className="px-6 py-3 bg-green-600 rounded-lg hover:bg-green-700"
+          >
+            Mint New Avatar
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<AvatarGallery />);
