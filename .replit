@@ -1,11 +1,13 @@
-modules = ["nodejs-20", "web"]
-run = "node index.js"
+
+run = "npm run dev"
+modules = ["nodejs-20:v8-20230920-bd784b9"]
 
 [nix]
 channel = "stable-24_05"
 
 [deployment]
-run = ["sh", "-c", "node index.js"]
+run = ["sh", "-c", "npm run start"]
+deploymentTarget = "cloudrun"
 
 [[ports]]
 localPort = 3080
