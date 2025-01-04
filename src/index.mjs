@@ -19,6 +19,11 @@ import { MessageHandler } from './services/chat/MessageHandler.mjs';
 // Load environment variables from .env file
 dotenv.config();
 
+// Initialize key service
+import { KeyService } from './services/keyService.mjs';
+const keyService = new KeyService();
+const keys = await keyService.ensureKeys();
+
 const BREEDS = [
   "Poozer",
   "Toad",
