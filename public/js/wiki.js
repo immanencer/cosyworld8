@@ -13,7 +13,19 @@ function Wiki() {
       startOnLoad: true,
       theme: 'dark',
       securityLevel: 'loose',
-      flowchart: { curve: 'basis' }
+      flowchart: { 
+        curve: 'basis',
+        padding: 20
+      },
+      themeVariables: {
+        fontFamily: 'ui-sans-serif,system-ui,sans-serif',
+        primaryColor: '#9333ea',
+        primaryTextColor: '#fff',
+        primaryBorderColor: '#4f46e5',
+        lineColor: '#6b7280',
+        secondaryColor: '#4f46e5',
+        tertiaryColor: '#374151'
+      }
     });
   }, []);
 
