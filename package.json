@@ -14,9 +14,14 @@
   "license": "ISC",
   "description": "",
   "dependencies": {
+    "@babel/cli": "^7.26.4",
+    "@babel/core": "^7.26.0",
+    "@babel/preset-env": "^7.26.0",
+    "@babel/preset-react": "^7.26.3",
     "@solana/spl-token": "^0.4.9",
     "arlocal": "^1.1.66",
     "arweave": "^1.15.5",
+    "autoprefixer": "^10.4.20",
     "axios": "^1.7.7",
     "cloudinary": "^2.5.1",
     "cors": "^2.8.5",
@@ -28,10 +33,12 @@
     "mongodb": "^6.11.0",
     "ollama": "^0.5.9",
     "openai": "^4.73.0",
+    "postcss": "^8.4.49",
     "replicate": "^1.0.1",
     "set-interval-async": "^3.0.3",
     "sharp": "^0.33.5",
     "string-similarity": "^4.0.4",
+    "tailwindcss": "^3.4.17",
     "twitter-api-v2": "^1.18.2",
     "winston": "^3.15.0"
   }
