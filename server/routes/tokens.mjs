@@ -2,12 +2,12 @@
 import { Router } from 'express';
 import { Connection, PublicKey, Transaction } from '@solana/web3.js';
 import { TokenBurnService } from '../../src/services/tokenBurnService.mjs';
-import { NFTMintService } from '../../src/services/nftMintService.mjs';
+import { NFTMintingService } from '../../src/services/nftMintService.mjs';
 
 const router = Router();
 const connection = new Connection(process.env.SOLANA_RPC_URL);
 const tokenBurnService = new TokenBurnService(connection);
-const nftMintService = new NFTMintService(connection);
+const nftMintService = new NFTMintingService(connection);
 
 router.post('/burn', async (req, res) => {
   try {

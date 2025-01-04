@@ -1,3 +1,5 @@
+import { getDb } from '../services/dbConnection.mjs';
+
 class NFTMintingService {
   constructor(connection) {
     this.connection = connection;
