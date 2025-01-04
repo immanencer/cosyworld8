@@ -14,6 +14,7 @@
   "license": "ISC",
   "description": "",
   "dependencies": {
+    "@solana/spl-token": "^0.4.9",
     "arlocal": "^1.1.66",
     "arweave": "^1.15.5",
     "axios": "^1.7.7",
