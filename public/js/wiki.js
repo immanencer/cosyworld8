@@ -51,7 +51,12 @@ function Wiki() {
     <div className="container mx-auto px-4 py-8">
       <div className="flex gap-6">
         <nav className="w-64 flex-shrink-0">
-          <h2 className="text-xl font-bold mb-4">Documentation</h2>
+          <div className="nav-header">
+            <div className="nav-logo">
+              🌙
+            </div>
+            <h2 className="text-xl font-bold mb-4 text-purple-400">Documentation</h2>
+          </div>
           <ul className="space-y-2">
             {pages.map(page => (
               <li key={page.path}>
