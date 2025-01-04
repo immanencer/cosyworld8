@@ -33,11 +33,14 @@ function Wiki() {
     if (!content) return '';
     
     marked.setOptions({
+      gfm: true,
+      breaks: true,
+      headerIds: true,
       highlight: (code, lang) => {
         if (lang === 'mermaid') {
           return `<div class="mermaid">${code}</div>`;
         }
-        return code;
+        return `<pre class="bg-gray-800 p-4 rounded-lg overflow-x-auto"><code class="language-${lang}">${code}</code></pre>`;
       }
     });
 

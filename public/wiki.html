@@ -9,8 +9,34 @@
         <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
         <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
         <link href="/css/tailwind.css" rel="stylesheet" />
+        <link href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github-dark.min.css" rel="stylesheet" />
         <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
         <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
+        <style>
+          .prose {
+            max-width: 100ch;
+          }
+          .prose h1, .prose h2, .prose h3, .prose h4 {
+            color: white;
+            margin-top: 2em;
+            margin-bottom: 1em;
+          }
+          .prose p, .prose ul, .prose ol {
+            color: #d1d5db;
+            margin-bottom: 1.5em;
+          }
+          .prose code {
+            color: #93c5fd;
+          }
+          .prose pre {
+            margin: 1.5em 0;
+          }
+          .prose a {
+            color: #60a5fa;
+            text-decoration: underline;
+          }
+        </style>
     </head>
     <body class="bg-gray-900 text-white">
         <div id="root"></div>
