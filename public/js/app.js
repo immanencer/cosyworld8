@@ -1099,6 +1099,68 @@ function TribesView({ onAvatarSelect }) {
 }
 
 // Add these new components at the top with other component definitions
+function BurnTokenButton({ wallet, onSuccess }) {
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+
+  const handleBurn = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+
+      const burnTx = await fetch('/api/tokens/burn', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          walletAddress: wallet.publicKey.toString()
+        })
+      }).then(r => r.json());
+
+      const signedTx = await wallet.signTransaction(burnTx.transaction);
+      const signature = await fetch('/api/tokens/burn/confirm', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          signature: signedTx.signature,
+          walletAddress: wallet.publicKey.toString()
+        })
+      }).then(r => r.json());
+
+      if (signature.success) {
+        onSuccess?.();
+      }
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (!wallet) return null;
+
+  return (
+    <button
+      onClick={handleBurn}
+      disabled={loading}
+      className={`px-4 py-2 rounded-lg ${
+        loading 
+          ? 'bg-gray-600 cursor-not-allowed'
+          : 'bg-purple-600 hover:bg-purple-700'
+      }`}
+    >
+      {loading ? (
+        <span className="flex items-center gap-2">
+          <div className="w-4 h-4 border-2 border-white rounded-full animate-spin border-t-transparent"></div>
+          Burning...
+        </span>
+      ) : (
+        'Burn 1000 Tokens for Random NFT'
+      )}
+      {error && <div className="text-red-500 text-sm mt-2">{error}</div>}
+    </button>
+  );
+}
+
 function WalletButton({ onWalletChange }) {
   const [wallet, setWallet] = useState(null);
   const [address, setAddress] = useState(null);

@@ -35,7 +35,39 @@ class TokenBurnService {
 }
 
 
-async mintNFT(avatarId, walletAddress, burnTransactionSignature) {
+async getRandomUnmintedAvatar() {
+  const db = await getDb();
+  const unmintedAvatars = await db.collection('avatars')
+    .aggregate([
+      { 
+        $lookup: {
+          from: 'minted_nfts',
+          localField: '_id',
+          foreignField: 'avatarId',
+          as: 'mints'
+        }
+      },
+      { $match: { 'mints': { $size: 0 } } },
+      { $sample: { size: 1 } }
+    ]).toArray();
+
+  return unmintedAvatars[0];
+}
+
+async mintNFT(walletAddress, burnTransactionSignature) {
+  // Verify burn transaction first
+  const tokenBurnService = new TokenBurnService(this.connection);
+  const burnVerified = await tokenBurnService.verifyBurnTransaction(burnTransactionSignature);
+  
+  if (!burnVerified) {
+    throw new Error('Token burn verification failed');
+  }
+
+  // Get random unminted avatar
+  const avatar = await this.getRandomUnmintedAvatar();
+  if (!avatar) {
+    throw new Error('No unminted avatars available');
+  }
     // Verify burn transaction
     const tokenBurnService = new TokenBurnService(this.connection);
     const burnVerified = await tokenBurnService.verifyBurnTransaction(burnTransactionSignature);

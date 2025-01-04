@@ -88,6 +88,18 @@ async function initializeIndexes(db) {
       { key: { target: 1 }, background: true }
     ]);
 
+    // Indexes for token transactions
+    await db.collection('token_transactions').createIndexes([
+      { key: { walletAddress: 1, timestamp: -1 }, background: true },
+      { key: { transactionSignature: 1 }, unique: true }
+    ]);
+
+    // Indexes for minted NFTs
+    await db.collection('minted_nfts').createIndexes([
+      { key: { walletAddress: 1 }, background: true },
+      { key: { avatarId: 1 }, background: true }
+    ]);
+
     console.log('Database indexes created successfully');
   } catch (error) {
     console.error('Error creating indexes:', error);
@@ -112,6 +124,7 @@ function escapeRegExp(string) {
 app.use('/api/avatars', avatarRoutes(db));
 app.use('/api/tribes', familyRoutes(db));
 app.use('/api/xauth', xauthRoutes(db));
+app.use('/api/tokens', tokenRoutes(db));
 
 app.get('/api/leaderboard', async (req, res) => {
   try {
