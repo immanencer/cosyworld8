@@ -3,11 +3,11 @@ import { getDb } from '../../server/services/dbConnection.mjs';
 export class NFTMintingService {
   constructor(connection) {
     this.connection = connection;
-    this.burnAmount = process.env.BURN_AMOUNT || 1000; //Amount to burn for airdrop eligibility
-    this.burnTokenAddress = process.env.BURN_TOKEN_ADDRESS; //Address of the token to burn
+    this.burnAmount = process.env.BURN_AMOUNT || 1000;
+    this.burnTokenAddress = process.env.BURN_TOKEN_ADDRESS;
 
-    if (!this.burnAmount || !this.burnTokenAddress){
-        throw new Error('BURN_AMOUNT and BURN_TOKEN_ADDRESS environment variables must be set.');
+    if (!this.burnAmount || !this.burnTokenAddress) {
+      throw new Error('BURN_AMOUNT and BURN_TOKEN_ADDRESS must be set');
     }
   }
 
@@ -124,6 +124,3 @@ export class NFTMintingService {
     }
   }
 }
-
-
-//Rest of the class definition would go here...
