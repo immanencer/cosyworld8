@@ -1,6 +1,4 @@
 
-const { useState, useEffect } = React;
-
 function Wiki() {
   const [pages, setPages] = useState([]);
   const [currentPage, setCurrentPage] = useState(null);
@@ -9,12 +7,40 @@ function Wiki() {
     fetch('/api/wiki/pages')
       .then(res => res.json())
       .then(data => setPages(data));
+    
+    mermaid.initialize({
+      startOnLoad: true,
+      theme: 'dark',
+      securityLevel: 'loose',
+      flowchart: { curve: 'basis' }
+    });
   }, []);
 
   const loadPage = (path) => {
     fetch(`/api/wiki/page?path=${encodeURIComponent(path)}`)
       .then(res => res.json())
-      .then(data => setCurrentPage(data));
+      .then(data => {
+        setCurrentPage(data);
+        setTimeout(() => {
+          mermaid.contentLoaded();
+        }, 100);
+      });
+  };
+
+  const renderMarkdown = (content) => {
+    if (!content) return '';
+    
+    // Configure marked to handle Mermaid
+    marked.setOptions({
+      highlight: (code, lang) => {
+        if (lang === 'mermaid') {
+          return `<div class="mermaid">${code}</div>`;
+        }
+        return code;
+      }
+    });
+
+    return marked.parse(content);
   };
 
   return (
@@ -39,7 +65,7 @@ function Wiki() {
           {currentPage ? (
             <div className="prose prose-invert max-w-none">
               <div dangerouslySetInnerHTML={{ 
-                __html: marked.parse(currentPage.content) 
+                __html: renderMarkdown(currentPage.content) 
               }} />
             </div>
           ) : (
