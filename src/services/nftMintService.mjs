@@ -1,4 +1,4 @@
-import { getDb } from '../services/dbConnection.mjs';
+import { getDb } from '../../server/services/dbConnection.mjs';
 
 class NFTMintingService {
   constructor(connection) {
