@@ -1,5 +1,6 @@
 import express from 'express';
 import { thumbnailService } from '../services/thumbnailService.mjs';
+import { NFTMintingService } from '../../src/services/nftMintService.mjs';
 
 const router = express.Router();
 
