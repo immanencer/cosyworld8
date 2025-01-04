@@ -5,8 +5,12 @@ import { TOKEN_PROGRAM_ID, createBurnInstruction, getAssociatedTokenAddress } fr
 export class TokenBurnService {
   constructor(connection) {
     this.connection = connection;
-    this.burnTokenMint = new PublicKey(process.env.BURN_TOKEN_MINT);
+    this.burnTokenMint = process.env.BURN_TOKEN_MINT ? new PublicKey(process.env.BURN_TOKEN_MINT) : null;
     this.requiredBurnAmount = 1000;
+    
+    if (!this.burnTokenMint) {
+      console.warn('BURN_TOKEN_MINT not set in environment variables');
+    }
   }
 
   async burnTokens(walletAddress, amount = this.requiredBurnAmount) {

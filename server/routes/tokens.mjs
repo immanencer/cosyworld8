@@ -5,11 +5,18 @@ import { TokenBurnService } from '../../src/services/tokenBurnService.mjs';
 import { NFTMintingService } from '../../src/services/nftMintService.mjs';
 
 const router = Router();
+let tokenBurnService;
+let nftMintService;
 
-try {
-  const connection = new Connection(process.env.SOLANA_RPC_URL);
-  const tokenBurnService = new TokenBurnService(connection);
-  const nftMintService = new NFTMintingService(connection);
+if (process.env.SOLANA_RPC_URL) {
+  try {
+    const connection = new Connection(process.env.SOLANA_RPC_URL);
+    tokenBurnService = new TokenBurnService(connection);
+    nftMintService = new NFTMintingService(connection);
+  } catch (error) {
+    console.error('Error initializing token services:', error);
+  }
+}
 
   router.post('/burn', async (req, res) => {
     try {
