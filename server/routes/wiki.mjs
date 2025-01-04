@@ -5,6 +5,15 @@ import path from 'path';
 
 const router = express.Router();
 
+function extractTitle(content) {
+  // Look for the first heading
+  const match = content.match(/^#\s+(.+)$/m);
+  if (match) {
+    return match[1].trim();
+  }
+  return null;
+}
+
 async function getMarkdownFiles(dir) {
   const files = await fs.readdir(dir);
   const mdFiles = [];
@@ -12,10 +21,10 @@ async function getMarkdownFiles(dir) {
   for (const file of files) {
     if (file.endsWith('.md')) {
       const content = await fs.readFile(path.join(dir, file), 'utf-8');
-      const title = content.split('\n')[0].replace('#', '').trim();
+      const title = extractTitle(content) || file.replace('.md', '');
       mdFiles.push({
         path: file,
-        title: title || file
+        title: title
       });
     }
   }
