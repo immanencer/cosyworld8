@@ -1356,39 +1356,67 @@ function WalletButton(_ref31) {
     _useState38 = _slicedToArray(_useState37, 2),
     address = _useState38[0],
     setAddress = _useState38[1];
+  var isDev = window.location.hostname.endsWith('.dev');
+  var mockWallet = {
+    publicKey: {
+      toString: function toString() {
+        return '11111111111111111111111111111111';
+      }
+    },
+    signTransaction: function () {
+      var _signTransaction = _asyncToGenerator(/*#__PURE__*/_regeneratorRuntime().mark(function _callee9(tx) {
+        return _regeneratorRuntime().wrap(function _callee9$(_context9) {
+          while (1) switch (_context9.prev = _context9.next) {
+            case 0:
+              return _context9.abrupt("return", tx);
+            case 1:
+            case "end":
+              return _context9.stop();
+          }
+        }, _callee9);
+      }));
+      function signTransaction(_x2) {
+        return _signTransaction.apply(this, arguments);
+      }
+      return signTransaction;
+    }(),
+    disconnect: function disconnect() {}
+  };
   var connectWallet = /*#__PURE__*/function () {
-    var _ref32 = _asyncToGenerator(/*#__PURE__*/_regeneratorRuntime().mark(function _callee9() {
+    var _ref32 = _asyncToGenerator(/*#__PURE__*/_regeneratorRuntime().mark(function _callee10() {
       var resp;
-      return _regeneratorRuntime().wrap(function _callee9$(_context9) {
-        while (1) switch (_context9.prev = _context9.next) {
+      return _regeneratorRuntime().wrap(function _callee10$(_context10) {
+        while (1) switch (_context10.prev = _context10.next) {
           case 0:
-            _context9.prev = 0;
-            if (!(!window.solana || !window.solana.isPhantom)) {
-              _context9.next = 5;
+            _context10.prev = 0;
+            if (!(isDev || !window.solana || !window.solana.isPhantom)) {
+              _context10.next = 6;
               break;
             }
-            alert('Please install Phantom wallet!');
-            window.open('https://phantom.app/', '_blank');
-            return _context9.abrupt("return");
-          case 5:
-            _context9.next = 7;
+            // Use mock wallet in dev or when Phantom isn't available
+            setWallet(mockWallet);
+            setAddress(mockWallet.publicKey.toString());
+            onWalletChange === null || onWalletChange === void 0 || onWalletChange(mockWallet);
+            return _context10.abrupt("return");
+          case 6:
+            _context10.next = 8;
             return window.solana.connect();
-          case 7:
-            resp = _context9.sent;
+          case 8:
+            resp = _context10.sent;
             setWallet(window.solana);
             setAddress(resp.publicKey.toString());
-            onWalletChange === null || onWalletChange === void 0 || onWalletChange(window.solana); // Notify parent of wallet connection
-            _context9.next = 16;
+            onWalletChange === null || onWalletChange === void 0 || onWalletChange(window.solana);
+            _context10.next = 17;
             break;
-          case 13:
-            _context9.prev = 13;
-            _context9.t0 = _context9["catch"](0);
-            console.error('Failed to connect wallet:', _context9.t0);
-          case 16:
+          case 14:
+            _context10.prev = 14;
+            _context10.t0 = _context10["catch"](0);
+            console.error('Failed to connect wallet:', _context10.t0);
+          case 17:
           case "end":
-            return _context9.stop();
+            return _context10.stop();
         }
-      }, _callee9, null, [[0, 13]]);
+      }, _callee10, null, [[0, 14]]);
     }));
     return function connectWallet() {
       return _ref32.apply(this, arguments);
@@ -1458,24 +1486,24 @@ function App() {
     wallet = _useState58[0],
     setWallet = _useState58[1];
   var loadAvatars = /*#__PURE__*/function () {
-    var _ref33 = _asyncToGenerator(/*#__PURE__*/_regeneratorRuntime().mark(function _callee10() {
+    var _ref33 = _asyncToGenerator(/*#__PURE__*/_regeneratorRuntime().mark(function _callee11() {
       var isInitial,
         url,
         res,
         data,
-        _args10 = arguments;
-      return _regeneratorRuntime().wrap(function _callee10$(_context10) {
-        while (1) switch (_context10.prev = _context10.next) {
+        _args11 = arguments;
+      return _regeneratorRuntime().wrap(function _callee11$(_context11) {
+        while (1) switch (_context11.prev = _context11.next) {
           case 0:
-            isInitial = _args10.length > 0 && _args10[0] !== undefined ? _args10[0] : false;
+            isInitial = _args11.length > 0 && _args11[0] !== undefined ? _args11[0] : false;
             if (!(loading || !hasMore && !isInitial)) {
-              _context10.next = 3;
+              _context11.next = 3;
               break;
             }
-            return _context10.abrupt("return");
+            return _context11.abrupt("return");
           case 3:
             setLoading(true);
-            _context10.prev = 4;
+            _context11.prev = 4;
             url = new URL('/api/leaderboard', window.location.origin);
             url.searchParams.set('limit', '24');
             if (selectedTier !== 'All') {
@@ -1485,20 +1513,20 @@ function App() {
               url.searchParams.set('lastMessageCount', lastMessageCount);
               url.searchParams.set('lastId', lastId);
             }
-            _context10.next = 11;
+            _context11.next = 11;
             return fetch(url);
           case 11:
-            res = _context10.sent;
+            res = _context11.sent;
             if (res.ok) {
-              _context10.next = 14;
+              _context11.next = 14;
               break;
             }
             throw new Error("HTTP error! status: ".concat(res.status));
           case 14:
-            _context10.next = 16;
+            _context11.next = 16;
             return res.json();
           case 16:
-            data = _context10.sent;
+            data = _context11.sent;
             if (isInitial) {
               setAvatars(data.avatars || []);
             } else {
@@ -1509,22 +1537,22 @@ function App() {
             setHasMore(data.hasMore);
             setLastMessageCount(data.lastMessageCount);
             setLastId(data.lastId);
-            _context10.next = 27;
+            _context11.next = 27;
             break;
           case 23:
-            _context10.prev = 23;
-            _context10.t0 = _context10["catch"](4);
-            console.error('Error loading avatars:', _context10.t0);
+            _context11.prev = 23;
+            _context11.t0 = _context11["catch"](4);
+            console.error('Error loading avatars:', _context11.t0);
             setHasMore(false);
           case 27:
-            _context10.prev = 27;
+            _context11.prev = 27;
             setLoading(false);
-            return _context10.finish(27);
+            return _context11.finish(27);
           case 30:
           case "end":
-            return _context10.stop();
+            return _context11.stop();
         }
-      }, _callee10, null, [[4, 23, 27, 30]]);
+      }, _callee11, null, [[4, 23, 27, 30]]);
     }));
     return function loadAvatars() {
       return _ref33.apply(this, arguments);
@@ -1625,48 +1653,48 @@ function AvatarGallery() {
     loading = _useState64[0],
     setLoading = _useState64[1];
   var connectWallet = /*#__PURE__*/function () {
-    var _ref34 = _asyncToGenerator(/*#__PURE__*/_regeneratorRuntime().mark(function _callee11() {
+    var _ref34 = _asyncToGenerator(/*#__PURE__*/_regeneratorRuntime().mark(function _callee12() {
       var resp;
-      return _regeneratorRuntime().wrap(function _callee11$(_context11) {
-        while (1) switch (_context11.prev = _context11.next) {
+      return _regeneratorRuntime().wrap(function _callee12$(_context12) {
+        while (1) switch (_context12.prev = _context12.next) {
           case 0:
-            _context11.prev = 0;
+            _context12.prev = 0;
             if (window.solana) {
-              _context11.next = 4;
+              _context12.next = 4;
               break;
             }
             alert('Please install Phantom wallet');
-            return _context11.abrupt("return");
+            return _context12.abrupt("return");
           case 4:
-            _context11.next = 6;
+            _context12.next = 6;
             return window.solana.connect();
           case 6:
-            resp = _context11.sent;
+            resp = _context12.sent;
             setPublicKey(resp.publicKey.toString());
-            _context11.next = 13;
+            _context12.next = 13;
             break;
           case 10:
-            _context11.prev = 10;
-            _context11.t0 = _context11["catch"](0);
-            console.error('Wallet connection error:', _context11.t0);
+            _context12.prev = 10;
+            _context12.t0 = _context12["catch"](0);
+            console.error('Wallet connection error:', _context12.t0);
           case 13:
           case "end":
-            return _context11.stop();
+            return _context12.stop();
         }
-      }, _callee11, null, [[0, 10]]);
+      }, _callee12, null, [[0, 10]]);
     }));
     return function connectWallet() {
       return _ref34.apply(this, arguments);
     };
   }();
   var mintAvatar = /*#__PURE__*/function () {
-    var _ref35 = _asyncToGenerator(/*#__PURE__*/_regeneratorRuntime().mark(function _callee12() {
+    var _ref35 = _asyncToGenerator(/*#__PURE__*/_regeneratorRuntime().mark(function _callee13() {
       var response, data;
-      return _regeneratorRuntime().wrap(function _callee12$(_context12) {
-        while (1) switch (_context12.prev = _context12.next) {
+      return _regeneratorRuntime().wrap(function _callee13$(_context13) {
+        while (1) switch (_context13.prev = _context13.next) {
           case 0:
-            _context12.prev = 0;
-            _context12.next = 3;
+            _context13.prev = 0;
+            _context13.next = 3;
             return fetch('/api/tokens/mint', {
               method: 'POST',
               headers: {
@@ -1677,67 +1705,67 @@ function AvatarGallery() {
               })
             });
           case 3:
-            response = _context12.sent;
-            _context12.next = 6;
+            response = _context13.sent;
+            _context13.next = 6;
             return response.json();
           case 6:
-            data = _context12.sent;
+            data = _context13.sent;
             if (data.success) {
               loadAvatars();
             }
-            _context12.next = 13;
+            _context13.next = 13;
             break;
           case 10:
-            _context12.prev = 10;
-            _context12.t0 = _context12["catch"](0);
-            console.error('Minting error:', _context12.t0);
+            _context13.prev = 10;
+            _context13.t0 = _context13["catch"](0);
+            console.error('Minting error:', _context13.t0);
           case 13:
           case "end":
-            return _context12.stop();
+            return _context13.stop();
         }
-      }, _callee12, null, [[0, 10]]);
+      }, _callee13, null, [[0, 10]]);
     }));
     return function mintAvatar() {
       return _ref35.apply(this, arguments);
     };
   }();
   var loadAvatars = /*#__PURE__*/function () {
-    var _ref36 = _asyncToGenerator(/*#__PURE__*/_regeneratorRuntime().mark(function _callee13() {
+    var _ref36 = _asyncToGenerator(/*#__PURE__*/_regeneratorRuntime().mark(function _callee14() {
       var response, data;
-      return _regeneratorRuntime().wrap(function _callee13$(_context13) {
-        while (1) switch (_context13.prev = _context13.next) {
+      return _regeneratorRuntime().wrap(function _callee14$(_context14) {
+        while (1) switch (_context14.prev = _context14.next) {
           case 0:
             if (publicKey) {
-              _context13.next = 2;
+              _context14.next = 2;
               break;
             }
-            return _context13.abrupt("return");
+            return _context14.abrupt("return");
           case 2:
-            _context13.prev = 2;
-            _context13.next = 5;
+            _context14.prev = 2;
+            _context14.next = 5;
             return fetch("/api/avatars/owned/".concat(publicKey));
           case 5:
-            response = _context13.sent;
-            _context13.next = 8;
+            response = _context14.sent;
+            _context14.next = 8;
             return response.json();
           case 8:
-            data = _context13.sent;
+            data = _context14.sent;
             setAvatars(data);
-            _context13.next = 15;
+            _context14.next = 15;
             break;
           case 12:
-            _context13.prev = 12;
-            _context13.t0 = _context13["catch"](2);
-            console.error('Error loading avatars:', _context13.t0);
+            _context14.prev = 12;
+            _context14.t0 = _context14["catch"](2);
+            console.error('Error loading avatars:', _context14.t0);
           case 15:
-            _context13.prev = 15;
+            _context14.prev = 15;
             setLoading(false);
-            return _context13.finish(15);
+            return _context14.finish(15);
           case 18:
           case "end":
-            return _context13.stop();
+            return _context14.stop();
         }
-      }, _callee13, null, [[2, 12, 15, 18]]);
+      }, _callee14, null, [[2, 12, 15, 18]]);
     }));
     return function loadAvatars() {
       return _ref36.apply(this, arguments);
