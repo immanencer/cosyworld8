@@ -1,0 +1,34 @@
+
+TypeError: Cannot read properties of undefined (reading 'apply')
+    at /home/runner/cosyworld8/node_modules/express/lib/router/index.js:646:15
+    at next (/home/runner/cosyworld8/node_modules/express/lib/router/index.js:216:14)
+    at Function.handle (/home/runner/cosyworld8/node_modules/express/lib/router/index.js:175:3)
+    at router (/home/runner/cosyworld8/node_modules/express/lib/router/index.js:47:12)
+    at file:///home/runner/cosyworld8/server/app.mjs:173:10
+    at Layer.handle [as handle_request] (/home/runner/cosyworld8/node_modules/express/lib/router/layer.js:95:5)
+    at trim_prefix (/home/runner/cosyworld8/node_modules/express/lib/router/index.js:328:13)
+    at /home/runner/cosyworld8/node_modules/express/lib/router/index.js:286:9
+    at Function.process_params (/home/runner/cosyworld8/node_modules/express/lib/router/index.js:346:12)
+    at next (/home/runner/cosyworld8/node_modules/express/lib/router/index.js:280:10)
+TypeError: Cannot read properties of undefined (reading 'apply')
+    at /home/runner/cosyworld8/node_modules/express/lib/router/index.js:646:15
+    at next (/home/runner/cosyworld8/node_modules/express/lib/router/index.js:216:14)
+    at Function.handle (/home/runner/cosyworld8/node_modules/express/lib/router/index.js:175:3)
+    at router (/home/runner/cosyworld8/node_modules/express/lib/router/index.js:47:12)
+    at file:///home/runner/cosyworld8/server/app.mjs:173:10
+    at Layer.handle [as handle_request] (/home/runner/cosyworld8/node_modules/express/lib/router/layer.js:95:5)
+    at trim_prefix (/home/runner/cosyworld8/node_modules/express/lib/router/index.js:328:13)
+    at /home/runner/cosyworld8/node_modules/express/lib/router/index.js:286:9
+    at Function.process_params (/home/runner/cosyworld8/node_modules/express/lib/router/index.js:346:12)
+    at next (/home/runner/cosyworld8/node_modules/express/lib/router/index.js:280:10)
+TypeError: Cannot read properties of undefined (reading 'apply')
+    at /home/runner/cosyworld8/node_modules/express/lib/router/index.js:646:15
+    at next (/home/runner/cosyworld8/node_modules/express/lib/router/index.js:216:14)
+    at Function.handle (/home/runner/cosyworld8/node_modules/express/lib/router/index.js:175:3)
+    at router (/home/runner/cosyworld8/node_modules/express/lib/router/index.js:47:12)
+    at file:///home/runner/cosyworld8/server/app.mjs:173:10
+    at Layer.handle [as handle_request] (/home/runner/cosyworld8/node_modules/express/lib/router/layer.js:95:5)
+    at trim_prefix (/home/runner/cosyworld8/node_modules/express/lib/router/index.js:328:13)
+    at /home/runner/cosyworld8/node_modules/express/lib/router/index.js:286:9
+    at Function.process_params (/home/runner/cosyworld8/node_modules/express/lib/router/index.js:346:12)
+    at next (/home/runner/cosyworld8/node_modules/express/lib/router/index.js:280:10)
