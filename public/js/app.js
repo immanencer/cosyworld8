@@ -1174,11 +1174,22 @@ function WalletButton({ onWalletChange }) {
 
   const connectWallet = async () => {
     try {
-      if (isDev || (!window.solana || !window.solana.isPhantom)) {
-        // Use mock wallet in dev or when Phantom isn't available
+      if (isDev) {
         setWallet(mockWallet);
         setAddress(mockWallet.publicKey.toString());
         onWalletChange?.(mockWallet);
+        return;
+      }
+
+      const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+      if (isMobile && !window.solana) {
+        window.location.href = 'https://phantom.app/ul/browse/' + window.location.href;
+        return;
+      }
+
+      if (!window.solana) {
+        alert('Please install Phantom wallet!');
+        window.open('https://phantom.app/', '_blank');
         return;
       }
 
