@@ -4,7 +4,10 @@
   "main": "src/index.mjs",
   "type": "module",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "build:css": "tailwindcss -i ./src/tailwind.css -o ./public/css/tailwind.css",
+    "build:js": "babel public/js/wiki.js -o public/js/wiki.min.js",
+    "build": "npm run build:css && npm run build:js",
+    "start": "npm run build && node server/app.mjs"
   },
   "keywords": [],
   "author": "",
