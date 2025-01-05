@@ -17,6 +17,44 @@
 
 .feature-title {
   @apply text-2xl font-semibold mb-4 text-purple-400;
+
+/* Markdown content styling */
+.prose ul {
+  @apply space-y-3 my-6 list-disc list-outside ml-6;
+}
+
+.prose ul li {
+  @apply pl-2 leading-relaxed;
+}
+
+.prose ol {
+  @apply space-y-3 my-6 list-decimal list-outside ml-6;
+}
+
+.prose ol li {
+  @apply pl-2 leading-relaxed;
+}
+
+.prose p {
+  @apply my-4 leading-relaxed;
+}
+
+.prose h1 {
+  @apply text-4xl font-bold mb-6 mt-8;
+}
+
+.prose h2 {
+  @apply text-3xl font-bold mb-4 mt-6;
+}
+
+.prose h3 {
+  @apply text-2xl font-bold mb-3 mt-5;
+}
+
+.prose blockquote {
+  @apply border-l-4 border-purple-400 pl-4 my-4 italic;
+}
+
 }
 
 .feature-description {
