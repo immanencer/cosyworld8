@@ -65,13 +65,40 @@ Moonstone Sanctum introduces a revolutionary digital identity protocol that merg
 - Hierarchical memory organization
 - Automatic summarization system
 
-## 4. $RATi Token Economics
+## 4. Token Economics & Ecosystem Phases
 
-### 4.1 Token Specification
+### Phase 1: $RATi Test Ecosystem (Current)
 - Name: $RATi
 - Type: ERC-20 Compatible
-- Initial Supply: Dynamic based on neural patterns
-- Decimal Places: 18
+- Total Supply: 1 billion (fixed)
+- Launch Platform: PumpFun
+- Purpose: Validate token mechanics and community engagement
+- Features:
+  - Basic avatar interactions
+  - Discord channel access
+  - Initial AI integration testing
+
+### Phase 2: Avatar Soul-Binding (Future)
+- Core Concept: One human, one unique AI avatar
+- Implementation:
+  - Proof of Humanity verification
+  - Soul-bound token (SBT) issuance
+  - Permanent AI personality binding
+- Features:
+  - Enhanced memory systems
+  - Cross-platform identity verification
+  - Advanced AI interaction capabilities
+
+### Phase 3: Full Integration
+- Merging of test learnings with main system
+- Complete ecosystem integration:
+  - $RATi utility expansion
+  - Soul-bound avatar marketplace
+  - Advanced governance mechanisms
+- Features:
+  - DAO participation rights
+  - Inter-avatar relationships
+  - Enhanced combat mechanics
 
 ### 4.2 Distribution Mechanics
 - Mint Cost: 1000 $RATi
