@@ -1,5 +1,5 @@
 
-# AI Models in Moonstone Sanctum
+# Models in the Moonstone Sanctum
 
 ## Overview
 Moonstone Sanctum leverages multiple AI models to create unique and engaging experiences. Each model is carefully selected and categorized based on its capabilities and rarity.
