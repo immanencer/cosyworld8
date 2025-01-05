@@ -1,4 +1,3 @@
-
 const { useState, useEffect } = React;
 
 function Wiki() {
@@ -93,8 +92,8 @@ function Wiki() {
                         video.classList.remove("active");
                         imgRef.classList.add("active");
                         video.pause();
-                        setTimeout(toggleVideoAndImage, 500);
-                      }, 500);
+                        setTimeout(toggleVideoAndImage, 33000);
+                      }, 16000);
                     }
 
                     toggleVideoAndImage();
@@ -102,7 +101,9 @@ function Wiki() {
                 }}
               />
             </div>
-            <h2 className="text-xl font-bold mb-4 text-purple-400">Documentation</h2>
+            <h2 className="text-xl font-bold mb-4 text-purple-400">
+              Documentation
+            </h2>
           </div>
           <ul className="space-y-2">
             {pages.map((page) => (
