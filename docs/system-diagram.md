@@ -1,4 +1,3 @@
-
 ```mermaid
 graph TB
     subgraph Frontend
@@ -15,18 +14,18 @@ graph TB
         DUN[Dungeon Service]
     end
 
-    subgraph AI_Providers[AI Providers]
+    subgraph AI Providers
         OR[OpenRouter]
         REP[Replicate]
     end
 
     subgraph Storage
-        MONGO[("MongoDB")]
-        S3[("S3 Storage")]
-        ARW[("Arweave")]
+        MONGO[MongoDB]
+        S3[S3 Storage]
+        ARW[Arweave]
     end
 
-    subgraph External_Services[External Services]
+    subgraph External Services
         DISCORD[Discord API]
         X[X/Twitter API]
     end
