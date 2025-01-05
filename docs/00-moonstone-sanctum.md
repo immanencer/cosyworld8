@@ -5,7 +5,7 @@
 
 ---
 
-## **✨ Overview: Where AI Becomes Eternal**  
+## **✨ Where AI Becomes Eternal**  
 
 Moonstone Sanctum is a magical fusion of **AI**, **storytelling**, and **blockchain**. 🌙 Here, you can craft **unique digital beings**—avatars that evolve, interact, and live on, creating endless adventures even after you’re gone.  
 
