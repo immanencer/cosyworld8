@@ -69,8 +69,8 @@ function Wiki() {
 
   return (
     <div className="container mx-auto px-4 py-8">
-      <div className="flex gap-6">
-        <nav className="w-64 flex-shrink-0">
+      <div className="flex flex-col md:flex-row gap-6">
+        <nav className="w-full md:w-64 flex-shrink-0 md:sticky md:top-8 md:h-screen">
           <div className="nav-header">
             <div className="nav-logo">
               <img
