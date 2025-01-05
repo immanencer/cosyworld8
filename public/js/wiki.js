@@ -43,19 +43,28 @@ function Wiki() {
   const renderMarkdown = (content) => {
     if (!content) return '';
     
+    // Pre-process content to handle mermaid blocks
+    content = content.replace(/```mermaid\n([\s\S]*?)```/g, (match, code) => {
+      return `<div class="mermaid">${code.trim()}</div>`;
+    });
+    
     marked.setOptions({
       gfm: true,
       breaks: true,
       headerIds: true,
       highlight: (code, lang) => {
-        if (lang === 'mermaid') {
-          return `<div class="mermaid">${code}</div>`;
-        }
         return `<pre class="bg-gray-800 p-4 rounded-lg overflow-x-auto"><code class="language-${lang}">${code}</code></pre>`;
       }
     });
 
-    return marked.parse(content);
+    const html = marked.parse(content);
+    
+    // Ensure mermaid is reinitialized after content update
+    setTimeout(() => {
+      mermaid.init(undefined, document.querySelectorAll('.mermaid'));
+    }, 100);
+
+    return html;
   };
 
   return (
