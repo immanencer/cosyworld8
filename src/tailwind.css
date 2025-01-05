@@ -2,3 +2,28 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+/* Custom spacing for documentation */
+.documentation-container {
+  @apply max-w-4xl mx-auto px-6 py-8;
+}
+
+.feature-section {
+  @apply space-y-8 my-12;
+}
+
+.feature-item {
+  @apply mb-8 p-6 bg-gray-800/50 rounded-lg;
+}
+
+.feature-title {
+  @apply text-2xl font-semibold mb-4 text-purple-400;
+}
+
+.feature-description {
+  @apply text-gray-300 leading-relaxed;
+}
+
+/* Improved spacing for navigation */
+.nav-item {
+  @apply py-3 px-4 hover:bg-gray-800 rounded-lg transition-colors;
+}
