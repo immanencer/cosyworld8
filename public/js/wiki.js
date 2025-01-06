@@ -3,20 +3,33 @@ const { useState, useEffect } = React;
 function Wiki() {
   const [pages, setPages] = useState([]);
   const [currentPage, setCurrentPage] = useState(null);
-  const [messages, setMessages] = useState([]);
+  const [currentToast, setCurrentToast] = useState(null);
+  const [shownMessageIds, setShownMessageIds] = useState(new Set());
 
   useEffect(() => {
-    const ws = new WebSocket(`wss://${window.location.host}`);
-    
-    ws.onmessage = (event) => {
-      const data = JSON.parse(event.data);
-      if (data.type === 'new_message') {
-        setMessages(prev => [...prev, data.data].slice(-10));
+    const checkNewMessages = async () => {
+      try {
+        const response = await fetch('/api/messages/latest');
+        const message = await response.json();
+        
+        if (message && !shownMessageIds.has(message._id)) {
+          setCurrentToast(message);
+          setShownMessageIds(prev => new Set([...prev, message._id]));
+          
+          setTimeout(() => {
+            setCurrentToast(null);
+          }, 30000);
+        }
+      } catch (error) {
+        console.error('Error fetching messages:', error);
       }
     };
 
-    return () => ws.close();
-  }, []);
+    const interval = setInterval(checkNewMessages, 45000);
+    checkNewMessages(); // Initial check
+    
+    return () => clearInterval(interval);
+  }, [shownMessageIds]);
 
   useEffect(() => {
     fetch("/api/wiki/pages")
@@ -132,17 +145,12 @@ function Wiki() {
             ))}
           </ul>
         </nav>
-        <aside className="fixed bottom-4 right-4 w-64 bg-gray-800 rounded-lg p-4 shadow-lg">
-          <h3 className="text-lg font-bold text-purple-400 mb-2">Recent Activity</h3>
-          <div className="space-y-2">
-            {messages.map((msg, i) => (
-              <div key={i} className="text-sm text-gray-300">
-                <span className="font-bold">{msg.author}: </span>
-                {msg.content}
-              </div>
-            ))}
-          </div>
-        </aside>
+        {currentToast && (
+          <Toast 
+            message={currentToast} 
+            onClose={() => setCurrentToast(null)} 
+          />
+        )}
         <main className="flex-1">
           {currentPage ? (
             <div className="prose prose-invert max-w-none">
