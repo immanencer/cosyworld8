@@ -3,6 +3,20 @@ const { useState, useEffect } = React;
 function Wiki() {
   const [pages, setPages] = useState([]);
   const [currentPage, setCurrentPage] = useState(null);
+  const [messages, setMessages] = useState([]);
+
+  useEffect(() => {
+    const ws = new WebSocket(`wss://${window.location.host}`);
+    
+    ws.onmessage = (event) => {
+      const data = JSON.parse(event.data);
+      if (data.type === 'new_message') {
+        setMessages(prev => [...prev, data.data].slice(-10));
+      }
+    };
+
+    return () => ws.close();
+  }, []);
 
   useEffect(() => {
     fetch("/api/wiki/pages")
@@ -118,6 +132,17 @@ function Wiki() {
             ))}
           </ul>
         </nav>
+        <aside className="fixed bottom-4 right-4 w-64 bg-gray-800 rounded-lg p-4 shadow-lg">
+          <h3 className="text-lg font-bold text-purple-400 mb-2">Recent Activity</h3>
+          <div className="space-y-2">
+            {messages.map((msg, i) => (
+              <div key={i} className="text-sm text-gray-300">
+                <span className="font-bold">{msg.author}: </span>
+                {msg.content}
+              </div>
+            ))}
+          </div>
+        </aside>
         <main className="flex-1">
           {currentPage ? (
             <div className="prose prose-invert max-w-none">

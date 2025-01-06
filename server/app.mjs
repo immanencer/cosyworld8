@@ -1,4 +1,6 @@
 import express from 'express';
+import { WebSocketServer } from 'ws';
+import { createServer } from 'http';
 import cors from 'cors';
 import { MongoClient, ObjectId } from 'mongodb';
 import models from '../src/models.config.mjs';
@@ -10,6 +12,26 @@ import tokenRoutes from './routes/tokens.mjs';
 import { thumbnailService } from './services/thumbnailService.mjs';
 
 const app = express();
+const server = createServer(app);
+const wss = new WebSocketServer({ server });
+
+wss.on('connection', (ws) => {
+  const messagesCollection = db.collection('messages');
+  const changeStream = messagesCollection.watch();
+  
+  changeStream.on('change', (change) => {
+    if (change.operationType === 'insert') {
+      ws.send(JSON.stringify({
+        type: 'new_message',
+        data: change.fullDocument
+      }));
+    }
+  });
+
+  ws.on('close', () => {
+    changeStream.close();
+  });
+});
 const port = process.env.PORT || 3080;
 
 // Middleware
