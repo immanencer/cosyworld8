@@ -84,16 +84,21 @@ function Wiki() {
                     imgRef.parentElement.appendChild(video);
 
                     function toggleVideoAndImage() {
-                      imgRef.classList.remove("active");
-                      video.classList.add("active");
-                      video.play();
-
+                      video.classList.remove("active");
+                      imgRef.classList.add("active");
+                      
                       setTimeout(() => {
-                        video.classList.remove("active");
-                        imgRef.classList.add("active");
-                        video.pause();
-                        setTimeout(toggleVideoAndImage, 33000);
-                      }, 16000);
+                        imgRef.classList.remove("active");
+                        video.classList.add("active");
+                        video.play().catch(console.error);
+                        
+                        setTimeout(() => {
+                          video.classList.remove("active");
+                          imgRef.classList.add("active");
+                          video.pause();
+                          setTimeout(toggleVideoAndImage, 33000);
+                        }, 16000);
+                      }, 500);
                     }
 
                     toggleVideoAndImage();
