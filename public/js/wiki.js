@@ -7,41 +7,35 @@ function Wiki() {
   const [error, setError] = useState(null);
 
   useEffect(() => {
-    fetch('/api/wiki/page?path=00-moonstone-sanctum.md')
-      .then(res => {
+    const fetchContent = async () => {
+      try {
+        const res = await fetch('/api/wiki/page?path=00-moonstone-sanctum.md');
         if (!res.ok) {
           throw new Error(`HTTP error! status: ${res.status}`);
         }
-        return res.json();
-      })
-      .then(data => {
-        if (data.content) {
-          setContent(data.content);
-        } else {
-          setError('No content found');
+        const data = await res.json();
+        if (!data.content) {
+          throw new Error('No content found');
         }
-        setLoading(false);
-      })
-      .catch(err => {
+        setContent(data.content);
+      } catch (err) {
         console.error('Error fetching content:', err);
         setError('Failed to load content');
+      } finally {
         setLoading(false);
-      });
-  }, []);
+      }
+    };
 
-  if (error) {
-    return (
-      <div className="container mx-auto px-4 py-8 text-center text-red-500">
-        {error}
-      </div>
-    );
-  }
+    fetchContent();
+  }, []);
 
   return (
     <div className="container mx-auto px-4 py-8">
-      {loading ? (
+      {error ? (
+        <div className="text-center text-red-500">{error}</div>
+      ) : loading ? (
         <div className="flex justify-center">
-          <div className="animate-spin h-8 w-8 border-4 border-blue-500 rounded-full border-t-transparent"></div>
+          <div className="animate-spin h-8 w-8 border-4 border-purple-500 rounded-full border-t-transparent"></div>
         </div>
       ) : (
         <div className="prose prose-invert max-w-none">
@@ -52,4 +46,5 @@ function Wiki() {
   );
 }
 
-ReactDOM.createRoot(document.getElementById('root')).render(<Wiki />);
+const root = ReactDOM.createRoot(document.getElementById('root'));
+root.render(<Wiki />);
