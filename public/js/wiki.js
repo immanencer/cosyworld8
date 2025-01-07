@@ -10,6 +10,9 @@ function Wiki() {
     const checkNewMessages = async () => {
       try {
         const response = await fetch('/api/messages/latest');
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
         const message = await response.json();
         
         if (message && !shownMessageIds.has(message._id)) {

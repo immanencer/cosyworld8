@@ -201,6 +201,20 @@ app.use('/api/tokens', (req, res, next) => {
  * - Looks up any avatars that match that username
  * - Returns a paginated + possibly tier-filtered leaderboard
  */
+app.get('/api/messages/latest', async (req, res) => {
+  try {
+    if (!db) throw new Error('Database not connected');
+    
+    const latestMessage = await db.collection('messages')
+      .findOne({}, { sort: { timestamp: -1 } });
+      
+    res.json(latestMessage || null);
+  } catch (error) {
+    console.error('Error fetching latest message:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 app.get('/api/leaderboard/minted', async (req, res) => {
   try {
     if (!db) throw new Error('Database not connected');
