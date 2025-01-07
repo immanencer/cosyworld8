@@ -30,8 +30,17 @@ function Wiki() {
   }, []);
 
   return (
-    <div className="container mx-auto px-4 py-8">
-      {error ? (
+    <div>
+      <nav className="bg-gray-800 shadow-lg">
+        <div className="nav-header">
+          <div className="nav-logo">
+            <img src="/thumbnails/moonstone.webp" alt="Moonstone Sanctum" className="active" />
+          </div>
+          <h1 className="text-3xl font-bold text-purple-400">Moonstone Sanctum</h1>
+        </div>
+      </nav>
+      <div className="container mx-auto px-4 py-8">
+        {error ? (
         <div className="text-center text-red-500">{error}</div>
       ) : loading ? (
         <div className="flex justify-center">
@@ -41,7 +50,8 @@ function Wiki() {
         <div className="prose prose-invert max-w-none">
           <div dangerouslySetInnerHTML={{ __html: marked.parse(content) }} />
         </div>
-      )}
+        )}
+      </div>
     </div>
   );
 }
