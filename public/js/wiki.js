@@ -4,19 +4,38 @@ const { useState, useEffect } = React;
 function Wiki() {
   const [content, setContent] = useState('');
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
     fetch('/api/wiki/page/moonstone-sanctum')
-      .then(res => res.json())
+      .then(res => {
+        if (!res.ok) {
+          throw new Error(`HTTP error! status: ${res.status}`);
+        }
+        return res.json();
+      })
       .then(data => {
-        setContent(data.content || '');
+        if (data.content) {
+          setContent(data.content);
+        } else {
+          setError('No content found');
+        }
         setLoading(false);
       })
       .catch(err => {
         console.error('Error fetching content:', err);
+        setError('Failed to load content');
         setLoading(false);
       });
   }, []);
+
+  if (error) {
+    return (
+      <div className="container mx-auto px-4 py-8 text-center text-red-500">
+        {error}
+      </div>
+    );
+  }
 
   return (
     <div className="container mx-auto px-4 py-8">
