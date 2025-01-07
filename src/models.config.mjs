@@ -1,4 +1,4 @@
-export default [
+const models = [
   // Legendary models
   { model: "openai/gpt-4o", rarity: "legendary" },
   { model: "meta-llama/llama-3.1-405b-instruct", rarity: "legendary" },
@@ -108,3 +108,5 @@ export default [
   { model: "mistralai/pixtral-12b", rarity: "common" },
   { model: "x-ai/grok-vision-beta", rarity: "common" },
 ];
+
+module.exports = models;

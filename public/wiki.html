@@ -32,28 +32,6 @@
       .prose {
         max-width: 100ch;
       }
-      .nav-menu {
-        display: flex;
-        justify-content: center;
-        gap: 2rem;
-        padding: 1rem;
-        background: rgba(31, 41, 55, 0.5);
-        backdrop-filter: blur(10px);
-      }
-      .nav-menu a {
-        color: #e5e7eb;
-        text-decoration: none;
-        padding: 0.5rem 1rem;
-        border-radius: 0.375rem;
-        transition: all 0.2s;
-      }
-      .nav-menu a:hover {
-        background: rgba(147, 51, 234, 0.2);
-      }
-      .nav-menu a.active {
-        background: rgba(147, 51, 234, 0.3);
-        color: #c084fc;
-      }
       .prose h1,
       .prose h2,
       .prose h3,
@@ -151,9 +129,6 @@
   </head>
   <body class="bg-gray-900 text-white">
     <div id="root"></div>
-    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
-    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
-    <script src="https://unpkg.com/marked/marked.min.js"></script>
-    <script src="/js/wiki.min.js"></script>
+    <script type="text/babel" data-type="module" src="/js/wiki.js"></script>
   </body>
 </html>

@@ -43,14 +43,10 @@ router.get('/pages', async (req, res) => {
 
 router.get('/page', async (req, res) => {
   try {
-    if (!req.query.path) {
-      return res.status(400).json({ error: 'Path parameter is required' });
-    }
     const filePath = path.join('./docs', req.query.path);
     const content = await fs.readFile(filePath, 'utf-8');
     res.json({ content });
   } catch (error) {
-    console.error('Wiki page error:', error);
     res.status(404).json({ error: 'Page not found' });
   }
 });

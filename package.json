@@ -5,9 +5,8 @@
   "type": "module",
   "scripts": {
     "build:css": "tailwindcss -i ./src/tailwind.css -o ./public/css/tailwind.css --minify",
-    "build:js": "babel public/js/wiki.js -o public/js/wiki.min.js --presets=@babel/preset-react,@babel/preset-env && babel public/js/app.js -o public/js/app.min.js --presets=@babel/preset-react,@babel/preset-env",
+    "build:js": "babel public/js/wiki.js -o public/js/wiki.min.js && babel public/js/app.js -o public/js/app.min.js",
     "build": "npm run build:css && npm run build:js",
-    "build:wiki": "npm run build && node scripts/prepare-wiki.mjs && cp -r public/* dist/",
     "start": "npm run build && node server/app.mjs",
     "dev": "npm run build && node server/app.mjs"
   },
@@ -42,7 +41,6 @@
     "string-similarity": "^4.0.4",
     "tailwindcss": "^3.4.17",
     "twitter-api-v2": "^1.18.2",
-    "winston": "^3.15.0",
-    "ws": "^8.18.0"
+    "winston": "^3.15.0"
   }
 }

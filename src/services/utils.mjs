@@ -7,23 +7,10 @@
  * @returns {string} - The sanitized input.
  */
 export function sanitizeInput(input) {
-    if (!input) return '';
     // Remove all characters except letters, numbers, whitespace, and emojis
     // \p{Emoji} matches any emoji character
     return input.replace(/[^\p{L}\p{N}\s\p{Emoji}]/gu, '').trim();
-}
-
-export function escapeUnicode(str) {
-    return str.replace(/[^\x00-\x7F]/g, char => 
-        '\\u' + char.charCodeAt(0).toString(16).padStart(4, '0')
-    );
-}
-
-export function unescapeUnicode(str) {
-    return str.replace(/\\u([\da-f]{4})/gi, (_, hex) => 
-        String.fromCharCode(parseInt(hex, 16))
-    );
-}
+  }
   
 
   /**

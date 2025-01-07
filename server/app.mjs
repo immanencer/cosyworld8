@@ -1,6 +1,4 @@
 import express from 'express';
-import { WebSocketServer } from 'ws';
-import { createServer } from 'http';
 import cors from 'cors';
 import { MongoClient, ObjectId } from 'mongodb';
 import models from '../src/models.config.mjs';
@@ -12,26 +10,6 @@ import tokenRoutes from './routes/tokens.mjs';
 import { thumbnailService } from './services/thumbnailService.mjs';
 
 const app = express();
-const server = createServer(app);
-const wss = new WebSocketServer({ server });
-
-wss.on('connection', (ws) => {
-  const messagesCollection = db.collection('messages');
-  const changeStream = messagesCollection.watch();
-  
-  changeStream.on('change', (change) => {
-    if (change.operationType === 'insert') {
-      ws.send(JSON.stringify({
-        type: 'new_message',
-        data: change.fullDocument
-      }));
-    }
-  });
-
-  ws.on('close', () => {
-    changeStream.close();
-  });
-});
 const port = process.env.PORT || 3080;
 
 // Middleware
@@ -201,20 +179,6 @@ app.use('/api/tokens', (req, res, next) => {
  * - Looks up any avatars that match that username
  * - Returns a paginated + possibly tier-filtered leaderboard
  */
-app.get('/api/messages/latest', async (req, res) => {
-  try {
-    if (!db) throw new Error('Database not connected');
-    
-    const latestMessage = await db.collection('messages')
-      .findOne({}, { sort: { timestamp: -1 } });
-      
-    res.json(latestMessage || null);
-  } catch (error) {
-    console.error('Error fetching latest message:', error);
-    res.status(500).json({ error: error.message });
-  }
-});
-
 app.get('/api/leaderboard/minted', async (req, res) => {
   try {
     if (!db) throw new Error('Database not connected');

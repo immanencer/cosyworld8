@@ -141,11 +141,5 @@ This synergy of **deflationary token economics**, **cross-platform integration**
 
 ---
 
-## **References**
-1. Vaswani et al. (2017). *Attention Is All You Need.*  
-2. Buterin (2013). *Ethereum Whitepaper.*  
-3. OpenAI (2023). *GPT-4 Technical Report.*  
-4. Anthropic (2023). *Constitutional AI.*  
-5. Imannencer (2025). *CosyWorld & The Whispering Woods Collective Notes.*
 
 *For more information, please visit our wiki pages or contact the Moonstone Sanctum team directly.*  

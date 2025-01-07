@@ -15,23 +15,12 @@
   @apply mb-8 p-6 bg-gray-800/50 rounded-lg;
 }
 
-@keyframes fadeInOut {
-  0% { opacity: 0; transform: translateY(20px); }
-  5% { opacity: 1; transform: translateY(0); }
-  95% { opacity: 1; transform: translateY(0); }
-  100% { opacity: 0; transform: translateY(20px); }
-}
-
-.animate-fade-in-out {
-  animation: fadeInOut 30s ease-in-out;
-}
-
 .feature-title {
   @apply text-2xl font-semibold mb-4 text-purple-400;
 
 /* Markdown content styling */
 .prose ul {
-  @apply space-y-4 my-6 list-disc list-outside ml-6;
+  @apply space-y-3 my-6 list-disc list-outside ml-6;
 }
 
 .prose ul li {
