@@ -7,7 +7,7 @@ function Wiki() {
   const [error, setError] = useState(null);
 
   useEffect(() => {
-    fetch('/api/wiki/page/moonstone-sanctum')
+    fetch('/api/wiki/page?path=00-moonstone-sanctum.md')
       .then(res => {
         if (!res.ok) {
           throw new Error(`HTTP error! status: ${res.status}`);
