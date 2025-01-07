@@ -31,7 +31,7 @@
 
 /* Markdown content styling */
 .prose ul {
-  @apply space-y-3 my-6 list-disc list-outside ml-6;
+  @apply space-y-4 my-6 list-disc list-outside ml-6;
 }
 
 .prose ul li {

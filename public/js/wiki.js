@@ -1,3 +1,4 @@
+
 const { useState, useEffect } = React;
 
 function Wiki() {
@@ -7,34 +8,16 @@ function Wiki() {
   const [shownMessageIds, setShownMessageIds] = useState(new Set());
 
   useEffect(() => {
-    const checkNewMessages = async () => {
-      try {
-        const response = await fetch('/api/messages/latest');
-        if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`);
-        }
-        const message = await response.json();
-        
-        if (message && !shownMessageIds.has(message._id)) {
-          setCurrentToast(message);
-          setShownMessageIds(prev => new Set([...prev, message._id]));
-          
-          setTimeout(() => {
-            setCurrentToast(null);
-          }, 30000);
-        }
-      } catch (error) {
-        console.error('Error fetching messages:', error);
-      }
-    };
+    // Load default page on mount
+    fetch("/api/wiki/page?path=00-moonstone-sanctum.md")
+      .then((res) => res.json())
+      .then((data) => {
+        setCurrentPage(data);
+        setTimeout(() => {
+          mermaid.contentLoaded();
+        }, 100);
+      });
 
-    const interval = setInterval(checkNewMessages, 45000);
-    checkNewMessages(); // Initial check
-    
-    return () => clearInterval(interval);
-  }, [shownMessageIds]);
-
-  useEffect(() => {
     fetch("/api/wiki/pages")
       .then((res) => res.json())
       .then((data) => setPages(data));
@@ -59,6 +42,7 @@ function Wiki() {
     });
   }, []);
 
+  // Rest of the component logic...
   const loadPage = (path) => {
     fetch(`/api/wiki/page?path=${encodeURIComponent(path)}`)
       .then((res) => res.json())
@@ -72,7 +56,6 @@ function Wiki() {
 
   const renderMarkdown = (content) => {
     if (!content) return "";
-
     content = content.replace(/```mermaid\n([\s\S]*?)```/g, (match, code) => {
       return `<div class="mermaid">${code.trim()}</div>`;
     });
@@ -92,6 +75,27 @@ function Wiki() {
     }, 100);
 
     return html;
+  };
+
+  const Toast = ({ message, onClose }) => {
+    const avatar = message?.avatar || {};
+    
+    return (
+      <div className="fixed bottom-4 right-4 bg-gray-800 rounded-lg shadow-lg p-4 animate-fade-in-out flex items-start gap-4 max-w-md">
+        <img 
+          src={avatar.thumbnailUrl || avatar.imageUrl} 
+          alt={avatar.name}
+          className="w-12 h-12 rounded-full object-cover"
+        />
+        <div className="flex-1">
+          <div className="flex items-center justify-between">
+            <h3 className="font-bold text-purple-400">{avatar.name}</h3>
+            <button onClick={onClose} className="text-gray-400 hover:text-gray-200">×</button>
+          </div>
+          <p className="text-gray-200 text-sm mt-1">{message.content}</p>
+        </div>
+      </div>
+    );
   };
 
   return (
@@ -165,7 +169,7 @@ function Wiki() {
             </div>
           ) : (
             <div className="text-center text-gray-500">
-              Select a page from the navigation
+              Loading...
             </div>
           )}
         </main>
