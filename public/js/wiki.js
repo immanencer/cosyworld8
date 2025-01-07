@@ -34,9 +34,15 @@ function Wiki() {
       <nav className="bg-gray-800 shadow-lg">
         <div className="nav-header">
           <div className="nav-logo">
-            <img src="/thumbnails/moonstone.webp" alt="Moonstone Sanctum" className="active" />
+            <img src="/thumbnails/1cc5b04ce4a13fd341a58080b96743cb.webp" alt="Moonstone Sanctum" className="active" />
           </div>
           <h1 className="text-3xl font-bold text-purple-400">Moonstone Sanctum</h1>
+        </div>
+        <div className="nav-menu">
+          <a href="#overview" className="active">Overview</a>
+          <a href="#systems">Systems</a>
+          <a href="#features">Features</a>
+          <a href="#community">Community</a>
         </div>
       </nav>
       <div className="container mx-auto px-4 py-8">
