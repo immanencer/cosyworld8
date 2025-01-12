@@ -7,16 +7,16 @@ const router = express.Router();
 export default async function () {
     const db = await getDb();
     // X API configuration
-    const TWITTER_CLIENT_ID = process.env.TWITTER_CLIENT_ID;
-    const TWITTER_CLIENT_SECRET = process.env.TWITTER_CLIENT_SECRET;
-    const TWITTER_CALLBACK_URL = process.env.TWITTER_CALLBACK_URL;
+    const X_CLIENT_ID = process.env.X_CLIENT_ID;
+    const X_CLIENT_SECRET = process.env.X_CLIENT_SECRET;
+    const X_CALLBACK_URL = process.env.X_CALLBACK_URL;
     const DEFAULT_TOKEN_EXPIRY = 7200; // 2 hours in seconds
     const TEMP_AUTH_EXPIRY = 10 * 60 * 1000; // 10 minutes in milliseconds
 
     async function refreshAccessToken(auth) {
         const client = new TwitterApi({
-            clientId: TWITTER_CLIENT_ID,
-            clientSecret: TWITTER_CLIENT_SECRET
+            clientId: X_CLIENT_ID,
+            clientSecret: X_CLIENT_SECRET
         });
 
         try {
@@ -66,14 +66,14 @@ export default async function () {
             await db.collection('x_auth').deleteOne({ avatarId });
 
             const client = new TwitterApi({
-                clientId: TWITTER_CLIENT_ID,
-                clientSecret: TWITTER_CLIENT_SECRET
+                clientId: X_CLIENT_ID,
+                clientSecret: X_CLIENT_SECRET
             });
 
             const stateData = encodeURIComponent(JSON.stringify({ walletAddress, avatarId }));
 
             const { url, codeVerifier, state } = await client.generateOAuth2AuthLink(
-                TWITTER_CALLBACK_URL,
+                X_CALLBACK_URL,
                 {
                     scope: ['tweet.read', 'tweet.write', 'users.read', 'offline.access'],
                     state: stateData
@@ -127,14 +127,14 @@ export default async function () {
             }
 
             const client = new TwitterApi({
-                clientId: TWITTER_CLIENT_ID,
-                clientSecret: TWITTER_CLIENT_SECRET
+                clientId: X_CLIENT_ID,
+                clientSecret: X_CLIENT_SECRET
             });
 
             const { accessToken, refreshToken, expiresIn } = await client.loginWithOAuth2({
                 code,
                 codeVerifier: storedAuth.codeVerifier,
-                redirectUri: TWITTER_CALLBACK_URL
+                redirectUri: X_CALLBACK_URL
             });
 
             await db.collection('x_auth').updateOne(

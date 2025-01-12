@@ -11,8 +11,8 @@ export class XPostTool extends BaseTool {
     async refreshAccessToken(db, auth) {
         try {
             const client = new TwitterApi({
-                clientId: process.env.TWITTER_CLIENT_ID,
-                clientSecret: process.env.TWITTER_CLIENT_SECRET
+                clientId: process.env.X_CLIENT_ID,
+                clientSecret: process.env.X_CLIENT_SECRET
             });
 
             const {
