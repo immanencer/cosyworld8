@@ -19,26 +19,8 @@ import { MessageHandler } from './services/chat/MessageHandler.mjs';
 // Load environment variables from .env file
 dotenv.config();
 
-// Initialize key service
-import { KeyService } from './services/keyService.mjs';
-const keyService = new KeyService();
-const keys = await keyService.ensureKeys();
-
-const BREEDS = [
-  "Poozer",
-  "Toad",
-  "Echo",
-  "Flux",
-  "Ka",
-  "rat",
-  "Pig",
-  "Grizzle"
-];
-let BREEDING_SEASON = BREEDS[Math.floor(Math.random() * BREEDS.length)];
-
-// Initialize Logger
 const logger = winston.createLogger({
-  level: 'warn',
+  level: 'debug', // Set the minimum log level
   format: winston.format.combine(
     winston.format.timestamp(),
     winston.format.printf(
@@ -46,7 +28,17 @@ const logger = winston.createLogger({
     )
   ),
   transports: [
-    new winston.transports.Console(),
+    // Transport for console output (VSCode Debugger-friendly)
+    new winston.transports.Console({
+      format: winston.format.combine(
+        winston.format.colorize(), // Add colors to make it visually clear in the console
+        winston.format.printf(
+          ({ timestamp, level, message }) => `${timestamp} [${level.toUpperCase()}]: ${message}`
+        )
+      ),
+    }),
+
+    // Transport for file output
     new winston.transports.File({ filename: 'application.log' }),
   ],
 });
@@ -128,10 +120,6 @@ async function handleBreedCommand(message, args, commandLine) {
   const mentionedAvatars = Array.from(extractMentionedAvatars(commandLine, avatars))
     .sort(() => Math.random() - 0.5).slice(-2);
 
-  // set the breeding season based on the day of the week
-  const dayOfWeek = new Date().getDay();
-  BREEDING_SEASON = BREEDS[dayOfWeek % BREEDS.length];
-
   // if there are two avatars mentioned, reply with their names
   if (mentionedAvatars.length === 2) {
     const [avatar1, avatar2] = mentionedAvatars;
@@ -169,7 +157,7 @@ async function handleBreedCommand(message, args, commandLine) {
     }
 
     const breedingDate2 = await avatarService.getLastBredDate(avatar2._id.toString());
-    if (breedingDate1 && new Date() - new Date(breedingDate1) < 24 * 60 * 60 * 1000) {
+    if (breedingDate2 && new Date() - new Date(breedingDate2) < 24 * 60 * 60 * 1000) {
       await replyToMessage(
         message.channel.id,
         message.id,
@@ -178,15 +166,6 @@ async function handleBreedCommand(message, args, commandLine) {
       return;
     }
 
-    // Ensure both avatars have "Poozer" in their name
-    if (message.author.username !== 'noxannihilism' && !message.author.bot && (!avatar1.name.includes(BREEDING_SEASON.toLowerCase()) && !avatar2.name.toLowerCase().includes(BREEDING_SEASON.toLowerCase()))) {
-      await replyToMessage(
-        message.channel.id,
-        message.id,
-        'Both avatars must contain the correct breed in their name to be bred by humans.'
-      );
-      return;
-    }
     await replyToMessage(
       message.channel.id,
       message.id,
@@ -454,7 +433,7 @@ async function handleCommands(message, args, commandLine) {
     const member = message.guild.members.cache.get(message.author.id); // Get the member object
     const requiredRole = process.env.SUMMONER_ROLE || '🔮'; // Replace with the role ID or name you want to check
   
-    if (!member || !member.roles.cache.some(role => role.id === requiredRole || role.name === requiredRole)) {
+    if (!message.author.bot || !member || !member.roles.cache.some(role => role.id === requiredRole || role.name === requiredRole)) {
       message.reply('You do not have the required role to use this command.');
       return;
     }
@@ -609,7 +588,7 @@ async function main() {
     logger.info('✅ Discord client ready');
 
     // Setup and start chat service
-    await chatService.setupWithRetry();
+    await chatService.setup();
     await chatService.start();
     logger.info('✅ Chat service started successfully');
 

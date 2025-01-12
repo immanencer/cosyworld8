@@ -3,10 +3,9 @@ import cors from 'cors';
 import { MongoClient, ObjectId } from 'mongodb';
 import models from '../src/models.config.mjs';
 import avatarRoutes from './routes/avatars.mjs';
-import familyRoutes from './routes/families.mjs';
+import tribeRoutes from './routes/tribes.mjs';
 import xauthRoutes from './routes/xauth.mjs';
 import wikiRoutes from './routes/wiki.mjs';
-import tokenRoutes from './routes/tokens.mjs';
 import { thumbnailService } from './services/thumbnailService.mjs';
 
 const app = express();
@@ -150,7 +149,7 @@ async function getAvatarAncestry(db, avatarId) {
   while (currentAvatar?.parents?.length) {
     const parentId = currentAvatar.parents[0];
     const parent = await db.collection('avatars').findOne(
-      { _id: new ObjectId(parentId) },
+      { _id: ObjectId.createFromTime(parentId) },
       { projection: { _id: 1, name: 1, imageUrl: 1, emoji: 1, parents: 1 } }
     );
     if (!parent) break;
@@ -163,16 +162,9 @@ async function getAvatarAncestry(db, avatarId) {
 
 // Mounting external routes (each route file is passed `db` where needed)
 app.use('/api/avatars', avatarRoutes(db));
-app.use('/api/tribes', familyRoutes(db));
+app.use('/api/tribes', tribeRoutes(db));
 app.use('/api/xauth', xauthRoutes(db));
 app.use('/api/wiki', wikiRoutes);
-app.use('/api/tokens', (req, res, next) => {
-  if (!db) {
-    return res.status(503).json({ error: 'Database not initialized' });
-  }
-  return tokenRoutes(db)(req, res, next);
-});
-
 /**
  * Leaderboard Endpoint
  * - Aggregates messages by username

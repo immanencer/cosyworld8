@@ -73,27 +73,6 @@ export class ChatService {
     this.AMBIENT_CHECK_INTERVAL = process.env.AMBIENT_CHECK_INTERVAL || 15 * 60 * 1000; // Check for ambient responses every minute
   }
 
-  async setupWithRetry(attempt = 1) {
-
-    try {
-      this.logger.info(`Attempting setup (attempt ${attempt})`);
-      await this.setup();
-
-      this.setupComplete = true;
-      this.isConnected = true;
-      this.logger.info('ChatService setup completed successfully');
-    } catch (error) {
-      this.logger.error(`Setup attempt ${attempt} failed: ${error.message}`);
-      if (attempt < this.retryAttempts) {
-        this.logger.info(`Retrying setup in ${this.retryDelay}ms...`);
-        return new Promise(resolve => {
-          setTimeout(() => this.setupWithRetry(attempt + 1).then(resolve), this.retryDelay);
-        });
-      }
-      throw new Error('ChatService initialization failed after max retries');
-    }
-  }
-
   async setupDatabase() {
     try {
       // Get database reference
@@ -127,6 +106,8 @@ export class ChatService {
       await this.UpdateActiveAvatars();
 
       this.logger.info('ChatService setup completed');
+      this.setupComplete = true;
+      this.isConnected = true;
 
     } catch (error) {
       this.logger.error('Setup failed:', error);
@@ -209,13 +190,7 @@ export class ChatService {
     for (const avatar of replyAvatars) {
       const channel = await this.client.channels.cache.get(avatar.channelId);
       if (!channel) {
-        const channel = await this.client.channels.cache.find(c => c.name === 'Moonstone Sanctum');
         this.logger.error(`${avatar.name}: channel ${avatar.channelId} not found`);
-        await this.dungeonService.processAction({
-          channel,
-          author: { username: avatar.name },
-          thread: channel.isThread() ? channel : null
-        }, 'move', 'moonstone sanctum'.split(' '), avatar);
         continue;
       }
 
@@ -320,7 +295,7 @@ export class ChatService {
   async start() {
     try {
       if (!this.setupComplete) {
-        await this.setupWithRetry();
+        await this.setup();
       }
 
       if (!this.isConnected) {

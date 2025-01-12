@@ -105,7 +105,7 @@ exports.handler = async (event) => {
 1. Install required dependencies:
 
 ```bash
-npm install axios dotenv
+npm install dotenv
 ```
 
 2. Create a `.env` file in your project root:

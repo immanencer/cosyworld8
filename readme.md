@@ -76,6 +76,10 @@ Follow these steps to set up and run **CosyWorld**:
    npm install
    ```
 
+   ```bash
+   npm install --include=optional sharp
+   ```
+
 3. **Configure Environment Variables:**
 
    - Create a `.env` file in the root directory.

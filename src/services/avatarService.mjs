@@ -13,7 +13,6 @@ import { uploadImage } from './s3imageService/s3imageService.mjs';
 import { ObjectId } from 'mongodb';
 
 import fs from 'fs/promises';
-import { ArweaveService } from './arweaveService.mjs';
 import fetch from 'node-fetch';
 
 export class AvatarGenerationService {
@@ -38,11 +37,9 @@ export class AvatarGenerationService {
     });
 
     this.IMAGE_URL_COLLECTION = process.env.IMAGE_URL_COLLECTION || 'image_urls';
-    
+
     this.AVATARS_COLLECTION = process.env.AVATARS_COLLECTION || 'avatars';
 
-
-    this.arweaveService = new ArweaveService();
     this.prompts = null;
   }
 
@@ -87,7 +84,7 @@ export class AvatarGenerationService {
     } catch (error) {
       this.logger.error(`Error getting last bred date for ${avatarId}: ${error.message}`);
       throw error;
-    } 
+    }
   }
 
 
@@ -131,23 +128,23 @@ export class AvatarGenerationService {
   async getAvatarByName(name, includeStatus = 'alive') {
     try {
       const collection = this.db.collection(this.AVATARS_COLLECTION);
-  
+
       const query = {
         name: { $regex: new RegExp(`^${name}$`, 'i') } // Case-insensitive exact match
       };
-  
+
       // Only include alive avatars by default
       if (includeStatus === 'alive') {
         query.status = { $ne: 'dead' };
       }
-  
+
       return await collection.findOne(query);
-  
+
     } catch (error) {
       this.logger.error(`Error fetching avatar by name: ${error.message}`);
       return null;
     }
-  }  
+  }
 
   avatarCache = [];
   async getAllAvatars(includeStatus = 'alive') {
@@ -359,16 +356,29 @@ export class AvatarGenerationService {
   /**
    * Checks if an image URL is accessible.
    * @param {string} url - The URL of the image to check.
-   * @returns {boolean} - True if accessible, false otherwise.
+   * @returns {Promise<boolean>} - True if accessible, false otherwise.
    */
   async isImageAccessible(url) {
-    try {
-      const response = await axios.head(url);
-      return response.status === 200;
-    } catch (error) {
-      this.logger.warn(`Image URL inaccessible: ${url} - ${error.message}`);
-      return false;
-    }
+    return new Promise(async (resolve) => {
+      try {
+        const { protocol } = new URL(url);
+        const httpModule = protocol === 'https:' ? await import('https') : await import('http');
+
+        const request = httpModule.request(url, { method: 'HEAD' }, (response) => {
+          resolve(response.statusCode === 200);
+        });
+
+        request.on('error', (error) => {
+          console.warn(`Image URL inaccessible: ${url} - ${error.message}`);
+          resolve(false);
+        });
+
+        request.end();
+      } catch (error) {
+        console.warn(`Invalid URL: ${url} - ${error.message}`);
+        resolve(false);
+      }
+    });
   }
 
   /**
@@ -485,6 +495,7 @@ export class AvatarGenerationService {
       throw new Error('Error downloading the image: ' + error.message);
     }
   }
+  
   /**
    * Creates a new avatar by generating its description and image, then saving it to the database.
    * @param {Object} avatarData - The data for the new avatar.
@@ -499,9 +510,9 @@ export class AvatarGenerationService {
     let systemPrompt;
 
     try {
-      if (this.arweaveService.isArweaveUrl(prompt)) {
+      if (this.isArweaveUrl(prompt)) {
         // Load prompt from Arweave
-        const arweaveData = await this.arweaveService.fetchPrompt(prompt);
+        const arweaveData = await this.fetchPrompt(prompt);
         systemPrompt = arweaveData.systemPrompt;
         prompt = arweaveData.prompt || prompt;
       }
@@ -675,6 +686,23 @@ export class AvatarGenerationService {
     } catch (err) {
       return false;
     }
+  }
+
+  async fetchPrompt(url) {
+    try {
+      const response = await fetch(url);
+      if (!response.ok) {
+        throw new Error(`Failed to fetch prompt from Arweave: ${response.statusText}`);
+      }
+      const data = await response.json();
+      return data;
+    } catch (error) {
+      throw new Error(`Error fetching prompt from Arweave: ${error.message}`);
+    }
+  }
+
+  isArweaveUrl(url) {
+    return url.startsWith('https://arweave.net/');
   }
 
   async updateAllArweavePrompts() {

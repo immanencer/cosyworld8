@@ -1,7 +1,8 @@
 import dotenv from 'dotenv';
-import axios from 'axios';
 import fs from 'fs';
 import path from 'path';
+import { request } from 'https';
+import { request as httpRequest } from 'http';
 
 dotenv.config();
 
@@ -36,37 +37,56 @@ export async function uploadImage(filePath) {
     }
 
     // Prepare the request payload
-    const payload = {
+    const payload = JSON.stringify({
       image: imageBase64,
       imageType: imageType,
-    };
-
-    // Send POST request to upload the image
-    const response = await axios.post(S3_API_ENDPOINT, payload, {
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': S3_API_KEY,
-      },
     });
 
-    if (response.status === 200) {
-      console.log(response.data.statusCode);
-      const { message, url } = JSON.parse(response.data.body);
-      console.log('Upload Successful!');
-      console.log(`Message: ${message}`);
-      console.log(`Image URL: ${url}`);
-      return url;
-    } else {
-      console.error(`Unexpected response status: ${response.status}`);
-      console.error(response.data);
-    }
+    // Send POST request to upload the image
+    const { protocol, hostname, pathname } = new URL(S3_API_ENDPOINT);
+    const httpModule = protocol === 'https:' ? request : httpRequest;
+
+    const options = {
+      hostname,
+      path: pathname,
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Content-Length': Buffer.byteLength(payload),
+        'x-api-key': S3_API_KEY,
+      },
+    };
+
+    return new Promise((resolve, reject) => {
+      const req = httpModule(options, (res) => {
+        let data = '';
+        res.on('data', (chunk) => (data += chunk));
+        res.on('end', () => {
+          if (res.statusCode === 200) {
+            const responseBody = JSON.parse(data);
+            console.log('Upload Successful!');
+            console.log(`Message: ${responseBody.message}`);
+            console.log(`Image URL: ${responseBody.url}`);
+            resolve(responseBody.url);
+          } else {
+            console.error(`Unexpected response status: ${res.statusCode}`);
+            console.error(data);
+            reject(new Error(`Upload failed with status: ${res.statusCode}`));
+          }
+        });
+      });
+
+      req.on('error', (error) => {
+        console.error('Error uploading image:', error.message);
+        reject(error);
+      });
+
+      req.write(payload);
+      req.end();
+    });
   } catch (error) {
-    if (error.response) {
-      console.error(`Upload Failed with status ${error.response.status}:`, error.response.data);
-    } else {
-      console.error('Error uploading image:', error.message);
-    }
-    throw error; // Re-throw error instead of just logging
+    console.error('Error:', error.message);
+    throw error;
   }
 }
 
@@ -78,40 +98,45 @@ export async function downloadImage(imageUrl, savePath) {
       return;
     }
 
-    // Send GET request to download the image
-    const response = await axios.get(imageUrl, {
-      responseType: 'stream',
-    });
+    const { protocol, hostname, pathname } = new URL(imageUrl);
+    const httpModule = protocol === 'https:' ? request : httpRequest;
 
-    if (response.status === 200) {
-      // Ensure the save directory exists
-      const dir = path.dirname(savePath);
-      if (!fs.existsSync(dir)) {
-        fs.mkdirSync(dir, { recursive: true });
-      }
+    return new Promise((resolve, reject) => {
+      const req = httpModule({ hostname, path: pathname, method: 'GET' }, (res) => {
+        if (res.statusCode === 200) {
+          // Ensure the save directory exists
+          const dir = path.dirname(savePath);
+          if (!fs.existsSync(dir)) {
+            fs.mkdirSync(dir, { recursive: true });
+          }
 
-      // Create a write stream to save the image
-      const writer = fs.createWriteStream(savePath);
+          // Create a write stream to save the image
+          const writer = fs.createWriteStream(savePath);
+          res.pipe(writer);
 
-      // Pipe the response data to the file
-      response.data.pipe(writer);
-
-      // Return a promise that resolves when the download is complete
-      return new Promise((resolve, reject) => {
-        writer.on('finish', () => {
-          console.log(`Image downloaded successfully and saved to "${savePath}"`);
-          resolve();
-        });
-        writer.on('error', (err) => {
-          console.error('Error writing the image to disk:', err.message);
-          reject(err);
-        });
+          writer.on('finish', () => {
+            console.log(`Image downloaded successfully and saved to "${savePath}"`);
+            resolve();
+          });
+          writer.on('error', (err) => {
+            console.error('Error writing the image to disk:', err.message);
+            reject(err);
+          });
+        } else {
+          console.error(`Failed to download image. Status code: ${res.statusCode}`);
+          reject(new Error(`Failed to download image with status: ${res.statusCode}`));
+        }
       });
-    } else {
-      console.error(`Failed to download image. Status code: ${response.status}`);
-    }
+
+      req.on('error', (error) => {
+        console.error('Error downloading image:', error.message);
+        reject(error);
+      });
+
+      req.end();
+    });
   } catch (error) {
-    console.error('Error downloading image:', error.message);
-    throw error; // Re-throw error instead of just logging
+    console.error('Error:', error.message);
+    throw error;
   }
 }
