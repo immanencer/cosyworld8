@@ -18,6 +18,8 @@ class ThumbnailService {
   async generateThumbnail(imageUrl) {
     const hash = crypto.createHash('md5').update(imageUrl).digest('hex');
     const thumbnailPath = path.join(THUMB_DIR, `${hash}.webp`);
+
+    await fs.mkdir(thumbnailPath, { recursive: true });
     
     try {
       // Check if thumbnail already exists
