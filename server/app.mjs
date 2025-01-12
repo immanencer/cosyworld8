@@ -107,6 +107,28 @@ async function initializeIndexes(db) {
 
     // Initialize indexes
     await initializeIndexes(db);
+
+    // Mounting external routes (each route file is passed `db` where needed)
+    app.use('/api/avatars', await avatarRoutes(db));
+    app.use('/api/tribes', await tribeRoutes(db)); // Ensure db is passed here
+    app.use('/api/xauth', await xauthRoutes(db));
+    app.use('/api/wiki', await wikiRoutes);
+
+    // Start Server
+    app.listen(port, '0.0.0.0', () => {
+      console.log(`Server running at http://localhost:${port}`);
+      console.log('Available endpoints:');
+      console.log('- GET /api/health');
+      console.log('- GET /api/leaderboard');
+      console.log('- GET /api/avatar/:id/narratives (x2 definitions)');
+      console.log('- GET /api/avatar/:id/memories');
+      console.log('- GET /api/avatar/:id/dungeon-actions');
+      console.log('- GET /api/avatars/search');
+      console.log('- GET /api/avatars/:id');
+      console.log('- GET /api/dungeon/log');
+      console.log('- GET /api/tribes');
+      console.log('- GET /api/xauth');
+    });
   } catch (error) {
     console.error('Failed to connect to MongoDB:', error);
     console.error('Please check if:');
@@ -160,11 +182,6 @@ async function getAvatarAncestry(db, avatarId) {
   return ancestry;
 }
 
-// Mounting external routes (each route file is passed `db` where needed)
-app.use('/api/avatars', avatarRoutes(db));
-app.use('/api/tribes', tribeRoutes(db));
-app.use('/api/xauth', xauthRoutes(db));
-app.use('/api/wiki', wikiRoutes);
 /**
  * Leaderboard Endpoint
  * - Aggregates messages by username
@@ -330,6 +347,9 @@ app.get('/api/leaderboard', async (req, res) => {
       .aggregate(pipeline, { allowDiskUse: true })
       .toArray();
 
+    // Ensure avatars are fetched correctly
+    const avatars = await db.collection('avatars').find({}).toArray();
+
     // For each aggregated result, pick the "primary" avatar and compute ancestry + stats
     const avatarDetails = await Promise.all(
       results.map(async (result) => {
@@ -364,6 +384,7 @@ app.get('/api/leaderboard', async (req, res) => {
           // Filter out null entries and keep only up to 5
           recentMessages: result.recentMessages.filter((m) => m !== null).slice(0, 5),
           stats: stats || { attack: 0, defense: 0, hp: 0 },
+          score: result.messageCount, // Calculate score based on message count
         };
       })
     );
@@ -640,21 +661,33 @@ app.get('/api/tribes', async (req, res) => {
 
     const tribes = await db.collection('avatars').aggregate(pipeline).toArray();
 
-    // Add thumbnails
-    const tribesWithThumbs = await Promise.all(
-      tribes.map(async (tribe) => ({
-        emoji: tribe._id,
-        count: tribe.count,
-        members: await Promise.all(
-          tribe.members.map(async (member) => ({
-            ...member,
-            thumbnailUrl: await thumbnailService.generateThumbnail(member.imageUrl),
-          }))
-        ),
-      }))
+    // For each tribe, compute messageCount for each member and add a thumbnailUrl
+    const tribesWithData = await Promise.all(
+      tribes.map(async (tribe) => {
+        const members = await Promise.all(
+          tribe.members.map(async (member) => {
+            const messageCount = await db.collection('messages').countDocuments({
+              $expr: {
+                $eq: [{ $toLower: '$authorUsername' }, member.name.toLowerCase()],
+              },
+            });
+            const thumbnailUrl = await thumbnailService.generateThumbnail(member.imageUrl);
+            return {
+              ...member,
+              score: messageCount,
+              thumbnailUrl,
+            };
+          })
+        );
+        return {
+          emoji: tribe._id,
+          count: tribe.count,
+          members,
+        };
+      })
     );
 
-    res.json(tribesWithThumbs);
+    res.json(tribesWithData);
   } catch (error) {
     console.error('Tribes error:', error);
     res.status(500).json({ error: error.message });
@@ -732,24 +765,6 @@ process.on('SIGINT', async () => {
     console.error('Error closing MongoDB connection:', error);
     process.exit(1);
   }
-});
-
-/**
- * Start Server
- */
-app.listen(port, '0.0.0.0', () => {
-  console.log(`Server running at http://localhost:${port}`);
-  console.log('Available endpoints:');
-  console.log('- GET /api/health');
-  console.log('- GET /api/leaderboard');
-  console.log('- GET /api/avatar/:id/narratives (x2 definitions)');
-  console.log('- GET /api/avatar/:id/memories');
-  console.log('- GET /api/avatar/:id/dungeon-actions');
-  console.log('- GET /api/avatars/search');
-  console.log('- GET /api/avatars/:id');
-  console.log('- GET /api/dungeon/log');
-  console.log('- GET /api/tribes');
-  console.log('- GET /api/xauth');
 });
 
 export default app;

@@ -1,9 +1,11 @@
 import express from 'express';
 import { TwitterApi } from 'twitter-api-v2';
+import { getDb } from '../services/dbConnection.mjs';
 
 const router = express.Router();
 
-export default function (db) {
+export default async function () {
+    const db = await getDb();
     // X API configuration
     const TWITTER_CLIENT_ID = process.env.TWITTER_CLIENT_ID;
     const TWITTER_CLIENT_SECRET = process.env.TWITTER_CLIENT_SECRET;

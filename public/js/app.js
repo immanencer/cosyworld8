@@ -740,7 +740,7 @@ function AvatarSearch({ onSelect }) {
               }}
             >
               <img 
-                src={avatar.thumbnailUrl} 
+                src={avatar.thumbnailUrl || avatar.imageUrl} 
                 alt={avatar.name}
                 className="w-10 h-10 rounded-full object-cover"
               />
@@ -892,9 +892,9 @@ function LeaderboardView() {
   useEffect(() => {
     const fetchLeaderboard = async () => {
       try {
-        const response = await fetch('/api/leaderboard/minted');
+        const response = await fetch('/api/leaderboard');
         const data = await response.json();
-        setLeaderboard(data);
+        setLeaderboard(data.avatars); // Ensure avatars are set correctly
       } catch (error) {
         console.error('Error fetching leaderboard:', error);
       } finally {
@@ -1093,9 +1093,7 @@ function TribesView({ onAvatarSelect }) {
 
   const selectedTribe = selectedEmoji ? 
     tribes.find(t => t && t.emoji === selectedEmoji) : null;
-    console.log('selectedTribe', selectedTribe);
-    console.log('selectedTribe.emoji', selectedTribe?.emoji);
-    console.log('members', selectedTribe?.members);
+
   return (
     <div>
       {/* Emoji selector */}

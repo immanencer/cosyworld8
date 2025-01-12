@@ -54,5 +54,22 @@ export default function(db) {
     }
   });
 
+  router.get('/tribes', async (req, res) => {
+    try {
+      const db = req.app.get('db');
+      if (!db) {
+        return res.status(500).json({ error: 'Database not connected' });
+      }
+      const tribesColl = db.collection('tribes');
+      if (!tribesColl) {
+        return res.status(500).json({ error: 'Tribes collection missing' });
+      }
+      const tribes = await tribesColl.find({}).toArray();
+      res.json({ tribes });
+    } catch (err) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
   return router;
 }

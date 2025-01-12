@@ -83,7 +83,7 @@ export class ConversationHandler {
 
       // Store the narrative in the database and update the avatar
       await this.storeNarrative(avatar._id, narrative);
-      this.updateNarrativeHistory(avatar, narrative);     
+      this.updateNarrativeHistory(avatar, narrative);
 
       // generate a new dynamic prompt for the avatar based on their system prompt and the generated narrative
       avatar.prompt = await this.buildSystemPrompt(avatar);
@@ -141,6 +141,14 @@ export class ConversationHandler {
   }
 
   updateNarrativeHistory(avatar, content) {
+
+    // Post the avatar's dynamic personality to the inner monologue channel 🌪️⚡
+    sendAsWebhook(
+      avatar.innerMonologueChannel,
+      `🌪️ Dynamic Personality Update: ${avatar.dynamicPersonality}`,
+      `${avatar.name} ${avatar.emoji}`, avatar.imageUrl
+    );
+
     const guildName = GUILD_NAME;
     const narrativeData = { timestamp: Date.now(), content, guildName };
     avatar.narrativeHistory = avatar.narrativeHistory || [];

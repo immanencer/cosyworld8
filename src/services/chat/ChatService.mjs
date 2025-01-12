@@ -1,6 +1,7 @@
 import { ConversationHandler } from './ConversationHandler.mjs';
 import { DecisionMaker } from './DecisionMaker.mjs';
 import { MessageProcessor } from './MessageProcessor.mjs';
+import { getDb } from '../../server/services/dbConnection.mjs';
 
 import {
   sendAsWebhook
@@ -13,7 +14,7 @@ const SERVER_NAME = "Moonstone Sanctum";
 
 export class ChatService {
   constructor(client, db, options = {}) {
-    this.db = db;
+    this.db = db || getDb();
     this.avatarService = options.avatarService;
     if (!client) {
       throw new Error('Discord client is required');
@@ -79,8 +80,7 @@ export class ChatService {
 
   async setupDatabase() {
     try {
-      // Get database reference
-      const db = this.db;
+      const db = await this.db;
 
       // Initialize collections if needed
       this.avatarsCollection = db.collection('avatars');
@@ -90,6 +90,7 @@ export class ChatService {
       // Ensure indexes
       await Promise.all([
         this.avatarsCollection.createIndex({ name: 1 }),
+        this.avatarsCollection.createIndex({ messageCount: -1 }), // Ensure index for leaderboard
         this.messagesCollection.createIndex({ timestamp: 1 }),
         this.channelsCollection.createIndex({ lastActive: 1 })
       ]);
@@ -105,6 +106,7 @@ export class ChatService {
     try {
       await this.setupAvatarChannelsAcrossGuilds();
       await this.dungeonService.initializeDatabase(); // Add this line
+      await this.setupDatabase(); // Ensure database setup
       this.setupReflectionInterval();
       // update active avatars
       await this.UpdateActiveAvatars();

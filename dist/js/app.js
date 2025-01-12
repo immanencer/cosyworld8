@@ -1137,7 +1137,7 @@ function TribesView({ onAvatarSelect }) {
               >
                 <div className="aspect-square overflow-hidden rounded-lg mb-2">
                   <img
-                    src={member.thumbnailUrl || member.imageUrl}
+                    src={member.imageUrl}
                     alt={member.name}
                     className="w-full h-full object-cover transform group-hover:scale-110 transition-transform"
                   />
