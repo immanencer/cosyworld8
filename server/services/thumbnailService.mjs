@@ -16,6 +16,9 @@ class ThumbnailService {
   }
 
   async generateThumbnail(imageUrl) {
+    if (!imageUrl) {
+      return;
+    }
     const hash = crypto.createHash('md5').update(imageUrl).digest('hex');
     const thumbnailPath = path.join(THUMB_DIR, `${hash}.webp`);
 

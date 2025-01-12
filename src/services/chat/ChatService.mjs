@@ -2,6 +2,10 @@ import { ConversationHandler } from './ConversationHandler.mjs';
 import { DecisionMaker } from './DecisionMaker.mjs';
 import { MessageProcessor } from './MessageProcessor.mjs';
 
+import {
+  sendAsWebhook
+} from '../discordService.mjs'
+
 import { DungeonService } from '../dungeon/DungeonService.mjs'; // Added import
 
 const RESPONSE_RATE = parseFloat(process.env.RESPONSE_RATE) || 0.2; // 20% response rate
@@ -241,34 +245,34 @@ export class ChatService {
               });
               avatar.innerMonologueChannel = newThread.id;
 
-              // Post the avatars image to the inner monologue channel
+              // Post the avatar's image to the inner monologue channel 📷✨
               sendAsWebhook(
                 avatar.innerMonologueChannel,
                 avatar.imageUrl,
-                avatar.name, avatar.imageUrl
+                `${avatar.name} ${avatar.emoji}`, avatar.imageUrl
               );
 
-              // Post the avatars description to the inner monologue channel
+              // Post the avatar's description to the inner monologue channel 📝💭
               sendAsWebhook(
                 avatar.innerMonologueChannel,
-                avatar.description,
-                avatar.name, avatar.imageUrl
+                `📖 Description: ${avatar.description}`,
+                `${avatar.name} ${avatar.emoji}`, avatar.imageUrl
               );
 
-              // Post the avatars personality to the inner monologue channel
+              // Post the avatar's personality to the inner monologue channel 🎭🔮
               sendAsWebhook(
                 avatar.innerMonologueChannel,
-                `Personality: ${avatar.personality}`,
-                avatar.name, avatar.imageUrl
+                `🎭 Personality: ${avatar.personality}`,
+                `${avatar.name} ${avatar.emoji}`, avatar.imageUrl
               );
 
-
-              // Post the avatars Dynamic Personality to the inner monologue channel
+              // Post the avatar's dynamic personality to the inner monologue channel 🌪️⚡
               sendAsWebhook(
                 avatar.innerMonologueChannel,
-                `Dynamic Personality: ${avatar.dynamicPersonality}`,
-                avatar.name, avatar.imageUrl
+                `🌪️ Dynamic Personality: ${avatar.dynamicPersonality}`,
+                `${avatar.name} ${avatar.emoji}`, avatar.imageUrl
               );
+
             }
           }
           avatar = await this.avatarService.updateAvatar(avatar);

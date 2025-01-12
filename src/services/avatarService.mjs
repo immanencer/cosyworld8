@@ -341,7 +341,7 @@ export class AvatarGenerationService {
 
       const record = {
         prompt,
-        imageUrl: result.imageUrl,
+        imageUrl: imageUrl,
         channelId,
         date: now,
       };

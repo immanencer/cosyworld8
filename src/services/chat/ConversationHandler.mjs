@@ -1,8 +1,9 @@
 import { MongoClient } from 'mongodb';
 
-import { ChannelType } from 'discord.js';
 import { sendAsWebhook } from '../discordService.mjs';
 import { MemoryService } from '../memoryService.mjs';
+
+const GUILD_NAME = process.env.GUILD_NAME || 'The Guild';
 
 export class ConversationHandler {
   constructor(client, aiService, logger, avatarService, dungeonService) {
@@ -58,7 +59,7 @@ export class ConversationHandler {
   /**
    * Unified method to generate a narrative for reflection or inner monologue.
    */
-  async generateNarrative(avatar, thread = null) {
+  async generateNarrative(avatar) {
 
     try {
       const lastNarrative = await this.getLastNarrative(avatar._id);
@@ -82,7 +83,7 @@ export class ConversationHandler {
 
       // Store the narrative in the database and update the avatar
       await this.storeNarrative(avatar._id, narrative);
-      this.updateNarrativeHistory(avatar, narrative, guildName);     
+      this.updateNarrativeHistory(avatar, narrative);     
 
       // generate a new dynamic prompt for the avatar based on their system prompt and the generated narrative
       avatar.prompt = await this.buildSystemPrompt(avatar);
@@ -139,7 +140,8 @@ export class ConversationHandler {
     }
   }
 
-  updateNarrativeHistory(avatar, content, guildName) {
+  updateNarrativeHistory(avatar, content) {
+    const guildName = GUILD_NAME;
     const narrativeData = { timestamp: Date.now(), content, guildName };
     avatar.narrativeHistory = avatar.narrativeHistory || [];
     avatar.narrativeHistory.unshift(narrativeData);
