@@ -115,8 +115,9 @@ async function initializeIndexes(db) {
     app.use('/api/wiki', await wikiRoutes);
 
     // Start Server
-    app.listen(port, '0.0.0.0', () => {
-      console.log(`Server running at http://localhost:${port}`);
+    app.listen(process.env.PORT || 80, '0.0.0.0', () => {
+      const listeningPort = process.env.PORT || 80;
+      console.log(`Server running at http://0.0.0.0:${listeningPort}`);
       console.log('Available endpoints:');
       console.log('- GET /api/health');
       console.log('- GET /api/leaderboard');
