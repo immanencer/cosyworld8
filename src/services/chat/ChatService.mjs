@@ -1,7 +1,7 @@
 import { ConversationHandler } from './ConversationHandler.mjs';
 import { DecisionMaker } from './DecisionMaker.mjs';
 import { MessageProcessor } from './MessageProcessor.mjs';
-import { getDb } from '../../server/services/dbConnection.mjs';
+import { getDb } from '../../../server/services/dbConnection.mjs';
 
 import {
   sendAsWebhook
