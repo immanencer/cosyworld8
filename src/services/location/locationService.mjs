@@ -35,7 +35,7 @@ export class LocationService {
   async initDatabase() {
     try {
       const client = await MongoClient.connect(process.env.MONGO_URI);
-      this.db = client.db('cosyworld2');
+      this.db = client.db(process.env.MONGO_DB_NAME);
     } catch (error) {
       console.error('Failed to connect to MongoDB:', error);
     }
@@ -86,8 +86,8 @@ export class LocationService {
     if (this.db) {
       await this.db.collection('locations').updateOne(
         { name: locationName },
-        { 
-          $set: { 
+        {
+          $set: {
             imageUrl: await uploadImage(filename),
             updatedAt: new Date()
           }
@@ -144,10 +144,11 @@ export class LocationService {
     try {
       const channels = await this.getAllLocations(guild);
       const fuse = new Fuse(channels, this.fuseOptions);
-      
+
       let cleanLocationName = await this.aiService.chat([
         { role: 'system', content: 'You are an expert editor.' },
-        { role: 'user', content: `The avatar has requested to move to or create the following location:
+        {
+          role: 'user', content: `The avatar has requested to move to or create the following location:
 
         ${locationName}
 
@@ -169,7 +170,7 @@ export class LocationService {
       while (words.join(' ').length > 100) { words.pop(); }
 
       cleanLocationName = (words.join(' ')).trim();
-      
+
       // Try to find existing location
       const matches = fuse.search(cleanLocationName, { limit: 1 });
       if (matches.length > 0) {
@@ -179,7 +180,7 @@ export class LocationService {
       // Use the source channel if provided, otherwise find/create #locations
       let parentChannel = sourceChannel;
       if (!parentChannel || !parentChannel.threads) {
-        parentChannel = guild.channels.cache.find(c => 
+        parentChannel = guild.channels.cache.find(c =>
           c.isTextBased() && c.threads
         );
       }
@@ -205,8 +206,8 @@ export class LocationService {
       });
 
       // Post initial content
-      await thread.send({ 
-        files: [{ 
+      await thread.send({
+        files: [{
           attachment: locationImage,
           name: `${cleanLocationName.toLowerCase().replace(/\s+/g, '_')}.png`
         }]
@@ -224,7 +225,7 @@ export class LocationService {
       if (this.db) {
         await this.db.collection('locations').updateOne(
           { channelId: thread.id },
-          { 
+          {
             $set: {
               name: cleanLocationName,
               description: evocativeDescription,
@@ -253,7 +254,7 @@ export class LocationService {
 
   async getAllLocations(guild) {
     const locations = [];
-    
+
     // Get all text channels
     const textChannels = guild.channels.cache.filter(c => c.isTextBased());
     locations.push(...textChannels.map(c => ({ name: c.name, channel: c })));
@@ -279,7 +280,7 @@ export class LocationService {
 
   async generateAvatarResponse(avatar, location) {
     const prompt = `You have just arrived at ${location.name}. Write a short in-character message about your arrival or your reaction to this place.`;
-    
+
     const response = await this.aiService.chat([
       { role: 'system', content: `You are ${avatar.name}, a ${avatar.personality}. Keep responses brief and in-character.` },
       { role: 'assistant', content: `${avatar.dynamicPersonality}\n\n${avatar.memory || ''}` },
@@ -301,7 +302,7 @@ export class LocationService {
 
     const locationData = this.locationMessages.get(locationId);
     locationData.count++;
-    
+
     // Store message data
     locationData.messages.push({
       author: message.author.username,

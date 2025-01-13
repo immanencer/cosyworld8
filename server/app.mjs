@@ -9,7 +9,7 @@ import wikiRoutes from './routes/wiki.mjs';
 import { thumbnailService } from './services/thumbnailService.mjs';
 
 const app = express();
-const port = process.env.PORT || 80;
+const PORT = process.env.PORT || 3080;
 
 // Middleware
 app.use(cors());
@@ -115,20 +115,8 @@ async function initializeIndexes(db) {
     app.use('/api/wiki', await wikiRoutes);
 
     // Start Server
-    app.listen(port, '0.0.0.0', () => {
-      const listeningPort = process.env.PORT || 80;
-      console.log(`Server running at http://0.0.0.0:${listeningPort}`);
-      console.log('Available endpoints:');
-      console.log('- GET /api/health');
-      console.log('- GET /api/leaderboard');
-      console.log('- GET /api/avatar/:id/narratives (x2 definitions)');
-      console.log('- GET /api/avatar/:id/memories');
-      console.log('- GET /api/avatar/:id/dungeon-actions');
-      console.log('- GET /api/avatars/search');
-      console.log('- GET /api/avatars/:id');
-      console.log('- GET /api/dungeon/log');
-      console.log('- GET /api/tribes');
-      console.log('- GET /api/xauth');
+    app.listen(PORT, '0.0.0.0', () => {
+      console.log(`Server running at http://0.0.0.0:${PORT}`);
     });
   } catch (error) {
     console.error('Failed to connect to MongoDB:', error);
@@ -219,7 +207,7 @@ app.get('/api/leaderboard/minted', async (req, res) => {
             name: '$avatar.name',
             imageUrl: '$avatar.imageUrl',
             thumbnailUrl: '$avatar.thumbnailUrl',
-            score: { 
+            score: {
               $add: [
                 { $ifNull: ['$stats.wins', 0] },
                 { $multiply: [{ $ifNull: ['$stats.hp', 0] }, 10] }
@@ -580,29 +568,29 @@ app.get('/api/dungeon/log', async (req, res) => {
             { name: entry.actor },
             { projection: { _id: 1, name: 1, imageUrl: 1, emoji: 1 } }
           ) ||
+          db.collection('avatars').findOne(
+            {
+              name: {
+                $regex: `^${escapeRegExp(entry.actor)}$`,
+                $options: 'i',
+              },
+            },
+            { projection: { _id: 1, name: 1, imageUrl: 1, emoji: 1 } }
+          ),
+          entry.target
+            ? db.collection('avatars').findOne(
+              { name: entry.target },
+              { projection: { _id: 1, name: 1, imageUrl: 1, emoji: 1 } }
+            ) ||
             db.collection('avatars').findOne(
               {
                 name: {
-                  $regex: `^${escapeRegExp(entry.actor)}$`,
+                  $regex: `^${escapeRegExp(entry.target)}$`,
                   $options: 'i',
                 },
               },
               { projection: { _id: 1, name: 1, imageUrl: 1, emoji: 1 } }
-            ),
-          entry.target
-            ? db.collection('avatars').findOne(
-                { name: entry.target },
-                { projection: { _id: 1, name: 1, imageUrl: 1, emoji: 1 } }
-              ) ||
-              db.collection('avatars').findOne(
-                {
-                  name: {
-                    $regex: `^${escapeRegExp(entry.target)}$`,
-                    $options: 'i',
-                  },
-                },
-                { projection: { _id: 1, name: 1, imageUrl: 1, emoji: 1 } }
-              )
+            )
             : null,
         ]);
 
@@ -638,62 +626,6 @@ app.get('/api/dungeon/log', async (req, res) => {
   }
 });
 
-/**
- * Tribes Endpoint
- * - Replaces your "family-tree" endpoint
- * - Groups avatars by emoji
- */
-app.get('/api/tribes', async (req, res) => {
-  try {
-    if (!db) throw new Error('Database not connected');
-
-    const pipeline = [
-      { $match: { emoji: { $exists: true, $ne: null, $ne: '' } } },
-      {
-        $group: {
-          _id: '$emoji',
-          count: { $sum: 1 },
-          members: { $push: '$$ROOT' },
-        },
-      },
-      { $match: { count: { $gt: 0 } } },
-      { $sort: { count: -1 } },
-    ];
-
-    const tribes = await db.collection('avatars').aggregate(pipeline).toArray();
-
-    // For each tribe, compute messageCount for each member and add a thumbnailUrl
-    const tribesWithData = await Promise.all(
-      tribes.map(async (tribe) => {
-        const members = await Promise.all(
-          tribe.members.map(async (member) => {
-            const messageCount = await db.collection('messages').countDocuments({
-              $expr: {
-                $eq: [{ $toLower: '$authorUsername' }, member.name.toLowerCase()],
-              },
-            });
-            const thumbnailUrl = await thumbnailService.generateThumbnail(member.imageUrl);
-            return {
-              ...member,
-              score: messageCount,
-              thumbnailUrl,
-            };
-          })
-        );
-        return {
-          emoji: tribe._id,
-          count: tribe.count,
-          members,
-        };
-      })
-    );
-
-    res.json(tribesWithData);
-  } catch (error) {
-    console.error('Tribes error:', error);
-    res.status(500).json({ error: error.message });
-  }
-});
 
 /**
  * Health Check Endpoint
