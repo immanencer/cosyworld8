@@ -142,12 +142,14 @@ export class ConversationHandler {
 
   updateNarrativeHistory(avatar, content) {
 
-    // Post the avatar's dynamic personality to the inner monologue channel 🌪️⚡
-    sendAsWebhook(
-      avatar.innerMonologueChannel,
-      `🌪️ Dynamic Personality Update: ${avatar.dynamicPersonality}`,
-      `${avatar.name} ${avatar.emoji}`, avatar.imageUrl
-    );
+    if (avatar.innerMonologueChannel) {
+      // Post the avatar's dynamic personality to the inner monologue channel 🌪️⚡
+      sendAsWebhook(
+        avatar.innerMonologueChannel,
+        `🌪️ Dynamic Personality Update: ${avatar.dynamicPersonality}`,
+        `${avatar.name} ${avatar.emoji}`, avatar.imageUrl
+      );
+    }
 
     const guildName = GUILD_NAME;
     const narrativeData = { timestamp: Date.now(), content, guildName };
