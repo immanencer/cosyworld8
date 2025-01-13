@@ -9,7 +9,7 @@ import wikiRoutes from './routes/wiki.mjs';
 import { thumbnailService } from './services/thumbnailService.mjs';
 
 const app = express();
-const port = process.env.PORT || 3080;
+const port = process.env.PORT || 80;
 
 // Middleware
 app.use(cors());
@@ -115,7 +115,7 @@ async function initializeIndexes(db) {
     app.use('/api/wiki', await wikiRoutes);
 
     // Start Server
-    app.listen(process.env.PORT || 80, '0.0.0.0', () => {
+    app.listen(port, '0.0.0.0', () => {
       const listeningPort = process.env.PORT || 80;
       console.log(`Server running at http://0.0.0.0:${listeningPort}`);
       console.log('Available endpoints:');
