@@ -8,7 +8,7 @@
     "build:js": "babel public/js/wiki.js -o public/js/wiki.min.js && babel public/js/app.js -o public/js/app.min.js",
     "build": "npm run build:css && npm run build:js",
     "build:wiki": "mkdir -p dist && cp -r public/* dist/ && npm run build:js && npm run build:css && cp -r docs dist/content",
-    "start": "npm run build && node src/index.mjs"
+    "start": "npm run build && node src/index.mjs",
     "dev": "npm run build && node src/index.mjs",
     "wiki": "npm run build:wiki",
     "serve": "node server/app.mjs"
