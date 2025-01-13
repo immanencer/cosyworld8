@@ -40,7 +40,7 @@ export class DungeonService {
 
   extractToolCommands(text) {
     if (!text) return { commands: [], cleanText: '', commandLines: [] };
-    
+
     const commands = [];
     const lines = text.split('\n');
     const commandLines = [];
@@ -51,11 +51,11 @@ export class DungeonService {
       const commandMatch = line.match(/!(\w+)(\s+[^!]*)?/g);
       // Look for !command pattern at the start of the line
       //const commandMatch = line.match(/^!(\w+)(\s+[^!]*)?/g);
-      
+
       if (commandMatch) {
         // Store the full line containing commands
         commandLines.push(line);
-        
+
         // Process each command found in the line
         for (const match of commandMatch) {
           const [command, ...params] = match.slice(1).trim().split(/\s+/);
@@ -82,16 +82,16 @@ export class DungeonService {
     const client = new MongoClient(process.env.MONGO_URI);
     await client.connect();
     const db = client.db(process.env.MONGO_DB_NAME);
-    
+
     // Create collections if they don't exist
     await db.createCollection('dungeon_locations');
     await db.createCollection('dungeon_positions');
     await db.createCollection('dungeon_stats');
-    
+
     // Create indexes
     await db.collection('dungeon_positions').createIndex({ avatarId: 1 }, { unique: true });
     await db.collection('dungeon_stats').createIndex({ avatarId: 1 }, { unique: true });
-    
+
     await client.close();
   }
 
@@ -151,9 +151,11 @@ export class DungeonService {
     try {
       await client.connect();
       const db = client.db(process.env.MONGO_DB_NAME);
-      const location = await db.collection('locations').findOne({ $or: [
-        { channelId: locationId },
-        { name: locationName }]});
+      const location = await db.collection('locations').findOne({
+        $or: [
+          { channelId: locationId },
+          { name: locationName }]
+      });
       return location?.description;
     } finally {
       await client.close();
@@ -165,9 +167,9 @@ export class DungeonService {
     try {
       await client.connect();
       const db = client.db(process.env.MONGO_DB_NAME);
-      const position = await db.collection('dungeon_positions').findOne({ $or: [ { avatarId }, { avatarId: avatarId.toString()  } ] });
+      const position = await db.collection('dungeon_positions').findOne({ $or: [{ avatarId }, { avatarId: avatarId.toString() }] });
       if (!position) return null;
-      
+
       // Get full location data
       const location = await db.collection('locations').findOne({ channelId: position.locationId });
       if (!location) return null;
@@ -192,9 +194,9 @@ export class DungeonService {
     const client = new MongoClient(process.env.MONGO_URI);
     try {
       await client.connect();
-      const db = client.db('cosyworld2');
+      const db = client.db(MONGO_DB_NAME);
       const avatar = await db.collection('avatars')
-        .findOne({ 
+        .findOne({
           name: new RegExp(avatarName, 'i'),
           locationId: location?.locationId
         });
@@ -245,12 +247,12 @@ export class DungeonService {
     try {
       await client.connect();
       const db = client.db(process.env.MONGO_DB_NAME);
-      
+
       // Update position
       await db.collection('dungeon_positions').updateOne(
         { avatarId: avatarId },
-        { 
-          $set: { 
+        {
+          $set: {
             locationId: newLocationId,
             lastUpdated: new Date()
           }
@@ -275,7 +277,7 @@ export class DungeonService {
     try {
       await client.connect();
       const db = client.db(process.env.MONGO_DB_NAME);
-      const stats = await db.collection('dungeon_stats').findOne({ $or: [ { avatarId }, { avatarId: avatarId.toString() } ] });
+      const stats = await db.collection('dungeon_stats').findOne({ $or: [{ avatarId }, { avatarId: avatarId.toString() }] });
       return stats || { ...this.defaultStats, avatarId };
     } finally {
       await client.close();
