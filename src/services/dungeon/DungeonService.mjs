@@ -9,6 +9,7 @@ import { RememberTool } from './tools/RememberTool.mjs';
 import { CreationTool } from './tools/CreationTool.mjs';
 import { XPostTool } from './tools/XPostTool.mjs';
 
+
 export class DungeonService {
   constructor(client, logger, avatarService = null) {
     this.client = client;
@@ -194,7 +195,7 @@ export class DungeonService {
     const client = new MongoClient(process.env.MONGO_URI);
     try {
       await client.connect();
-      const db = client.db(MONGO_DB_NAME);
+      const db = client.db(process.env.MONGO_DB_NAME);
       const avatar = await db.collection('avatars')
         .findOne({
           name: new RegExp(avatarName, 'i'),
