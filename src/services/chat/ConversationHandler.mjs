@@ -54,10 +54,7 @@ export class ConversationHandler {
     }
 
     try {
-      this.dbClient = new MongoClient(process.env.MONGO_URI, {
-        useNewUrlParser: true,
-        useUnifiedTopology: true
-      });
+      this.dbClient = new MongoClient(process.env.MONGO_URI);
 
       await this.dbClient.connect();
       this.db = this.dbClient.db(process.env.MONGO_DB_NAME);
@@ -319,7 +316,10 @@ Channel: #${context.channelName} in ${context.guildName}
 Recent messages:
 ${context.recentMessages.map(m => `${m.author}: ${m.content}`).join('\n')}
 
-In general, your response should be short. No more than two or three funny sentences. you don't need to use capital letters or proper spelling. have fun.
+In general, your response should be short. No more than two or three funny sentences. 
+
+you should reply in the language of your system prompt unless asked to translate
+you don't need to use capital letters or proper spelling. have fun.
 
 You are ${avatar.name}. Respond to the chat in character, advancing your goals and keeping others engaged.
 
