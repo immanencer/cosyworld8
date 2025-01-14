@@ -13,7 +13,7 @@ import {
   sendAsWebhook,
   sendAvatarProfileEmbedFromObject,
 } from './services/discordService.mjs';
-import { ChatService } from './services/chat/ChatService.mjs'; 
+import { ChatService } from './services/chat/ChatService.mjs';
 import { MessageHandler } from './services/chat/MessageHandler.mjs';
 
 // Load environment variables from .env file
@@ -227,16 +227,6 @@ async function handleBreedCommand(message, args, commandLine) {
         message.channel.id,
         message.id,
         'Both avatars must be different to breed.'
-      );
-      return;
-    }
-
-    // both avatars must be in the same channel
-    if (avatar1.channelId !== avatar2.channelId) {
-      await replyToMessage(
-        message.channel.id,
-        message.id,
-        'Both avatars must be in the same channel to breed.'
       );
       return;
     }
