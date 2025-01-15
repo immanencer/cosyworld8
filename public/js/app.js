@@ -1,11 +1,9 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import ReactDOM from 'react-dom/client';
+import { createRoot } from 'react-dom/client';
 import { AvatarCard, AvatarSearch } from './components/Avatar';
 import { CombatLog } from './components/Combat';
 import { TribesView } from './components/Tribes';
-import * as utils from './utils';
-
-// Base components
+import { utils } from './utils';
 import { 
   ProgressRing,
   TierBadge,
@@ -15,7 +13,7 @@ import {
   XAuthButton,
   WalletButton,
   BurnTokenButton,
-  ViewToggle
+  ViewToggle 
 } from './components/ui';
 
 // Sanitize number input
@@ -1448,7 +1446,7 @@ function App() {
 // Initialize app
 const rootElement = document.getElementById('root');
 if (rootElement) {
-  const root = ReactDOM.createRoot(rootElement);
+  const root = createRoot(rootElement);
   root.render(
     <React.StrictMode>
       <App />
