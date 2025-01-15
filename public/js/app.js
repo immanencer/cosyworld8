@@ -1,6 +1,9 @@
 const { useState, useEffect } = React;
 const { createRoot } = ReactDOM;
 
+// Import WalletButton
+const WalletButton = window.WalletButton;
+
 // Main App Component
 function App() {
   const [avatars, setAvatars] = useState([]);
