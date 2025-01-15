@@ -1,7 +1,8 @@
+import { useState, useEffect, useCallback, useRef } from 'react';
+import { createRoot } from 'react-dom/client';
+import { marked } from 'marked';
+
 const React = window.React;
-const ReactDOM = window.ReactDOM;
-const marked = window.marked;
-const { useState, useEffect, useCallback, useRef } = React;
 
 /** Utility Functions **/
 
