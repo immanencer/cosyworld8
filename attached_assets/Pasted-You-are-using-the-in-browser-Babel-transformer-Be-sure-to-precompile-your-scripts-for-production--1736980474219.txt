@@ -1,0 +1,26 @@
+You are using the in-browser Babel transformer. Be sure to precompile your scripts for production - https://babeljs.io/docs/setup/
+Can't find variable: exports
+Warning: React.createElement: type is invalid -- expected a string (for built-in components) or a class/function (for composite components) but got: undefined. You likely forgot to export your component from the file it's defined in, or you might have mixed up default and named imports.
+
+Check the render method of `App`.
+App@https://30b7a55e-b046-4dca-80e7-b39c2ac9542f-00-30q5hl0sr1wob.kirk.replit.dev/:20:27
+t@https://30b7a55e-b046-4dca-80e7-b39c2ac9542f-00-30q5hl0sr1wob.kirk.replit.dev/__replco/static/devtools/eruda/3.2.3/eruda.js:2:12639
+value@https://30b7a55e-b046-4dca-80e7-b39c2ac9542f-00-30q5hl0sr1wob.kirk.replit.dev/__replco/static/devtools/eruda/3.2.3/eruda.js:2:32772
+@https://30b7a55e-b046-4dca-80e7-b39c2ac9542f-00-30q5hl0sr1wob.kirk.replit.dev/__replco/static/devtools/eruda/3.2.3/eruda.js:2:34410
+Script error.
+Warning: React.createElement: type is invalid -- expected a string (for built-in components) or a class/function (for composite components) but got: undefined. You likely forgot to export your component from the file it's defined in, or you might have mixed up default and named imports.
+
+Check the render method of `App`.
+App@https://30b7a55e-b046-4dca-80e7-b39c2ac9542f-00-30q5hl0sr1wob.kirk.replit.dev/:20:27
+t@https://30b7a55e-b046-4dca-80e7-b39c2ac9542f-00-30q5hl0sr1wob.kirk.replit.dev/__replco/static/devtools/eruda/3.2.3/eruda.js:2:12639
+value@https://30b7a55e-b046-4dca-80e7-b39c2ac9542f-00-30q5hl0sr1wob.kirk.replit.dev/__replco/static/devtools/eruda/3.2.3/eruda.js:2:32772
+@https://30b7a55e-b046-4dca-80e7-b39c2ac9542f-00-30q5hl0sr1wob.kirk.replit.dev/__replco/static/devtools/eruda/3.2.3/eruda.js:2:34410
+Script error.
+The above error occurred in the <div> component:
+
+div
+App@https://30b7a55e-b046-4dca-80e7-b39c2ac9542f-00-30q5hl0sr1wob.kirk.replit.dev/:20:27
+
+Consider adding an error boundary to your tree to customize error handling behavior.
+Visit https://reactjs.org/link/error-boundaries to learn more about error boundaries.
+Script error.
