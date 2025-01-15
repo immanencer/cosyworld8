@@ -1,10 +1,10 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { createRoot } from 'react-dom/client';
-import { marked } from 'marked';
-
-const React = window.React;
-
-/** Utility Functions **/
+import * as UI from './components/ui';
+import { AvatarCard, AvatarSearch } from './components/Avatar';
+import { CombatLog } from './components/Combat';
+import { TribesView } from './components/Tribes';
+import * as utils from './utils';
 
 // Sanitize number input
 function sanitizeNumber(value, fallback = 0) {
@@ -51,15 +51,9 @@ const getTierFromModel = (model) => {
   return rarityToTier[rarity] || 'U';
 };
 
-/** Helper Components **/
-
 // Safe Markdown Renderer
 const MarkdownContent = ({ content }) => {
-  const sanitizedContent = marked(content || '').replace(
-    /<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi,
-    ''
-  );
-
+  const sanitizedContent = utils.sanitizeMarkdown(content || '');
   return (
     <div
       className="prose prose-invert max-w-none"
@@ -163,7 +157,6 @@ const TierFilter = React.memo(({ selectedTier, onTierChange }) => {
   );
 });
 
-/** Main Components **/
 
 // Activity Feed Component
 const ActivityFeed = ({ messages, memories, narratives, dungeonActions }) => {
@@ -635,11 +628,11 @@ const AvatarDetailModal = ({ avatar, onClose, wallet }) => {
                 >
                   <h3 className="text-xl font-bold mb-2">Description</h3>
                   <div className="prose prose-invert max-w-none">
-                    <MarkdownContent content={clipDescription(variant.description)} />
+                    <MarkdownContent content={utils.clipDescription(variant.description)} />
                     {variant.dynamicPersonality && (
                       <div className="mt-4 text-gray-400">
                         <h4 className="font-bold mb-1">Personality</h4>
-                        <MarkdownContent content={clipDescription(variant.dynamicPersonality)} />
+                        <MarkdownContent content={utils.clipDescription(variant.dynamicPersonality)} />
                       </div>
                     )}
                   </div>
@@ -670,6 +663,7 @@ const clipDescription = (text) => {
   const doubleNewline = text.indexOf('\n\n');
   return doubleNewline > -1 ? text.slice(0, doubleNewline) : text;
 };
+
 
 // Avatar Card Component
 const AvatarCard = React.memo(({ avatar, onSelect }) => {
