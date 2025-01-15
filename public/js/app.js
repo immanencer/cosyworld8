@@ -17,8 +17,8 @@
  * - Authentication state stored at App level
  */
 
-import { useState, useEffect, useCallback } from 'https://esm.sh/react';
-import { createRoot } from 'https://esm.sh/react-dom/client';
+const { useState, useEffect, useCallback } = React;
+const { createRoot } = ReactDOM;
 
 // UI Components (imported as ES modules)
 import { ProgressRing } from './components/ui/ProgressRing.js';
