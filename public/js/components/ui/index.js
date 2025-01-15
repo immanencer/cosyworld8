@@ -4,6 +4,6 @@ export { ActivityFeed } from './ActivityFeed';
 export { AncestryChain } from './AncestryChain';
 export { StatsDisplay } from './StatsDisplay';
 export { XAuthButton } from './XAuthButton';
-export { WalletButton } from './WalletButton';
+export { default as WalletButton } from './WalletButton';
 export { BurnTokenButton } from './BurnTokenButton';
 export { ViewToggle } from './ViewToggle';
