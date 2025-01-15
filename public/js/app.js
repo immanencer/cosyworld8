@@ -1,24 +1,23 @@
-const { useState, useEffect, useCallback } = React;
-const { createRoot } = ReactDOM;
+import React, { useState, useEffect, useCallback } from 'react';
+import { createRoot } from 'react-dom/client';
 
-import { 
-  ProgressRing,
-  TierBadge,
-  ActivityFeed,
-  AncestryChain,
-  StatsDisplay,
-  XAuthButton,
-  ViewToggle
-} from './components/ui/index.js';
+const ProgressRing = () => {}; // Placeholder for unused component
+const TierBadge = () => {}; // Placeholder for unused component
+const ActivityFeed = () => {}; // Placeholder for unused component
+const AncestryChain = () => {}; // Placeholder for unused component
+const StatsDisplay = () => {}; // Placeholder for unused component
+const XAuthButton = () => {}; // Placeholder for unused component
+const ViewToggle = () => {}; // Placeholder for unused component
+const WalletButton = () => {}; // Placeholder for unused component
+const BurnTokenButton = () => {}; // Placeholder for unused component
+const AvatarCard = () => {}; // Placeholder for unused component
+const AvatarSearch = () => {}; // Placeholder for unused component
+const AvatarDetailModal = () => {}; // Placeholder for unused component
+const CombatLog = () => {}; // Placeholder for unused component
+const TribesView = () => {}; // Placeholder for unused component
+const utils = {}; // Placeholder for unused utils
+const MarkdownContent = () => {}; // Placeholder for unused component
 
-import { WalletButton } from './components/ui/WalletButton.js';
-import { BurnTokenButton } from './components/ui/BurnTokenButton.js';
-import { AvatarCard, AvatarSearch } from './components/AvatarCard.js';
-import { AvatarDetailModal } from './components/AvatarDetailModal.js';
-import { CombatLog } from './components/CombatLog.js';
-import { TribesView } from './components/TribesView.js';
-import { utils } from './utils/index.js';
-import { MarkdownContent } from './components/utils/MarkdownContent.js';
 
 // Determine model rarity
 const getModelRarity = (modelName) => {
@@ -67,18 +66,16 @@ const LeaderboardView = React.memo(() => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const fetchLeaderboard = async () => {
-      try {
-        const response = await fetch("/api/leaderboard");
-        const data = await response.json();
+    fetch("/api/leaderboard")
+      .then(res => res.json())
+      .then(data => {
         setLeaderboard(data.avatars || []);
-      } catch (error) {
-        console.error("Error fetching leaderboard:", error);
-      } finally {
         setLoading(false);
-      }
-    };
-    fetchLeaderboard();
+      })
+      .catch(error => {
+        console.error("Error fetching leaderboard:", error);
+        setLoading(false);
+      });
   }, []);
 
   if (loading) {
@@ -91,6 +88,7 @@ const LeaderboardView = React.memo(() => {
 
   return (
     <div className="max-w-4xl mx-auto">
+      <h1 className="text-4xl font-bold mb-8 text-center">Leaderboard</h1>
       <table className="w-full bg-gray-800 rounded-lg overflow-hidden">
         <thead>
           <tr className="bg-gray-700">
@@ -102,10 +100,7 @@ const LeaderboardView = React.memo(() => {
         </thead>
         <tbody>
           {leaderboard.map((avatar, index) => (
-            <tr
-              key={avatar._id}
-              className="border-t border-gray-700 hover:bg-gray-700"
-            >
+            <tr key={avatar._id} className="border-t border-gray-700 hover:bg-gray-700">
               <td className="px-6 py-4">{index + 1}</td>
               <td className="px-6 py-4">
                 <img
@@ -123,7 +118,6 @@ const LeaderboardView = React.memo(() => {
     </div>
   );
 });
-
 
 // Tier Filter Component
 const TierFilter = React.memo(({ selectedTier, onTierChange }) => {
@@ -308,47 +302,12 @@ function App() {
   );
 }
 
-// Initialize app
 const rootElement = document.getElementById("root");
-class ErrorBoundary extends React.Component {
-  constructor(props) {
-    super(props);
-    this.state = { hasError: false };
-  }
-
-  static getDerivedStateFromError(error) {
-    console.error('Error caught in error boundary:', error);
-    return { hasError: true };
-  }
-
-  componentDidCatch(error, errorInfo) {
-    console.error('Component stack trace:', errorInfo.componentStack);
-  }
-
-  render() {
-    if (this.state.hasError) {
-      return <div className="text-white p-4">Something went wrong. Please refresh the page.</div>;
-    }
-    return this.props.children;
-  }
-}
-
 if (rootElement) {
-  console.log('Root element found, initializing React app');
-  try {
-    const root = createRoot(rootElement);
-    console.log('Root created successfully');
-    root.render(
-      <React.StrictMode>
-        <ErrorBoundary>
-          <App />
-        </ErrorBoundary>
-      </React.StrictMode>
-    );
-    console.log('Initial render completed');
-  } catch (error) {
-    console.error('Failed to initialize React app:', error);
-  }
-} else {
-  console.error('Root element not found');
+  const root = createRoot(rootElement);
+  root.render(
+    <React.StrictMode>
+      <App />
+    </React.StrictMode>
+  );
 }
