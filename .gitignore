@@ -9,3 +9,4 @@ images/*
 *.png
 logs
 *-wallet.json
+dist/
