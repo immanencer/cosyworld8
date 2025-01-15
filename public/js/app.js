@@ -1098,10 +1098,11 @@ function TribesView({ onAvatarSelect }) {
       </div>
     );
   }
-      } catch (error) {
-        console.error('Error fetching tribes:', error);
-        setError(error.message);
-      } finally {
+  
+  } catch (error) {
+    console.error('Error fetching tribes:', error);
+    setError(error.message);
+  } finally {
         setLoading(false);
       }
     };
