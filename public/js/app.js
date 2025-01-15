@@ -1,4 +1,4 @@
-const { useState, useEffect, useCallback, useRef } = React;
+const { useState, useEffect, useCallback } = React;
 const { createRoot } = ReactDOM;
 
 import {
@@ -8,14 +8,14 @@ import {
   AncestryChain,
   StatsDisplay,
   XAuthButton,
-  WalletButton,
-  BurnTokenButton,
   ViewToggle
 } from './components/ui/index.js';
 
+import { WalletButton } from './components/ui/WalletButton.js';
+import { BurnTokenButton } from './components/ui/BurnTokenButton.js';
 import { AvatarCard, AvatarSearch } from './components/AvatarCard.js';
 import { AvatarDetailModal } from './components/AvatarDetailModal.js';
-import { CombatLog, CombatLogEntry } from './components/CombatLog.js';
+import { CombatLog } from './components/CombatLog.js';
 import { TribesView } from './components/TribesView.js';
 import { utils } from './utils/index.js';
 import { MarkdownContent } from './components/utils/MarkdownContent.js';
