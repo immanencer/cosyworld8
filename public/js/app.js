@@ -1014,10 +1014,13 @@ function FamilyCard({ family, onSelect }) {
 
 // Update TribesView to use shared avatar click handler
 function TribesView({ onAvatarSelect }) {
-  const [tribes, setTribes] = useState([]);
+  const [tribeCounts, setTribeCounts] = useState([]);
+  const [selectedTribe, setSelectedTribe] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [selectedEmoji, setSelectedEmoji] = useState(null);
+  const [loadingTribe, setLoadingTribe] = useState(false);
   const [error, setError] = useState(null);
+  const [page, setPage] = useState(0);
+  const ITEMS_PER_PAGE = 20;
 
   const sanitizeMembers = useCallback((members) => {
     if (!Array.isArray(members)) return [];
@@ -1042,16 +1045,43 @@ function TribesView({ onAvatarSelect }) {
   
 
   useEffect(() => {
-    const fetchTribes = async () => {
+    const fetchTribeCounts = async () => {
       try {
-        const response = await fetch('/api/tribes');
-        if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`);
-        }
+        const response = await fetch('/api/tribes/counts');
+        if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
         const data = await response.json();
-        
-        // Sanitize the entire tribes data
-        const validTribes = (Array.isArray(data) ? data : [])
+        setTribeCounts(data);
+      } catch (error) {
+        console.error('Error fetching tribe counts:', error);
+        setError(error.message);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchTribeCounts();
+  }, []);
+
+  const fetchTribeDetails = async (emoji) => {
+    setLoadingTribe(true);
+    try {
+      const response = await fetch(`/api/tribes/${encodeURIComponent(emoji)}?skip=${page * ITEMS_PER_PAGE}&limit=${ITEMS_PER_PAGE}`);
+      if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+      const data = await response.json();
+      setSelectedTribe(data);
+    } catch (error) {
+      console.error('Error fetching tribe details:', error);
+      setError(error.message);
+    } finally {
+      setLoadingTribe(false);
+    }
+  };
+
+  useEffect(() => {
+    if (selectedEmoji) {
+      fetchTribeDetails(selectedEmoji);
+    }
+  }, [selectedEmoji, page]); ? data : [])
           .map(sanitizeTribe)
           .filter(Boolean);
 
@@ -1096,9 +1126,8 @@ function TribesView({ onAvatarSelect }) {
 
   return (
     <div>
-      {/* Emoji selector */}
       <div className="flex flex-wrap gap-4 mb-8 justify-center">
-        {tribes.map(tribe => (
+        {tribeCounts.map(tribe => (
           <button
             key={tribe.emoji}
             onClick={() => setSelectedEmoji(tribe.emoji)}
