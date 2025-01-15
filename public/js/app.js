@@ -1,6 +1,26 @@
+/**
+ * Avatar Dashboard Architecture
+ * 
+ * Components:
+ * - App: Main container component managing global state and routing
+ * - LeaderboardView: Displays avatar rankings and stats
+ * - TierFilter: Filters avatars by rarity tier
+ * - AvatarCard: Individual avatar display component
+ * 
+ * Data Flow:
+ * 1. App fetches initial data and maintains global state
+ * 2. Data is passed down to child components via props
+ * 3. Child components communicate up through callbacks
+ * 
+ * Authentication:
+ * - WalletButton handles web3 wallet connections
+ * - Authentication state stored at App level
+ */
+
 import React, { useState, useEffect, useCallback } from 'react';
 import { createRoot } from 'react-dom/client';
 
+// UI Components (imported as ES modules)
 const ProgressRing = () => {}; // Placeholder for unused component
 const TierBadge = () => {}; // Placeholder for unused component
 const ActivityFeed = () => {}; // Placeholder for unused component
@@ -15,9 +35,12 @@ const AvatarSearch = () => {}; // Placeholder for unused component
 const AvatarDetailModal = () => {}; // Placeholder for unused component
 const CombatLog = () => {}; // Placeholder for unused component
 const TribesView = () => {}; // Placeholder for unused component
-const utils = {}; // Placeholder for unused utils
 const MarkdownContent = () => {}; // Placeholder for unused component
 
+// Utilities
+const utils = {
+  // Add utility functions here
+};
 
 // Determine model rarity
 const getModelRarity = (modelName) => {
@@ -57,7 +80,6 @@ const getTierFromModel = (model) => {
   const rarity = getModelRarity(model);
   return rarityToTier[rarity] || "U";
 };
-
 
 
 // Leaderboard View Component
