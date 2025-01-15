@@ -1,7 +1,7 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
-import ReactDOM from 'react-dom/client';
-import { marked } from 'marked'; // Ensure marked is installed via npm
-import './styles.css'; // Assume you have some basic styles
+const React = window.React;
+const ReactDOM = window.ReactDOM;
+const marked = window.marked;
+const { useState, useEffect, useCallback, useRef } = React;
 
 /** Utility Functions **/
 
