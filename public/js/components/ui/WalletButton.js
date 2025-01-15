@@ -1,4 +1,6 @@
 
+const { useState } = React;
+
 const WalletButton = ({ onWalletChange }) => {
   const [wallet, setWallet] = useState(null);
   const [address, setAddress] = useState(null);
@@ -57,4 +59,4 @@ const WalletButton = ({ onWalletChange }) => {
   );
 };
 
-export default WalletButton;
+window.WalletButton = WalletButton;
