@@ -1,98 +1,16 @@
-/**
- * Avatar Dashboard Architecture
- * 
- * Components:
- * - App: Main container component managing global state and routing
- * - LeaderboardView: Displays avatar rankings and stats
- * - TierFilter: Filters avatars by rarity tier
- * - AvatarCard: Individual avatar display component
- * 
- * Data Flow:
- * 1. App fetches initial data and maintains global state
- * 2. Data is passed down to child components via props
- * 3. Child components communicate up through callbacks
- * 
- * Authentication:
- * - WalletButton handles web3 wallet connections
- * - Authentication state stored at App level
- */
-
-const { useState, useEffect, useCallback } = React;
+const { useState, useEffect } = React;
 const { createRoot } = ReactDOM;
 
-// UI Components (imported as ES modules)
-import { ProgressRing } from './components/ui/ProgressRing.js';
-import { TierBadge } from './components/ui/TierBadge.js';
-import { ActivityFeed } from './components/ui/ActivityFeed.js';
-import { AncestryChain } from './components/ui/AncestryChain.js';
-import { StatsDisplay } from './components/ui/StatsDisplay.js';
-import { XAuthButton } from './components/ui/XAuthButton.js';
-import { ViewToggle } from './components/ui/ViewToggle.js';
-import { WalletButton } from './components/ui/WalletButton.js';
-import { BurnTokenButton } from './components/ui/BurnTokenButton.js';
-import { AvatarCard } from './components/ui/AvatarCard.js';
-import { AvatarSearch } from './components/ui/AvatarSearch.js';
-import { AvatarDetailModal } from './components/ui/AvatarDetailModal.js';
-import { CombatLog } from './components/ui/CombatLog.js';
-import { TribesView } from './components/ui/TribesView.js';
-import { MarkdownContent } from './components/ui/MarkdownContent.js';
-
-
-// Utilities
-const utils = {
-  // Add utility functions here
-};
-
-// Determine model rarity
-const getModelRarity = (modelName) => {
-  const modelRarities = {
-    "meta-llama/llama-3.2-1b-instruct": "common",
-    "meta-llama/llama-3.2-3b-instruct": "common",
-    "eva-unit-01/eva-qwen-2.5-72b": "rare",
-    "openai/gpt-4o": "legendary",
-    "meta-llama/llama-3.1-405b-instruct": "legendary",
-    "anthropic/claude-3-opus:beta": "legendary",
-    "anthropic/claude-3.5-sonnet:beta": "legendary",
-    "anthropic/claude-3.5-haiku:beta": "uncommon",
-    "neversleep/llama-3.1-lumimaid-70b": "rare",
-    "nvidia/llama-3.1-nemotron-70b-instruct": "rare",
-    "meta-llama/llama-3.1-70b-instruct": "uncommon",
-    "pygmalionai/mythalion-13b": "uncommon",
-    "mistralai/mistral-large-2411": "uncommon",
-    "qwen/qwq-32b-preview": "uncommon",
-    "gryphe/mythomax-l2-13b": "common",
-    "google/gemini-flash-1.5-8b": "common",
-    "x-ai/grok-beta": "legendary",
-  };
-  return modelRarities[modelName] || "common";
-};
-
-// Map rarity to tier
-const rarityToTier = {
-  legendary: "S",
-  rare: "A",
-  uncommon: "B",
-  common: "C",
-};
-
-// Get tier from model
-const getTierFromModel = (model) => {
-  if (!model) return "U";
-  const rarity = getModelRarity(model);
-  return rarityToTier[rarity] || "U";
-};
-
-
-// Leaderboard View Component
-const LeaderboardView = React.memo(() => {
-  const [leaderboard, setLeaderboard] = useState([]);
+// Main App Component
+function App() {
+  const [avatars, setAvatars] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     fetch("/api/leaderboard")
       .then(res => res.json())
       .then(data => {
-        setLeaderboard(data.avatars || []);
+        setAvatars(data.avatars || []);
         setLoading(false);
       })
       .catch(error => {
@@ -110,217 +28,20 @@ const LeaderboardView = React.memo(() => {
   }
 
   return (
-    <div className="max-w-4xl mx-auto">
-      <h1 className="text-4xl font-bold mb-8 text-center">Leaderboard</h1>
-      <table className="w-full bg-gray-800 rounded-lg overflow-hidden">
-        <thead>
-          <tr className="bg-gray-700">
-            <th className="px-6 py-3 text-left">Rank</th>
-            <th className="px-6 py-3 text-left">Avatar</th>
-            <th className="px-6 py-3 text-left">Name</th>
-            <th className="px-6 py-3 text-right">Score</th>
-          </tr>
-        </thead>
-        <tbody>
-          {leaderboard.map((avatar, index) => (
-            <tr key={avatar._id} className="border-t border-gray-700 hover:bg-gray-700">
-              <td className="px-6 py-4">{index + 1}</td>
-              <td className="px-6 py-4">
-                <img
-                  src={avatar.thumbnailUrl || avatar.imageUrl}
-                  alt={avatar.name}
-                  className="w-10 h-10 rounded-full"
-                />
-              </td>
-              <td className="px-6 py-4">{avatar.name}</td>
-              <td className="px-6 py-4 text-right">{avatar.score || 0}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
-  );
-});
-
-// Tier Filter Component
-const TierFilter = React.memo(({ selectedTier, onTierChange }) => {
-  const tiers = ["All", "S", "A", "B", "C", "U"];
-  const colors = {
-    S: "bg-purple-600",
-    A: "bg-blue-600",
-    B: "bg-green-600",
-    C: "bg-yellow-600",
-    U: "bg-gray-600",
-  };
-
-  return (
-    <div className="flex gap-2 justify-center mb-6">
-      {tiers.map((tier) => (
-        <button
-          key={tier}
-          className={`px-3 py-1 rounded ${
-            selectedTier === tier
-              ? tier === "All"
-                ? "bg-white text-gray-900"
-                : `${colors[tier]} text-white`
-              : "bg-gray-700 text-gray-300"
-          }`}
-          onClick={() => onTierChange(tier)}
-        >
-          {tier}
-        </button>
-      ))}
-    </div>
-  );
-});
-
-// Main App Component
-function App() {
-  const [avatars, setAvatars] = useState([]);
-  const [loading, setLoading] = useState(false);
-  const [hasMore, setHasMore] = useState(true);
-  const [lastMessageCount, setLastMessageCount] = useState(null);
-  const [lastId, setLastId] = useState(null);
-  const [selectedTier, setSelectedTier] = useState("All");
-  const [currentView, setCurrentView] = useState("leaderboard");
-  const [modalAvatar, setModalAvatar] = useState(null);
-  const [wallet, setWallet] = useState(null);
-
-  const loadAvatars = useCallback(
-    async (isInitial = false) => {
-      if (loading || (!hasMore && !isInitial)) return;
-
-      setLoading(true);
-      try {
-        const url = new URL("/api/leaderboard", window.location.origin);
-        url.searchParams.set("limit", "24");
-
-        if (selectedTier !== "All") {
-          url.searchParams.set("tier", selectedTier);
-        }
-
-        if (!isInitial && lastMessageCount !== null && lastId) {
-          url.searchParams.set("lastMessageCount", lastMessageCount);
-          url.searchParams.set("lastId", lastId);
-        }
-
-        const res = await fetch(url);
-        if (!res.ok) {
-          throw new Error(`HTTP error! status: ${res.status}`);
-        }
-        const data = await res.json();
-
-        if (isInitial) {
-          setAvatars(data.avatars || []);
-        } else {
-          setAvatars((prev) => [...prev, ...(data.avatars || [])]);
-        }
-
-        setHasMore(data.hasMore);
-        setLastMessageCount(data.lastMessageCount);
-        setLastId(data.lastId);
-      } catch (error) {
-        console.error("Error loading avatars:", error);
-        setHasMore(false);
-      } finally {
-        setLoading(false);
-      }
-    },
-    [loading, hasMore, selectedTier, lastMessageCount, lastId],
-  );
-
-  useEffect(() => {
-    loadAvatars(true);
-  }, [loadAvatars]);
-
-  useEffect(() => {
-    const handleScroll = () => {
-      if (
-        window.innerHeight + window.scrollY >=
-          document.documentElement.scrollHeight - 1000 &&
-        !loading &&
-        hasMore
-      ) {
-        loadAvatars();
-      }
-    };
-
-    window.addEventListener("scroll", handleScroll);
-    return () => window.removeEventListener("scroll", handleScroll);
-  }, [loading, hasMore, loadAvatars]);
-
-  useEffect(() => {
-    setLastMessageCount(null);
-    setLastId(null);
-    setHasMore(true);
-    setAvatars([]);
-    loadAvatars(true);
-  }, [selectedTier, loadAvatars]);
-
-  // Handler for avatar selection from any view
-  const handleAvatarSelect = useCallback((avatar) => {
-    // Fetch full avatar details if needed
-    fetch(`/api/avatars/${avatar._id}`)
-      .then((res) => res.json())
-      .then((data) => setModalAvatar(data))
-      .catch((err) => {
-        console.error("Error fetching avatar details:", err);
-        setModalAvatar(avatar); // Fallback to basic avatar data
-      });
-  }, []);
-
-  return (
     <div className="container mx-auto px-4 py-8">
-      <WalletButton onWalletChange={setWallet} />
       <h1 className="text-4xl font-bold mb-8 text-center">Avatar Dashboard</h1>
-      <ViewToggle currentView={currentView} onViewChange={setCurrentView} />
-
-      {currentView === "collection" ? (
-        <>
-          <TierFilter
-            selectedTier={selectedTier}
-            onTierChange={setSelectedTier}
-          />
-          <AvatarSearch onSelect={handleAvatarSelect} />
-          <div className="grid gap-4 grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 mt-4">
-            {avatars.map((avatar) => (
-              <AvatarCard
-                key={avatar._id}
-                avatar={avatar}
-                onSelect={handleAvatarSelect}
-              />
-            ))}
-          </div>
-          {loading && (
-            <div className="text-center py-4">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-white mx-auto"></div>
-            </div>
-          )}
-          {modalAvatar && (
-            <AvatarDetailModal
-              avatar={modalAvatar}
-              onClose={() => setModalAvatar(null)}
-              wallet={wallet}
+      <div className="grid gap-4 grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6">
+        {avatars.map((avatar) => (
+          <div key={avatar._id} className="bg-gray-800 p-4 rounded-lg">
+            <img
+              src={avatar.thumbnailUrl || avatar.imageUrl}
+              alt={avatar.name}
+              className="w-full h-48 object-cover rounded-lg mb-2"
             />
-          )}
-        </>
-      ) : currentView === "leaderboard" ? (
-        <LeaderboardView />
-      ) : currentView === "combat" ? (
-        <CombatLog onAvatarSelect={handleAvatarSelect} />
-      ) : currentView === "tribes" ? (
-        <TribesView onAvatarSelect={handleAvatarSelect} />
-      ) : null}
-
-      {/* Optionally, include BurnTokenButton somewhere in the UI */}
-      {wallet && (
-        <BurnTokenButton
-          wallet={wallet}
-          onSuccess={() => {
-            /* Handle success */
-          }}
-        />
-      )}
+            <h3 className="text-lg font-semibold">{avatar.name}</h3>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
