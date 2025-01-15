@@ -12,26 +12,25 @@ const router = express.Router();
  * ------------------------------------------------
  */
 const tribesCache = new NodeCache({
-  stdTTL: 1800,       // 1800 seconds = 30 minutes
-  checkperiod: 300,   // Check for expired keys every 5 minutes
+  stdTTL: 1800, // 30 minutes
+  checkperiod: 300, // Cleanup check every 5 minutes
 });
 
 export default function(db) {
+  if (!db) throw new Error('Database not connected'); // Early check for database connection
+
   router.get('/', async (req, res) => {
     try {
-      if (!db) throw new Error('Database not connected');
+      // Parse optional query parameters for pagination
+      const limit = Math.max(parseInt(req.query.limit, 10) || 50, 1); // Ensure positive limit
+      const skip = Math.max(parseInt(req.query.skip, 10) || 0, 0); // Ensure non-negative skip
 
-      // Optional pagination
-      const limit = parseInt(req.query.limit, 10) || 50;
-      const skip = parseInt(req.query.skip, 10) || 0;
-
-      // 1) Generate a cache key based on skip & limit
+      // Generate a unique cache key
       const cacheKey = `tribes:${skip}:${limit}`;
       const cachedTribes = tribesCache.get(cacheKey);
 
-      // 2) If already in cache, return the cached data
       if (cachedTribes) {
-        console.log(`Returning tribes from cache: key=${cacheKey}`);
+        console.log(`[Cache Hit] Returning cached tribes: key=${cacheKey}`);
         return res.json({
           tribes: cachedTribes,
           limit,
@@ -40,12 +39,10 @@ export default function(db) {
         });
       }
 
-      // 3) Build aggregation pipeline
+      // Build aggregation pipeline
       const pipeline = [
         {
-          $match: {
-            emoji: { $exists: true, $ne: null, $ne: '' }
-          }
+          $match: { emoji: { $exists: true, $ne: null, $ne: '' } },
         },
         {
           $lookup: {
@@ -54,19 +51,11 @@ export default function(db) {
             pipeline: [
               {
                 $match: {
-                  $expr: {
-                    $eq: [
-                      { $toLower: '$authorUsername' },
-                      '$$avatarName'
-                    ],
-                  },
+                  $expr: { $eq: [{ $toLower: '$authorUsername' }, '$$avatarName'] },
                 },
               },
               {
-                $group: {
-                  _id: null,
-                  count: { $sum: 1 },
-                },
+                $group: { _id: null, count: { $sum: 1 } },
               },
             ],
             as: 'messageStats',
@@ -77,12 +66,7 @@ export default function(db) {
             name: 1,
             emoji: 1,
             imageUrl: 1,
-            messageCount: {
-              $ifNull: [
-                { $arrayElemAt: ['$messageStats.count', 0] },
-                0,
-              ],
-            },
+            messageCount: { $ifNull: [{ $arrayElemAt: ['$messageStats.count', 0] }, 0] },
           },
         },
         {
@@ -98,42 +82,36 @@ export default function(db) {
         { $limit: limit },
       ];
 
-      // 4) Run the aggregation
+      // Run aggregation
       const tribes = await db.collection('avatars').aggregate(pipeline).toArray();
 
-      // 5) Generate thumbnails in parallel
-      for (const tribe of tribes) {
-        tribe.members = await Promise.all(
-          tribe.members.map(async (member) => {
-            const thumbnailUrl = await thumbnailService.generateThumbnail(member.imageUrl);
-            return {
+      // Generate thumbnails in parallel
+      const tribesWithThumbnails = await Promise.all(
+        tribes.map(async (tribe) => ({
+          emoji: tribe._id,
+          count: tribe.count,
+          members: await Promise.all(
+            tribe.members.map(async (member) => ({
               ...member,
-              thumbnailUrl,
-            };
-          })
-        );
-      }
+              thumbnailUrl: await thumbnailService.generateThumbnail(member.imageUrl),
+            }))
+          ),
+        }))
+      );
 
-      // 6) Transform the data into a friendlier format
-      const tribesWithData = tribes.map((tribe) => ({
-        emoji: tribe._id,
-        count: tribe.count,
-        members: tribe.members,
-      }));
-
-      // 7) Store in the cache before responding
-      tribesCache.set(cacheKey, tribesWithData);
-      console.log(`Caching tribes: key=${cacheKey}, TTL=1800s (30min)`);
+      // Cache the result before responding
+      tribesCache.set(cacheKey, tribesWithThumbnails);
+      console.log(`[Cache Store] Cached tribes: key=${cacheKey}, TTL=1800s`);
 
       res.json({
-        tribes: tribesWithData,
+        tribes: tribesWithThumbnails,
         limit,
         skip,
-        fromCache: false, // indicates a fresh DB query
+        fromCache: false,
       });
     } catch (error) {
-      console.error('Tribes error:', error);
-      res.status(500).json({ error: error.message });
+      console.error('[Error] Fetching tribes:', error);
+      res.status(500).json({ error: 'Failed to fetch tribes. Please try again later.' });
     }
   });
 
