@@ -310,11 +310,31 @@ function App() {
 
 // Initialize app
 const rootElement = document.getElementById("root");
+class ErrorBoundary extends React.Component {
+  constructor(props) {
+    super(props);
+    this.state = { hasError: false };
+  }
+
+  static getDerivedStateFromError(error) {
+    return { hasError: true };
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return <div className="text-white p-4">Something went wrong. Please refresh the page.</div>;
+    }
+    return this.props.children;
+  }
+}
+
 if (rootElement) {
   const root = createRoot(rootElement);
   root.render(
     <React.StrictMode>
-      <App />
-    </React.StrictMode>,
+      <ErrorBoundary>
+        <App />
+      </ErrorBoundary>
+    </React.StrictMode>
   );
 }
