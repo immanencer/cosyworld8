@@ -7,10 +7,7 @@ import { TribesView } from './components/Tribes';
 import * as utils from './utils';
 
 // Sanitize number input
-function sanitizeNumber(value, fallback = 0) {
-  const num = Number(value);
-  return !isNaN(num) && isFinite(num) ? num : fallback;
-}
+
 
 // Determine model rarity
 const getModelRarity = (modelName) => {
