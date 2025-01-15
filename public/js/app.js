@@ -317,7 +317,12 @@ class ErrorBoundary extends React.Component {
   }
 
   static getDerivedStateFromError(error) {
+    console.error('Error caught in error boundary:', error);
     return { hasError: true };
+  }
+
+  componentDidCatch(error, errorInfo) {
+    console.error('Component stack trace:', errorInfo.componentStack);
   }
 
   render() {
@@ -329,12 +334,21 @@ class ErrorBoundary extends React.Component {
 }
 
 if (rootElement) {
-  const root = createRoot(rootElement);
-  root.render(
-    <React.StrictMode>
-      <ErrorBoundary>
-        <App />
-      </ErrorBoundary>
-    </React.StrictMode>
-  );
+  console.log('Root element found, initializing React app');
+  try {
+    const root = createRoot(rootElement);
+    console.log('Root created successfully');
+    root.render(
+      <React.StrictMode>
+        <ErrorBoundary>
+          <App />
+        </ErrorBoundary>
+      </React.StrictMode>
+    );
+    console.log('Initial render completed');
+  } catch (error) {
+    console.error('Failed to initialize React app:', error);
+  }
+} else {
+  console.error('Root element not found');
 }
