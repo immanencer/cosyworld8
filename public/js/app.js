@@ -1081,11 +1081,23 @@ function TribesView({ onAvatarSelect }) {
     if (selectedEmoji) {
       fetchTribeDetails(selectedEmoji);
     }
-  }, [selectedEmoji, page]); ? data : [])
-          .map(sanitizeTribe)
-          .filter(Boolean);
+  }, [selectedEmoji, page]);
 
-        setTribes(validTribes);
+  if (loading) {
+    return (
+      <div className="text-center py-4">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-white mx-auto"></div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="text-center text-red-500 py-4">
+        Error loading tribes: {error}
+      </div>
+    );
+  }
       } catch (error) {
         console.error('Error fetching tribes:', error);
         setError(error.message);
