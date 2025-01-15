@@ -1,14 +1,5 @@
-import React, { useState, useEffect, useCallback, useRef } from "react";
-import { createRoot } from "react-dom/client";
-import { AvatarCard, AvatarSearch } from "./components/Avatar";
-import { CombatLog } from "./components/Combat";
-import { TribesView } from "./components/Tribes";
-import { utils } from "./utils";
-import {
-  WalletButton,
-  BurnTokenButton,
-  ViewToggle,
-} from "./components/ui";
+const { useState, useEffect, useCallback, useRef } = React;
+const { createRoot } = ReactDOM;
 
 // Sanitize number input
 
