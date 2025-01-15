@@ -1,7 +1,8 @@
 const { useState, useEffect, useCallback } = React;
 const { createRoot } = ReactDOM;
 
-import {
+// Use browser-compatible imports
+const {
   ProgressRing,
   TierBadge,
   ActivityFeed,
