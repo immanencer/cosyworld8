@@ -1,10 +1,22 @@
-import { useState, useEffect, useCallback } from 'react';
-import { createRoot } from 'react-dom/client';
-import * as UI from './components/ui';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
+import ReactDOM from 'react-dom/client';
 import { AvatarCard, AvatarSearch } from './components/Avatar';
 import { CombatLog } from './components/Combat';
 import { TribesView } from './components/Tribes';
 import * as utils from './utils';
+
+// Base components
+import { 
+  ProgressRing,
+  TierBadge,
+  ActivityFeed,
+  AncestryChain,
+  StatsDisplay,
+  XAuthButton,
+  WalletButton,
+  BurnTokenButton,
+  ViewToggle
+} from './components/ui';
 
 // Sanitize number input
 
@@ -59,600 +71,6 @@ const MarkdownContent = ({ content }) => {
   );
 };
 
-// Tier Badge Component
-const TierBadge = React.memo(({ tier }) => {
-  const colors = {
-    S: 'bg-purple-600', // Legendary
-    A: 'bg-blue-600', // Rare
-    B: 'bg-green-600', // Uncommon
-    C: 'bg-yellow-600', // Common
-    U: 'bg-gray-600', // Unknown
-  };
-
-  const tierLabels = {
-    S: 'Legendary',
-    A: 'Rare',
-    B: 'Uncommon',
-    C: 'Common',
-    U: 'Unknown',
-  };
-
-  return (
-    <span
-      className={`${colors[tier]} px-2 py-1 rounded text-xs font-bold`}
-      title={tierLabels[tier]}
-    >
-      Tier {tier}
-    </span>
-  );
-});
-
-// Progress Ring Component
-const ProgressRing = ({ value, maxValue, size = 120, strokeWidth = 8, color = '#60A5FA', centerContent }) => {
-  const radius = (size - strokeWidth) / 2;
-  const circumference = radius * 2 * Math.PI;
-  const progress = value / maxValue;
-  const strokeDashoffset = circumference * (1 - progress);
-
-  return (
-    <div className="relative inline-flex items-center justify-center">
-      <svg width={size} height={size} className="transform -rotate-90">
-        <circle
-          cx={size / 2}
-          cy={size / 2}
-          r={radius}
-          stroke="#374151"
-          strokeWidth={strokeWidth}
-          fill="transparent"
-        />
-        <circle
-          cx={size / 2}
-          cy={size / 2}
-          r={radius}
-          stroke={color}
-          strokeWidth={strokeWidth}
-          strokeDasharray={circumference}
-          strokeDashoffset={strokeDashoffset}
-          fill="transparent"
-          className="transition-all duration-500 ease-out"
-        />
-      </svg>
-      <div className="absolute text-center">{centerContent}</div>
-    </div>
-  );
-};
-
-// Tier Filter Component
-const TierFilter = React.memo(({ selectedTier, onTierChange }) => {
-  const tiers = ['All', 'S', 'A', 'B', 'C', 'U'];
-  const colors = {
-    S: 'bg-purple-600',
-    A: 'bg-blue-600',
-    B: 'bg-green-600',
-    C: 'bg-yellow-600',
-    U: 'bg-gray-600',
-  };
-
-  return (
-    <div className="flex gap-2 justify-center mb-6">
-      {tiers.map((tier) => (
-        <button
-          key={tier}
-          className={`px-3 py-1 rounded ${
-            selectedTier === tier
-              ? tier === 'All'
-                ? 'bg-white text-gray-900'
-                : `${colors[tier]} text-white`
-              : 'bg-gray-700 text-gray-300'
-          }`}
-          onClick={() => onTierChange(tier)}
-        >
-          {tier}
-        </button>
-      ))}
-    </div>
-  );
-});
-
-
-// Activity Feed Component
-const ActivityFeed = ({ messages, memories, narratives, dungeonActions }) => {
-  const formatDate = (date) => new Date(date).toLocaleString();
-
-  // Safely extract arrays from potentially nested response objects
-  const messagesList = Array.isArray(messages) ? messages : messages?.messages || [];
-  const memoriesList = Array.isArray(memories) ? memories : memories?.memories || [];
-  const narrativesList = Array.isArray(narratives) ? narratives : narratives?.narratives || [];
-  const actionsList = Array.isArray(dungeonActions) ? dungeonActions : dungeonActions?.actions || [];
-
-  // Combine and sort all activities
-  const activities = React.useMemo(
-    () =>
-      [
-        ...messagesList.map((m) => ({
-          type: 'message',
-          content: m.content,
-          timestamp: new Date(m.timestamp),
-          icon: '💭',
-        })),
-        ...memoriesList.map((m) => ({
-          type: 'memory',
-          content: m.memory,
-          timestamp: new Date(m.timestamp),
-          icon: '🧠',
-        })),
-        ...narrativesList.map((n) => ({
-          type: 'narrative',
-          content: n.content,
-          timestamp: new Date(n.timestamp),
-          icon: '📖',
-        })),
-        ...actionsList.map((d) => ({
-          type: 'dungeon',
-          content: `**${d.result}** ${d.targetName ? `against ${d.targetName}` : ''}`,
-          timestamp: new Date(d.timestamp),
-          icon: '⚔️',
-        })),
-      ].sort((a, b) => b.timestamp - a.timestamp),
-    [messagesList, memoriesList, narrativesList, actionsList]
-  );
-
-  return (
-    <div className="space-y-4">
-      {activities.map((activity, i) => (
-        <div key={i} className="bg-gray-700 rounded-lg p-4">
-          <div className="flex items-center gap-2 mb-2">
-            <span className="text-sm text-gray-400">{activity.icon}</span>
-            <span className="text-xs text-gray-500">{formatDate(activity.timestamp)}</span>
-            <span className="text-xs text-gray-400 ml-auto">{activity.type}</span>
-          </div>
-          <MarkdownContent content={activity.content} />
-        </div>
-      ))}
-      {activities.length === 0 && (
-        <div className="text-gray-500 text-center">No recent activity</div>
-      )}
-    </div>
-  );
-};
-
-// Ancestry Chain Component
-const AncestryChain = React.memo(({ ancestry }) => {
-  if (!ancestry?.length) return null;
-
-  return (
-    <div className="bg-gray-700 rounded-lg p-4 mb-4">
-      <h3 className="text-xl font-bold mb-3">Ancestry</h3>
-      <div className="flex items-center gap-2 overflow-x-auto pb-2">
-        {ancestry
-          .slice()
-          .reverse()
-          .map((ancestor, index, array) => (
-            <React.Fragment key={ancestor._id}>
-              <div className="flex items-center gap-2 flex-shrink-0">
-                <img
-                  src={ancestor.imageUrl}
-                  alt={ancestor.name}
-                  className="w-8 h-8 rounded-full object-cover"
-                />
-                <div className="text-sm">
-                  <div className="font-medium">{ancestor.name}</div>
-                  <div className="text-gray-400 text-xs">{ancestor.emoji}</div>
-                </div>
-              </div>
-              {index < array.length - 1 && (
-                <span className="text-gray-500 mx-2">→</span>
-              )}
-            </React.Fragment>
-          ))}
-      </div>
-    </div>
-  );
-});
-
-// Stats Display Component
-const StatsDisplay = React.memo(({ stats, size = 'small' }) => {
-  const { hp = 0, attack = 0, defense = 0 } = stats || {};
-
-  if (size === 'small') {
-    return (
-      <div className="flex gap-2 text-xs text-gray-400">
-        {hp > 0 && (
-          <span title="HP">
-            ❤️ {hp}
-          </span>
-        )}
-        {attack > 0 && (
-          <span title="Attack">
-            ⚔️ {attack}
-          </span>
-        )}
-        {defense > 0 && (
-          <span title="Defense">
-            🛡️ {defense}
-          </span>
-        )}
-      </div>
-    );
-  }
-
-  return (
-    <div className="space-y-4">
-      {hp > 0 && (
-        <div className="flex justify-center">
-          <ProgressRing
-            value={hp}
-            maxValue={100}
-            size={80}
-            centerContent={<div className="text-lg font-bold">❤️ {hp}</div>}
-          />
-        </div>
-      )}
-      <div className="grid grid-cols-2 gap-2 text-center">
-        <div className="bg-gray-800 rounded p-2">
-          <div className="text-sm text-gray-400">Attack</div>
-          <div className="text-xl">⚔️ {attack}</div>
-        </div>
-        <div className="bg-gray-800 rounded p-2">
-          <div className="text-sm text-gray-400">Defense</div>
-          <div className="text-xl">🛡️ {defense}</div>
-        </div>
-      </div>
-    </div>
-  );
-});
-
-// XAuth Button Component
-const XAuthButton = ({ avatarId, walletAddress, onAuthChange }) => {
-  const [authStatus, setAuthStatus] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-
-  const checkAuthStatus = useCallback(async () => {
-    if (!avatarId) return;
-
-    try {
-      setError(null);
-      const response = await fetch(`/api/xauth/status/${avatarId}`);
-      const data = await response.json();
-      setAuthStatus(data);
-      onAuthChange?.(data.authorized);
-
-      // If token is invalid/revoked, clear the status
-      if (data.requiresReauth) {
-        setAuthStatus(null);
-      }
-    } catch (error) {
-      console.error('Error checking auth status:', error);
-      setError('Failed to check connection status');
-      setAuthStatus(null);
-    } finally {
-      setLoading(false);
-    }
-  }, [avatarId, onAuthChange]);
-
-  // Poll status every minute to detect revoked access
-  useEffect(() => {
-    if (avatarId) {
-      checkAuthStatus();
-      const interval = setInterval(checkAuthStatus, 60000);
-      return () => clearInterval(interval);
-    }
-  }, [avatarId, checkAuthStatus]);
-
-  const handleAuth = async () => {
-    try {
-      setError(null);
-      setLoading(true);
-
-      const response = await fetch(
-        `/api/xauth/auth-url?walletAddress=${walletAddress}&avatarId=${avatarId}`
-      );
-      const { url, error: authError } = await response.json();
-
-      if (authError) {
-        throw new Error(authError);
-      }
-
-      const popup = window.open(url, 'x-auth', 'width=600,height=800,left=100,top=100');
-
-      const handleMessage = async (event) => {
-        if (event.data.type === 'X_AUTH_SUCCESS') {
-          await checkAuthStatus();
-          popup?.close();
-        } else if (event.data.type === 'X_AUTH_ERROR') {
-          setError(event.data.error || 'Authentication failed');
-          popup?.close();
-        }
-      };
-
-      window.addEventListener('message', handleMessage);
-
-      const checkClosed = setInterval(() => {
-        if (popup?.closed) {
-          clearInterval(checkClosed);
-          window.removeEventListener('message', handleMessage);
-          setLoading(false);
-        }
-      }, 1000);
-    } catch (error) {
-      console.error('Error starting auth:', error);
-      setError(error.message || 'Failed to start authentication');
-      setLoading(false);
-    }
-  };
-
-  const handleDisconnect = async () => {
-    try {
-      setLoading(true);
-      await fetch(`/api/xauth/disconnect/${avatarId}`, { method: 'POST' });
-      setAuthStatus(null);
-      onAuthChange?.(false);
-    } catch (error) {
-      console.error('Error disconnecting:', error);
-      setError('Failed to disconnect');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  if (loading) {
-    return (
-      <button
-        className="bg-gray-600 px-4 py-2 rounded opacity-50 cursor-not-allowed flex items-center gap-2"
-        disabled
-      >
-        <div className="animate-spin h-4 w-4 border-2 border-white rounded-full border-t-transparent"></div>
-        <span>Checking status...</span>
-      </button>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="flex flex-col gap-2">
-        <button
-          onClick={checkAuthStatus}
-          className="bg-red-600 hover:bg-red-700 px-4 py-2 rounded flex items-center gap-2"
-        >
-          ⚠️ Retry connection
-        </button>
-        <p className="text-red-500 text-sm">{error}</p>
-      </div>
-    );
-  }
-
-  if (authStatus?.authorized) {
-    return (
-      <div className="flex flex-col gap-2">
-        <div className="flex items-center gap-2">
-          <button
-            className="bg-blue-600 px-4 py-2 rounded flex items-center gap-2"
-            title={`Connected until ${new Date(authStatus.expiresAt).toLocaleString()}`}
-          >
-            𝕏 Connected
-          </button>
-          <button
-            onClick={handleDisconnect}
-            className="bg-gray-600 hover:bg-gray-700 px-3 py-2 rounded text-sm"
-          >
-            Disconnect
-          </button>
-        </div>
-        <p className="text-xs text-gray-400">
-          Expires: {new Date(authStatus.expiresAt).toLocaleString()}
-        </p>
-      </div>
-    );
-  }
-
-  return (
-    <button
-      onClick={handleAuth}
-      className="bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded flex items-center gap-2"
-    >
-      𝕏 Connect X Account
-    </button>
-  );
-};
-
-// Avatar Detail Modal Component
-const AvatarDetailModal = ({ avatar, onClose, wallet }) => {
-  const [currentVariantIndex, setCurrentVariantIndex] = useState(0);
-  const [activityData, setActivityData] = useState({
-    messages: [],
-    memories: [],
-    narratives: [],
-    dungeonStats: avatar?.stats || { attack: 0, defense: 0, hp: 0 },
-    dungeonActions: [],
-  });
-
-  const variants = avatar?.variants || [avatar];
-  const currentVariant = variants[currentVariantIndex];
-
-  useEffect(() => {
-    if (avatar?._id) {
-      Promise.all([
-        fetch(`/api/avatar/${avatar._id}/narratives`).then((r) => r.json()),
-        fetch(`/api/avatar/${avatar._id}/memories`).then((r) => r.json()),
-        fetch(`/api/avatar/${avatar._id}/dungeon-actions`).then((r) => r.json()),
-      ])
-        .then(([narrativeData, memoryData, dungeonActions]) => {
-          setActivityData({
-            messages: narrativeData?.recentMessages || [],
-            memories: memoryData?.memories || [],
-            narratives: narrativeData?.narratives || [],
-            dungeonStats: avatar?.stats || narrativeData?.dungeonStats || { attack: 0, defense: 0, hp: 0 },
-            dungeonActions: dungeonActions || [],
-          });
-        })
-        .catch((error) => {
-          console.error('Error fetching activity data:', error);
-        });
-    }
-  }, [avatar?._id, avatar?.stats]);
-
-  // Automatic carousel
-  useEffect(() => {
-    if (variants.length > 1) {
-      const interval = setInterval(() => {
-        setCurrentVariantIndex((prev) => (prev + 1) % variants.length);
-      }, 3000);
-      return () => clearInterval(interval);
-    }
-  }, [variants.length]);
-
-  // Slide Component
-  const VariantSlide = React.memo(({ variant, active }) => (
-    <div
-      className={`absolute inset-0 transition-opacity duration-500 ${
-        active ? 'opacity-100' : 'opacity-0'
-      }`}
-    >
-      <img
-        src={variant.imageUrl}
-        alt={variant.name}
-        className="w-full aspect-[2/3] object-cover rounded-lg"
-      />
-    </div>
-  ));
-
-  const tier = getTierFromModel(avatar.model);
-
-  return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 overflow-y-auto">
-      <div className="bg-gray-800 rounded-lg p-6 max-w-4xl w-full max-h-[90vh] overflow-y-auto relative">
-        {/* Header */}
-        <div className="flex justify-between items-start mb-6">
-          <div className="flex items-center gap-4">
-            <span className="text-3xl">{avatar.emoji}</span>
-            <div>
-              <h2 className="text-2xl font-bold">{avatar.name}</h2>
-              <div className="flex items-center gap-2">
-                <TierBadge tier={tier} />
-                {avatar.model && <span>{avatar.model}</span>}
-                {avatar.emoji && <span>{avatar.emoji}</span>}
-              </div>
-            </div>
-          </div>
-          <button onClick={onClose} className="text-gray-400 hover:text-white text-2xl">
-            ×
-          </button>
-        </div>
-
-        {/* Ancestry Chain */}
-        <AncestryChain ancestry={avatar.ancestry} />
-
-        <div className="grid grid-cols-3 gap-6">
-          {/* Left Column: Carousel and Stats */}
-          <div className="space-y-4">
-            {/* Carousel */}
-            <div className="relative">
-              <div className="relative aspect-[2/3]">
-                {variants.map((variant, idx) => (
-                  <VariantSlide key={idx} variant={variant} active={idx === currentVariantIndex} />
-                ))}
-                {variants.length > 1 && (
-                  <>
-                    {/* Pagination Dots */}
-                    <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 flex gap-2 z-10">
-                      {variants.map((_, idx) => (
-                        <button
-                          key={idx}
-                          className={`w-2 h-2 rounded-full transition-colors ${
-                            idx === currentVariantIndex ? 'bg-white' : 'bg-gray-500'
-                          }`}
-                          onClick={() => setCurrentVariantIndex(idx)}
-                        />
-                      ))}
-                    </div>
-                    {/* Navigation Arrows */}
-                    <div className="absolute inset-y-0 left-0 right-0 flex items-center justify-between px-2">
-                      <button
-                        className="bg-black bg-opacity-50 rounded-full p-2 hover:bg-opacity-75 z-10"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setCurrentVariantIndex((prev) => (prev - 1 + variants.length) % variants.length);
-                        }}
-                      >
-                        ←
-                      </button>
-                      <button
-                        className="bg-black bg-opacity-50 rounded-full p-2 hover:bg-opacity-75 z-10"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setCurrentVariantIndex((prev) => (prev + 1) % variants.length);
-                        }}
-                      >
-                        →
-                      </button>
-                    </div>
-                  </>
-                )}
-              </div>
-            </div>
-
-            {/* Stats */}
-            <div className="bg-gray-700 rounded-lg p-4">
-              <h3 className="text-xl font-bold mb-4">Stats</h3>
-              <StatsDisplay stats={avatar.stats} size="large" />
-
-              {/* Wallet Check Before Showing XAuthButton */}
-              {wallet && (
-                <div className="mt-4">
-                  <XAuthButton
-                    avatarId={avatar._id}
-                    walletAddress={wallet.publicKey.toString()}
-                    onAuthChange={(authorized) => {
-                      // Optionally update UI to show X posting capability
-                    }}
-                  />
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* Right Columns: Description and Activity Feed */}
-          <div className="col-span-2 space-y-4">
-            {/* Description */}
-            <div className="bg-gray-700 rounded-lg p-4">
-              {variants.map((variant, idx) => (
-                <div
-                  key={idx}
-                  className={`transition-opacity duration-500 ${
-                    idx === currentVariantIndex ? 'opacity-100 block' : 'opacity-0 hidden'
-                  }`}
-                >
-                  <h3 className="text-xl font-bold mb-2">Description</h3>
-                  <div className="prose prose-invert max-w-none">
-                    <MarkdownContent content={utils.clipDescription(variant.description)} />
-                    {variant.dynamicPersonality && (
-                      <div className="mt-4 text-gray-400">
-                        <h4 className="font-bold mb-1">Personality</h4>
-                        <MarkdownContent content={utils.clipDescription(variant.dynamicPersonality)} />
-                      </div>
-                    )}
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            {/* Recent Activity */}
-            <div className="bg-gray-700 rounded-lg p-4">
-              <h3 className="text-xl font-bold mb-4">Recent Activity</h3>
-              <ActivityFeed
-                messages={activityData.messages}
-                memories={activityData.memories}
-                narratives={activityData.narratives}
-                dungeonActions={activityData.dungeonActions}
-              />
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-};
 
 // Clip Description Helper Function
 const clipDescription = (text) => {
@@ -660,7 +78,6 @@ const clipDescription = (text) => {
   const doubleNewline = text.indexOf('\n\n');
   return doubleNewline > -1 ? text.slice(0, doubleNewline) : text;
 };
-
 
 // Avatar Card Component
 const AvatarCard = React.memo(({ avatar, onSelect }) => {
@@ -1295,12 +712,604 @@ const WalletButton = React.memo(({ onWalletChange }) => {
   );
 });
 
-// Avatar Detail Modal might use some animations or portals for better UX,
-// but for simplicity, it's kept as a regular component.
 
-/** Main App Component **/
+// Avatar Detail Modal Component
+const AvatarDetailModal = ({ avatar, onClose, wallet }) => {
+  const [currentVariantIndex, setCurrentVariantIndex] = useState(0);
+  const [activityData, setActivityData] = useState({
+    messages: [],
+    memories: [],
+    narratives: [],
+    dungeonStats: avatar?.stats || { attack: 0, defense: 0, hp: 0 },
+    dungeonActions: [],
+  });
 
-const App = () => {
+  const variants = avatar?.variants || [avatar];
+  const currentVariant = variants[currentVariantIndex];
+
+  useEffect(() => {
+    if (avatar?._id) {
+      Promise.all([
+        fetch(`/api/avatar/${avatar._id}/narratives`).then((r) => r.json()),
+        fetch(`/api/avatar/${avatar._id}/memories`).then((r) => r.json()),
+        fetch(`/api/avatar/${avatar._id}/dungeon-actions`).then((r) => r.json()),
+      ])
+        .then(([narrativeData, memoryData, dungeonActions]) => {
+          setActivityData({
+            messages: narrativeData?.recentMessages || [],
+            memories: memoryData?.memories || [],
+            narratives: narrativeData?.narratives || [],
+            dungeonStats: avatar?.stats || narrativeData?.dungeonStats || { attack: 0, defense: 0, hp: 0 },
+            dungeonActions: dungeonActions || [],
+          });
+        })
+        .catch((error) => {
+          console.error('Error fetching activity data:', error);
+        });
+    }
+  }, [avatar?._id, avatar?.stats]);
+
+  // Automatic carousel
+  useEffect(() => {
+    if (variants.length > 1) {
+      const interval = setInterval(() => {
+        setCurrentVariantIndex((prev) => (prev + 1) % variants.length);
+      }, 3000);
+      return () => clearInterval(interval);
+    }
+  }, [variants.length]);
+
+  // Slide Component
+  const VariantSlide = React.memo(({ variant, active }) => (
+    <div
+      className={`absolute inset-0 transition-opacity duration-500 ${
+        active ? 'opacity-100' : 'opacity-0'
+      }`}
+    >
+      <img
+        src={variant.imageUrl}
+        alt={variant.name}
+        className="w-full aspect-[2/3] object-cover rounded-lg"
+      />
+    </div>
+  ));
+
+  const tier = getTierFromModel(avatar.model);
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 overflow-y-auto">
+      <div className="bg-gray-800 rounded-lg p-6 max-w-4xl w-full max-h-[90vh] overflow-y-auto relative">
+        {/* Header */}
+        <div className="flex justify-between items-start mb-6">
+          <div className="flex items-center gap-4">
+            <span className="text-3xl">{avatar.emoji}</span>
+            <div>
+              <h2 className="text-2xl font-bold">{avatar.name}</h2>
+              <div className="flex items-center gap-2">
+                <TierBadge tier={tier} />
+                {avatar.model && <span>{avatar.model}</span>}
+                {avatar.emoji && <span>{avatar.emoji}</span>}
+              </div>
+            </div>
+          </div>
+          <button onClick={onClose} className="text-gray-400 hover:text-white text-2xl">
+            ×
+          </button>
+        </div>
+
+        {/* Ancestry Chain */}
+        <AncestryChain ancestry={avatar.ancestry} />
+
+        <div className="grid grid-cols-3 gap-6">
+          {/* Left Column: Carousel and Stats */}
+          <div className="space-y-4">
+            {/* Carousel */}
+            <div className="relative">
+              <div className="relative aspect-[2/3]">
+                {variants.map((variant, idx) => (
+                  <VariantSlide key={idx} variant={variant} active={idx === currentVariantIndex} />
+                ))}
+                {variants.length > 1 && (
+                  <>
+                    {/* Pagination Dots */}
+                    <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 flex gap-2 z-10">
+                      {variants.map((_, idx) => (
+                        <button
+                          key={idx}
+                          className={`w-2 h-2 rounded-full transition-colors ${
+                            idx === currentVariantIndex ? 'bg-white' : 'bg-gray-500'
+                          }`}
+                          onClick={() => setCurrentVariantIndex(idx)}
+                        />
+                      ))}
+                    </div>
+                    {/* Navigation Arrows */}
+                    <div className="absolute inset-y-0 left-0 right-0 flex items-center justify-between px-2">
+                      <button
+                        className="bg-black bg-opacity-50 rounded-full p-2 hover:bg-opacity-75 z-10"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setCurrentVariantIndex((prev) => (prev - 1 + variants.length) % variants.length);
+                        }}
+                      >
+                        ←
+                      </button>
+                      <button
+                        className="bg-black bg-opacity-50 rounded-full p-2 hover:bg-opacity-75 z-10"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setCurrentVariantIndex((prev) => (prev + 1) % variants.length);
+                        }}
+                      >
+                        →
+                      </button>
+                    </div>
+                  </>
+                )}
+              </div>
+            </div>
+
+            {/* Stats */}
+            <div className="bg-gray-700 rounded-lg p-4">
+              <h3 className="text-xl font-bold mb-4">Stats</h3>
+              <StatsDisplay stats={avatar.stats} size="large" />
+
+              {/* Wallet Check Before Showing XAuthButton */}
+              {wallet && (
+                <div className="mt-4">
+                  <XAuthButton
+                    avatarId={avatar._id}
+                    walletAddress={wallet.publicKey.toString()}
+                    onAuthChange={(authorized) => {
+                      // Optionally update UI to show X posting capability
+                    }}
+                  />
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Right Columns: Description and Activity Feed */}
+          <div className="col-span-2 space-y-4">
+            {/* Description */}
+            <div className="bg-gray-700 rounded-lg p-4">
+              {variants.map((variant, idx) => (
+                <div
+                  key={idx}
+                  className={`transition-opacity duration-500 ${
+                    idx === currentVariantIndex ? 'opacity-100 block' : 'opacity-0 hidden'
+                  }`}
+                >
+                  <h3 className="text-xl font-bold mb-2">Description</h3>
+                  <div className="prose prose-invert max-w-none">
+                    <MarkdownContent content={utils.clipDescription(variant.description)} />
+                    {variant.dynamicPersonality && (
+                      <div className="mt-4 text-gray-400">
+                        <h4 className="font-bold mb-1">Personality</h4>
+                        <MarkdownContent content={utils.clipDescription(variant.dynamicPersonality)} />
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Recent Activity */}
+            <div className="bg-gray-700 rounded-lg p-4">
+              <h3 className="text-xl font-bold mb-4">Recent Activity</h3>
+              <ActivityFeed
+                messages={activityData.messages}
+                memories={activityData.memories}
+                narratives={activityData.narratives}
+                dungeonActions={activityData.dungeonActions}
+              />
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// Tier Badge Component
+const TierBadge = React.memo(({ tier }) => {
+  const colors = {
+    S: 'bg-purple-600', // Legendary
+    A: 'bg-blue-600', // Rare
+    B: 'bg-green-600', // Uncommon
+    C: 'bg-yellow-600', // Common
+    U: 'bg-gray-600', // Unknown
+  };
+
+  const tierLabels = {
+    S: 'Legendary',
+    A: 'Rare',
+    B: 'Uncommon',
+    C: 'Common',
+    U: 'Unknown',
+  };
+
+  return (
+    <span
+      className={`${colors[tier]} px-2 py-1 rounded text-xs font-bold`}
+      title={tierLabels[tier]}
+    >
+      Tier {tier}
+    </span>
+  );
+});
+
+// Progress Ring Component
+const ProgressRing = ({ value, maxValue, size = 120, strokeWidth = 8, color = '#60A5FA', centerContent }) => {
+  const radius = (size - strokeWidth) / 2;
+  const circumference = radius * 2 * Math.PI;
+  const progress = value / maxValue;
+  const strokeDashoffset = circumference * (1 - progress);
+
+  return (
+    <div className="relative inline-flex items-center justify-center">
+      <svg width={size} height={size} className="transform -rotate-90">
+        <circle
+          cx={size / 2}
+          cy={size / 2}
+          r={radius}
+          stroke="#374151"
+          strokeWidth={strokeWidth}
+          fill="transparent"
+        />
+        <circle
+          cx={size / 2}
+          cy={size / 2}
+          r={radius}
+          stroke={color}
+          strokeWidth={strokeWidth}
+          strokeDasharray={circumference}
+          strokeDashoffset={strokeDashoffset}
+          fill="transparent"
+          className="transition-all duration-500 ease-out"
+        />
+      </svg>
+      <div className="absolute text-center">{centerContent}</div>
+    </div>
+  );
+};
+
+// Tier Filter Component
+const TierFilter = React.memo(({ selectedTier, onTierChange }) => {
+  const tiers = ['All', 'S', 'A', 'B', 'C', 'U'];
+  const colors = {
+    S: 'bg-purple-600',
+    A: 'bg-blue-600',
+    B: 'bg-green-600',
+    C: 'bg-yellow-600',
+    U: 'bg-gray-600',
+  };
+
+  return (
+    <div className="flex gap-2 justify-center mb-6">
+      {tiers.map((tier) => (
+        <button
+          key={tier}
+          className={`px-3 py-1 rounded ${
+            selectedTier === tier
+              ? tier === 'All'
+                ? 'bg-white text-gray-900'
+                : `${colors[tier]} text-white`
+              : 'bg-gray-700 text-gray-300'
+          }`}
+          onClick={() => onTierChange(tier)}
+        >
+          {tier}
+        </button>
+      ))}
+    </div>
+  );
+});
+
+
+// Activity Feed Component
+const ActivityFeed = ({ messages, memories, narratives, dungeonActions }) => {
+  const formatDate = (date) => new Date(date).toLocaleString();
+
+  // Safely extract arrays from potentially nested response objects
+  const messagesList = Array.isArray(messages) ? messages : messages?.messages || [];
+  const memoriesList = Array.isArray(memories) ? memories : memories?.memories || [];
+  const narrativesList = Array.isArray(narratives) ? narratives : narratives?.narratives || [];
+  const actionsList = Array.isArray(dungeonActions) ? dungeonActions : dungeonActions?.actions || [];
+
+  // Combine and sort all activities
+  const activities = React.useMemo(
+    () =>
+      [
+        ...messagesList.map((m) => ({
+          type: 'message',
+          content: m.content,
+          timestamp: new Date(m.timestamp),
+          icon: '💭',
+        })),
+        ...memoriesList.map((m) => ({
+          type: 'memory',
+          content: m.memory,
+          timestamp: new Date(m.timestamp),
+          icon: '🧠',
+        })),
+        ...narrativesList.map((n) => ({
+          type: 'narrative',
+          content: n.content,
+          timestamp: new Date(n.timestamp),
+          icon: '📖',
+        })),
+        ...actionsList.map((d) => ({
+          type: 'dungeon',
+          content: `**${d.result}** ${d.targetName ? `against ${d.targetName}` : ''}`,
+          timestamp: new Date(d.timestamp),
+          icon: '⚔️',
+        })),
+      ].sort((a, b) => b.timestamp - a.timestamp),
+    [messagesList, memoriesList, narrativesList, actionsList]
+  );
+
+  return (
+    <div className="space-y-4">
+      {activities.map((activity, i) => (
+        <div key={i} className="bg-gray-700 rounded-lg p-4">
+          <div className="flex items-center gap-2 mb-2">
+            <span className="text-sm text-gray-400">{activity.icon}</span>
+            <span className="text-xs text-gray-500">{formatDate(activity.timestamp)}</span>
+            <span className="text-xs text-gray-400 ml-auto">{activity.type}</span>
+          </div>
+          <MarkdownContent content={activity.content} />
+        </div>
+      ))}
+      {activities.length === 0 && (
+        <div className="text-gray-500 text-center">No recent activity</div>
+      )}
+    </div>
+  );
+};
+
+// Ancestry Chain Component
+const AncestryChain = React.memo(({ ancestry }) => {
+  if (!ancestry?.length) return null;
+
+  return (
+    <div className="bg-gray-700 rounded-lg p-4 mb-4">
+      <h3 className="text-xl font-bold mb-3">Ancestry</h3>
+      <div className="flex items-center gap-2 overflow-x-auto pb-2">
+        {ancestry
+          .slice()
+          .reverse()
+          .map((ancestor, index, array) => (
+            <React.Fragment key={ancestor._id}>
+              <div className="flex items-center gap-2 flex-shrink-0">
+                <img
+                  src={ancestor.imageUrl}
+                  alt={ancestor.name}
+                  className="w-8 h-8 rounded-full object-cover"
+                />
+                <div className="text-sm">
+                  <div className="font-medium">{ancestor.name}</div>
+                  <div className="text-gray-400 text-xs">{ancestor.emoji}</div>
+                </div>
+              </div>
+              {index < array.length - 1 && (
+                <span className="text-gray-500 mx-2">→</span>
+              )}
+            </React.Fragment>
+          ))}
+      </div>
+    </div>
+  );
+});
+
+// Stats Display Component
+const StatsDisplay = React.memo(({ stats, size = 'small' }) => {
+  const { hp = 0, attack = 0, defense = 0 } = stats || {};
+
+  if (size === 'small') {
+    return (
+      <div className="flex gap-2 text-xs text-gray-400">
+        {hp > 0 && (
+          <span title="HP">
+            ❤️ {hp}
+          </span>
+        )}
+        {attack > 0 && (
+          <span title="Attack">
+            ⚔️ {attack}
+          </span>
+        )}
+        {defense > 0 && (
+          <span title="Defense">
+            🛡️ {defense}
+          </span>
+        )}
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-4">
+      {hp > 0 && (
+        <div className="flex justify-center">
+          <ProgressRing
+            value={hp}
+            maxValue={100}
+            size={80}
+            centerContent={<div className="text-lg font-bold">❤️ {hp}</div>}
+          />
+        </div>
+      )}
+      <div className="grid grid-cols-2 gap-2 text-center">
+        <div className="bg-gray-800 rounded p-2">
+          <div className="text-sm text-gray-400">Attack</div>
+          <div className="text-xl">⚔️ {attack}</div>
+        </div>
+        <div className="bg-gray-800 rounded p-2">
+          <div className="text-sm text-gray-400">Defense</div>
+          <div className="text-xl">🛡️ {defense}</div>
+        </div>
+      </div>
+    </div>
+  );
+});
+
+// XAuth Button Component
+const XAuthButton = ({ avatarId, walletAddress, onAuthChange }) => {
+  const [authStatus, setAuthStatus] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  const checkAuthStatus = useCallback(async () => {
+    if (!avatarId) return;
+
+    try {
+      setError(null);
+      const response = await fetch(`/api/xauth/status/${avatarId}`);
+      const data = await response.json();
+      setAuthStatus(data);
+      onAuthChange?.(data.authorized);
+
+      // If token is invalid/revoked, clear the status
+      if (data.requiresReauth) {
+        setAuthStatus(null);
+      }
+    } catch (error) {
+      console.error('Error checking auth status:', error);
+      setError('Failed to check connection status');
+      setAuthStatus(null);
+    } finally {
+      setLoading(false);
+    }
+  }, [avatarId, onAuthChange]);
+
+  // Poll status every minute to detect revoked access
+  useEffect(() => {
+    if (avatarId) {
+      checkAuthStatus();
+      const interval = setInterval(checkAuthStatus, 60000);
+      return () => clearInterval(interval);
+    }
+  }, [avatarId, checkAuthStatus]);
+
+  const handleAuth = async () => {
+    try {
+      setError(null);
+      setLoading(true);
+
+      const response = await fetch(
+        `/api/xauth/auth-url?walletAddress=${walletAddress}&avatarId=${avatarId}`
+      );
+      const { url, error: authError } = await response.json();
+
+      if (authError) {
+        throw new Error(authError);
+      }
+
+      const popup = window.open(url, 'x-auth', 'width=600,height=800,left=100,top=100');
+
+      const handleMessage = async (event) => {
+        if (event.data.type === 'X_AUTH_SUCCESS') {
+          await checkAuthStatus();
+          popup?.close();
+        } else if (event.data.type === 'X_AUTH_ERROR') {
+          setError(event.data.error || 'Authentication failed');
+          popup?.close();
+        }
+      };
+
+      window.addEventListener('message', handleMessage);
+
+      const checkClosed = setInterval(() => {
+        if (popup?.closed) {
+          clearInterval(checkClosed);
+          window.removeEventListener('message', handleMessage);
+          setLoading(false);
+        }
+      }, 1000);
+    } catch (error) {
+      console.error('Error starting auth:', error);
+      setError(error.message || 'Failed to start authentication');
+      setLoading(false);
+    }
+  };
+
+  const handleDisconnect = async () => {
+    try {
+      setLoading(true);
+      await fetch(`/api/xauth/disconnect/${avatarId}`, { method: 'POST' });
+      setAuthStatus(null);
+      onAuthChange?.(false);
+    } catch (error) {
+      console.error('Error disconnecting:', error);
+      setError('Failed to disconnect');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <button
+        className="bg-gray-600 px-4 py-2 rounded opacity-50 cursor-not-allowed flex items-center gap-2"
+        disabled
+      >
+        <div className="animate-spin h-4 w-4 border-2 border-white rounded-full border-t-transparent"></div>
+        <span>Checking status...</span>
+      </button>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex flex-col gap-2">
+        <button
+          onClick={checkAuthStatus}
+          className="bg-red-600 hover:bg-red-700 px-4 py-2 rounded flex items-center gap-2"
+        >
+          ⚠️ Retry connection
+        </button>
+        <p className="text-red-500 text-sm">{error}</p>
+      </div>
+    );
+  }
+
+  if (authStatus?.authorized) {
+    return (
+      <div className="flex flex-col gap-2">
+        <div className="flex items-center gap-2">
+          <button
+            className="bg-blue-600 px-4 py-2 rounded flex items-center gap-2"
+            title={`Connected until ${new Date(authStatus.expiresAt).toLocaleString()}`}
+          >
+            𝕏 Connected
+          </button>
+          <button
+            onClick={handleDisconnect}
+            className="bg-gray-600 hover:bg-gray-700 px-3 py-2 rounded text-sm"
+          >
+            Disconnect
+          </button>
+        </div>
+        <p className="text-xs text-gray-400">
+          Expires: {new Date(authStatus.expiresAt).toLocaleString()}
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <button
+      onClick={handleAuth}
+      className="bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded flex items-center gap-2"
+    >
+      𝕏 Connect X Account
+    </button>
+  );
+};
+
+// Main App Component
+function App() {
   const [avatars, setAvatars] = useState([]);
   const [selectedAvatar, setSelectedAvatar] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -1436,6 +1445,13 @@ const App = () => {
   );
 };
 
-// Root render
+// Initialize app
 const rootElement = document.getElementById('root');
-ReactDOM.createRoot(rootElement).render(<App />);
+if (rootElement) {
+  const root = ReactDOM.createRoot(rootElement);
+  root.render(
+    <React.StrictMode>
+      <App />
+    </React.StrictMode>
+  );
+}
