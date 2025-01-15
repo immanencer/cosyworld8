@@ -17,25 +17,26 @@
  * - Authentication state stored at App level
  */
 
-import React, { useState, useEffect, useCallback } from 'react';
-import { createRoot } from 'react-dom/client';
+import { useState, useEffect, useCallback } from 'https://esm.sh/react';
+import { createRoot } from 'https://esm.sh/react-dom/client';
 
 // UI Components (imported as ES modules)
-const ProgressRing = () => {}; // Placeholder for unused component
-const TierBadge = () => {}; // Placeholder for unused component
-const ActivityFeed = () => {}; // Placeholder for unused component
-const AncestryChain = () => {}; // Placeholder for unused component
-const StatsDisplay = () => {}; // Placeholder for unused component
-const XAuthButton = () => {}; // Placeholder for unused component
-const ViewToggle = () => {}; // Placeholder for unused component
-const WalletButton = () => {}; // Placeholder for unused component
-const BurnTokenButton = () => {}; // Placeholder for unused component
-const AvatarCard = () => {}; // Placeholder for unused component
-const AvatarSearch = () => {}; // Placeholder for unused component
-const AvatarDetailModal = () => {}; // Placeholder for unused component
-const CombatLog = () => {}; // Placeholder for unused component
-const TribesView = () => {}; // Placeholder for unused component
-const MarkdownContent = () => {}; // Placeholder for unused component
+import { ProgressRing } from './components/ui/ProgressRing.js';
+import { TierBadge } from './components/ui/TierBadge.js';
+import { ActivityFeed } from './components/ui/ActivityFeed.js';
+import { AncestryChain } from './components/ui/AncestryChain.js';
+import { StatsDisplay } from './components/ui/StatsDisplay.js';
+import { XAuthButton } from './components/ui/XAuthButton.js';
+import { ViewToggle } from './components/ui/ViewToggle.js';
+import { WalletButton } from './components/ui/WalletButton.js';
+import { BurnTokenButton } from './components/ui/BurnTokenButton.js';
+import { AvatarCard } from './components/ui/AvatarCard.js';
+import { AvatarSearch } from './components/ui/AvatarSearch.js';
+import { AvatarDetailModal } from './components/ui/AvatarDetailModal.js';
+import { CombatLog } from './components/ui/CombatLog.js';
+import { TribesView } from './components/ui/TribesView.js';
+import { MarkdownContent } from './components/ui/MarkdownContent.js';
+
 
 // Utilities
 const utils = {
