@@ -21,7 +21,6 @@
     "@babel/cli": "^7.26.4",
     "@babel/core": "^7.26.0",
     "@babel/preset-env": "^7.26.0",
-    "@babel/preset-react": "^7.26.3",
     "autoprefixer": "^10.4.20",
     "cloudinary": "^2.5.1",
     "concurrently": "^9.1.2",
@@ -45,5 +44,9 @@
     "tailwindcss": "^3.4.17",
     "twitter-api-v2": "^1.18.2",
     "winston": "^3.15.0"
+  },
+  "devDependencies": {
+    "@babel/plugin-transform-modules-commonjs": "^7.26.3",
+    "@babel/preset-react": "^7.26.3"
   }
 }
