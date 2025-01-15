@@ -7,25 +7,27 @@ const WalletButton = window.WalletButton;
 // Main App Component
 function App() {
   const [avatars, setAvatars] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [wallet, setWallet] = useState(null);
 
   const handleWalletChange = (newWallet) => {
     setWallet(newWallet);
+    if (newWallet) {
+      setLoading(true);
+      fetch(`/api/avatars/owned/${newWallet.publicKey.toString()}`)
+        .then(res => res.json())
+        .then(data => {
+          setAvatars(data || []);
+          setLoading(false);
+        })
+        .catch(error => {
+          console.error("Error fetching owned avatars:", error);
+          setLoading(false);
+        });
+    } else {
+      setAvatars([]);
+    }
   };
-
-  useEffect(() => {
-    fetch("/api/leaderboard")
-      .then(res => res.json())
-      .then(data => {
-        setAvatars(data.avatars || []);
-        setLoading(false);
-      })
-      .catch(error => {
-        console.error("Error fetching leaderboard:", error);
-        setLoading(false);
-      });
-  }, []);
 
   if (loading) {
     return (
@@ -35,10 +37,22 @@ function App() {
     );
   }
 
+  if (!wallet) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center p-4">
+        <h1 className="text-4xl font-bold mb-8 text-center">Welcome to Avatar Dashboard</h1>
+        <p className="mb-8 text-gray-400 text-center">Connect your wallet to view your avatars</p>
+        <WalletButton onWalletChange={handleWalletChange} />
+      </div>
+    );
+  }
+
   return (
     <div className="container mx-auto px-4 py-8">
-      <WalletButton onWalletChange={handleWalletChange} />
-      <h1 className="text-4xl font-bold mb-8 text-center">Avatar Dashboard</h1>
+      <div className="flex justify-between items-center mb-8">
+        <h1 className="text-4xl font-bold">Your Avatars</h1>
+        <WalletButton onWalletChange={handleWalletChange} />
+      </div>
       <div className="grid gap-4 grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6">
         {avatars.map((avatar) => (
           <div key={avatar._id} className="bg-gray-800 p-4 rounded-lg">
