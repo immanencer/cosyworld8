@@ -77,53 +77,7 @@ const clipDescription = (text) => {
   return doubleNewline > -1 ? text.slice(0, doubleNewline) : text;
 };
 
-// Avatar Card Component
-const AvatarCard = React.memo(({ avatar, onSelect }) => {
-  const [currentImageIndex, setCurrentImageIndex] = useState(0);
-  const allAvatars = [avatar, ...(avatar.alternateAvatars || [])];
-
-  useEffect(() => {
-    if (allAvatars.length > 1) {
-      const interval = setInterval(() => {
-        setCurrentImageIndex((prev) => (prev + 1) % allAvatars.length);
-      }, 3000); // Change image every 3 seconds
-      return () => clearInterval(interval);
-    }
-  }, [allAvatars.length]);
-
-  const currentAvatar = allAvatars[currentImageIndex];
-  const tier = getTierFromModel(avatar.model);
-
-  return (
-    <div
-      onClick={() => onSelect(avatar)}
-      className="bg-gray-800 rounded-lg p-2 cursor-pointer hover:bg-gray-700 transition-colors"
-    >
-      <div className="relative mb-2">
-        <img
-          src={currentAvatar.thumbnailUrl || currentAvatar.imageUrl}
-          alt={currentAvatar.name}
-          className="w-full aspect-square object-cover rounded-lg"
-        />
-        {allAvatars.length > 1 && (
-          <span className="absolute top-1 right-1 bg-blue-500 text-xs rounded-full w-5 h-5 flex items-center justify-center">
-            {allAvatars.length}
-          </span>
-        )}
-      </div>
-      <div className="space-y-1">
-        <div className="flex items-center gap-1 justify-between">
-          <h3 className="text-sm font-bold truncate">{avatar.name}</h3>
-          <TierBadge tier={tier} />
-        </div>
-        <div className="flex items-center gap-1 text-xs text-gray-400">
-          <span>✉️ {avatar.messageCount}</span>
-        </div>
-        <StatsDisplay stats={avatar.stats} size="small" />
-      </div>
-    </div>
-  );
-});
+// Import AvatarCard from components
 
 // Avatar Search Component
 const AvatarSearch = React.memo(({ onSelect }) => {
