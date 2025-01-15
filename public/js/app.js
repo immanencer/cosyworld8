@@ -5,6 +5,11 @@ const { createRoot } = ReactDOM;
 function App() {
   const [avatars, setAvatars] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [wallet, setWallet] = useState(null);
+
+  const handleWalletChange = (newWallet) => {
+    setWallet(newWallet);
+  };
 
   useEffect(() => {
     fetch("/api/leaderboard")
@@ -29,6 +34,7 @@ function App() {
 
   return (
     <div className="container mx-auto px-4 py-8">
+      <WalletButton onWalletChange={handleWalletChange} />
       <h1 className="text-4xl font-bold mb-8 text-center">Avatar Dashboard</h1>
       <div className="grid gap-4 grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6">
         {avatars.map((avatar) => (
