@@ -8,14 +8,18 @@ const WalletButton = ({ onWalletChange }) => {
   const connectWallet = async () => {
     try {
       const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
-      if (isMobile && !window.solana) {
-        window.location.href = 'https://phantom.app/ul/browse/' + window.location.href;
+      if (isMobile) {
+        const dappUrl = window.location.href;
+        const universalLink = `https://phantom.app/ul/browse/${encodeURIComponent(dappUrl)}`;
+        window.location.href = universalLink;
         return;
       }
 
       if (!window.solana) {
-        alert('Please install Phantom wallet!');
-        window.open('https://phantom.app/', '_blank');
+        const confirmed = confirm('Phantom wallet is required. Would you like to install it?');
+        if (confirmed) {
+          window.open('https://phantom.app/', '_blank');
+        }
         return;
       }
 
