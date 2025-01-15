@@ -1,0 +1,62 @@
+
+> cosyworld8@1.0.0 start
+> concurrently "node src/index.mjs" "npm run build && node server/app.mjs"
+
+[1] 
+[1] > cosyworld8@1.0.0 build
+[1] > npm run build:css && npm run build:js
+[1] 
+[1] 
+[1] > cosyworld8@1.0.0 build:css
+[1] > tailwindcss -i ./src/tailwind.css -o ./public/css/tailwind.css --minify
+[1] 
+]: ✅ Connected to MongoDB successfully
+]: Updating Arweave prompts for avatars...
+[0] 2025-01-15T00:44:10.108Z [INFO]: Found 1 avatars with Arweave prompts to update
+[0] 2025-01-15T00:44:10.542Z [INFO]: Updated Arweave prompt for avatar: Erebus
+]: ✅ Arweave prompts updated successfully
+]: Successfully connected to MongoDB.
+]: ✅ Logged into Discord successfully
+]: ✅ Discord client ready
+[1] 
+[1] Rebuilding...
+]: Failed to setup avatar channels: Missing Permissions
+]: Database setup completed
+[1] 
+[1] Done in 2095ms.
+]: Attempting to respond as avatar Kael in channel 1227366562743451711 (force: false)
+]: ChatService setup completed
+[1] 
+[1] > cosyworld8@1.0.0 build:js
+[1] > babel public/js/wiki.js -o public/js/wiki.min.js && babel public/js/app.js -o public/js/app.min.js
+[1] 
+]: 🎯 Forcing startup reflection for Aestrum
+[1] SyntaxError: /home/runner/workspace/public/js/app.js: Unexpected token (1101:8)
+[1] 
+[1]   1099 |     );
+[1]   1100 |   }
+[1] > 1101 |       } catch (error) {
+[1]        |         ^
+[1]   1102 |         console.error('Error fetching tribes:', error);
+[1]   1103 |         setError(error.message);
+[1]   1104 |       } finally {
+[1]     at constructor (/home/runner/workspace/node_modules/@babel/parser/lib/index.js:359:19)
+[1]     at JSXParserMixin.raise (/home/runner/workspace/node_modules/@babel/parser/lib/index.js:3266:19)
+[1]     at JSXParserMixin.unexpected (/home/runner/workspace/node_modules/@babel/parser/lib/index.js:3286:16)
+[1]     at JSXParserMixin.parseExprAtom (/home/runner/workspace/node_modules/@babel/parser/lib/index.js:10987:16)
+[1]     at JSXParserMixin.parseExprAtom (/home/runner/workspace/node_modules/@babel/parser/lib/index.js:6818:20)
+[1]     at JSXParserMixin.parseExprSubscripts (/home/runner/workspace/node_modules/@babel/parser/lib/index.js:10619:23)
+[1]     at JSXParserMixin.parseUpdate (/home/runner/workspace/node_modules/@babel/parser/lib/index.js:10604:21)
+[1]     at JSXParserMixin.parseMaybeUnary (/home/runner/workspace/node_modules/@babel/parser/lib/index.js:10584:23)
+[1]     at JSXParserMixin.parseMaybeUnaryOrPrivate (/home/runner/workspace/node_modules/@babel/parser/lib/index.js:10438:61)
+[1]     at JSXParserMixin.parseExprOps (/home/runner/workspace/node_modules/@babel/parser/lib/index.js:10443:23) {
+[1]   code: 'BABEL_PARSE_ERROR',
+[1]   reasonCode: 'UnexpectedToken',
+[1]   loc: Position { line: 1101, column: 8, index: 35647 },
+[1]   pos: 35647,
+[1]   syntaxPlugin: undefined
+[1] }
+[1] npm run build && node server/app.mjs exited with code 1
+[0] 2025-01-15T00:44:23.986Z [INFO]: Avatar ID 6742a9b0812d05ecb7a3ed35 updated successfully.
+]: ✅ ChatService started.
+]: ✅ ChatService started successfully
