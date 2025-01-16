@@ -8,7 +8,7 @@ const WalletButton = ({ onWalletChange }) => {
   const connectWallet = async () => {
     try {
       const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
-      if (isMobile) {
+      if (isMobile && !window.phantom?.solana) {
         const dappUrl = window.location.href.split('?')[0]; // Remove any query params
         const cleanUrl = dappUrl.replace(/\/$/, ''); // Remove trailing slash
         const universalLink = `https://phantom.app/ul/browse/${encodeURIComponent(cleanUrl)}`;
