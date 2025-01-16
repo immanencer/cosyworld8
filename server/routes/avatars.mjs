@@ -57,16 +57,84 @@ export default function (db) {
   router.get('/owned/:publicKey', async (req, res) => {
     try {
       const { publicKey } = req.params;
+      const page = parseInt(req.query.page) || 1;
+      const limit = parseInt(req.query.limit) || 12;
+      const skip = (page - 1) * limit;
+
       if (!publicKey) {
         return res.status(400).json({ error: 'Public key required' });
       }
 
       const nftMintService = new NFTMintingService(db);
-      const ownedAvatars = await nftMintService.getAvatarsByOwner(publicKey);
+      const ownedAvatars = await nftMintService.getAvatarsByOwner(publicKey, skip, limit);
 
       res.json(ownedAvatars);
     } catch (error) {
       console.error('Error fetching owned avatars:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  router.post('/claim', async (req, res) => {
+    try {
+      const { walletAddress } = req.body;
+      if (!walletAddress) {
+        return res.status(400).json({ error: 'Wallet address required' });
+      }
+
+      const avatarService = new AvatarGenerationService(db);
+      const randomAvatar = await avatarService.getRandomUnmintedAvatar();
+      
+      if (!randomAvatar) {
+        return res.status(404).json({ error: 'No available avatars to claim' });
+      }
+
+      const nftMintService = new NFTMintingService(db);
+      await nftMintService.mintAvatarToWallet(randomAvatar._id, walletAddress);
+
+      res.json({ success: true, avatar: randomAvatar });
+    } catch (error) {
+      console.error('Error claiming avatar:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  router.get('/gallery', async (req, res) => {
+    try {
+      const page = parseInt(req.query.page) || 1;
+      const limit = parseInt(req.query.limit) || 12;
+      const skip = (page - 1) * limit;
+
+      const avatars = await db.collection('avatars')
+        .find({})
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(limit)
+        .toArray();
+
+      res.json({ avatars });
+    } catch (error) {
+      console.error('Error fetching gallery:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  router.get('/leaderboard', async (req, res) => {
+    try {
+      const page = parseInt(req.query.page) || 1;
+      const limit = parseInt(req.query.limit) || 12;
+      const skip = (page - 1) * limit;
+
+      const avatars = await db.collection('avatars')
+        .find({})
+        .sort({ score: -1 })
+        .skip(skip)
+        .limit(limit)
+        .toArray();
+
+      res.json({ avatars });
+    } catch (error) {
+      console.error('Error fetching leaderboard:', error);
       res.status(500).json({ error: error.message });
     }
   });
