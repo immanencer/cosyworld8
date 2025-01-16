@@ -103,7 +103,7 @@ function App() {
     if (activeTab !== "owned" || wallet) {
       loadMoreAvatars();
     }
-  }, [activeTab, wallet]);
+  }, [activeTab, wallet, loadMoreAvatars, resetState]);
 
   if (!wallet && activeTab === "owned") {
     return (
