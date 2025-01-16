@@ -1,4 +1,7 @@
 
+const { useState, useEffect, useCallback } = React;
+
+
 const { useState, useEffect } = React;
 const { createRoot } = ReactDOM;
 
@@ -54,7 +57,7 @@ function App() {
     }
   };
 
-  const loadMoreAvatars = async () => {
+  const loadMoreAvatars = useCallback(async () => {
     if (loading || !hasMore) return;
     
     setLoading(true);
@@ -90,7 +93,7 @@ function App() {
     if (activeTab !== 'owned' || wallet) {
       loadMoreAvatars();
     }
-  }, [activeTab]);
+  }, [activeTab, wallet]);
 
   if (!wallet && activeTab === 'owned') {
     return (
