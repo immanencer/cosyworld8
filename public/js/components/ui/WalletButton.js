@@ -9,8 +9,9 @@ const WalletButton = ({ onWalletChange }) => {
     try {
       const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
       if (isMobile) {
-        const dappUrl = window.location.href;
-        const universalLink = `https://phantom.app/ul/browse/${encodeURIComponent(dappUrl)}`;
+        const dappUrl = window.location.href.split('?')[0]; // Remove any query params
+        const cleanUrl = dappUrl.replace(/\/$/, ''); // Remove trailing slash
+        const universalLink = `https://phantom.app/ul/browse/${encodeURIComponent(cleanUrl)}`;
         window.location.href = universalLink;
         return;
       }
