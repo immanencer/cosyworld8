@@ -136,23 +136,20 @@ function App() {
 
   useEffect(() => {
     console.log(
-      `[Tab Change] Active Tab: ${activeTab}, Wallet Connected: ${!!wallet?.publicKey}`,
+      `[Tab Change] Active Tab: ${activeTab}, Wallet Connected: ${!!wallet?.publicKey}, Loading: ${loading}`,
     );
-    resetState();
-    if (activeTab !== "owned" || wallet?.publicKey) {
-      loadMoreAvatars(); // This now references a stable version
+    
+    if (loading) {
+      console.log("[Effect] Skipping due to ongoing loading");
+      return;
     }
-  }, [activeTab, wallet?.publicKey]); // Removed loadMoreAvatars as a dependency
-
-  useEffect(() => {
-    console.log(
-      `[Tab Change] Active Tab: ${activeTab}, Wallet Connected: ${!!wallet?.publicKey}`,
-    );
+    
     resetState();
     if (activeTab !== "owned" || wallet?.publicKey) {
+      console.log("[Effect] Initiating loadMoreAvatars");
       loadMoreAvatars();
     }
-  }, [activeTab, wallet?.publicKey]);
+  }, [activeTab, wallet?.publicKey, loading]);
 
   if (!wallet && activeTab === "owned") {
     return (
