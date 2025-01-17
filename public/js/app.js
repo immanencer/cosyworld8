@@ -57,18 +57,18 @@ function App() {
           <div>
             <div className="space-y-4">
               {leaderboard.map((avatar) => {
-                const tierColors = {
-                  legendary: 'ring-purple-600',
-                  rare: 'ring-blue-600',
-                  uncommon: 'ring-green-600',
-                  common: 'ring-yellow-600',
-                  undefined: 'ring-gray-600'
-                };
-                const tierColor = tierColors[avatar.model?.rarity || 'undefined'];
-                
+                const tier = getTierFromModel(avatar.model);
                 return (
                   <div key={avatar._id} className="bg-gray-800 p-4 rounded-lg flex items-center gap-4">
-                    <div className={`relative shrink-0 ${tierColor} ring-2 rounded-full p-1`}>
+                    <div className={`relative shrink-0 ring-2 rounded-full p-1 ${
+                      {
+                        'S': 'ring-purple-600',
+                        'A': 'ring-blue-600',
+                        'B': 'ring-green-600',
+                        'C': 'ring-yellow-600',
+                        'U': 'ring-gray-600'
+                      }[tier]
+                    }`}>
                       <img
                         src={avatar.thumbnailUrl || avatar.imageUrl}
                         alt={avatar.name}
@@ -76,10 +76,13 @@ function App() {
                       />
                     </div>
                     <div className="flex-grow">
-                      <h3 className="text-lg font-semibold">{avatar.name}</h3>
+                      <div className="flex items-center gap-2">
+                        <h3 className="text-lg font-semibold">{avatar.name}</h3>
+                        <TierBadge tier={tier} />
+                      </div>
                       <p className="text-sm text-gray-400">Score: {avatar.score}</p>
                       {avatar.model && (
-                        <p className="text-xs text-gray-500">{avatar.model.name}</p>
+                        <p className="text-xs text-gray-500">{avatar.model}</p>
                       )}
                     </div>
                   </div>
