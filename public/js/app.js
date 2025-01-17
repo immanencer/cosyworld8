@@ -1,4 +1,5 @@
-const { useState } = React;
+
+const { useState, useEffect } = React;
 const { createRoot } = ReactDOM;
 
 const WalletButton = window.WalletButton;
@@ -53,40 +54,37 @@ function App() {
         return <div className="text-center py-12">Gallery content coming soon</div>;
       case "leaderboard":
         return (
-    <div>
-      <div className="grid gap-4 grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6">
-        {leaderboard.map((avatar) => (
-          <div key={avatar._id} className="bg-gray-800 p-4 rounded-lg">
-            <img
-              src={avatar.thumbnailUrl || avatar.imageUrl}
-              alt={avatar.name}
-              className="w-full h-48 object-cover rounded-lg mb-2"
-            />
-            <h3 className="text-lg font-semibold">{avatar.name}</h3>
-            <p className="text-sm text-gray-400">Score: {avatar.score}</p>
+          <div>
+            <div className="grid gap-4 grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6">
+              {leaderboard.map((avatar) => (
+                <div key={avatar._id} className="bg-gray-800 p-4 rounded-lg">
+                  <img
+                    src={avatar.thumbnailUrl || avatar.imageUrl}
+                    alt={avatar.name}
+                    className="w-full h-48 object-cover rounded-lg mb-2"
+                  />
+                  <h3 className="text-lg font-semibold">{avatar.name}</h3>
+                  <p className="text-sm text-gray-400">Score: {avatar.score}</p>
+                </div>
+              ))}
+            </div>
+            {hasMore && !loading && (
+              <div className="text-center mt-8">
+                <button
+                  onClick={() => setPage(p => p + 1)}
+                  className="bg-gray-700 px-6 py-2 rounded-lg hover:bg-gray-600 transition-colors"
+                >
+                  Load More
+                </button>
+              </div>
+            )}
+            {loading && (
+              <div className="text-center mt-8">
+                <p>Loading...</p>
+              </div>
+            )}
           </div>
-        ))}
-      </div>
-      
-      {hasMore && !loading && (
-        <div className="text-center mt-8">
-          <button
-            onClick={() => setPage(p => p + 1)}
-            className="bg-gray-700 px-6 py-2 rounded-lg hover:bg-gray-600 transition-colors"
-          >
-            Load More
-          </button>
-        </div>
-      )}
-      
-      {loading && (
-        <div className="text-center mt-8">
-          <p>Loading...</p>
-        </div>
-      )}
-    </div>
-  );
-}
+        );
       case "tribes":
         return <div className="text-center py-12">Tribes content coming soon</div>;
       default:
