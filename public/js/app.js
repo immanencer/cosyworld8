@@ -72,28 +72,34 @@ function App() {
   };
 
   const loadMoreAvatars = useCallback(async () => {
-    console.log(`[Avatar Loading] Tab: ${activeTab}, Page: ${page}, Loading: ${loading}, HasMore: ${hasMore}`);
-    
+    console.log(
+      `[Avatar Loading] Tab: ${activeTab}, Page: ${page}, Loading: ${loading}, HasMore: ${hasMore}`,
+    );
+
     if (loading) {
-      console.log('[Avatar Loading] Skipped - Already loading');
+      console.log("[Avatar Loading] Skipped - Already loading");
       return;
     }
 
     if (!hasMore) {
-      console.log('[Avatar Loading] Skipped - No more content');
+      console.log("[Avatar Loading] Skipped - No more content");
       return;
     }
-    
-    if (activeTab === 'owned' && !wallet?.publicKey) {
-      console.log('[Avatar Loading] Skipped - Owned tab requires wallet connection');
+
+    if (activeTab === "owned" && !wallet?.publicKey) {
+      console.log(
+        "[Avatar Loading] Skipped - Owned tab requires wallet connection",
+      );
       return;
     }
 
     setLoading(true);
-    console.log('[Avatar Loading] Starting fetch...');
+    console.log("[Avatar Loading] Starting fetch...");
     try {
       const endpoint = {
-        owned: wallet?.publicKey ? `/api/avatars/owned/${wallet.publicKey.toString()}?page=${page}` : null,
+        owned: wallet?.publicKey
+          ? `/api/avatars/owned/${wallet.publicKey.toString()}?page=${page}`
+          : null,
         gallery: `/api/avatars/gallery?page=${page}`,
         leaderboard: `/api/avatars/leaderboard?page=${page}`,
         tribes: `/api/tribes?page=${page}`,
@@ -107,13 +113,15 @@ function App() {
       console.log(`[Avatar Loading] Fetching from endpoint: ${endpoint}`);
       const response = await fetch(endpoint);
       const data = await response.json();
-      console.log(`[Avatar Loading] Received ${data.avatars?.length || 0} avatars`);
+      console.log(
+        `[Avatar Loading] Received ${data.avatars?.length || 0} avatars`,
+      );
 
       if (!data.avatars || data.avatars.length === 0) {
-        console.log('[Avatar Loading] No more avatars, setting hasMore to false');
+        console.log(
+          "[Avatar Loading] No more avatars, setting hasMore to false",
+        );
         setHasMore(false);
-        setLoading(false);
-        return;
       } else {
         setAvatars((prev) => [...prev, ...data.avatars]);
         setPage((prev) => prev + 1);
@@ -121,13 +129,25 @@ function App() {
     } catch (error) {
       console.error("[Avatar Loading] Error:", error);
     } finally {
-      console.log('[Avatar Loading] Fetch complete');
+      console.log("[Avatar Loading] Fetch complete");
       setLoading(false);
     }
-  }, [activeTab, page, hasMore, loading, wallet?.publicKey]);
+  }, [activeTab, page, wallet?.publicKey]); // Kept only necessary dependencies
 
   useEffect(() => {
-    console.log(`[Tab Change] Active Tab: ${activeTab}, Wallet Connected: ${!!wallet?.publicKey}`);
+    console.log(
+      `[Tab Change] Active Tab: ${activeTab}, Wallet Connected: ${!!wallet?.publicKey}`,
+    );
+    resetState();
+    if (activeTab !== "owned" || wallet?.publicKey) {
+      loadMoreAvatars(); // This now references a stable version
+    }
+  }, [activeTab, wallet?.publicKey]); // Removed loadMoreAvatars as a dependency
+
+  useEffect(() => {
+    console.log(
+      `[Tab Change] Active Tab: ${activeTab}, Wallet Connected: ${!!wallet?.publicKey}`,
+    );
     resetState();
     if (activeTab !== "owned" || wallet?.publicKey) {
       loadMoreAvatars();
