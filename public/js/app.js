@@ -71,10 +71,20 @@ function App() {
   };
 
   const loadMoreAvatars = useCallback(async () => {
-    if (loading || !hasMore) return;
-    if (activeTab === 'owned' && !wallet?.publicKey) return;
+    console.log(`[Avatar Loading] Tab: ${activeTab}, Page: ${page}, Loading: ${loading}, HasMore: ${hasMore}`);
+    
+    if (loading || !hasMore) {
+      console.log('[Avatar Loading] Skipped - Already loading or no more content');
+      return;
+    }
+    
+    if (activeTab === 'owned' && !wallet?.publicKey) {
+      console.log('[Avatar Loading] Skipped - Owned tab requires wallet connection');
+      return;
+    }
 
     setLoading(true);
+    console.log('[Avatar Loading] Starting fetch...');
     try {
       const endpoint = {
         owned: wallet?.publicKey ? `/api/avatars/owned/${wallet.publicKey.toString()}?page=${page}` : null,
@@ -88,8 +98,10 @@ function App() {
         return;
       }
 
+      console.log(`[Avatar Loading] Fetching from endpoint: ${endpoint}`);
       const response = await fetch(endpoint);
       const data = await response.json();
+      console.log(`[Avatar Loading] Received ${data.avatars?.length || 0} avatars`);
 
       if (data.avatars?.length === 0) {
         setHasMore(false);
@@ -98,18 +110,20 @@ function App() {
         setPage((prev) => prev + 1);
       }
     } catch (error) {
-      console.error("Error loading more avatars:", error);
+      console.error("[Avatar Loading] Error:", error);
     } finally {
+      console.log('[Avatar Loading] Fetch complete');
       setLoading(false);
     }
-  }, [activeTab, page, hasMore, loading, wallet]);
+  }, [activeTab, page, hasMore, loading, wallet?.publicKey]);
 
   useEffect(() => {
+    console.log(`[Tab Change] Active Tab: ${activeTab}, Wallet Connected: ${!!wallet?.publicKey}`);
     resetState();
     if (activeTab !== "owned" || wallet?.publicKey) {
       loadMoreAvatars();
     }
-  }, [activeTab, wallet?.publicKey, loadMoreAvatars, resetState]);
+  }, [activeTab, wallet?.publicKey]);
 
   if (!wallet && activeTab === "owned") {
     return (
