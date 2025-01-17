@@ -72,15 +72,21 @@ function App() {
 
   const loadMoreAvatars = useCallback(async () => {
     if (loading || !hasMore) return;
+    if (activeTab === 'owned' && !wallet?.publicKey) return;
 
     setLoading(true);
     try {
       const endpoint = {
-        owned: `/api/avatars/owned/${wallet.publicKey.toString()}?page=${page}`,
+        owned: wallet?.publicKey ? `/api/avatars/owned/${wallet.publicKey.toString()}?page=${page}` : null,
         gallery: `/api/avatars/gallery?page=${page}`,
         leaderboard: `/api/avatars/leaderboard?page=${page}`,
         tribes: `/api/tribes?page=${page}`,
       }[activeTab];
+
+      if (!endpoint) {
+        setLoading(false);
+        return;
+      }
 
       const response = await fetch(endpoint);
       const data = await response.json();
@@ -100,10 +106,10 @@ function App() {
 
   useEffect(() => {
     resetState();
-    if (activeTab !== "owned" || wallet) {
+    if (activeTab !== "owned" || wallet?.publicKey) {
       loadMoreAvatars();
     }
-  }, [activeTab, wallet, loadMoreAvatars, resetState]);
+  }, [activeTab, wallet?.publicKey, loadMoreAvatars, resetState]);
 
   if (!wallet && activeTab === "owned") {
     return (
