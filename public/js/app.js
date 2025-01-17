@@ -104,14 +104,6 @@ function App() {
   }, [activeTab, page, hasMore, wallet?.publicKey, loading]);
 
   useEffect(() => {
-    resetState(); // Reset pagination and avatars on tab change
-    if (activeTab !== "owned" || wallet?.publicKey) {
-      loadMoreAvatars(); // Load data immediately when applicable
-    }
-  }, [activeTab, wallet?.publicKey]); // Only depend on tab and wallet changes
-
-
-  useEffect(() => {
     console.log(
       `[Tab Change] Active Tab: ${activeTab}, Wallet Connected: ${!!wallet?.publicKey}, Loading: ${loading}`,
     );
@@ -126,7 +118,7 @@ function App() {
       console.log("[Effect] Initiating loadMoreAvatars");
       loadMoreAvatars();
     }
-  }, [activeTab, wallet?.publicKey, loading]);
+  }, [activeTab, wallet?.publicKey]);
 
   if (!wallet && activeTab === "owned") {
     return (
