@@ -22,29 +22,35 @@ function App() {
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
 
-  const resetState = () => {
+  const resetState = useCallback(() => {
     setPage(1);
     setHasMore(true);
     setAvatars([]);
-  };
+  }, []);
+
+  const log = (message) => console.log(`[App Log]: ${message}`);
 
   const handleWalletChange = (newWallet) => {
+    log(
+      `Wallet change detected: ${newWallet?.publicKey?.toString() || "Disconnected"}`,
+    );
     setWallet(newWallet);
+
     if (newWallet) {
       setLoading(true);
       fetch(`/api/avatars/owned/${newWallet.publicKey.toString()}`)
         .then((res) => res.json())
         .then((data) => {
           setAvatars(data.avatars || []);
-          setHasMore(data.hasMore);
-          setLoading(false);
+          setHasMore(data.hasMore || false);
+          log("Owned avatars fetched successfully.");
         })
         .catch((error) => {
           console.error("Error fetching owned avatars:", error);
-          setLoading(false);
-        });
+        })
+        .finally(() => setLoading(false));
     } else {
-      setAvatars([]);
+      resetState();
     }
   };
 
@@ -52,17 +58,21 @@ function App() {
     if (!wallet) return;
 
     setLoading(true);
+    log("Attempting to claim an avatar...");
+
     try {
       const response = await fetch("/api/avatars/claim", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ walletAddress: wallet.publicKey.toString() }),
       });
+
       const data = await response.json();
       if (data.success) {
         setAvatars((prev) => [...prev, data.avatar]);
+        log("Avatar claimed successfully.");
+      } else {
+        log("Failed to claim avatar.");
       }
     } catch (error) {
       console.error("Error claiming avatar:", error);
@@ -72,7 +82,10 @@ function App() {
   };
 
   const loadMoreAvatars = useCallback(async () => {
-    if (loading || !hasMore) return; // Prevents redundant calls if already loading or no more data
+    if (loading || !hasMore) {
+      console.log("Skipping load: already loading or no more data.");
+      return;
+    }
 
     setLoading(true);
     try {
@@ -85,40 +98,40 @@ function App() {
         tribes: `/api/tribes?page=${page}`,
       }[activeTab];
 
-      if (!endpoint) return;
+      if (!endpoint) {
+        console.log("No endpoint for current tab.");
+        return;
+      }
 
       const response = await fetch(endpoint);
       const data = await response.json();
 
-      if (data.avatars?.length === 0) {
-        setHasMore(false); // No more data to fetch
+      if (!data.avatars || data.avatars.length === 0) {
+        setHasMore(false);
+        console.log("No more avatars to load.");
       } else {
         setAvatars((prev) => [...prev, ...data.avatars]);
         setPage((prev) => prev + 1);
+        console.log(`Loaded ${data.avatars.length} avatars.`);
       }
     } catch (error) {
       console.error("Error loading avatars:", error);
     } finally {
       setLoading(false);
     }
-  }, [activeTab, page, hasMore, wallet?.publicKey, loading]);
+  }, [activeTab, page, wallet?.publicKey]);
 
   useEffect(() => {
     console.log(
-      `[Tab Change] Active Tab: ${activeTab}, Wallet Connected: ${!!wallet?.publicKey}, Loading: ${loading}`,
+      `Tab changed: ${activeTab}, Wallet connected: ${!!wallet?.publicKey}`,
     );
-    
-    if (loading) {
-      console.log("[Effect] Skipping due to ongoing loading");
-      return;
-    }
-    
+
+    // Only reset and fetch when tab or wallet changes
     resetState();
     if (activeTab !== "owned" || wallet?.publicKey) {
-      console.log("[Effect] Initiating loadMoreAvatars");
       loadMoreAvatars();
     }
-  }, [activeTab, wallet?.publicKey]);
+  }, [activeTab, wallet?.publicKey]); // No `loading` or `loadMoreAvatars` in dependencies
 
   if (!wallet && activeTab === "owned") {
     return (
@@ -168,7 +181,14 @@ function App() {
 
       <div className="grid gap-4 grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6">
         {avatars.map((avatar) => (
-          <AvatarCard key={avatar._id} avatar={avatar} activeTab={activeTab} />
+          <div key={avatar._id} className="bg-gray-800 p-4 rounded-lg">
+            <img
+              src={avatar.thumbnailUrl || avatar.imageUrl}
+              alt={avatar.name}
+              className="w-full h-48 object-cover rounded-lg mb-2"
+            />
+            <h3 className="text-lg font-semibold">{avatar.name}</h3>
+          </div>
         ))}
       </div>
 
