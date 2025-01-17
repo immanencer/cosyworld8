@@ -28,8 +28,65 @@ function App() {
         return <div className="text-center py-12">Your owned avatars will appear here</div>;
       case "gallery":
         return <div className="text-center py-12">Gallery content coming soon</div>;
-      case "leaderboard":
-        return <div className="text-center py-12">Leaderboard content coming soon</div>;
+      case "leaderboard": {
+  const [leaderboard, setLeaderboard] = useState([]);
+  const [page, setPage] = useState(1);
+  const [loading, setLoading] = useState(false);
+  const [hasMore, setHasMore] = useState(true);
+
+  useEffect(() => {
+    const fetchLeaderboard = async () => {
+      setLoading(true);
+      try {
+        const response = await fetch(`/api/leaderboard?page=${page}&limit=12`);
+        const data = await response.json();
+        setLeaderboard(prev => [...prev, ...data.avatars]);
+        setHasMore(data.avatars.length === 12);
+      } catch (error) {
+        console.error('Error fetching leaderboard:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchLeaderboard();
+  }, [page]);
+
+  return (
+    <div>
+      <div className="grid gap-4 grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6">
+        {leaderboard.map((avatar) => (
+          <div key={avatar._id} className="bg-gray-800 p-4 rounded-lg">
+            <img
+              src={avatar.thumbnailUrl || avatar.imageUrl}
+              alt={avatar.name}
+              className="w-full h-48 object-cover rounded-lg mb-2"
+            />
+            <h3 className="text-lg font-semibold">{avatar.name}</h3>
+            <p className="text-sm text-gray-400">Score: {avatar.score}</p>
+          </div>
+        ))}
+      </div>
+      
+      {hasMore && !loading && (
+        <div className="text-center mt-8">
+          <button
+            onClick={() => setPage(p => p + 1)}
+            className="bg-gray-700 px-6 py-2 rounded-lg hover:bg-gray-600 transition-colors"
+          >
+            Load More
+          </button>
+        </div>
+      )}
+      
+      {loading && (
+        <div className="text-center mt-8">
+          <p>Loading...</p>
+        </div>
+      )}
+    </div>
+  );
+}
       case "tribes":
         return <div className="text-center py-12">Tribes content coming soon</div>;
       default:
