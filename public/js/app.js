@@ -1,4 +1,4 @@
-const { useState, useEffect, useCallback } = React;
+const { useState } = React;
 const { createRoot } = ReactDOM;
 
 const WalletButton = window.WalletButton;
@@ -15,123 +15,27 @@ function TabButton({ label, isActive, onClick }) {
 }
 
 function App() {
-  const [avatars, setAvatars] = useState([]);
-  const [loading, setLoading] = useState(false);
   const [wallet, setWallet] = useState(null);
   const [activeTab, setActiveTab] = useState("owned");
-  const [page, setPage] = useState(1);
-  const [hasMore, setHasMore] = useState(true);
-
-  const resetState = useCallback(() => {
-    setPage(1);
-    setHasMore(true);
-    setAvatars([]);
-  }, []);
-
-  const log = (message) => console.log(`[App Log]: ${message}`);
 
   const handleWalletChange = (newWallet) => {
-    log(
-      `Wallet change detected: ${newWallet?.publicKey?.toString() || "Disconnected"}`,
-    );
     setWallet(newWallet);
-
-    if (newWallet) {
-      setLoading(true);
-      fetch(`/api/avatars/owned/${newWallet.publicKey.toString()}`)
-        .then((res) => res.json())
-        .then((data) => {
-          setAvatars(data.avatars || []);
-          setHasMore(data.hasMore || false);
-          log("Owned avatars fetched successfully.");
-        })
-        .catch((error) => {
-          console.error("Error fetching owned avatars:", error);
-        })
-        .finally(() => setLoading(false));
-    } else {
-      resetState();
-    }
   };
 
-  const handleClaimAvatar = async () => {
-    if (!wallet) return;
-
-    setLoading(true);
-    log("Attempting to claim an avatar...");
-
-    try {
-      const response = await fetch("/api/avatars/claim", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ walletAddress: wallet.publicKey.toString() }),
-      });
-
-      const data = await response.json();
-      if (data.success) {
-        setAvatars((prev) => [...prev, data.avatar]);
-        log("Avatar claimed successfully.");
-      } else {
-        log("Failed to claim avatar.");
-      }
-    } catch (error) {
-      console.error("Error claiming avatar:", error);
-    } finally {
-      setLoading(false);
+  const renderTabContent = () => {
+    switch (activeTab) {
+      case "owned":
+        return <div className="text-center py-12">Your owned avatars will appear here</div>;
+      case "gallery":
+        return <div className="text-center py-12">Gallery content coming soon</div>;
+      case "leaderboard":
+        return <div className="text-center py-12">Leaderboard content coming soon</div>;
+      case "tribes":
+        return <div className="text-center py-12">Tribes content coming soon</div>;
+      default:
+        return null;
     }
   };
-
-  const loadMoreAvatars = useCallback(async () => {
-    if (loading || !hasMore) {
-      console.log("Skipping load: already loading or no more data.");
-      return;
-    }
-
-    setLoading(true);
-    try {
-      const endpoint = {
-        owned: wallet?.publicKey
-          ? `/api/avatars/owned/${wallet.publicKey.toString()}?page=${page}`
-          : null,
-        gallery: `/api/avatars/gallery?page=${page}`,
-        leaderboard: `/api/avatars/leaderboard?page=${page}`,
-        tribes: `/api/tribes?page=${page}`,
-      }[activeTab];
-
-      if (!endpoint) {
-        console.log("No endpoint for current tab.");
-        return;
-      }
-
-      const response = await fetch(endpoint);
-      const data = await response.json();
-
-      if (!data.avatars || data.avatars.length === 0) {
-        setHasMore(false);
-        console.log("No more avatars to load.");
-      } else {
-        setAvatars((prev) => [...prev, ...data.avatars]);
-        setPage((prev) => prev + 1);
-        console.log(`Loaded ${data.avatars.length} avatars.`);
-      }
-    } catch (error) {
-      console.error("Error loading avatars:", error);
-    } finally {
-      setLoading(false);
-    }
-  }, [activeTab, page, wallet?.publicKey]);
-
-  useEffect(() => {
-    console.log(
-      `Tab changed: ${activeTab}, Wallet connected: ${!!wallet?.publicKey}`,
-    );
-
-    // Only reset and fetch when tab or wallet changes
-    resetState();
-    if (activeTab !== "owned" || wallet?.publicKey) {
-      loadMoreAvatars();
-    }
-  }, [activeTab, wallet?.publicKey]); // No `loading` or `loadMoreAvatars` in dependencies
 
   if (!wallet && activeTab === "owned") {
     return (
@@ -165,43 +69,7 @@ function App() {
         ))}
       </div>
 
-      {activeTab === "owned" && avatars.length === 0 && !loading && (
-        <div className="text-center py-12">
-          <p className="text-gray-400 mb-4">You don't own any avatars yet</p>
-          <button
-            onClick={handleClaimAvatar}
-            className="bg-blue-600 px-6 py-2 rounded-lg hover:bg-blue-700 transition-colors"
-          >
-            Claim Free Avatar
-          </button>
-        </div>
-      )}
-
-      {loading && <p className="text-center">Loading...</p>}
-
-      <div className="grid gap-4 grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6">
-        {avatars.map((avatar) => (
-          <div key={avatar._id} className="bg-gray-800 p-4 rounded-lg">
-            <img
-              src={avatar.thumbnailUrl || avatar.imageUrl}
-              alt={avatar.name}
-              className="w-full h-48 object-cover rounded-lg mb-2"
-            />
-            <h3 className="text-lg font-semibold">{avatar.name}</h3>
-          </div>
-        ))}
-      </div>
-
-      {hasMore && !loading && (
-        <div className="text-center mt-8">
-          <button
-            onClick={loadMoreAvatars}
-            className="bg-gray-700 px-6 py-2 rounded-lg hover:bg-gray-600 transition-colors"
-          >
-            Load More
-          </button>
-        </div>
-      )}
+      {renderTabContent()}
     </div>
   );
 }
@@ -212,6 +80,6 @@ if (rootElement) {
   root.render(
     <React.StrictMode>
       <App />
-    </React.StrictMode>,
+    </React.StrictMode>
   );
 }
