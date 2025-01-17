@@ -35,7 +35,8 @@ function App() {
       fetch(`/api/avatars/owned/${newWallet.publicKey.toString()}`)
         .then((res) => res.json())
         .then((data) => {
-          setAvatars(data || []);
+          setAvatars(data.avatars || []);
+          setHasMore(data.hasMore);
           setLoading(false);
         })
         .catch((error) => {

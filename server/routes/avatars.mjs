@@ -67,8 +67,11 @@ export default function (db) {
 
       const nftMintService = new NFTMintingService(db);
       const ownedAvatars = await nftMintService.getAvatarsByOwner(publicKey, skip, limit);
-
-      res.json(ownedAvatars);
+      
+      res.json({
+        avatars: ownedAvatars || [],
+        hasMore: (ownedAvatars || []).length === limit
+      });
     } catch (error) {
       console.error('Error fetching owned avatars:', error);
       res.status(500).json({ error: error.message });
