@@ -14,3 +14,9 @@
     "@babel/plugin-transform-modules-commonjs"
   ]
 }
+{
+  "presets": [
+    "@babel/preset-env",
+    "@babel/preset-react"
+  ]
+}

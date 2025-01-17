@@ -25,3 +25,13 @@ export const clipDescription = (text) => {
   const doubleNewline = text.indexOf('\n\n');
   return doubleNewline > -1 ? text.slice(0, doubleNewline) : text;
 };
+export function getTierFromModel(model) {
+  if (!model) return 'U';
+  
+  const modelLower = model.toLowerCase();
+  if (modelLower.includes('gpt-4')) return 'S';
+  if (modelLower.includes('claude')) return 'A';
+  if (modelLower.includes('llama')) return 'B';
+  if (modelLower.includes('gpt-3.5')) return 'C';
+  return 'U';
+}
