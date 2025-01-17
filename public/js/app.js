@@ -55,18 +55,36 @@ function App() {
       case "leaderboard":
         return (
           <div>
-            <div className="grid gap-4 grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6">
-              {leaderboard.map((avatar) => (
-                <div key={avatar._id} className="bg-gray-800 p-4 rounded-lg">
-                  <img
-                    src={avatar.thumbnailUrl || avatar.imageUrl}
-                    alt={avatar.name}
-                    className="w-full h-48 object-cover rounded-lg mb-2"
-                  />
-                  <h3 className="text-lg font-semibold">{avatar.name}</h3>
-                  <p className="text-sm text-gray-400">Score: {avatar.score}</p>
-                </div>
-              ))}
+            <div className="space-y-4">
+              {leaderboard.map((avatar) => {
+                const tierColors = {
+                  legendary: 'ring-purple-600',
+                  rare: 'ring-blue-600',
+                  uncommon: 'ring-green-600',
+                  common: 'ring-yellow-600',
+                  undefined: 'ring-gray-600'
+                };
+                const tierColor = tierColors[avatar.model?.rarity || 'undefined'];
+                
+                return (
+                  <div key={avatar._id} className="bg-gray-800 p-4 rounded-lg flex items-center gap-4">
+                    <div className={`relative shrink-0 ${tierColor} ring-2 rounded-full p-1`}>
+                      <img
+                        src={avatar.thumbnailUrl || avatar.imageUrl}
+                        alt={avatar.name}
+                        className="w-16 h-16 object-cover rounded-full"
+                      />
+                    </div>
+                    <div className="flex-grow">
+                      <h3 className="text-lg font-semibold">{avatar.name}</h3>
+                      <p className="text-sm text-gray-400">Score: {avatar.score}</p>
+                      {avatar.model && (
+                        <p className="text-xs text-gray-500">{avatar.model.name}</p>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
             </div>
             {hasMore && !loading && (
               <div className="text-center mt-8">
