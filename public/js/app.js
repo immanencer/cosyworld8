@@ -108,8 +108,11 @@ function App() {
       const data = await response.json();
       console.log(`[Avatar Loading] Received ${data.avatars?.length || 0} avatars`);
 
-      if (data.avatars?.length === 0) {
+      if (!data.avatars || data.avatars.length === 0) {
+        console.log('[Avatar Loading] No more avatars, setting hasMore to false');
         setHasMore(false);
+        setLoading(false);
+        return;
       } else {
         setAvatars((prev) => [...prev, ...data.avatars]);
         setPage((prev) => prev + 1);
