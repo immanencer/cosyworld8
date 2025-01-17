@@ -73,8 +73,13 @@ function App() {
   const loadMoreAvatars = useCallback(async () => {
     console.log(`[Avatar Loading] Tab: ${activeTab}, Page: ${page}, Loading: ${loading}, HasMore: ${hasMore}`);
     
-    if (loading || !hasMore) {
-      console.log('[Avatar Loading] Skipped - Already loading or no more content');
+    if (loading) {
+      console.log('[Avatar Loading] Skipped - Already loading');
+      return;
+    }
+
+    if (!hasMore) {
+      console.log('[Avatar Loading] Skipped - No more content');
       return;
     }
     
