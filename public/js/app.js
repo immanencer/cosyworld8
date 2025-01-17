@@ -17,6 +17,29 @@ function TabButton({ label, isActive, onClick }) {
 function App() {
   const [wallet, setWallet] = useState(null);
   const [activeTab, setActiveTab] = useState("owned");
+  const [leaderboard, setLeaderboard] = useState([]);
+  const [page, setPage] = useState(1);
+  const [loading, setLoading] = useState(false);
+  const [hasMore, setHasMore] = useState(true);
+
+  useEffect(() => {
+    if (activeTab === "leaderboard") {
+      const fetchLeaderboard = async () => {
+        setLoading(true);
+        try {
+          const response = await fetch(`/api/leaderboard?page=${page}&limit=12`);
+          const data = await response.json();
+          setLeaderboard(prev => [...prev, ...data.avatars]);
+          setHasMore(data.avatars.length === 12);
+        } catch (error) {
+          console.error('Error fetching leaderboard:', error);
+        } finally {
+          setLoading(false);
+        }
+      };
+      fetchLeaderboard();
+    }
+  }, [page, activeTab]);
 
   const handleWalletChange = (newWallet) => {
     setWallet(newWallet);
@@ -28,31 +51,8 @@ function App() {
         return <div className="text-center py-12">Your owned avatars will appear here</div>;
       case "gallery":
         return <div className="text-center py-12">Gallery content coming soon</div>;
-      case "leaderboard": {
-  const [leaderboard, setLeaderboard] = useState([]);
-  const [page, setPage] = useState(1);
-  const [loading, setLoading] = useState(false);
-  const [hasMore, setHasMore] = useState(true);
-
-  useEffect(() => {
-    const fetchLeaderboard = async () => {
-      setLoading(true);
-      try {
-        const response = await fetch(`/api/leaderboard?page=${page}&limit=12`);
-        const data = await response.json();
-        setLeaderboard(prev => [...prev, ...data.avatars]);
-        setHasMore(data.avatars.length === 12);
-      } catch (error) {
-        console.error('Error fetching leaderboard:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchLeaderboard();
-  }, [page]);
-
-  return (
+      case "leaderboard":
+        return (
     <div>
       <div className="grid gap-4 grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6">
         {leaderboard.map((avatar) => (
