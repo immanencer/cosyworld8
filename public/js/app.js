@@ -72,29 +72,9 @@ function App() {
   };
 
   const loadMoreAvatars = useCallback(async () => {
-    console.log(
-      `[Avatar Loading] Tab: ${activeTab}, Page: ${page}, Loading: ${loading}, HasMore: ${hasMore}`,
-    );
-
-    if (loading) {
-      console.log("[Avatar Loading] Skipped - Already loading");
-      return;
-    }
-
-    if (!hasMore) {
-      console.log("[Avatar Loading] Skipped - No more content");
-      return;
-    }
-
-    if (activeTab === "owned" && !wallet?.publicKey) {
-      console.log(
-        "[Avatar Loading] Skipped - Owned tab requires wallet connection",
-      );
-      return;
-    }
+    if (loading || !hasMore) return; // Prevents redundant calls if already loading or no more data
 
     setLoading(true);
-    console.log("[Avatar Loading] Starting fetch...");
     try {
       const endpoint = {
         owned: wallet?.publicKey
@@ -105,34 +85,31 @@ function App() {
         tribes: `/api/tribes?page=${page}`,
       }[activeTab];
 
-      if (!endpoint) {
-        setLoading(false);
-        return;
-      }
+      if (!endpoint) return;
 
-      console.log(`[Avatar Loading] Fetching from endpoint: ${endpoint}`);
       const response = await fetch(endpoint);
       const data = await response.json();
-      console.log(
-        `[Avatar Loading] Received ${data.avatars?.length || 0} avatars`,
-      );
 
-      if (!data.avatars || data.avatars.length === 0) {
-        console.log(
-          "[Avatar Loading] No more avatars, setting hasMore to false",
-        );
-        setHasMore(false);
+      if (data.avatars?.length === 0) {
+        setHasMore(false); // No more data to fetch
       } else {
         setAvatars((prev) => [...prev, ...data.avatars]);
         setPage((prev) => prev + 1);
       }
     } catch (error) {
-      console.error("[Avatar Loading] Error:", error);
+      console.error("Error loading avatars:", error);
     } finally {
-      console.log("[Avatar Loading] Fetch complete");
       setLoading(false);
     }
-  }, [activeTab, page, wallet?.publicKey]); // Kept only necessary dependencies
+  }, [activeTab, page, hasMore, wallet?.publicKey, loading]);
+
+  useEffect(() => {
+    resetState(); // Reset pagination and avatars on tab change
+    if (activeTab !== "owned" || wallet?.publicKey) {
+      loadMoreAvatars(); // Load data immediately when applicable
+    }
+  }, [activeTab, wallet?.publicKey]); // Only depend on tab and wallet changes
+
 
   useEffect(() => {
     console.log(
