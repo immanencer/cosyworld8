@@ -76,10 +76,7 @@ function App() {
                       />
                     </div>
                     <div className="flex-grow">
-                      <div className="flex items-center gap-2">
-                        <h3 className="text-lg font-semibold">{avatar.name}</h3>
-                        <TierBadge tier={tier} />
-                      </div>
+                      <h3 className="text-lg font-semibold">{avatar.name}</h3>
                       <p className="text-sm text-gray-400">Score: {avatar.score}</p>
                       {avatar.model && (
                         <p className="text-xs text-gray-500">{avatar.model}</p>
