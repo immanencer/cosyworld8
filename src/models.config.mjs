@@ -1,5 +1,6 @@
 export default [
   // Legendary models
+  { model: "deepseek/deepseek-r1", rarity: "legendary" },
   { model: "openai/gpt-4o", rarity: "legendary" },
   { model: "meta-llama/llama-3.1-405b-instruct", rarity: "legendary" },
   { model: "anthropic/claude-3-opus:beta", rarity: "legendary" },
