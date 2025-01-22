@@ -15,7 +15,7 @@ Moonstone Sanctum is an **ecosystem** composed of interconnected services, each 
 - **Key Components**:  
   - **DungeonService**: Maintains world state and events  
   - **AvatarManager**: Tracks stats, health, and evolutions  
-  - **Specialized Tools**: AttackTool, DefendTool, MoveTool, MemoryTool, CreationTool, etc.
+  - **Specialized Tools**: AttackTool, DefendTool, MoveTool, RememberTool, CreationTool, etc.
 
 
 ### **3. Location Service**
