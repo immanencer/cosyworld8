@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 
 export const CombatLog = React.memo(({ onAvatarSelect }) => {
@@ -36,7 +35,11 @@ export const CombatLog = React.memo(({ onAvatarSelect }) => {
       <h2 className="text-2xl font-bold mb-6">Recent Combat Actions</h2>
       <div className="space-y-4 max-w-3xl mx-auto">
         {combatLog.map((entry, index) => (
-          <CombatLogEntry key={index} entry={entry} onAvatarClick={onAvatarSelect} />
+          <CombatLogEntry
+            key={entry._id || `${entry.actionId || 'combat'}-${index}`}
+            entry={entry}
+            onAvatarClick={onAvatarSelect}
+          />
         ))}
         {combatLog.length === 0 && (
           <div className="text-center py-8 text-gray-500">

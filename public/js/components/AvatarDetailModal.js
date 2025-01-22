@@ -1,3 +1,5 @@
+const { getTierFromModel } = window.utils;
+
 // Avatar Detail Modal Component
 const AvatarDetailModal = ({ avatar, onClose, wallet }) => {
   const [currentVariantIndex, setCurrentVariantIndex] = useState(0);

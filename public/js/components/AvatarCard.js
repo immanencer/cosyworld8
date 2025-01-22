@@ -1,5 +1,6 @@
 
 import { useState, useEffect } from 'react';
+const { getTierFromModel } = window.utils;
 
 // Avatar Card Component
 export const AvatarCard = React.memo(({ avatar, onSelect }) => {

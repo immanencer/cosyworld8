@@ -1,4 +1,3 @@
-
 import { MarkdownContent } from '../utils/MarkdownContent';
 
 function ActivityFeed({ messages, memories, narratives, dungeonActions }) {
@@ -39,7 +38,10 @@ function ActivityFeed({ messages, memories, narratives, dungeonActions }) {
   return (
     <div className="space-y-4">
       {activities.map((activity, i) => (
-        <div key={i} className="bg-gray-700 rounded-lg p-4">
+        <div
+          key={`${activity.type}-${activity.timestamp?.getTime?.() || i}`}
+          className="bg-gray-700 rounded-lg p-4"
+        >
           <div className="flex items-center gap-2 mb-2">
             <span className="text-sm text-gray-400">{activity.icon}</span>
             <span className="text-xs text-gray-500">{formatDate(activity.timestamp)}</span>

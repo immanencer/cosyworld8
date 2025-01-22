@@ -1,6 +1,7 @@
-
 const { useState, useEffect } = React;
 const { createRoot } = ReactDOM;
+
+// const { getTierFromModel } = './utils/index';
 
 const WalletButton = window.WalletButton;
 
@@ -57,7 +58,7 @@ function App() {
           <div>
             <div className="space-y-4">
               {leaderboard.map((avatar) => {
-                const tier = getTierFromModel(avatar.model);
+                const tier = window.getTierFromModel(avatar.model);
                 return (
                   <div key={avatar._id} className="bg-gray-800 p-4 rounded-lg flex items-center gap-4">
                     <div className={`relative shrink-0 ring-2 rounded-full p-1 ${

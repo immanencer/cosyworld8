@@ -10,3 +10,4 @@ images/*
 logs
 *-wallet.json
 dist/
+attached_assets/*
