@@ -17,22 +17,6 @@ function TabButton({ label, isActive, onClick }) {
   );
 }
 
-function AvatarModal({ isOpen, onClose, avatar, wallet }) {
-  const [activityData, setActivityData] = useState({
-    messages: [],
-    memories: [],
-    narratives: [],
-    location: null,
-    dungeonStats: avatar?.stats || { attack: 0, defense: 0, hp: 0 },
-    dungeonActions: []
-  });
-
-  useEffect(() => {
-    if (avatar?._id && isOpen) {
-      Promise.all([
-        fetch(`/api/avatars/${avatar._id}/narratives`).then(r => r.json()),
-        fetch(`/api/avatars/${avatar._id}/memories`).then(r => r.json()),
-
 // Gallery View Component
 function GalleryView({ onSelectAvatar }) {
   const [avatars, setAvatars] = useState([]);
@@ -153,6 +137,21 @@ function OwnedAvatars({ wallet, onSelectAvatar }) {
   );
 }
 
+function AvatarModal({ isOpen, onClose, avatar, wallet }) {
+  const [activityData, setActivityData] = useState({
+    messages: [],
+    memories: [],
+    narratives: [],
+    location: null,
+    dungeonStats: avatar?.stats || { attack: 0, defense: 0, hp: 0 },
+    dungeonActions: []
+  });
+
+  useEffect(() => {
+    if (avatar?._id && isOpen) {
+      Promise.all([
+        fetch(`/api/avatars/${avatar._id}/narratives`).then(r => r.json()),
+        fetch(`/api/avatars/${avatar._id}/memories`).then(r => r.json()),
         fetch(`/api/avatars/${avatar._id}/location`).then(r => r.json()),
         fetch(`/api/avatars/${avatar._id}/actions`).then(r => r.json())
       ])
@@ -258,7 +257,6 @@ function OwnedAvatars({ wallet, onSelectAvatar }) {
   );
 }
 
-
 function App() {
   const [wallet, setWallet] = useState(null);
   const [activeTab, setActiveTab] = useState("owned");
@@ -266,14 +264,13 @@ function App() {
   const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(false);
   const [hasMore, setHasMore] = useState(true);
-  const [selectedAvatar, setSelectedAvatar] = useState(null); // Added state for modal
-  const [isModalOpen, setIsModalOpen] = useState(false); // Added state for modal
-
+  const [selectedAvatar, setSelectedAvatar] = useState(null); 
+  const [isModalOpen, setIsModalOpen] = useState(false); 
 
   useEffect(() => {
     if (activeTab === "leaderboard") {
-      setLeaderboard([]); // Reset when switching to leaderboard
-      setPage(1); // Reset page
+      setLeaderboard([]); 
+      setPage(1); 
     }
   }, [activeTab]);
 
@@ -334,7 +331,7 @@ function App() {
                 <div
                   key={avatar._id}
                   className="bg-gray-800 p-4 rounded-lg flex items-center gap-4 cursor-pointer"
-                  onClick={() => { setSelectedAvatar(avatar); setIsModalOpen(true); }} // Open modal on click
+                  onClick={() => { setSelectedAvatar(avatar); setIsModalOpen(true); }} 
                 >
                   <div className={`relative shrink-0 ring-2 rounded-full p-1 ${
                     {
@@ -377,7 +374,6 @@ function App() {
 
                   observer.observe(node);
 
-                  // Store observer reference for cleanup
                   if (node._observer) {
                     node._observer.disconnect();
                   }
@@ -430,7 +426,7 @@ function App() {
       </div>
 
       {renderTabContent()}
-      <AvatarModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} avatar={selectedAvatar} /> {/* Added modal */}
+      <AvatarModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} avatar={selectedAvatar} wallet={wallet}/> 
     </div>
   );
 }
