@@ -112,9 +112,8 @@ function App() {
                   
                   observer.observe(node);
                   
-                  // Clean up on unmount
-                  node._observer = observer;
-                  node.addEventListener('DOMNodeRemoved', () => observer.disconnect());
+                  // Clean up using React's ref callback
+                  return () => observer.disconnect();
                 }}
                 className="h-10 flex items-center justify-center"
               >
