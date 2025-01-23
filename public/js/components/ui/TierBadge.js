@@ -26,4 +26,4 @@ function TierBadge({ tier }) {
   );
 }
 
-export { TierBadge };
+window.components.TierBadge = TierBadge;
