@@ -182,17 +182,65 @@ async function loadActionLog() {
     }
     
     content.innerHTML = actions.map(action => `
-      <div class="bg-gray-800 p-4 mb-2 rounded-lg">
+      <div class="bg-gray-800 p-4 mb-2 rounded-lg hover:bg-gray-700 transition-colors">
         <div class="flex items-center gap-4">
           ${action.actorThumbnailUrl ? `
             <img src="${action.actorThumbnailUrl}" alt="${action.actorName}" 
                  class="w-12 h-12 rounded-full">` : ''}
           <div class="flex-1">
-            <span class="font-semibold">${action.actorName}</span>
-            <span class="text-gray-400">${action.action}</span>
-            ${action.targetName ? `<span class="font-semibold">${action.targetName}</span>` : ''}
-            <div class="text-sm text-gray-500 mt-1">
+            <div class="flex items-center justify-between">
+              <div>
+                <span class="font-semibold">${action.actorName}</span>
+                <span class="text-gray-400">used ${action.action}</span>
+                ${action.targetName ? `<span class="font-semibold"> → ${action.targetName}</span>` : ''}
+              </div>
+              <button 
+                onclick="this.closest('.bg-gray-800').querySelector('.action-details').classList.toggle('hidden')"
+                class="text-gray-400 hover:text-white transition-colors"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                  <path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd" />
+                </svg>
+              </button>
+            </div>
+            <div class="text-sm text-gray-500">
               ${new Date(action.timestamp).toLocaleString()}
+            </div>
+            <div class="action-details hidden mt-4 p-3 bg-gray-900 rounded-lg">
+              <div class="grid grid-cols-2 gap-4">
+                <div>
+                  <h4 class="font-semibold mb-2">Actor Details</h4>
+                  <p>HP: ${action.actorStats?.hp || 'N/A'}</p>
+                  <p>Attack: ${action.actorStats?.attack || 'N/A'}</p>
+                  <p>Defense: ${action.actorStats?.defense || 'N/A'}</p>
+                </div>
+                ${action.targetName ? `
+                  <div>
+                    <h4 class="font-semibold mb-2">Target Details</h4>
+                    <p>HP: ${action.targetStats?.hp || 'N/A'}</p>
+                    <p>Attack: ${action.targetStats?.attack || 'N/A'}</p>
+                    <p>Defense: ${action.targetStats?.defense || 'N/A'}</p>
+                  </div>
+                ` : ''}
+              </div>
+              ${action.result ? `
+                <div class="mt-4">
+                  <h4 class="font-semibold mb-2">Result</h4>
+                  <p class="text-gray-300">${action.result}</p>
+                </div>
+              ` : ''}
+              ${action.memory ? `
+                <div class="mt-4">
+                  <h4 class="font-semibold mb-2">Memory</h4>
+                  <p class="text-gray-300">${action.memory}</p>
+                </div>
+              ` : ''}
+              ${action.tweet ? `
+                <div class="mt-4">
+                  <h4 class="font-semibold mb-2">Posted to X</h4>
+                  <p class="text-gray-300">${action.tweet}</p>
+                </div>
+              ` : ''}
             </div>
           </div>
         </div>

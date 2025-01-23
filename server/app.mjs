@@ -561,6 +561,26 @@ app.get('/api/dungeon/log', async (req, res) => {
       .limit(50)
       .toArray();
 
+    // Fetch related stats and additional data
+    const enrichedLog = await Promise.all(
+      combatLog.map(async (entry) => {
+        const [actorStats, targetStats] = await Promise.all([
+          db.collection('dungeon_stats').findOne({ avatarId: entry.actorId }),
+          entry.targetId ? db.collection('dungeon_stats').findOne({ avatarId: entry.targetId }) : null
+        ]);
+
+        // Fetch additional data based on action type
+        let additionalData = {};
+        if (entry.action === 'remember') {
+          const memory = await db.collection('memories')
+            .findOne({ avatarId: entry.actorId, timestamp: entry.timestamp });
+          if (memory) additionalData.memory = memory.content;
+        } else if (entry.action === 'xpost') {
+          const tweet = await db.collection('tweets')
+            .findOne({ avatarId: entry.actorId, timestamp: entry.timestamp });
+          if (tweet) additionalData.tweet = tweet.content;
+        }
+
     const enrichedLog = await Promise.all(
       combatLog.map(async (entry) => {
         // Try exact match first, then case-insensitive
