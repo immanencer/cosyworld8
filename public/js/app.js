@@ -26,12 +26,24 @@ function App() {
 
   useEffect(() => {
     if (activeTab === "leaderboard") {
+      setLeaderboard([]); // Reset when switching to leaderboard
+      setPage(1); // Reset page
+    }
+  }, [activeTab]);
+
+  useEffect(() => {
+    if (activeTab === "leaderboard") {
       const fetchLeaderboard = async () => {
         setLoading(true);
         try {
           const response = await fetch(`/api/leaderboard?page=${page}&limit=12`);
           const data = await response.json();
-          setLeaderboard(prev => [...prev, ...data.avatars]);
+          setLeaderboard(prev => {
+            const newAvatars = data.avatars.filter(
+              newAvatar => !prev.some(existingAvatar => existingAvatar._id === newAvatar._id)
+            );
+            return [...prev, ...newAvatars];
+          });
           setHasMore(data.avatars.length === 12);
         } catch (error) {
           console.error('Error fetching leaderboard:', error);
@@ -87,14 +99,22 @@ function App() {
                 );
               })}
             </div>
-            {hasMore && !loading && (
-              <div className="text-center mt-8">
-                <button
-                  onClick={() => setPage(p => p + 1)}
-                  className="bg-gray-700 px-6 py-2 rounded-lg hover:bg-gray-600 transition-colors"
-                >
-                  Load More
-                </button>
+            {hasMore && (
+              <div 
+                ref={node => {
+                  if (node) {
+                    const observer = new IntersectionObserver(entries => {
+                      if (entries[0].isIntersecting && !loading) {
+                        setPage(p => p + 1);
+                      }
+                    }, { threshold: 1.0 });
+                    observer.observe(node);
+                    return () => observer.disconnect();
+                  }
+                }}
+                className="h-10 flex items-center justify-center"
+              >
+                {loading && <p>Loading more...</p>}
               </div>
             )}
             {loading && (
