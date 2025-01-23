@@ -443,7 +443,7 @@ app.get('/api/avatar/:id/narratives', async (req, res) => {
       const statService = new StatGenerationService();
       const avatar = await db.collection('avatars').findOne({ _id: avatarId });
       const generatedStats = statService.generateStatsFromDate(avatar?.createdAt || new Date());
-      
+
       dungeonStats = await db.collection('dungeon_stats').findOneAndUpdate(
         { avatarId },
         { $set: { ...generatedStats, avatarId } },
@@ -582,6 +582,24 @@ app.get('/api/dungeon/log', async (req, res) => {
       .limit(50)
       .toArray();
 
+    // Get unique location names from move actions
+    const locationNames = [...new Set(
+      combatLog
+        .filter(log => log.action === 'move' && log.target)
+        .map(log => log.target)
+    )];
+
+    // Fetch location details
+    const locationDetails = await db.collection('locations')
+      .find({ name: { $in: locationNames } })
+      .toArray()
+      .then(locations => locations.reduce((acc, loc) => {
+        if (!acc[loc.name] || new Date(loc.updatedAt) > new Date(acc[loc.name].updatedAt)) {
+          acc[loc.name] = loc;
+        }
+        return acc;
+      }, {}));
+
     // Enrich each log entry
     const enrichedLog = await Promise.all(
       combatLog.map(async (entry) => {
@@ -591,19 +609,19 @@ app.get('/api/dungeon/log', async (req, res) => {
             { name: entry.actor },
             { projection: { _id: 1, name: 1, imageUrl: 1, emoji: 1 } }
           ) ||
-          db.collection('avatars').findOne(
-            { name: { $regex: `^${escapeRegExp(entry.actor)}$`, $options: 'i' } },
-            { projection: { _id: 1, name: 1, imageUrl: 1, emoji: 1 } }
-          ),
+            db.collection('avatars').findOne(
+              { name: { $regex: `^${escapeRegExp(entry.actor)}$`, $options: 'i' } },
+              { projection: { _id: 1, name: 1, imageUrl: 1, emoji: 1 } }
+            ),
           entry.target
             ? db.collection('avatars').findOne(
               { name: entry.target },
               { projection: { _id: 1, name: 1, imageUrl: 1, emoji: 1 } }
             ) ||
-            db.collection('avatars').findOne(
-              { name: { $regex: `^${escapeRegExp(entry.target)}$`, $options: 'i' } },
-              { projection: { _id: 1, name: 1, imageUrl: 1, emoji: 1 } }
-            )
+              db.collection('avatars').findOne(
+                { name: { $regex: `^${escapeRegExp(entry.target)}$`, $options: 'i' } },
+                { projection: { _id: 1, name: 1, imageUrl: 1, emoji: 1 } }
+              )
             : null,
         ]);
 
@@ -644,6 +662,14 @@ app.get('/api/dungeon/log', async (req, res) => {
             timestamp: entry.timestamp,
           });
           if (tweet) additionalData.tweet = tweet.content;
+        }
+
+        // Add location details if available
+        const location = locationDetails[entry.target] || {};
+        additionalData.location = {
+          name: location.name,
+          imageUrl: location.imageUrl,
+          description: location.description
         }
 
         return {
