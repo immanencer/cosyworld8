@@ -102,15 +102,18 @@ function App() {
             {hasMore && (
               <div 
                 ref={node => {
-                  if (node) {
-                    const observer = new IntersectionObserver(entries => {
-                      if (entries[0].isIntersecting && !loading) {
-                        setPage(p => p + 1);
-                      }
-                    }, { threshold: 1.0 });
-                    observer.observe(node);
-                    return () => observer.disconnect();
-                  }
+                  if (!node) return;
+                  
+                  const observer = new IntersectionObserver(entries => {
+                    if (entries[0].isIntersecting && !loading) {
+                      setPage(p => p + 1);
+                    }
+                  }, { threshold: 1.0 });
+                  
+                  observer.observe(node);
+                  
+                  // Cleanup handled by React
+                  observer.disconnect();
                 }}
                 className="h-10 flex items-center justify-center"
               >
