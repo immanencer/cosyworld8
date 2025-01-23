@@ -211,15 +211,25 @@ async function loadActionLog() {
                 <div>
                   <h4 class="font-semibold mb-2">Actor Details</h4>
                   <p>HP: ${action.actorStats?.hp || 'N/A'}</p>
-                  <p>Attack: ${action.actorStats?.attack || 'N/A'}</p>
-                  <p>Defense: ${action.actorStats?.defense || 'N/A'}</p>
+                  <p>STR: ${action.actorStats?.strength || 'N/A'} (${Math.floor((action.actorStats?.strength - 10) / 2) || '0'})</p>
+                  <p>DEX: ${action.actorStats?.dexterity || 'N/A'} (${Math.floor((action.actorStats?.dexterity - 10) / 2) || '0'})</p>
+                  <p>CON: ${action.actorStats?.constitution || 'N/A'} (${Math.floor((action.actorStats?.constitution - 10) / 2) || '0'})</p>
+                  <p>INT: ${action.actorStats?.intelligence || 'N/A'} (${Math.floor((action.actorStats?.intelligence - 10) / 2) || '0'})</p>
+                  <p>WIS: ${action.actorStats?.wisdom || 'N/A'} (${Math.floor((action.actorStats?.wisdom - 10) / 2) || '0'})</p>
+                  <p>CHA: ${action.actorStats?.charisma || 'N/A'} (${Math.floor((action.actorStats?.charisma - 10) / 2) || '0'})</p>
+                  <p class="mt-2">AC: ${10 + Math.floor((action.actorStats?.dexterity - 10) / 2) || 'N/A'}</p>
                 </div>
                 ${action.targetName ? `
                   <div>
                     <h4 class="font-semibold mb-2">Target Details</h4>
                     <p>HP: ${action.targetStats?.hp || 'N/A'}</p>
-                    <p>Attack: ${action.targetStats?.attack || 'N/A'}</p>
-                    <p>Defense: ${action.targetStats?.defense || 'N/A'}</p>
+                    <p>STR: ${action.targetStats?.strength || 'N/A'} (${Math.floor((action.targetStats?.strength - 10) / 2) || '0'})</p>
+                    <p>DEX: ${action.targetStats?.dexterity || 'N/A'} (${Math.floor((action.targetStats?.dexterity - 10) / 2) || '0'})</p>
+                    <p>CON: ${action.targetStats?.constitution || 'N/A'} (${Math.floor((action.targetStats?.constitution - 10) / 2) || '0'})</p>
+                    <p>INT: ${action.targetStats?.intelligence || 'N/A'} (${Math.floor((action.targetStats?.intelligence - 10) / 2) || '0'})</p>
+                    <p>WIS: ${action.targetStats?.wisdom || 'N/A'} (${Math.floor((action.targetStats?.wisdom - 10) / 2) || '0'})</p>
+                    <p>CHA: ${action.targetStats?.charisma || 'N/A'} (${Math.floor((action.targetStats?.charisma - 10) / 2) || '0'})</p>
+                    <p class="mt-2">AC: ${10 + Math.floor((action.targetStats?.dexterity - 10) / 2) || 'N/A'}</p>
                   </div>
                 ` : ''}
               </div>
