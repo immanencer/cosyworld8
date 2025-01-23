@@ -464,7 +464,7 @@ async function loadLeaderboard() {
       loader.classList.remove('hidden');
 
       try {
-        const data = await fetchJSON(`/api/avatars/leaderboard?page=${scrollState.page}&limit=12`);
+        const data = await fetchJSON(`/api/avatars/leaderboard?page=${scrollState.page}&limit=12&sort=score`);
         
         if (!data.avatars || !Array.isArray(data.avatars)) {
           scrollState.hasMore = false;
