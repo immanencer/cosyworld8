@@ -111,7 +111,10 @@ function App() {
                   }, { threshold: 0.1 });
                   
                   observer.observe(node);
-                  return () => observer.disconnect();
+                  
+                  // Clean up on unmount
+                  node._observer = observer;
+                  node.addEventListener('DOMNodeRemoved', () => observer.disconnect());
                 }}
                 className="h-10 flex items-center justify-center"
               >
