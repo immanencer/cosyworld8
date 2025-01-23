@@ -53,7 +53,7 @@ const AvatarModal = ({ avatar, onClose }) => {
             <div>
               <h2 className="text-2xl font-bold">{avatar?.name}</h2>
               <div className="flex items-center gap-2">
-                <TierBadge tier={tier} />
+                {window.components.TierBadge && React.createElement(window.components.TierBadge, { tier })}
                 {avatar?.model && <span className="text-sm text-gray-400">{avatar.model}</span>}
               </div>
             </div>

@@ -1,4 +1,7 @@
 
+// Initialize window.utils if not exists
+window.utils = window.utils || {};
+
 // Utility functions
 const getTierFromModel = (model) => {
   if (!model) return 'U';
@@ -36,10 +39,6 @@ const clipDescription = (text) => {
   const doubleNewline = text.indexOf('\n\n');
   return doubleNewline > -1 ? text.slice(0, doubleNewline) : text;
 };
-
-// Initialize window.utils if not exists
-window.utils = window.utils || {};
-window.getTierFromModel = getTierFromModel;
 
 // Add utils to window object
 Object.assign(window.utils, {
