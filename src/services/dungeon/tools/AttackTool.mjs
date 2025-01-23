@@ -30,12 +30,24 @@ export class AttackTool extends BaseTool {
     const stats = await this.getStatsWithRetry(attackerId);
     const targetStats = await this.getStatsWithRetry(targetAvatar._id);
 
-    const damage = Math.max(1, stats.attack - targetStats.defense);
-    targetStats.hp -= damage;
-
-    if (targetStats.hp <= 0) {
-      return await this.handleKnockout(message, targetAvatar, damage);
+    // D&D style attack roll: d20 + strength modifier
+    const attackRoll = Math.floor(Math.random() * 20) + 1 + Math.floor((stats.strength - 10) / 2);
+    const armorClass = 10 + Math.floor((targetStats.dexterity - 10) / 2);
+    
+    if (attackRoll >= armorClass) {
+      // Damage roll: 1d6 + strength modifier
+      const damage = Math.max(1, Math.floor(Math.random() * 6) + 1 + Math.floor((stats.strength - 10) / 2));
+      targetStats.hp -= damage;
+      
+      if (targetStats.hp <= 0) {
+        return await this.handleKnockout(message, targetAvatar, damage);
+      }
+      
+      await this.updateStatsWithRetry(targetAvatar._id, targetStats);
+      return `⚔️ ${message.author.username} hits ${targetAvatar.name} for ${damage} damage! (${attackRoll} vs AC ${armorClass})`;
     }
+    
+    return `🛡️ ${message.author.username}'s attack misses ${targetAvatar.name}! (${attackRoll} vs AC ${armorClass})`;
 
     await this.updateStatsWithRetry(targetAvatar._id, targetStats);
     return `⚔️ ${message.author.username} attacks ${targetAvatar.name} for ${damage} damage!`;
@@ -49,9 +61,13 @@ export class AttackTool extends BaseTool {
           return await this.dungeonService.createAvatarStats({
             _id: new ObjectId(),
             avatarId,
-            hp: 100,
-            attack: 10,
-            defense: 5
+            hp: 20,
+            strength: 12,
+            dexterity: 12,
+            constitution: 12,
+            intelligence: 12,
+            wisdom: 12,
+            charisma: 12
           });
         }
         return stats;

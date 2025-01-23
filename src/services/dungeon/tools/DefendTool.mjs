@@ -5,12 +5,12 @@ export class DefendTool extends BaseTool {
     const avatarId = message.author.id;
     const stats = await this.dungeonService.getAvatarStats(avatarId);
     
-    const defenseBoost = 5;
+    const acBoost = 2;
     const boostDuration = 60000; // 1 minute
 
-    // Store original defense to ensure correct removal
-    const originalDefense = stats.defense;
-    stats.defense += defenseBoost;
+    // Store original dexterity to ensure correct removal
+    const originalDexterity = stats.dexterity;
+    stats.dexterity += 4; // +2 to AC via +4 dexterity
     await this.dungeonService.updateAvatarStats(avatarId, stats);
     
     setTimeout(async () => {
@@ -22,7 +22,7 @@ export class DefendTool extends BaseTool {
       }
     }, boostDuration);
 
-    return `🛡️ ${message.author.username} takes a defensive stance! Defense increased by ${defenseBoost} for 1 minute.`;
+    return `🛡️ ${message.author.username} takes a defensive stance! AC increased by ${acBoost} for 1 minute.`;
   }
 
   getDescription() {
