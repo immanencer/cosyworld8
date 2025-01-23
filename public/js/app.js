@@ -71,7 +71,10 @@ function GalleryView({ onSelectAvatar }) {
             }
           });
           observer.observe(node);
-          return () => observer.disconnect();
+          if (node._observer) {
+            node._observer.disconnect();
+          }
+          node._observer = observer;
         }} className="h-10" />
       )}
     </div>
@@ -130,7 +133,10 @@ function OwnedAvatars({ wallet, onSelectAvatar }) {
             }
           });
           observer.observe(node);
-          return () => observer.disconnect();
+          if (node._observer) {
+            node._observer.disconnect();
+          }
+          node._observer = observer;
         }} className="h-10" />
       )}
     </div>
@@ -201,7 +207,7 @@ function AvatarModal({ isOpen, onClose, avatar, wallet }) {
                 className="w-full h-full object-cover rounded-lg"
               />
             </div>
-            
+
             <div className="bg-gray-700 rounded-lg p-4 mb-4">
               <h3 className="text-xl font-bold mb-2 text-white">Stats</h3>
               <StatsDisplay stats={activityData.dungeonStats} size="large" />
