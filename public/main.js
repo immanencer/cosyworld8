@@ -367,10 +367,16 @@ async function loadActionLog() {
                       : ""
                   }
                   ${
-                    action.action === "move" && action.targetImageUrl
+                    (action.action === "move" || action.location?.imageUrl)
                       ? `
                         <div class="mt-4">
-                          <img src="${action.targetImageUrl}" alt="Location" class="w-full rounded-lg">
+                          <h4 class="font-semibold mb-2">${action.location?.name || 'Location'}</h4>
+                          <img src="${action.location?.imageUrl || action.targetImageUrl}" 
+                               alt="${action.location?.name || 'Location'}" 
+                               class="w-full h-48 object-cover rounded-lg">
+                          ${action.location?.description 
+                            ? `<p class="mt-2 text-sm text-gray-400">${action.location.description}</p>` 
+                            : ''}
                         </div>
                       `
                       : ""
