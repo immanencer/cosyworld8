@@ -2,6 +2,8 @@ import express from 'express';
 import { thumbnailService } from '../services/thumbnailService.mjs';
 import { NFTMintingService } from '../../src/services/nftMintService.mjs';
 
+import { ObjectId } from 'mongodb';
+
 const router = express.Router();
 
 export default function (db) {
@@ -24,7 +26,7 @@ export default function (db) {
           .toArray();
         
         const authorizedAvatarIds = xAuths.map(auth => 
-          typeof auth.avatarId === 'string' ? new ObjectId(auth.avatarId) : auth.avatarId
+          typeof auth.avatarId === 'string' ? ObjectId.createFromTime(auth.avatarId) : auth.avatarId
         );
         
         query._id = { $in: authorizedAvatarIds };
