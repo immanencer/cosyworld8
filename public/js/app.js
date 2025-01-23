@@ -69,8 +69,8 @@ async function loadContent() {
         }
         await loadOwnedAvatars();
         break;
-      case 'gallery':
-        await loadGallery();
+      case 'actions':
+        await loadActionLog();
         break;
       case 'leaderboard':
         await loadLeaderboard();
@@ -135,31 +135,43 @@ async function loadOwnedAvatars() {
   content.innerHTML = data.avatars.map(renderAvatar).join('');
 }
 
-async function loadGallery() {
+async function loadActionLog() {
   try {
-    content.innerHTML = '<div class="text-center py-12">Loading gallery...</div>';
-    const response = await fetch('/api/avatars?view=gallery&page=1&limit=12');
+    content.innerHTML = '<div class="text-center py-12">Loading action log...</div>';
+    const response = await fetch('/api/dungeon/log');
     
     if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
+      throw new Error(`HTTP error! status: ${response.status}`);
     }
     
-    const data = await response.json();
+    const actions = await response.json();
     
-    if (!data.avatars?.length) {
-      content.innerHTML = '<div class="text-center py-12">No avatars found</div>';
+    if (!actions?.length) {
+      content.innerHTML = '<div class="text-center py-12">No actions found</div>';
       return;
     }
     
-    content.innerHTML = data.avatars.map(avatar => renderAvatar({
-      ...avatar,
-      thumbnailUrl: avatar.thumbnailUrl || avatar.imageUrl
-    })).join('');
+    content.innerHTML = actions.map(action => `
+      <div class="bg-gray-800 p-4 mb-2 rounded-lg">
+        <div class="flex items-center gap-4">
+          ${action.actorThumbnailUrl ? `
+            <img src="${action.actorThumbnailUrl}" alt="${action.actorName}" 
+                 class="w-12 h-12 rounded-full">` : ''}
+          <div class="flex-1">
+            <span class="font-semibold">${action.actorName}</span>
+            <span class="text-gray-400">${action.action}</span>
+            ${action.targetName ? `<span class="font-semibold">${action.targetName}</span>` : ''}
+            <div class="text-sm text-gray-500 mt-1">
+              ${new Date(action.timestamp).toLocaleString()}
+            </div>
+          </div>
+        </div>
+      </div>
+    `).join('');
   } catch (error) {
-    console.error('Gallery loading error:', error);
+    console.error('Action log loading error:', error);
     content.innerHTML = `<div class="text-center py-12 text-red-500">
-      Failed to load gallery: ${error.message}
+      Failed to load action log: ${error.message}
     </div>`;
   }
 }
