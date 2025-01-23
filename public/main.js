@@ -58,10 +58,16 @@ async function showAvatarDetails(avatarId) {
   modalContent.innerHTML = 'Loading...';
   
   try {
-    const [avatarResponse, xAuthStatusResponse] = await Promise.all([
+    const [avatarResponse, xAuthStatusResponse, narrativesResponse, actionsResponse] = await Promise.all([
       fetchJSON(`/api/avatars/${avatarId}`),
-      fetchJSON(`/auth/x/status/${avatarId}`)
+      fetchJSON(`/auth/x/status/${avatarId}`),
+      fetchJSON(`/api/avatars/${avatarId}/narratives`),
+      fetchJSON(`/api/avatars/${avatarId}/dungeon-actions`)
     ]);
+
+    // Merge additional data into avatar response
+    avatarResponse.narratives = narrativesResponse?.narratives || [];
+    avatarResponse.actions = actionsResponse?.actions || [];
 
     const claimed = xAuthStatusResponse?.authorized;
     
@@ -90,46 +96,61 @@ async function showAvatarDetails(avatarId) {
         <h1 class="text-2xl font-bold mb-2">${avatarResponse.name}</h1>
         <p class="text-gray-400 mb-4 text-center">${avatarResponse.description || 'No description available'}</p>
         
-        <div class="grid grid-cols-6 gap-4 w-full p-6 bg-white rounded-lg shadow-inner">
-          <div class="stat-block">
-            <div class="text-sm font-bold text-gray-700">STRENGTH</div>
-            <div class="text-2xl font-bold">${avatarResponse.stats?.strength || 10}</div>
-            <div class="text-sm text-gray-600">${getModifier(avatarResponse.stats?.strength)}</div>
+        <!-- Compact Stats -->
+        <div class="flex flex-wrap gap-2 w-full p-4 bg-white/10 rounded-lg text-sm">
+          <div class="flex items-center gap-1">
+            <span class="font-bold text-red-500">HP ${avatarResponse.stats?.hp || 0}</span>
+            <span class="text-gray-400">|</span>
+            <span class="font-bold text-blue-500">AC ${10 + getModifier(avatarResponse.stats?.dexterity)}</span>
           </div>
-          <div class="stat-block">
-            <div class="text-sm font-bold text-gray-700">DEXTERITY</div>
-            <div class="text-2xl font-bold">${avatarResponse.stats?.dexterity || 10}</div>
-            <div class="text-sm text-gray-600">${getModifier(avatarResponse.stats?.dexterity)}</div>
+          <div class="text-gray-400">|</div>
+          <div title="Strength">STR ${avatarResponse.stats?.strength || 10} (${getModifier(avatarResponse.stats?.strength)})</div>
+          <div class="text-gray-400">|</div>
+          <div title="Dexterity">DEX ${avatarResponse.stats?.dexterity || 10} (${getModifier(avatarResponse.stats?.dexterity)})</div>
+          <div class="text-gray-400">|</div>
+          <div title="Constitution">CON ${avatarResponse.stats?.constitution || 10} (${getModifier(avatarResponse.stats?.constitution)})</div>
+          <div class="text-gray-400">|</div>
+          <div title="Intelligence">INT ${avatarResponse.stats?.intelligence || 10} (${getModifier(avatarResponse.stats?.intelligence)})</div>
+          <div class="text-gray-400">|</div>
+          <div title="Wisdom">WIS ${avatarResponse.stats?.wisdom || 10} (${getModifier(avatarResponse.stats?.wisdom)})</div>
+          <div class="text-gray-400">|</div>
+          <div title="Charisma">CHA ${avatarResponse.stats?.charisma || 10} (${getModifier(avatarResponse.stats?.charisma)})</div>
+        </div>
+
+        <!-- Description & Personality -->
+        <div class="mt-4 space-y-4">
+          <div class="bg-white/10 p-4 rounded-lg">
+            <h3 class="font-bold text-lg mb-2">Description</h3>
+            <p class="text-gray-300">${avatarResponse.description || 'No description available.'}</p>
           </div>
-          <div class="stat-block">
-            <div class="text-sm font-bold text-gray-700">CONSTITUTION</div>
-            <div class="text-2xl font-bold">${avatarResponse.stats?.constitution || 10}</div>
-            <div class="text-sm text-gray-600">${getModifier(avatarResponse.stats?.constitution)}</div>
-          </div>
-          <div class="stat-block">
-            <div class="text-sm font-bold text-gray-700">INTELLIGENCE</div>
-            <div class="text-2xl font-bold">${avatarResponse.stats?.intelligence || 10}</div>
-            <div class="text-sm text-gray-600">${getModifier(avatarResponse.stats?.intelligence)}</div>
-          </div>
-          <div class="stat-block">
-            <div class="text-sm font-bold text-gray-700">WISDOM</div>
-            <div class="text-2xl font-bold">${avatarResponse.stats?.wisdom || 10}</div>
-            <div class="text-sm text-gray-600">${getModifier(avatarResponse.stats?.wisdom)}</div>
-          </div>
-          <div class="stat-block">
-            <div class="text-sm font-bold text-gray-700">CHARISMA</div>
-            <div class="text-2xl font-bold">${avatarResponse.stats?.charisma || 10}</div>
-            <div class="text-sm text-gray-600">${getModifier(avatarResponse.stats?.charisma)}</div>
+          
+          <div class="bg-white/10 p-4 rounded-lg">
+            <h3 class="font-bold text-lg mb-2">Personality</h3>
+            <p class="text-gray-300">${avatarResponse.personality || 'Mysterious and undefined.'}</p>
           </div>
 
-          <div class="col-span-6 mt-4 p-4 bg-gray-100 rounded-lg">
-            <div class="flex justify-between items-center mb-2">
-              <div class="text-lg font-bold">Hit Points</div>
-              <div class="text-xl font-bold text-red-600">${avatarResponse.stats?.hp || 0}</div>
-            </div>
-            <div class="flex justify-between items-center">
-              <div class="text-lg font-bold">Armor Class</div>
-              <div class="text-xl font-bold">${10 + getModifier(avatarResponse.stats?.dexterity)}</div>
+          ${avatarResponse.narratives ? `
+          <div class="bg-white/10 p-4 rounded-lg">
+            <h3 class="font-bold text-lg mb-2">Recent Narrative</h3>
+            <p class="text-gray-300">${avatarResponse.narratives[0]?.content || 'No recent narratives.'}</p>
+          </div>
+          ` : ''}
+
+          <div class="bg-white/10 p-4 rounded-lg">
+            <h3 class="font-bold text-lg mb-2">Recent Actions</h3>
+            <div class="space-y-2">
+              ${avatarResponse.actions ? 
+                avatarResponse.actions.slice(0, 3).map(action => `
+                  <div class="text-sm text-gray-300">
+                    ${action.action === 'attack' ? '⚔️' : 
+                      action.action === 'defend' ? '🛡️' : 
+                      action.action === 'move' ? '🚶' : 
+                      action.action === 'remember' ? '💭' : '❓'
+                    } ${action.description || `${action.action} ${action.target || ''}`}
+                  </div>
+                `).join('') : 
+                '<div class="text-gray-500 text-sm">No recent actions recorded.</div>'
+              }
             </div>
           </div>
         </div>
