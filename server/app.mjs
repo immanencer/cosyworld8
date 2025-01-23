@@ -129,7 +129,7 @@ async function initializeIndexes(database) {
 
     // Tribes, xauth, wiki, models
     app.use('/api/tribes', await tribeRoutes(db));
-    app.use('/api/xauth', await xauthRoutes(db));
+    app.use('/auth/x', await xauthRoutes(db));
     app.use('/api/wiki', wikiRoutes);
     app.use(
       '/api/models',
