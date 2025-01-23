@@ -164,13 +164,15 @@ export class ConversationHandler {
    */
   buildNarrativePrompt(avatar, memories) {
     return `
-I am ${avatar.name || ''}.
+You are ${avatar.name || ''}.
 
 ${avatar.personality || ''}
 
 ${avatar.description || ''}
 
 ${memories}
+
+Share your dreams, personality, goals, and important memories.
     `.trim();
   }
 
@@ -302,6 +304,7 @@ ${memories}
 
       // Build system and dungeon prompts
       const systemPrompt = await this.buildSystemPrompt(avatar);
+      // This could be varied for example if we wanted them to play nethack.
       const dungeonPrompt = await this.buildDungeonPrompt(avatar);
 
       // Generate response via AI service
@@ -318,8 +321,7 @@ ${dungeonPrompt}
 Recent messages:
 ${context.recentMessages.map(m => `${m.author}: ${m.content}`).join('\n')}
 
-Reply in character with a short message, no more than one or two sentences unless the user has requested a longer response.
-          `.trim()
+Reply in character with a short, casual message, suitable for this discord channel.`.trim()
         }
       ], { model: avatar.model });
 
@@ -408,7 +410,10 @@ Reply in character with a short message, no more than one or two sentences unles
       : `You are in ${avatar.channelName || 'a chat channel'}.`;
 
     return `
-These commands are available in this location (you can also use breed and summon):
+These commands are available in this location:
+
+!summon <any concept or thing> - Summon an avatar to your location.
+!breed <avatar one> <avatar two> - Breed two avatars together.
 ${commandsDescription}
 
 ${locationText}
