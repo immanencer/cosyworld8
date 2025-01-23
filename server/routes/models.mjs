@@ -1,7 +1,10 @@
 import express from 'express';
-import models from '../../src/models.config.mjs';
-
+import modelsConfig from '../../src/models.config.mjs';
 const router = express.Router();
+
+router.get('/config', (req, res) => {
+  res.json(modelsConfig);
+});
 
 export default function (db) {
   // Utility: Validate and sanitize query parameters

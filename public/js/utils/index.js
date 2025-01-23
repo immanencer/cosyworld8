@@ -1,16 +1,16 @@
+
+// Import models configuration from server
 const getModelRarity = (modelName) => {
-  const modelRarities = {
-    'meta-llama/llama-3.2-1b-instruct': 'common',
-    // ... rest of model rarities
-  };
-  return modelRarities[modelName] || 'common';
+  const models = window.modelsConfig || [];
+  const model = models.find(m => m.model === modelName);
+  return model?.rarity || 'common';
 };
 
 const rarityToTier = {
   legendary: 'S',
   rare: 'A',
   uncommon: 'B',
-  common: 'C',
+  common: 'C'
 };
 
 const getTierFromModel = (model) => {
@@ -26,5 +26,3 @@ const clipDescription = (text) => {
 };
 
 window.getTierFromModel = getTierFromModel;
-
-// export { getModelRarity, rarityToTier, getTierFromModel, clipDescription };
