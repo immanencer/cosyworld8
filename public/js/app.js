@@ -214,13 +214,14 @@ async function loadActionLog() {
               ${new Date(action.timestamp).toLocaleString()}
             </div>
             <div class="action-details hidden mt-4 p-3 bg-gray-900 rounded-lg">
-              ${['attack', 'defend'].includes(action.action) ? `
-              <div class="grid grid-cols-2 gap-4">
-                <div>
-                  <h4 class="font-semibold mb-2">⚔️ Actor Stats</h4>
-                  <div class="flex gap-4 mb-4">
-                    <div class="text-center">
-                      <div class="text-2xl font-bold text-red-500">${action.actorStats?.hp || 'N/A'}</div>
+              ${['attack', 'defend'].includes(action.action) ? 
+                `<div class="grid grid-cols-2 gap-4">
+                  <div>
+                    <h4 class="font-semibold mb-2">⚔️ Actor Stats</h4>
+                    <div class="flex gap-4 mb-4">
+                      <div class="text-center">
+                        <div class="text-2xl font-bold text-red-500">${action.actorStats?.hp || 'N/A'}</div>`
+                : ''}
                       <div class="text-xs text-gray-400">HP</div>
                     </div>
                     <div class="text-center">
