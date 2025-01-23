@@ -437,10 +437,24 @@ app.get('/api/avatar/:id/narratives', async (req, res) => {
       db.collection('dungeon_stats').findOne({ avatarId }),
     ]);
 
+    // Generate stats if they don't exist
+    if (!dungeonStats) {
+      const { StatGenerationService } = await import('../src/services/statGenerationService.mjs');
+      const statService = new StatGenerationService();
+      const avatar = await db.collection('avatars').findOne({ _id: avatarId });
+      const generatedStats = statService.generateStatsFromDate(avatar?.createdAt || new Date());
+      
+      dungeonStats = await db.collection('dungeon_stats').findOneAndUpdate(
+        { avatarId },
+        { $set: { ...generatedStats, avatarId } },
+        { upsert: true, returnDocument: 'after' }
+      );
+    }
+
     res.json({
       narratives,
       recentMessages: messages,
-      dungeonStats: dungeonStats || { attack: 0, defense: 0, hp: 0 },
+      dungeonStats,
     });
   } catch (error) {
     console.error('Error fetching narratives:', error);
