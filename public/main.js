@@ -367,7 +367,8 @@ async function loadActionLog() {
                       : ""
                   }
                   ${
-                    (action.action === "move" || action.location?.imageUrl)
+                    ((action.action === "move" && action.targetImageUrl) || 
+                     (action.location && action.location.imageUrl))
                       ? `
                         <div class="mt-4">
                           <h4 class="font-semibold mb-2">${action.location?.name || 'Location'}</h4>
