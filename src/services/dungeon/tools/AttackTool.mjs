@@ -58,16 +58,14 @@ export class AttackTool extends BaseTool {
       try {
         const stats = await this.dungeonService.getAvatarStats(avatarId);
         if (!stats) {
+          const avatar = await this.dungeonService.avatarService.getAvatarById(avatarId);
+          const statService = new StatGenerationService();
+          const generatedStats = statService.generateStatsFromDate(avatar.createdAt || new Date());
+          
           return await this.dungeonService.createAvatarStats({
             _id: new ObjectId(),
             avatarId,
-            hp: 20,
-            strength: 12,
-            dexterity: 12,
-            constitution: 12,
-            intelligence: 12,
-            wisdom: 12,
-            charisma: 12
+            ...generatedStats
           });
         }
         return stats;
