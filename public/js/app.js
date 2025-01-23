@@ -102,31 +102,24 @@ function App() {
             {hasMore && (
               <div 
                 ref={node => {
-                  // Skip if node is null (when component unmounts)
                   if (!node) return;
-
-                  // Create IntersectionObserver to detect when user scrolls near bottom
+                  
                   const observer = new IntersectionObserver(entries => {
-                    if (entries[0].isIntersecting && !loading) {
-                      setPage(p => p + 1);
+                    if (entries[0].isIntersecting && !loading && hasMore) {
+                      setPage(prevPage => prevPage + 1);
                     }
-                  }, { threshold: 0.1 });
-
-                  // Start observing the sentinel div
+                  }, { 
+                    rootMargin: '100px',
+                    threshold: 0.1 
+                  });
+                  
                   observer.observe(node);
-
-                  // IMPORTANT: Do not return cleanup function directly from ref callback
-                  // React expects ref callbacks to be void functions
-                  // Instead, use useEffect for cleanup or attach cleanup to the node itself
+                  
+                  // Store observer reference for cleanup
+                  if (node._observer) {
+                    node._observer.disconnect();
+                  }
                   node._observer = observer;
-
-                  // Cleanup observer when component unmounts
-                  const cleanup = () => {
-                    if (node._observer) {
-                      node._observer.disconnect();
-                    }
-                  };
-                  node.cleanup = cleanup;
                 }}
                 className="h-10 flex items-center justify-center"
               >
