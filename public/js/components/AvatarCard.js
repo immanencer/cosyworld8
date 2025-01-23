@@ -1,56 +1,77 @@
+window.components = window.components || {};
 
-import { useState, useEffect } from 'react';
-const { getTierFromModel } = window.utils;
+function AvatarCard(avatar, onSelect) {
+  const container = document.createElement('div');
+  container.className = 'bg-gray-800 rounded-lg p-2 cursor-pointer hover:bg-gray-700 transition-colors';
+  container.onclick = () => onSelect(avatar);
 
-// Avatar Card Component
-export const AvatarCard = React.memo(({ avatar, onSelect }) => {
-  const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const allAvatars = [avatar, ...(avatar.alternateAvatars || [])];
+  let currentImageIndex = 0;
 
-  useEffect(() => {
-    if (allAvatars.length > 1) {
-      const interval = setInterval(() => {
-        setCurrentImageIndex((prev) => (prev + 1) % allAvatars.length);
-      }, 3000);
-      return () => clearInterval(interval);
-    }
-  }, [allAvatars.length]);
+  const imageContainer = document.createElement('div');
+  imageContainer.className = 'relative mb-2';
 
-  const currentAvatar = allAvatars[currentImageIndex];
-  const tier = getTierFromModel(avatar.model);
+  const img = document.createElement('img');
+  img.className = 'w-full aspect-square object-cover rounded-lg';
+  imageContainer.appendChild(img);
 
-  return (
-    <div
-      onClick={() => onSelect(avatar)}
-      className="bg-gray-800 rounded-lg p-2 cursor-pointer hover:bg-gray-700 transition-colors"
-    >
-      <div className="relative mb-2">
-        <img
-          src={currentAvatar.thumbnailUrl || currentAvatar.imageUrl}
-          alt={currentAvatar.name}
-          className="w-full aspect-square object-cover rounded-lg"
-        />
-        {allAvatars.length > 1 && (
-          <span className="absolute top-1 right-1 bg-blue-500 text-xs rounded-full w-5 h-5 flex items-center justify-center">
-            {allAvatars.length}
-          </span>
-        )}
-      </div>
-      <div className="space-y-1">
-        <div className="flex items-center gap-1 justify-between">
-          <h3 className="text-sm font-bold truncate">{avatar.name}</h3>
-          <TierBadge tier={tier} />
-        </div>
-        <div className="flex items-center gap-1 text-xs text-gray-400">
-          <span>✉️ {avatar.messageCount}</span>
-        </div>
-        <StatsDisplay stats={avatar.stats} size="small" />
-      </div>
-    </div>
-  );
-});
+  if (allAvatars.length > 1) {
+    const countBadge = document.createElement('span');
+    countBadge.className = 'absolute top-1 right-1 bg-blue-500 text-xs rounded-full w-5 h-5 flex items-center justify-center';
+    countBadge.textContent = allAvatars.length;
+    imageContainer.appendChild(countBadge);
+  }
 
-// Avatar Search Component
+  const infoContainer = document.createElement('div');
+  infoContainer.className = 'space-y-1';
+
+  const headerRow = document.createElement('div');
+  headerRow.className = 'flex items-center gap-1 justify-between';
+
+  const name = document.createElement('h3');
+  name.className = 'text-sm font-bold truncate';
+  name.textContent = avatar.name;
+  headerRow.appendChild(name);
+
+  const tier = window.utils.getTierFromModel(avatar.model);
+  headerRow.appendChild(window.components.TierBadge(tier));
+
+  const messageCount = document.createElement('div');
+  messageCount.className = 'flex items-center gap-1 text-xs text-gray-400';
+  messageCount.innerHTML = `<span>✉️ ${avatar.messageCount}</span>`;
+
+  infoContainer.appendChild(headerRow);
+  infoContainer.appendChild(messageCount);
+  infoContainer.appendChild(window.components.StatsDisplay(avatar.stats, 'small'));
+
+  container.appendChild(imageContainer);
+  container.appendChild(infoContainer);
+
+  // Image rotation logic
+  function updateImage() {
+    const currentAvatar = allAvatars[currentImageIndex];
+    img.src = currentAvatar.thumbnailUrl || currentAvatar.imageUrl;
+    img.alt = currentAvatar.name;
+  }
+
+  updateImage();
+
+  if (allAvatars.length > 1) {
+    const interval = setInterval(() => {
+      currentImageIndex = (currentImageIndex + 1) % allAvatars.length;
+      updateImage();
+    }, 3000);
+
+    // Cleanup method
+    container.cleanup = () => clearInterval(interval);
+  }
+
+  return container;
+}
+
+window.components.AvatarCard = AvatarCard;
+
+// Avatar Search Component (Remains unchanged as it's not part of the conversion request)
 export const AvatarSearch = React.memo(({ onSelect }) => {
   const [query, setQuery] = useState('');
   const [results, setResults] = useState([]);
