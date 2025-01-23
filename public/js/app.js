@@ -111,18 +111,11 @@ function App() {
                   }, { threshold: 0.1 });
                   
                   observer.observe(node);
-                  
-                  // Cleanup will be handled by React automatically
-                  observer.disconnect();
+                  return () => observer.disconnect();
                 }}
                 className="h-10 flex items-center justify-center"
               >
                 {loading && <p>Loading more...</p>}
-              </div>
-            )}
-            {loading && (
-              <div className="text-center mt-8">
-                <p>Loading...</p>
               </div>
             )}
           </div>
