@@ -85,8 +85,13 @@ const WalletButton = ({ onWalletChange }) => {
       {!wallet ? (
         <button
           onClick={connectWallet}
-          className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg flex items-center gap-2"
+          className="bg-[#AB9FF2] hover:bg-[#9B8DE8] text-white px-4 py-2 rounded-lg flex items-center gap-2 transition-colors"
         >
+          <img 
+            src="data:image/svg+xml;base64,PHN2ZyBmaWxsPSJ3aGl0ZSIgaGVpZ2h0PSIyNCIgdmlld0JveD0iMCAwIDI0IDI0IiB3aWR0aD0iMjQiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PHBhdGggY2xpcC1ydWxlPSJldmVub2RkIiBkPSJNMTQuMjYgMTguMDhzLTEuOS0zLjI5LTIuMjYtNC45MWMtLjM2LTEuNjItLjM2LTQuMzMtLjM2LTQuMzNzLTEuNDUgMS4yOC0xLjQ1IDQuMDFjMCAyLjczLS45NSA1LjIzLS45NSA1LjIzaC0zLjJzMS40LTIuODQgMS42Ny00LjU4Yy4yOC0xLjczLjI1LTUuMDEuMjUtNS4wMXMtMi4zMyAyLjM0LTIuOTIgNC40MmMtLjU5IDIuMDctLjg0IDIuOTctLjg0IDIuOTdsLTEuODctLjI5czEuODctNy4yMyAxLjg3LTcuOTdjMC0uNzQtLjUzLTEuMjctLjUzLTEuMjdzMi41OS0uNjIgMy44NS0yLjA3YzEuMjYtMS40NSAxLjY4LTIuODMgMS42OC0yLjgzbDEuNjUuMjNzLS42NCAzLjY0LS42NCA0LjExYzAgLjQ3LjExIDEuMTEuMTEgMS4xMWwxLjM3LTIuMTFzLjM0IDMuOTIuMzQgNS4zYzAgMS4zOC4zMSA0LjQ4LjMxIDQuNDhzMS4zNC0yLjE5IDEuNjItMy44MWMuMjgtMS42Mi4zOS0zLjY5LjM5LTMuNjlsMS41OS4yOHMtLjI1IDQuMi0uMjUgNS41MmMwIDEuMzEuNzUgNC42NC43NSA0LjY0WiIgZmlsbC1ydWxlPSJldmVub2RkIi8+PC9zdmc+" 
+            alt="Phantom"
+            className="w-5 h-5"
+          />
           <span>Connect Wallet</span>
         </button>
       ) : (
