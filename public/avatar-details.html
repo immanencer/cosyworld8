@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html>
 <head>
@@ -11,6 +10,8 @@
         <div id="avatar-details" class="max-w-2xl mx-auto bg-gray-800 rounded-lg p-6">
             Loading...
         </div>
+        <div id="avatar-stats"></div>
+        <div id="recent-actions"></div>
     </div>
 
     <script>
@@ -32,7 +33,7 @@
                 state.wallet = {
                     publicKey: resp.publicKey.toString()
                 };
-                
+
                 updateUI();
             } catch (err) {
                 console.error("Failed to connect wallet:", err);
@@ -96,11 +97,117 @@
 
                 const avatar = await avatarResponse.json();
                 state.avatar = avatar;
-                
+
                 updateUI();
             } catch (error) {
                 console.error('Error loading avatar details:', error);
                 document.getElementById('avatar-details').innerHTML = 'Error loading avatar details';
+            }
+        }
+
+        async function loadAvatarStats() {
+            try {
+                const urlParams = new URLSearchParams(window.location.search);
+                const avatarId = urlParams.get('id');
+                const response = await fetch(`/api/avatars/${avatarId}/narratives`);
+                const data = await response.json();
+
+                const statsContainer = document.getElementById('avatar-stats');
+                if (!statsContainer) return;
+
+                if (data.dungeonStats) {
+                    const { hp, attack, defense, intelligence, wisdom, charisma } = data.dungeonStats;
+                    statsContainer.innerHTML = `
+                        <h2 class="text-xl font-semibold mb-2">Stats</h2>
+                        <div class="grid grid-cols-2 gap-4 bg-gray-900 p-4 rounded-lg">
+                            <div>
+                                <div class="text-2xl font-bold text-red-500">${hp || 0}</div>
+                                <div class="text-sm text-gray-400">HP</div>
+                            </div>
+                            <div>
+                                <div class="text-2xl font-bold text-blue-500">${attack || 0}</div>
+                                <div class="text-sm text-gray-400">Attack</div>
+                            </div>
+                            <div>
+                                <div class="text-2xl font-bold text-green-500">${defense || 0}</div>
+                                <div class="text-sm text-gray-400">Defense</div>
+                            </div>
+                            <div>
+                                <div class="text-2xl font-bold text-purple-500">${intelligence || 0}</div>
+                                <div class="text-sm text-gray-400">Intelligence</div>
+                            </div>
+                            <div>
+                                <div class="text-2xl font-bold text-yellow-500">${wisdom || 0}</div>
+                                <div class="text-sm text-gray-400">Wisdom</div>
+                            </div>
+                            <div>
+                                <div class="text-2xl font-bold text-pink-500">${charisma || 0}</div>
+                                <div class="text-sm text-gray-400">Charisma</div>
+                            </div>
+                        </div>
+                    `;
+                }
+            } catch (error) {
+                console.error('Error loading avatar stats:', error);
+                const statsContainer = document.getElementById('avatar-stats');
+                if (statsContainer) {
+                    statsContainer.innerHTML = '<div class="text-red-500">Failed to load stats</div>';
+                }
+            }
+        }
+
+        async function loadRecentActions() {
+            try {
+                const urlParams = new URLSearchParams(window.location.search);
+                const avatarId = urlParams.get('id');
+                const response = await fetch(`/api/avatars/${avatarId}/dungeon-actions`);
+                const data = await response.json();
+
+                const actionsContainer = document.getElementById('recent-actions');
+                if (!actionsContainer) return;
+
+                if (data.actions && data.actions.length > 0) {
+                    actionsContainer.innerHTML = `
+                        <h2 class="text-xl font-semibold mb-2">Recent Actions</h2>
+                        <div class="space-y-2">
+                            ${data.actions.map(action => `
+                                <div class="bg-gray-900 p-3 rounded-lg">
+                                    <div class="flex items-center justify-between">
+                                        <span class="text-sm text-gray-400">
+                                            ${new Date(action.timestamp).toLocaleString()}
+                                        </span>
+                                    </div>
+                                    <p class="mt-1">
+                                        <span class="font-semibold">${action.actorName}</span>
+                                        <span class="text-gray-400">
+                                            ${action.action === "attack" ? "⚔️ attacked" :
+                                              action.action === "defend" ? "🛡️ defended" :
+                                              action.action === "move" ? "🚶‍♂️ moved to" :
+                                              action.action === "remember" ? "💭 remembered" :
+                                              action.action === "xpost" ? "🐦 posted" :
+                                              `used ${action.action}`}
+                                        </span>
+                                        ${action.targetName ? `<span class="font-semibold">→ ${action.targetName}</span>` : ''}
+                                    </p>
+                                    ${action.result ? `<p class="text-sm text-gray-400 mt-1">${action.result}</p>` : ''}
+                                </div>
+                            `).join('')}
+                        </div>
+                    `;
+                } else {
+                    actionsContainer.innerHTML = `
+                        <h2 class="text-xl font-semibold mb-2">Recent Actions</h2>
+                        <div class="bg-gray-900 p-4 rounded-lg text-gray-400">
+                            No recent actions found
+                        </div>
+                    `;
+                }
+            } catch (error) {
+                console.error('Error loading recent actions:', error);
+                const actionsContainer = document.getElementById('recent-actions');
+                if (actionsContainer) {
+                    actionsContainer.innerHTML = '<div class="text-red-500">Failed to load recent actions</div>';
+                }
             }
         }
 
@@ -115,10 +222,10 @@
                     <img src="${state.avatar.imageUrl}" 
                          alt="${state.avatar.name}" 
                          class="w-64 h-64 object-cover rounded-lg mb-4">
-                    
+
                     <h1 class="text-2xl font-bold mb-2">${state.avatar.name}</h1>
                     <p class="text-gray-400 mb-4">${state.avatar.description || ''}</p>
-                    
+
                     <div class="space-y-4 w-full">
                         ${!walletConnected ? `
                             <button onclick="connectWallet()" 
@@ -126,14 +233,14 @@
                                 Connect Wallet
                             </button>
                         ` : ''}
-                        
+
                         ${walletConnected && !claimed ? `
                             <button onclick="claimAvatar('${state.avatar._id}')"
                                     class="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded">
                                 Claim Avatar & Connect X Account
                             </button>
                         ` : ''}
-                        
+
                         ${claimed ? `
                             <div class="text-green-500 text-center">
                                 Avatar claimed and X account connected
@@ -144,8 +251,16 @@
             `;
         }
 
+        async function initialize() {
+            await Promise.all([
+                loadAvatarDetails(),
+                loadAvatarStats(),
+                loadRecentActions()
+            ]);
+        }
+
         // Initialize
-        loadAvatarDetails();
+        initialize();
     </script>
 </body>
 </html>
