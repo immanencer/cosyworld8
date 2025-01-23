@@ -499,11 +499,18 @@ async function loadLeaderboard() {
         scrollState.page++;
       } catch (error) {
         console.error("Failed to load more leaderboard items:", error);
+        
+        // Clear any existing error messages
+        const existingError = leaderboardItems.querySelector('.error-message');
+        if (existingError) {
+          existingError.remove();
+        }
+        
         // Show error message with retry button
         const errorDiv = document.createElement('div');
-        errorDiv.className = 'text-red-500 text-center py-4';
+        errorDiv.className = 'text-red-500 text-center py-4 error-message';
         errorDiv.innerHTML = `
-          Failed to load more items
+          ${error.message || 'Failed to load more items'}
           <button 
             class="ml-4 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
             onclick="retryLeaderboardLoad(${scrollState.page})"
@@ -512,6 +519,9 @@ async function loadLeaderboard() {
           </button>
         `;
         leaderboardItems.appendChild(errorDiv);
+        
+        // Keep scrollState.hasMore true so we can retry
+        scrollState.hasMore = true;
         scrollState.loading = false;
       } finally {
         scrollState.loading = false;

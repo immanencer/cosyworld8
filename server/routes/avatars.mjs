@@ -243,7 +243,19 @@ router.get('/leaderboard', async (req, res) => {
         .limit(limit)
         .toArray();
 
-      res.json({ avatars });
+      if (!avatars) {
+        return res.status(404).json({ 
+          error: 'No avatars found',
+          avatars: [] 
+        });
+      }
+
+      res.json({ 
+        avatars,
+        page,
+        limit,
+        hasMore: avatars.length === limit
+      });
     } catch (error) {
       console.error('Error fetching leaderboard:', error);
       res.status(500).json({ error: error.message });
