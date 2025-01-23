@@ -16,17 +16,121 @@ function TabButton({ label, isActive, onClick }) {
   );
 }
 
-function AvatarModal({ isOpen, onClose, avatar }) {
+function AvatarModal({ isOpen, onClose, avatar, wallet }) {
+  const [activityData, setActivityData] = useState({
+    messages: [],
+    memories: [],
+    narratives: [],
+    location: null,
+    dungeonStats: avatar?.stats || { attack: 0, defense: 0, hp: 0 },
+    dungeonActions: []
+  });
+
+  useEffect(() => {
+    if (avatar?._id && isOpen) {
+      Promise.all([
+        fetch(`/api/avatars/${avatar._id}/narratives`).then(r => r.json()),
+        fetch(`/api/avatars/${avatar._id}/memories`).then(r => r.json()),
+        fetch(`/api/avatars/${avatar._id}/location`).then(r => r.json()),
+        fetch(`/api/avatars/${avatar._id}/actions`).then(r => r.json())
+      ])
+      .then(([narrativeData, memoryData, locationData, actionsData]) => {
+        setActivityData({
+          messages: narrativeData?.recentMessages || [],
+          memories: memoryData?.memories || [],
+          narratives: narrativeData?.narratives || [],
+          location: locationData?.location,
+          dungeonStats: avatar?.stats || narrativeData?.dungeonStats,
+          dungeonActions: actionsData?.actions || []
+        });
+      })
+      .catch(error => console.error("Error fetching activity data:", error));
+    }
+  }, [avatar?._id, isOpen]);
+
   if (!isOpen || !avatar) return null;
 
+  const tier = getTierFromModel(avatar.model);
+
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
-      <div className="bg-white p-8 rounded-lg shadow-lg">
-        <button onClick={onClose} className="absolute top-4 right-4">Close</button>
-        <img src={avatar.thumbnailUrl || avatar.imageUrl} alt={avatar.name} className="w-32 h-32 rounded-full mx-auto mb-4" />
-        <h3 className="text-lg font-semibold text-center">{avatar.name}</h3>
-        <p className="text-gray-600 text-center">Score: {avatar.score}</p>
-        {avatar.model && <p className="text-gray-600 text-center">{avatar.model}</p>}
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+      <div className="bg-gray-800 rounded-lg p-6 max-w-7xl w-full max-h-[90vh] overflow-y-auto relative">
+        {/* Header */}
+        <div className="flex justify-between items-start mb-6">
+          <div className="flex items-center gap-4">
+            <span className="text-3xl">{avatar.emoji}</span>
+            <div>
+              <h2 className="text-2xl font-bold text-white">{avatar.name}</h2>
+              <div className="flex items-center gap-2">
+                <TierBadge tier={tier} />
+                {avatar.model && <span className="text-sm text-gray-400">{avatar.model}</span>}
+              </div>
+            </div>
+          </div>
+          <button onClick={onClose} className="text-gray-400 hover:text-white text-2xl">×</button>
+        </div>
+
+        <div className="grid grid-cols-12 gap-6">
+          {/* Left Column: Image and Stats */}
+          <div className="col-span-4">
+            <div className="relative aspect-square mb-4">
+              <img 
+                src={avatar.thumbnailUrl || avatar.imageUrl} 
+                alt={avatar.name}
+                className="w-full h-full object-cover rounded-lg"
+              />
+            </div>
+            
+            <div className="bg-gray-700 rounded-lg p-4 mb-4">
+              <h3 className="text-xl font-bold mb-2 text-white">Stats</h3>
+              <StatsDisplay stats={activityData.dungeonStats} size="large" />
+              {wallet && (
+                <div className="mt-4">
+                  <XAuthButton
+                    avatarId={avatar._id}
+                    walletAddress={wallet.publicKey.toString()}
+                  />
+                </div>
+              )}
+            </div>
+
+            {activityData.location && (
+              <div className="bg-gray-700 rounded-lg p-4">
+                <h3 className="text-xl font-bold mb-2 text-white">Current Location</h3>
+                <p className="text-gray-300">{activityData.location.name}</p>
+              </div>
+            )}
+          </div>
+
+          {/* Right Column: Description and Activity */}
+          <div className="col-span-8 space-y-4">
+            <div className="bg-gray-700 rounded-lg p-4">
+              <h3 className="text-xl font-bold mb-2 text-white">Description</h3>
+              <div className="prose prose-invert max-w-none">
+                <MarkdownContent content={avatar.description} />
+              </div>
+            </div>
+
+            {avatar.personality && (
+              <div className="bg-gray-700 rounded-lg p-4">
+                <h3 className="text-xl font-bold mb-2 text-white">Personality</h3>
+                <div className="prose prose-invert max-w-none">
+                  <MarkdownContent content={avatar.personality} />
+                </div>
+              </div>
+            )}
+
+            <div className="bg-gray-700 rounded-lg p-4">
+              <h3 className="text-xl font-bold mb-2 text-white">Recent Activity</h3>
+              <ActivityFeed
+                messages={activityData.messages}
+                memories={activityData.memories}
+                narratives={activityData.narratives}
+                dungeonActions={activityData.dungeonActions}
+              />
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   );
