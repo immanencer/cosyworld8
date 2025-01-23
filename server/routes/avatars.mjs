@@ -18,9 +18,16 @@ export default function (db) {
 
       // Handle different views
       if (view === 'owned' && req.query.walletAddress) {
-        const nftMintService = new NFTMintingService(db);
-        const ownedIds = await nftMintService.getOwnedAvatarIds(req.query.walletAddress);
-        query._id = { $in: ownedIds };
+        // Get avatars that have X auth for this wallet
+        const xAuths = await db.collection('x_auth')
+          .find({ walletAddress: req.query.walletAddress })
+          .toArray();
+        
+        const authorizedAvatarIds = xAuths.map(auth => 
+          typeof auth.avatarId === 'string' ? new ObjectId(auth.avatarId) : auth.avatarId
+        );
+        
+        query._id = { $in: authorizedAvatarIds };
       }
 
       const [avatars, total] = await Promise.all([
