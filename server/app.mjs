@@ -113,6 +113,7 @@ async function initializeIndexes(db) {
     app.use('/api/tribes', await tribeRoutes(db)); // Ensure db is passed here
     app.use('/api/xauth', await xauthRoutes(db));
     app.use('/api/wiki', await wikiRoutes);
+    app.use('/api/models', await import('./routes/models.mjs').then(m => m.default(db)));
 
     // Start Server
     app.listen(PORT, '0.0.0.0', () => {
