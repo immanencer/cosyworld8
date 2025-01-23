@@ -66,32 +66,66 @@ async function showAvatarDetails(avatarId) {
     const claimed = xAuthStatusResponse?.authorized;
     
     modalContent.innerHTML = `
-      <div class="flex flex-col items-center">
+      <div class="flex flex-col items-center relative">
         <img src="${avatarResponse.imageUrl}" 
              alt="${avatarResponse.name}" 
-             class="w-64 h-64 object-cover rounded-lg mb-4">
+             class="w-64 h-64 object-cover rounded-lg mb-4 border-2 border-gray-700">
+        
+        <div class="absolute top-2 right-2 px-2 py-1 rounded text-xs font-bold ${getTierColor(avatarResponse.model)}">
+          Tier ${getTierFromModel(avatarResponse.model)}
+        </div>
         
         <h1 class="text-2xl font-bold mb-2">${avatarResponse.name}</h1>
-        <p class="text-gray-400 mb-4">${avatarResponse.description || ''}</p>
+        <p class="text-gray-400 mb-4 text-center">${avatarResponse.description || 'No description available'}</p>
+        
+        <div class="grid grid-cols-3 gap-4 w-full mb-6">
+          <div class="bg-gray-800 p-3 rounded-lg text-center">
+            <div class="text-xl font-bold text-blue-400">${avatarResponse.score || 0}</div>
+            <div class="text-xs text-gray-400">SCORE</div>
+          </div>
+          <div class="bg-gray-800 p-3 rounded-lg text-center">
+            <div class="text-xl font-bold text-green-400">${avatarResponse.stats?.wins || 0}</div>
+            <div class="text-xs text-gray-400">WINS</div>
+          </div>
+          <div class="bg-gray-800 p-3 rounded-lg text-center">
+            <div class="text-xl font-bold text-red-400">${avatarResponse.stats?.hp || 0}</div>
+            <div class="text-xs text-gray-400">HP</div>
+          </div>
+        </div>
         
         <div class="space-y-4 w-full">
           ${!state.wallet ? `
             <button onclick="connectWallet()" 
-                    class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">
-              Connect Wallet
+                    class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-lg transition-colors">
+              <div class="flex items-center justify-center gap-2">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/>
+                </svg>
+                Connect Wallet
+              </div>
             </button>
           ` : ''}
           
           ${state.wallet && !claimed ? `
             <button onclick="claimAvatar('${avatarId}')"
-                    class="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded">
-              Claim Avatar & Connect X Account
+                    class="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-4 rounded-lg transition-colors">
+              <div class="flex items-center justify-center gap-2">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                </svg>
+                Claim Avatar & Connect X Account
+              </div>
             </button>
           ` : ''}
           
           ${claimed ? `
-            <div class="text-green-500 text-center">
-              Avatar claimed and X account connected
+            <div class="bg-green-600/20 text-green-400 py-3 px-4 rounded-lg text-center">
+              <div class="flex items-center justify-center gap-2">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                </svg>
+                Avatar claimed and X account connected
+              </div>
             </div>
           ` : ''}
         </div>
