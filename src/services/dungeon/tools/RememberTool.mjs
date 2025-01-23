@@ -33,7 +33,17 @@ export class RememberTool extends BaseTool {
     const memoryService = new MemoryService(this.logger);
     await memoryService.addMemory(avatar._id, memory);
 
-    return `🧠 Memory stored: "${memory}"`;
+    // Post the memory to the avatar narrative channel
+    if (avatar.innerMonologueChannel) {
+      // Post dynamic personality to the inner monologue channel
+      sendAsWebhook(
+        avatar.innerMonologueChannel,
+        `🧠 Memory Generated: ${avatar.dynamicPersonality || ''}`,
+        `${avatar.name} ${avatar.emoji}`,
+        avatar.imageUrl
+      );
+    }
+    return `[🧠 Memory generated]`;
   }
 
   getDescription() {

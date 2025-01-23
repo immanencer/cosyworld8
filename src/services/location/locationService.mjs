@@ -2,241 +2,369 @@ import Fuse from 'fuse.js';
 import { OpenRouterService } from '../openrouterService.mjs';
 import { uploadImage } from '../s3imageService/s3imageService.mjs';
 import { sendAsWebhook } from '../discordService.mjs';
-import { MongoClient } from 'mongodb';
+import { MongoClient, ObjectId } from 'mongodb';
 import Replicate from 'replicate';
 import fs from 'fs/promises';
 
 export class LocationService {
+  /**
+   * Constructs a new LocationService.
+   * @param {Object} discordClient - The Discord client (required).
+   * @param {Object} [aiService=null] - Optional AI service (defaults to OpenRouterService if not provided).
+   */
   constructor(discordClient, aiService = null) {
     if (!discordClient) {
       throw new Error('Discord client is required for LocationService');
     }
+
     this.client = discordClient;
-    this.aiService = aiService || new OpenRouterService(); // Allow injection or create new
+    this.aiService = aiService || new OpenRouterService(); // Allow injection or create a new one
+
+    // Fuzzy-search config
     this.fuseOptions = {
       threshold: 0.4,
       keys: ['name']
     };
 
-    // Add Replicate for image generation
+    // For image generation
     this.replicate = new Replicate({
       auth: process.env.REPLICATE_API_TOKEN
     });
 
-    // Add message tracking
-    this.locationMessages = new Map(); // locationId -> {count: number, messages: Array}
-    this.SUMMARY_THRESHOLD = 100; // Messages before generating summary
-    this.MAX_STORED_MESSAGES = 50; // Keep last 50 messages for context
+    // Location message tracking
+    this.locationMessages = new Map(); // Map<locationId, {count: number, messages: Array}>
+    this.SUMMARY_THRESHOLD = 100; // Summarize after 100 messages
+    this.MAX_STORED_MESSAGES = 50; // Keep last 50 messages in memory
 
+    // DB Setup
+    /** @type {import('mongodb').Db|null} */
     this.db = null;
-    this.initDatabase();
+    this.initDatabase().catch((err) =>
+      console.error('LocationService DB init failed:', err)
+    );
   }
 
+  /**
+   * Connect to MongoDB and store the DB instance.
+   */
   async initDatabase() {
     try {
-      const client = await MongoClient.connect(process.env.MONGO_URI);
-      this.db = client.db(process.env.MONGO_DB_NAME);
+      const mongoUri = process.env.MONGO_URI;
+      const mongoDbName = process.env.MONGO_DB_NAME;
+      if (!mongoUri || !mongoDbName) {
+        throw new Error('MONGO_URI and MONGO_DB_NAME must be set in environment');
+      }
+
+      const client = await MongoClient.connect(mongoUri, {
+        // Connection options can go here, e.g.:
+        // useNewUrlParser: true,
+        // useUnifiedTopology: true
+      });
+      this.db = client.db(mongoDbName);
+      console.log(`LocationService connected to MongoDB: ${mongoDbName}`);
     } catch (error) {
       console.error('Failed to connect to MongoDB:', error);
     }
   }
 
-  // Function to download image
+  /**
+   * Ensures the DB is connected before proceeding.
+   * @private
+   */
+  ensureDbConnection() {
+    if (!this.db) {
+      throw new Error('Database not connected');
+    }
+    return this.db;
+  }
+
+  /**
+   * Downloads an image from a URL and returns the Buffer.
+   * @param {string} url - The URL to download from.
+   * @returns {Promise<Buffer>}
+   */
   async downloadImage(url) {
     try {
       const response = await fetch(url);
       if (!response.ok) {
-        throw new Error(`Failed to get '${url}' (${response.status})`);
+        throw new Error(`Failed to get '${url}' (status: ${response.status})`);
       }
       const arrayBuffer = await response.arrayBuffer();
-      const buffer = Buffer.from(arrayBuffer);
-      return buffer;
+      return Buffer.from(arrayBuffer);
     } catch (error) {
-      throw new Error('Error downloading the image: ' + error.message);
+      console.error('Error downloading the image:', error);
+      throw error;
     }
   }
 
+  /**
+   * Generates an image for a location using Replicate and uploads it to S3.
+   * @param {string} locationName - The location name used in the prompt.
+   * @param {string} description - Additional descriptive text for the prompt.
+   * @returns {Promise<string>} - The uploaded image URL.
+   */
   async generateLocationImage(locationName, description) {
-    const [output] = await this.replicate.run(
-      "immanencer/mirquo:dac6bb69d1a52b01a48302cb155aa9510866c734bfba94aa4c771c0afb49079f",
-      {
-        input: {
-          prompt: `MRQ ${locationName} holographic neon dark watercolor ${description} MRQ`,
-          model: "dev",
-          lora_scale: 1,
-          num_outputs: 1,
-          aspect_ratio: "16:9",
-          output_format: "png",
-          guidance_scale: 3.5,
-          output_quality: 90,
-          prompt_strength: 0.8,
-          extra_lora_scale: 1,
-          num_inference_steps: 28,
-          disable_safety_checker: true,
+    this.ensureDbConnection();
+
+    try {
+      // 1. Use Replicate to generate an image
+      const [output] = await this.replicate.run(
+        'immanencer/mirquo:dac6bb69d1a52b01a48302cb155aa9510866c734bfba94aa4c771c0afb49079f',
+        {
+          input: {
+            prompt: `MRQ ${locationName} holographic neon dark watercolor ${description} MRQ`,
+            model: 'dev',
+            lora_scale: 1,
+            num_outputs: 1,
+            aspect_ratio: '16:9',
+            output_format: 'png',
+            guidance_scale: 3.5,
+            output_quality: 90,
+            prompt_strength: 0.8,
+            extra_lora_scale: 1,
+            num_inference_steps: 28,
+            disable_safety_checker: true
+          }
         }
-      }
-    );
+      );
 
-    const imageUrl = output.url ? output.url() : [output];
-    const imageBuffer = await this.downloadImage(imageUrl.toString());
-    const filename = `./images/location_${Date.now()}.png`;
-    await fs.mkdir('./images', { recursive: true });
-    await fs.writeFile(filename, imageBuffer);
+      // 2. Grab the URL from the replicate output
+      const imageUrl = output.url ? output.url() : [output];
+      const finalUrl = imageUrl.toString();
 
-    if (this.db) {
+      // 3. Download the image to local disk
+      const imageBuffer = await this.downloadImage(finalUrl);
+      const localFilename = `./images/location_${Date.now()}.png`;
+      await fs.mkdir('./images', { recursive: true });
+      await fs.writeFile(localFilename, imageBuffer);
+
+      // 4. Upload image to S3
+      const uploadedUrl = await uploadImage(localFilename);
+
+      // 5. Update the "locations" DB record if it exists
       await this.db.collection('locations').updateOne(
         { name: locationName },
         {
           $set: {
-            imageUrl: await uploadImage(filename),
+            imageUrl: uploadedUrl,
             updatedAt: new Date()
           }
         },
         { upsert: true }
       );
-    }
 
-    return await uploadImage(filename);
+      return uploadedUrl;
+    } catch (error) {
+      console.error('Error generating location image:', error);
+      throw error;
+    }
   }
 
+  /**
+   * Generates a short, atmospheric departure message from currentLocation to newLocation.
+   * @param {Object} avatar - The avatar object with at least { name, ... }.
+   * @param {Object} currentLocation - The current location object { name, imageUrl, ... }.
+   * @param {Object} newLocation - The target location object { name, channel, ... }.
+   * @returns {Promise<string>} - The AI-generated message.
+   */
   async generateDepartureMessage(avatar, currentLocation, newLocation) {
-    // If no image exists for the current location, generate one
-    if (!currentLocation.imageUrl) {
-      try {
-        const locationDescription = await this.aiService.chat([
-          { role: 'system', content: 'Generate a brief description of this location.' },
-          { role: 'user', content: `Describe ${currentLocation.name} in 2-3 sentences.` }
+    try {
+      // Generate an image if currentLocation has none
+      if (!currentLocation.imageUrl) {
+        const locDescription = await this.aiService.chat([
+          {
+            role: 'system',
+            content: 'Generate a brief description of this location.'
+          },
+          {
+            role: 'user',
+            content: `Describe ${currentLocation.name} in 2-3 sentences.`
+          }
         ]);
-        currentLocation.imageUrl = await this.generateLocationImage(currentLocation.name, locationDescription);
-      } catch (error) {
-        console.error('Error generating location image:', error);
+        currentLocation.imageUrl = await this.generateLocationImage(
+          currentLocation.name,
+          locDescription
+        );
       }
+
+      // Generate the AI text
+      const prompt = `You are ${currentLocation.name}. Describe ${avatar.name}'s departure to ${newLocation.name} in a brief atmospheric message.`;
+      const response = await this.aiService.chat([
+        {
+          role: 'system',
+          content: 'You are a mystical location describing travelers.'
+        },
+        {
+          role: 'user',
+          content: prompt
+        }
+      ]);
+
+      // Replace mention of the new location with a channel reference
+      return response.replace(newLocation.name, `<#${newLocation.channel.id}>`);
+    } catch (error) {
+      console.error('Error generating departure message:', error);
+      return 'The winds shift, but no words arise...';
     }
-
-    const prompt = `You are ${currentLocation.name}. Describe ${avatar.name}'s departure to ${newLocation.name} in a brief atmospheric message.`;
-    const response = await this.aiService.chat([
-      { role: 'system', content: 'You are a mystical location describing travelers.' },
-      { role: 'user', content: prompt }
-    ]);
-    return response.replace(newLocation.name, `<#${newLocation.channel.id}>`);
   }
 
+  /**
+   * Generates a short 2-3 sentence description of the location (used after image creation).
+   * @param {string} locationName
+   * @param {string} imageUrl
+   * @returns {Promise<string>}
+   */
   async generateLocationDescription(locationName, imageUrl) {
-    const prompt = `
-      You are a master storyteller describing a mystical location.
-      Looking at this scene of ${locationName}, write a vivid, evocative description that brings it to life.
-      Focus on the atmosphere, unique features, and feelings it evokes.
-      Keep it to 2-3 compelling sentences.`;
+    try {
+      const prompt = `
+        You are a master storyteller describing a mystical location.
+        Looking at this scene of ${locationName}, write a vivid, evocative description that brings it to life.
+        Focus on the atmosphere, unique features, and feelings it evokes.
+        Keep it to 2-3 compelling sentences.
+      `;
 
-    const response = await this.aiService.chat([
-      { role: 'system', content: 'You are a poetic location narrator skilled in atmospheric descriptions.' },
-      { role: 'user', content: prompt }
-    ]);
+      const response = await this.aiService.chat([
+        {
+          role: 'system',
+          content: 'You are a poetic location narrator skilled in atmospheric descriptions.'
+        },
+        {
+          role: 'user',
+          content: prompt
+        }
+      ]);
 
-    return response;
+      return response;
+    } catch (error) {
+      console.error('Error generating location description:', error);
+      return `A mysterious aura surrounds ${locationName}, but words fail to capture it.`;
+    }
   }
 
+  /**
+   * Attempts to find or create a location (Discord Thread or Channel) by fuzzy name matching.
+   * @param {import('discord.js').Guild} guild
+   * @param {string} locationName
+   * @param {import('discord.js').BaseGuildTextChannel} [sourceChannel=null]
+   * @returns {Promise<Object>} - The location object { id, name, channel, description, imageUrl }.
+   */
   async findOrCreateLocation(guild, locationName, sourceChannel = null) {
     if (!guild) {
       throw new Error('Guild is required to find or create location');
     }
 
     try {
-      const channels = await this.getAllLocations(guild);
-      const fuse = new Fuse(channels, this.fuseOptions);
+      this.ensureDbConnection();
 
-      let cleanLocationName = await this.aiService.chat([
-        { role: 'system', content: 'You are an expert editor.' },
+      // Gather existing location channels/threads
+      const existingLocations = await this.getAllLocations(guild);
+      const fuse = new Fuse(existingLocations, this.fuseOptions);
+
+      // Use AI to sanitize or refine the location name
+      let cleanLocationName = await this.aiService.chat(
+        [
+          { role: 'system', content: 'You are an expert editor.' },
+          {
+            role: 'user',
+            content: `The avatar wants to move to or create this location:
+
+${locationName}
+
+Return ONLY a single location name, less than 80 characters, suitable for a fantasy setting.
+If already suitable, return as is. If it needs editing, revise it while preserving its meaning.`
+          }
+        ],
         {
-          role: 'user', content: `The avatar has requested to move to or create the following location:
+          model: 'openai/gpt-4o'
+        }
+      );
 
-        ${locationName}
-
-        Ensure your response is a single location name, less than 80 characters, and suitable for a fantasy setting.
-        If the name is already suitable, return it as is.
-        If it needs editing, revise it to be more suitable for a fantasy setting.
-        Try to keep the original meaning intact.
-        ONLY return the revised name, without any additional text.` }
-      ], {
-        model: 'openai/gpt-4o'
-      });
-
+      // Safety net for name length
       if (!cleanLocationName) {
-        throw new Error("clean location name is null");
+        cleanLocationName = locationName.slice(0, 80);
+      } else {
+        cleanLocationName = cleanLocationName.trim().slice(0, 80);
       }
 
-      // trim by words
-      const words = cleanLocationName.split(' ');
-      while (words.join(' ').length > 100) { words.pop(); }
-
-      cleanLocationName = (words.join(' ')).trim();
-
-      // Try to find existing location
-      const matches = fuse.search(cleanLocationName, { limit: 1 });
-      if (matches.length > 0) {
-        return matches[0].item;
+      // Attempt fuzzy-match against existing
+      const [bestMatch] = fuse.search(cleanLocationName, { limit: 1 });
+      if (bestMatch) {
+        // Return existing location if found
+        return bestMatch.item;
       }
 
-      // Use the source channel if provided, otherwise find/create #locations
+      // If no existing location, create new thread in a channel
       let parentChannel = sourceChannel;
       if (!parentChannel || !parentChannel.threads) {
-        parentChannel = guild.channels.cache.find(c =>
-          c.isTextBased() && c.threads
+        parentChannel = guild.channels.cache.find(
+          (c) => c.isTextBased() && c.threads
         );
       }
 
       if (!parentChannel) {
-        throw new Error('No suitable channel found for creating location thread');
+        throw new Error('No suitable parent channel found for location threads');
       }
 
-      // Generate location content
-      const locationDescription = await this.aiService.chat([
-        { role: 'system', content: 'Generate a brief, atmospheric description of this fantasy location.' },
-        { role: 'user', content: `Describe ${cleanLocationName} in 2-3 sentences.` }
-      ], {
-        model: 'openai/gpt-4o'
-      });
+      // Generate short description & image for new location
+      const locationDescription = await this.aiService.chat(
+        [
+          {
+            role: 'system',
+            content: 'Generate a brief, atmospheric description of this fantasy location.'
+          },
+          {
+            role: 'user',
+            content: `Describe ${cleanLocationName} in 2-3 sentences.`
+          }
+        ],
+        {
+          model: 'openai/gpt-4o'
+        }
+      );
+      const locationImage = await this.generateLocationImage(
+        cleanLocationName,
+        locationDescription
+      );
 
-      const locationImage = await this.generateLocationImage(cleanLocationName, locationDescription);
-
-      // Create thread in the source channel
+      // Create a thread
       const thread = await parentChannel.threads.create({
         name: cleanLocationName,
         autoArchiveDuration: 60
       });
 
-      // Post initial content
+      // Post the location image
       await thread.send({
-        files: [{
-          attachment: locationImage,
-          name: `${cleanLocationName.toLowerCase().replace(/\s+/g, '_')}.png`
-        }]
+        files: [
+          {
+            attachment: locationImage,
+            name: `${cleanLocationName.toLowerCase().replace(/\s+/g, '_')}.png`
+          }
+        ]
       });
 
-      const evocativeDescription = await this.generateLocationDescription(cleanLocationName, locationImage);
-
-      await sendAsWebhook(
-        thread.id,
-        evocativeDescription,
+      // Generate a final evocative description
+      const evocativeDescription = await this.generateLocationDescription(
         cleanLocationName,
         locationImage
       );
 
-      if (this.db) {
-        await this.db.collection('locations').updateOne(
-          { channelId: thread.id },
-          {
-            $set: {
-              name: cleanLocationName,
-              description: evocativeDescription,
-              imageUrl: locationImage,
-              createdAt: new Date(),
-              updatedAt: new Date()
-            }
-          },
-          { upsert: true }
-        );
-      }
+      // Post the evocative description as a webhook
+      await sendAsWebhook(thread.id, evocativeDescription, cleanLocationName, locationImage);
+
+      // Save to DB
+      await this.db.collection('locations').updateOne(
+        { channelId: thread.id },
+        {
+          $set: {
+            name: cleanLocationName,
+            description: evocativeDescription,
+            imageUrl: locationImage,
+            createdAt: new Date(),
+            updatedAt: new Date()
+          }
+        },
+        { upsert: true }
+      );
 
       return {
         id: thread.id,
@@ -245,32 +373,38 @@ export class LocationService {
         description: evocativeDescription,
         imageUrl: locationImage
       };
-
     } catch (error) {
       console.error('Error in findOrCreateLocation:', error);
       throw error;
     }
   }
 
+  /**
+   * Returns all text-based channels and active threads in the guild as location objects.
+   * @param {import('discord.js').Guild} guild
+   * @returns {Promise<Array<{ name: string, channel: import('discord.js').BaseGuildTextChannel }>>}
+   */
   async getAllLocations(guild) {
     const locations = [];
 
-    // Get all text channels
-    const textChannels = guild.channels.cache.filter(c => c.isTextBased());
-    locations.push(...textChannels.map(c => ({ name: c.name, channel: c })));
+    // 1) Get all text-based channels
+    const textChannels = guild.channels.cache.filter((c) => c.isTextBased());
+    locations.push(...textChannels.map((c) => ({ name: c.name, channel: c })));
 
-    // Get all active threads from channels that support threading
+    // 2) Fetch active threads from each text channel
     for (const channel of textChannels.values()) {
-      // Check if channel supports threads
       if (channel.threads && typeof channel.threads.fetchActive === 'function') {
         try {
           const threads = await channel.threads.fetchActive();
           if (threads?.threads?.size > 0) {
-            locations.push(...threads.threads.map(t => ({ name: t.name, channel: t })));
+            locations.push(
+              ...threads.threads.map((t) => ({ name: t.name, channel: t }))
+            );
           }
-        } catch (error) {
-          console.warn(`Failed to fetch threads for channel ${channel.name}:`, error.message);
-          continue; // Skip this channel and continue with others
+        } catch (err) {
+          console.warn(
+            `Failed to fetch threads for channel ${channel.name}: ${err.message}`
+          );
         }
       }
     }
@@ -278,21 +412,45 @@ export class LocationService {
     return locations;
   }
 
+  /**
+   * Generates a brief in-character message from an avatar upon arriving at a new location.
+   * @param {Object} avatar - The avatar object { name, personality, memory, ... }.
+   * @param {Object} location - The location object { name, ... }.
+   * @returns {Promise<string>}
+   */
   async generateAvatarResponse(avatar, location) {
-    const prompt = `You have just arrived at ${location.name}. Write a short in-character message about your arrival or your reaction to this place.`;
-
-    const response = await this.aiService.chat([
-      { role: 'system', content: `You are ${avatar.name}, a ${avatar.personality}. Keep responses brief and in-character.` },
-      { role: 'assistant', content: `${avatar.dynamicPersonality}\n\n${avatar.memory || ''}` },
-      { role: 'user', content: prompt }
-    ]);
-
-    return response;
+    try {
+      const prompt = `You have just arrived at ${location.name}. Write a short in-character message about your arrival or your reaction to this place.`;
+      const response = await this.aiService.chat([
+        {
+          role: 'system',
+          content: `You are ${avatar.name}, a ${avatar.personality}. Keep responses brief and in-character.`
+        },
+        {
+          role: 'assistant',
+          content: `${avatar.dynamicPersonality}\n\n${avatar.memory || ''}`
+        },
+        {
+          role: 'user',
+          content: prompt
+        }
+      ]);
+      return response;
+    } catch (error) {
+      console.error('Error generating avatar response:', error);
+      return `${avatar.name} seems speechless...`;
+    }
   }
 
+  /**
+   * Tracks a single message in a location, incrementing the count and storing the content.
+   * If threshold is reached, it auto-generates a location summary.
+   * @param {string} locationId
+   * @param {Object} message
+   */
   async trackLocationMessage(locationId, message) {
     if (!locationId || !message) {
-      this.logger?.warn('Invalid parameters for trackLocationMessage');
+      console.warn('Invalid parameters for trackLocationMessage');
       return;
     }
 
@@ -301,11 +459,11 @@ export class LocationService {
     }
 
     const locationData = this.locationMessages.get(locationId);
-    locationData.count++;
+    locationData.count += 1;
 
     // Store message data
     locationData.messages.push({
-      author: message.author.username,
+      author: message.author?.username || 'Unknown',
       content: message.content,
       timestamp: message.createdTimestamp
     });
@@ -315,62 +473,91 @@ export class LocationService {
       locationData.messages.shift();
     }
 
-    // Check if we need to generate a summary
+    // Check if we need to summarize
     if (locationData.count >= this.SUMMARY_THRESHOLD) {
       await this.generateLocationSummary(locationId);
-      locationData.count = 0; // Reset counter
+      locationData.count = 0; // Reset after summary
     }
   }
 
+  /**
+   * Generates a summary of recent messages for a location, posts via webhook as "the location."
+   * @param {string} locationId - The channel or thread ID in Discord.
+   */
   async generateLocationSummary(locationId) {
     try {
       const locationData = this.locationMessages.get(locationId);
       if (!locationData) return;
 
       const location = await this.findLocationById(locationId);
-      if (!location) return;
+      if (!location) {
+        console.warn('No location found with ID', locationId);
+        return;
+      }
 
-      const prompt = `As ${location.name}, observe the recent events and characters within your boundaries. 
-      Describe the current atmosphere, notable characters present, and significant events that have occurred.
-      Focus on the mood, interactions, and any changes in the environment.
-      Recent activity:
-      ${locationData.messages.map(m => `${m.author}: ${m.content}`).join('\n')}`;
+      const messagesText = locationData.messages
+        .map((m) => `${m.author}: ${m.content}`)
+        .join('\n');
+
+      const prompt = `As ${location.name}, observe the recent events and characters within your boundaries.
+Describe the current atmosphere, notable characters present, and significant events that have occurred.
+Focus on the mood, interactions, and any changes in the environment.
+Recent activity:
+${messagesText}`;
 
       const summary = await this.aiService.chat([
-        { role: 'system', content: 'You are a mystical location describing the events and characters within your bounds.' },
-        { role: 'user', content: prompt }
+        {
+          role: 'system',
+          content:
+            'You are a mystical location describing the events and characters within your bounds.'
+        },
+        {
+          role: 'user',
+          content: prompt
+        }
       ]);
 
       // Send the summary as the location
-      await sendAsWebhook(
-        location.channel.id,
-        summary,
-        location.name,
-        location.imageUrl
-      );
-
+      await sendAsWebhook(location.id, summary, location.name, location.imageUrl);
     } catch (error) {
       console.error('Error generating location summary:', error);
     }
   }
 
+  /**
+   * Finds a location by its channel/thread ID in Discord, returning a location-like object.
+   * If your DB stores location data, you could also fetch it there.
+   * @param {string} locationId
+   * @returns {Promise<null|Object>}
+   */
   async findLocationById(locationId) {
-    const guild = this.client.guilds.cache.first();
-    if (!guild) return null;
-
     try {
+      const guild = this.client.guilds.cache.first();
+      if (!guild) {
+        console.warn('No guild found in the Discord client');
+        return null;
+      }
+
       const channel = await guild.channels.fetch(locationId);
       if (!channel) return null;
+
+      // Optionally, fetch DB info
+      let dbLocation = null;
+      if (this.db) {
+        dbLocation = await this.db.collection('locations').findOne({
+          $or: [{ channelId: locationId }, { _id: new ObjectId(locationId) }]
+        });
+      }
 
       return {
         id: channel.id,
         name: channel.name,
-        channel: channel,
-        description: channel.topic || '',
-        imageUrl: this.locationImages.get(channel.id)
+        channel,
+        description: dbLocation?.description || channel.topic || '',
+        imageUrl: dbLocation?.imageUrl || null
       };
     } catch (error) {
-      console.error('Error finding location:', error);
+      console.error('Error finding location by ID:', error);
       return null;
     }
   }

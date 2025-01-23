@@ -1,13 +1,16 @@
 import express from 'express';
 import cors from 'cors';
 import { MongoClient, ObjectId } from 'mongodb';
-import models from '../src/models.config.mjs';
-import avatarRoutes from './routes/avatars.mjs';
+import Fuse from 'fuse.js';
+
+import models from '../src/models.config.mjs'; // your custom config
+import avatarRoutes from './routes/avatars.mjs'; // external routes
 import tribeRoutes from './routes/tribes.mjs';
 import xauthRoutes from './routes/xauth.mjs';
 import wikiRoutes from './routes/wiki.mjs';
 import { thumbnailService } from './services/thumbnailService.mjs';
 
+// ----- Express & Environment Setup -----
 const app = express();
 const PORT = process.env.PORT || 3080;
 
@@ -15,20 +18,32 @@ app.use(cors());
 app.use(express.json());
 app.use(express.static('public'));
 
-// MongoDB Setup
+// ----- MongoDB Setup -----
 const mongoUri = process.env.MONGO_URI || 'mongodb://localhost:27017';
 const mongoDbName = process.env.MONGO_DB_NAME || 'cosyworld';
 const mongoClient = new MongoClient(mongoUri);
+
 let db = null;
 
 /**
- * Initialize all required indexes in the database.
- * @param {import('mongodb').Db} db
+ * A small helper to ensure `db` is available.
+ * Throws an error if the DB is not yet connected.
  */
-async function initializeIndexes(db) {
+function ensureDbConnection() {
+  if (!db) {
+    throw new Error('Database not connected');
+  }
+  return db;
+}
+
+/**
+ * Initialize all required indexes in the database.
+ * @param {import('mongodb').Db} database
+ */
+async function initializeIndexes(database) {
   try {
     // Avatars
-    await db.collection('avatars').createIndexes([
+    await database.collection('avatars').createIndexes([
       { key: { name: 1 }, background: true },
       { key: { emoji: 1 }, background: true },
       { key: { parents: 1 }, background: true },
@@ -38,42 +53,42 @@ async function initializeIndexes(db) {
     ]);
 
     // Messages
-    await db.collection('messages').createIndexes([
+    await database.collection('messages').createIndexes([
       { key: { authorUsername: 1 }, background: true },
       { key: { timestamp: -1 }, background: true },
       { key: { avatarId: 1 }, background: true },
     ]);
 
     // Narratives
-    await db.collection('narratives').createIndexes([
+    await database.collection('narratives').createIndexes([
       { key: { avatarId: 1, timestamp: -1 }, background: true },
     ]);
 
     // Memories
-    await db.collection('memories').createIndexes([
+    await database.collection('memories').createIndexes([
       { key: { avatarId: 1, timestamp: -1 }, background: true },
     ]);
 
     // Dungeon Stats
-    await db.collection('dungeon_stats').createIndexes([
-      { key: { avatarId: 1 }, background: true, unique: true },
+    await database.collection('dungeon_stats').createIndexes([
+      { key: { avatarId: 1 }, unique: true, background: true },
     ]);
 
     // Dungeon Log
-    await db.collection('dungeon_log').createIndexes([
+    await database.collection('dungeon_log').createIndexes([
       { key: { timestamp: -1 }, background: true },
       { key: { actor: 1 }, background: true },
       { key: { target: 1 }, background: true },
     ]);
 
     // Token Transactions
-    await db.collection('token_transactions').createIndexes([
+    await database.collection('token_transactions').createIndexes([
       { key: { walletAddress: 1, timestamp: -1 }, background: true },
-      { key: { transactionSignature: 1 }, unique: true },
+      { key: { transactionSignature: 1 }, unique: true, background: true },
     ]);
 
     // Minted NFTs
-    await db.collection('minted_nfts').createIndexes([
+    await database.collection('minted_nfts').createIndexes([
       { key: { walletAddress: 1 }, background: true },
       { key: { avatarId: 1 }, background: true },
     ]);
@@ -94,20 +109,17 @@ async function initializeIndexes(db) {
     await mongoClient.connect();
     db = mongoClient.db(mongoDbName);
 
-    const hostInfo =
-      mongoClient?.options?.srvHost ||
-      mongoClient?.options?.hosts?.[0] ||
-      'unknown host';
-    console.log(`Connected to MongoDB at: ${hostInfo}`);
+    // Display some minimal info
+    console.log(`Connected to MongoDB database: ${mongoDbName}`);
 
     // Initialize indexes
     await initializeIndexes(db);
 
-    // Mount external routes
+    // Mount external routes that depend on `db`
     app.use('/api/avatars', await avatarRoutes(db));
     app.use('/api/tribes', await tribeRoutes(db));
     app.use('/api/xauth', await xauthRoutes(db));
-    app.use('/api/wiki', await wikiRoutes);
+    app.use('/api/wiki', wikiRoutes);
     app.use(
       '/api/models',
       await import('./routes/models.mjs').then((m) => m.default(db))
@@ -143,23 +155,22 @@ function escapeRegExp(string) {
 }
 
 /**
- * Returns array of ancestors (parents of an avatar) by iterating up the family tree.
- * @param {import('mongodb').Db} db
+ * Returns the ancestry (parent chain) of an avatar by iterating up the family tree.
+ * @param {import('mongodb').Db} database
  * @param {string|ObjectId} avatarId
  * @returns {Promise<Array>} The ancestry chain from child to oldest parent.
  */
-async function getAvatarAncestry(db, avatarId) {
+async function getAvatarAncestry(database, avatarId) {
   const ancestry = [];
-  let currentAvatar = await db.collection('avatars').findOne(
+  let currentAvatar = await database.collection('avatars').findOne(
     { _id: new ObjectId(avatarId) },
     { projection: { parents: 1 } }
   );
 
   while (currentAvatar?.parents?.length) {
-    // If parents is an array of ObjectId or string IDs, we do:
     const parentId = currentAvatar.parents[0];
-    const parent = await db.collection('avatars').findOne(
-      { _id: new ObjectId(parentId) }, // <--- fix from createFromTime()
+    const parent = await database.collection('avatars').findOne(
+      { _id: new ObjectId(parentId) },
       { projection: { _id: 1, name: 1, imageUrl: 1, emoji: 1, parents: 1 } }
     );
     if (!parent) break;
@@ -174,13 +185,12 @@ async function getAvatarAncestry(db, avatarId) {
 
 /**
  * GET /api/leaderboard/minted
- * Returns top minted NFTs with stats; up to 100 results sorted by score.
+ * Returns top minted NFTs with stats; up to 100 results, sorted by a simple score formula.
  */
 app.get('/api/leaderboard/minted', async (req, res) => {
   try {
-    if (!db) throw new Error('Database not connected');
-
-    const mintedAvatars = await db
+    const database = ensureDbConnection();
+    const mintedAvatars = await database
       .collection('minted_nfts')
       .aggregate([
         {
@@ -238,10 +248,10 @@ app.get('/api/leaderboard/minted', async (req, res) => {
  */
 app.get('/api/leaderboard', async (req, res) => {
   try {
-    if (!db) throw new Error('Database not connected');
-
-    const { tier, lastMessageCount, lastId } = req.query;
-    const limit = parseInt(req.query.limit, 10) || 24;
+    const database = ensureDbConnection();
+    const { tier, lastMessageCount, lastId, limit: limitStr } = req.query;
+    // Default limit 24, but never exceed 100
+    const limit = Math.min(parseInt(limitStr, 10) || 24, 100);
 
     const pipeline = [
       // 1) Group messages by case-insensitive authorUsername
@@ -271,7 +281,7 @@ app.get('/api/leaderboard', async (req, res) => {
       },
       // 2) Sort by messageCount desc
       { $sort: { messageCount: -1 } },
-      // 3) Lookup avatars that match the case-insensitive username
+      // 3) Lookup avatars matching the case-insensitive username
       {
         $lookup: {
           from: 'avatars',
@@ -293,22 +303,25 @@ app.get('/api/leaderboard', async (req, res) => {
       { $match: { 'variants.0': { $exists: true } } },
     ];
 
-    // Tier filter if any
+    // Tier filter (optional)
     if (tier && tier !== 'All') {
       if (tier === 'U') {
-        // Untiered
+        // Untiered => model is absent or not in known models
         pipeline.push({
           $match: {
             $or: [
               { 'variants.0.model': { $exists: false } },
               { 'variants.0.model': null },
               {
-                'variants.0.model': { $nin: models.map((m) => m.model) },
+                'variants.0.model': {
+                  $nin: models.map((m) => m.model),
+                },
               },
             ],
           },
         });
       } else {
+        // Filter by models whose rarity => tier
         pipeline.push({
           $match: {
             'variants.0.model': {
@@ -322,15 +335,16 @@ app.get('/api/leaderboard', async (req, res) => {
     }
 
     // Optional "scroll/pagination" using lastMessageCount + lastId
-    // Warning: _id here is a string from $group, so $gt is lexical
+    // (Be aware that _id here is a string from $group, so $gt is lexical.)
     if (lastMessageCount && lastId) {
+      const parsedCount = parseInt(lastMessageCount, 10) || 0;
       pipeline.push({
         $match: {
           $or: [
-            { messageCount: { $lt: parseInt(lastMessageCount, 10) } },
+            { messageCount: { $lt: parsedCount } },
             {
               $and: [
-                { messageCount: parseInt(lastMessageCount, 10) },
+                { messageCount: parsedCount },
                 { _id: { $gt: lastId } },
               ],
             },
@@ -339,10 +353,10 @@ app.get('/api/leaderboard', async (req, res) => {
       });
     }
 
-    // Limit + 1 for "hasMore"
+    // Limit + 1 for "hasMore" detection
     pipeline.push({ $limit: limit + 1 });
 
-    const results = await db
+    const results = await database
       .collection('messages')
       .aggregate(pipeline, { allowDiskUse: true })
       .toArray();
@@ -362,8 +376,8 @@ app.get('/api/leaderboard', async (req, res) => {
         );
 
         const [ancestry, stats] = await Promise.all([
-          getAvatarAncestry(db, primaryAvatar._id),
-          db.collection('dungeon_stats').findOne({
+          getAvatarAncestry(database, primaryAvatar._id),
+          database.collection('dungeon_stats').findOne({
             $or: [
               { avatarId: primaryAvatar._id },
               { avatarId: primaryAvatar._id.toString() },
@@ -384,15 +398,14 @@ app.get('/api/leaderboard', async (req, res) => {
             .filter((m) => m !== null)
             .slice(0, 5),
           stats: stats || { attack: 0, defense: 0, hp: 0 },
-          score: result.messageCount, // or any custom formula
+          // Simple scoreboard formula (customize as needed)
+          score: result.messageCount,
         };
       })
     );
 
     const filtered = details.filter(Boolean);
     const hasMore = results.length > limit;
-
-    // The "last item" for pagination reference
     const lastItem = results.slice(0, limit).pop();
 
     return res.json({
@@ -416,39 +429,48 @@ app.get('/api/leaderboard', async (req, res) => {
  */
 app.get('/api/avatar/:id/narratives', async (req, res) => {
   try {
-    if (!db) throw new Error('Database not connected');
-
+    const database = ensureDbConnection();
     const avatarId = new ObjectId(req.params.id);
 
     // Fetch data in parallel
-    const [narratives, messages, dungeonStats] = await Promise.all([
-      db
+    const [narratives, messages, existingStats] = await Promise.all([
+      database
         .collection('narratives')
         .find({ avatarId })
         .sort({ timestamp: -1 })
         .limit(10)
         .toArray(),
-      db
+      database
         .collection('messages')
         .find({ avatarId })
         .sort({ timestamp: -1 })
         .limit(5)
         .toArray(),
-      db.collection('dungeon_stats').findOne({ avatarId }),
+      database.collection('dungeon_stats').findOne({ avatarId }),
     ]);
 
-    // Generate stats if they don't exist
-    if (!dungeonStats) {
-      const { StatGenerationService } = await import('../src/services/statGenerationService.mjs');
+    // If no dungeon stats exist, generate and upsert
+    let dungeonStats = existingStats;
+    if (!existingStats) {
+      const { StatGenerationService } = await import(
+        '../src/services/statGenerationService.mjs'
+      );
       const statService = new StatGenerationService();
-      const avatar = await db.collection('avatars').findOne({ _id: avatarId });
-      const generatedStats = statService.generateStatsFromDate(avatar?.createdAt || new Date());
 
-      dungeonStats = await db.collection('dungeon_stats').findOneAndUpdate(
+      const avatar = await database
+        .collection('avatars')
+        .findOne({ _id: avatarId });
+      const generatedStats = statService.generateStatsFromDate(
+        avatar?.createdAt || new Date()
+      );
+
+      const upserted = await database.collection('dungeon_stats').findOneAndUpdate(
         { avatarId },
         { $set: { ...generatedStats, avatarId } },
         { upsert: true, returnDocument: 'after' }
       );
+
+      dungeonStats = upserted.value;
     }
 
     res.json({
@@ -473,15 +495,15 @@ app.get('/api/avatar/:id/narratives', async (req, res) => {
  */
 app.get('/api/avatar/:id/memories', async (req, res) => {
   try {
-    if (!db) throw new Error('Database not connected');
-
+    const database = ensureDbConnection();
     const id = req.params.id;
-    // Some stored as strings, some as ObjectId. Support both:
+
+    // Some docs stored as strings, some as ObjectId
     const query = {
       $or: [{ avatarId: new ObjectId(id) }, { avatarId: id }],
     };
 
-    const memories = await db
+    const memories = await database
       .collection('memories')
       .find(query)
       .sort({ timestamp: -1 })
@@ -501,18 +523,17 @@ app.get('/api/avatar/:id/memories', async (req, res) => {
  */
 app.get('/api/avatar/:id/dungeon-actions', async (req, res) => {
   try {
-    if (!db) throw new Error('Database not connected');
-
+    const database = ensureDbConnection();
     const avatarId = new ObjectId(req.params.id);
-    const avatar = await db
+
+    const avatar = await database
       .collection('avatars')
       .findOne({ _id: avatarId }, { projection: { name: 1 } });
-
     if (!avatar) {
       return res.status(404).json({ error: 'Avatar not found' });
     }
 
-    const actions = await db
+    const actions = await database
       .collection('dungeon_log')
       .find({
         $or: [{ actor: avatar.name }, { target: avatar.name }],
@@ -530,19 +551,19 @@ app.get('/api/avatar/:id/dungeon-actions', async (req, res) => {
 
 /**
  * GET /api/avatars/search
- * Returns up to 5 avatars whose name matches the query.
+ * Returns up to 5 avatars whose name matches the query (case-insensitive).
  */
 app.get('/api/avatars/search', async (req, res) => {
   try {
-    if (!db) throw new Error('Database not connected');
-
+    const database = ensureDbConnection();
     const { name } = req.query;
+
     if (!name || name.length < 2) {
       return res.json({ avatars: [] });
     }
 
     const regex = new RegExp(escapeRegExp(name), 'i');
-    const found = await db
+    const found = await database
       .collection('avatars')
       .find({ name: regex })
       .limit(5)
@@ -552,9 +573,7 @@ app.get('/api/avatars/search', async (req, res) => {
     const avatars = await Promise.all(
       found.map(async (avatar) => ({
         ...avatar,
-        thumbnailUrl: await thumbnailService.generateThumbnail(
-          avatar.imageUrl
-        ),
+        thumbnailUrl: await thumbnailService.generateThumbnail(avatar.imageUrl),
       }))
     );
 
@@ -569,97 +588,85 @@ app.get('/api/avatars/search', async (req, res) => {
 
 /**
  * GET /api/dungeon/log
- * Returns up to 50 latest combat logs, enriched with actor/target stats & additional data.
+ * Returns up to 50 latest dungeon log entries, enriched with actor/target stats & additional data.
  */
 app.get('/api/dungeon/log', async (req, res) => {
   try {
-    if (!db) throw new Error('Database not connected');
-
-    const combatLog = await db
+    const database = ensureDbConnection();
+    const combatLog = await database
       .collection('dungeon_log')
       .find({})
       .sort({ timestamp: -1 })
       .limit(50)
       .toArray();
 
-    // Get unique location names from all relevant actions
-    const locationNames = [...new Set(
-      combatLog
-        .filter(log => (log.action === 'move' || log.location) && log.target)
-        .map(log => log.target)
-    )];
+    // Gather location names from move actions
+    const locationNames = [
+      ...new Set(
+        combatLog
+          .filter((log) => (log.action === 'move' || log.location) && log.target)
+          .map((log) => log.target)
+      ),
+    ];
 
-    // Fetch location details with full projection
-    // Get all locations first
-    const allLocations = await db.collection('locations')
-      .find({}, {
-        projection: {
-          name: 1,
-          description: 1,
-          imageUrl: 1,
-          updatedAt: 1
-        }
-      }).toArray();
+    // Grab all locations from DB
+    const allLocations = await database
+      .collection('locations')
+      .find({}, { projection: { name: 1, description: 1, imageUrl: 1, updatedAt: 1 } })
+      .toArray();
 
-    // Set up fuzzy search
+    // Set up Fuse for approximate matching
     const fuse = new Fuse(allLocations, {
       keys: ['name'],
-      threshold: 0.4
+      threshold: 0.4,
     });
 
-    // Find closest matches for each location name
+    // Map each locationName to the best match from allLocations
     const locationDetails = locationNames.reduce((acc, name) => {
-      const results = fuse.search(name);
-      if (results.length > 0) {
-        const match = results[0].item;
+      const [result] = fuse.search(name);
+      if (result) {
         acc[name] = {
-          name: match.name,
-          description: match.description,
-          imageUrl: match.imageUrl,
-          updatedAt: match.updatedAt
+          name: result.item.name,
+          description: result.item.description,
+          imageUrl: result.item.imageUrl,
+          updatedAt: result.item.updatedAt,
         };
       }
       return acc;
     }, {});
-
-    // Continue with the existing location details processing
-    const enrichedLocations = Object.entries(locationDetails).reduce((acc, [name, loc]) => {
-        // Keep the most recently updated version of each location
-        if (!acc[loc.name] || 
-            (loc.updatedAt && (!acc[loc.name].updatedAt || 
-             new Date(loc.updatedAt) > new Date(acc[loc.name].updatedAt)))) {
-          acc[loc.name] = {
-            name: loc.name,
-            description: loc.description,
-            imageUrl: loc.imageUrl,
-            updatedAt: loc.updatedAt
-          };
-        }
-        return acc;
-      }, {}));
 
     // Enrich each log entry
     const enrichedLog = await Promise.all(
       combatLog.map(async (entry) => {
         // 1) Find Avatars for actor & target
         const [actor, target] = await Promise.all([
-          db.collection('avatars').findOne(
+          database.collection('avatars').findOne(
             { name: entry.actor },
             { projection: { _id: 1, name: 1, imageUrl: 1, emoji: 1 } }
           ) ||
-            db.collection('avatars').findOne(
-              { name: { $regex: `^${escapeRegExp(entry.actor)}$`, $options: 'i' } },
-              { projection: { _id: 1, name: 1, imageUrl: 1, emoji: 1 } }
-            ),
+          database.collection('avatars').findOne(
+            {
+              name: {
+                $regex: `^${escapeRegExp(entry.actor)}$`,
+                $options: 'i',
+              },
+            },
+            { projection: { _id: 1, name: 1, imageUrl: 1, emoji: 1 } }
+          ),
           entry.target
-            ? db.collection('avatars').findOne(
+            ? database.collection('avatars').findOne(
               { name: entry.target },
               { projection: { _id: 1, name: 1, imageUrl: 1, emoji: 1 } }
             ) ||
-              db.collection('avatars').findOne(
-                { name: { $regex: `^${escapeRegExp(entry.target)}$`, $options: 'i' } },
-                { projection: { _id: 1, name: 1, imageUrl: 1, emoji: 1 } }
-              )
+            database.collection('avatars').findOne(
+              {
+                name: {
+                  $regex: `^${escapeRegExp(entry.target)}$`,
+                  $options: 'i',
+                },
+              },
+              { projection: { _id: 1, name: 1, imageUrl: 1, emoji: 1 } }
+            )
             : null,
         ]);
 
@@ -675,48 +682,49 @@ app.get('/api/dungeon/log', async (req, res) => {
         // 2) Fetch stats
         const [actorStats, targetStats] = await Promise.all([
           actor
-            ? db
-              .collection('dungeon_stats')
-              .findOne({ avatarId: actor._id.toString() })
+            ? database.collection('dungeon_stats').findOne({
+              avatarId: actor._id.toString(),
+            })
             : null,
           target
-            ? db
-              .collection('dungeon_stats')
-              .findOne({ avatarId: target._id.toString() })
+            ? database.collection('dungeon_stats').findOne({
+              avatarId: target._id.toString(),
+            })
             : null,
         ]);
 
         // 3) Additional data based on action
-        let additionalData = {};
+        const additionalData = {};
         if (entry.action === 'remember') {
-          const memory = await db.collection('memories').findOne({
+          const memory = await database.collection('memories').findOne({
             avatarId: actor?._id,
             timestamp: entry.timestamp,
           });
           if (memory) additionalData.memory = memory.content;
         } else if (entry.action === 'xpost') {
-          const tweet = await db.collection('tweets').findOne({
+          const tweet = await database.collection('tweets').findOne({
             avatarId: actor?._id,
             timestamp: entry.timestamp,
           });
           if (tweet) additionalData.tweet = tweet.content;
         }
 
-        // Add location details if available 
-        const location = locationDetails[entry.target] || {};
-        // Get location details for both target and current location
+        // Identify location from either `entry.target` or `entry.location`
         const locationKey = entry.target || entry.location;
         const locationData = locationDetails[locationKey];
-        additionalData.location = locationData ? {
-          name: locationData.name,
-          imageUrl: locationData.imageUrl || null,
-          description: locationData.description || ''
-        } : null;
 
-        // For move actions, include targetImageUrl for backward compatibility
+        // For move actions, preserve backward-compat "targetImageUrl"
         if (entry.action === 'move' && locationData?.imageUrl) {
           additionalData.targetImageUrl = locationData.imageUrl;
         }
+
+        additionalData.location = locationData
+          ? {
+            name: locationData.name,
+            imageUrl: locationData.imageUrl || null,
+            description: locationData.description || '',
+          }
+          : null;
 
         return {
           ...entry,
@@ -746,15 +754,24 @@ app.get('/api/dungeon/log', async (req, res) => {
 
 // ---- Healthcheck ----
 
-app.get('/api/health', (req, res) => {
-  if (!db) {
-    return res.status(503).json({
+/**
+ * GET /api/health
+ * Basic health check endpoint.
+ */
+app.get('/api/health', async (req, res) => {
+  try {
+    ensureDbConnection();
+    // Optionally, ping the DB to check connectivity
+    // await db.command({ ping: 1 });
+
+    res.json({ status: 'ok', database: 'connected' });
+  } catch {
+    res.status(503).json({
       status: 'error',
       message: 'Database not connected',
       mongo: process.env.MONGO_URI ? 'configured' : 'not configured',
     });
   }
-  res.json({ status: 'ok', database: 'connected' });
 });
 
 /**
@@ -763,23 +780,23 @@ app.get('/api/health', (req, res) => {
  */
 app.get('/api/avatars/:id', async (req, res) => {
   try {
-    if (!db) throw new Error('Database not connected');
-
+    const database = ensureDbConnection();
     const avatarId = new ObjectId(req.params.id);
-    const avatar = await db.collection('avatars').findOne({ _id: avatarId });
+
+    const avatar = await database.collection('avatars').findOne({ _id: avatarId });
     if (!avatar) {
       return res.status(404).json({ error: 'Avatar not found' });
     }
 
     // In parallel: ancestry, variants, stats
     const [ancestry, variants, stats] = await Promise.all([
-      getAvatarAncestry(db, avatarId),
-      db
+      getAvatarAncestry(database, avatarId),
+      database
         .collection('avatars')
         .find({ name: avatar.name })
         .sort({ createdAt: -1 })
         .toArray(),
-      db.collection('dungeon_stats').findOne({
+      database.collection('dungeon_stats').findOne({
         $or: [{ avatarId }, { avatarId: avatarId.toString() }],
       }),
     ]);
