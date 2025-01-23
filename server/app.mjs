@@ -590,19 +590,40 @@ app.get('/api/dungeon/log', async (req, res) => {
     )];
 
     // Fetch location details with full projection
-    const locationDetails = await db.collection('locations')
-      .find({ 
-        name: { $in: locationNames }
-      }, {
+    // Get all locations first
+    const allLocations = await db.collection('locations')
+      .find({}, {
         projection: {
           name: 1,
           description: 1,
           imageUrl: 1,
           updatedAt: 1
         }
-      })
-      .toArray()
-      .then(locations => locations.reduce((acc, loc) => {
+      }).toArray();
+
+    // Set up fuzzy search
+    const fuse = new Fuse(allLocations, {
+      keys: ['name'],
+      threshold: 0.4
+    });
+
+    // Find closest matches for each location name
+    const locationDetails = locationNames.reduce((acc, name) => {
+      const results = fuse.search(name);
+      if (results.length > 0) {
+        const match = results[0].item;
+        acc[name] = {
+          name: match.name,
+          description: match.description,
+          imageUrl: match.imageUrl,
+          updatedAt: match.updatedAt
+        };
+      }
+      return acc;
+    }, {});
+
+    // Continue with the existing location details processing
+    const enrichedLocations = Object.entries(locationDetails).reduce((acc, [name, loc]) => {
         // Keep the most recently updated version of each location
         if (!acc[loc.name] || 
             (loc.updatedAt && (!acc[loc.name].updatedAt || 
