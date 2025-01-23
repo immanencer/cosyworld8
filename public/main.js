@@ -137,36 +137,51 @@ async function showAvatarDetails(avatarId) {
         </div>
 
         <!-- Ability Scores -->
-        <div class="grid grid-cols-3 gap-2 w-full mb-4">
-          <div class="bg-gray-800/50 p-3 rounded-lg text-center">
-            <div title="Strength" class="text-lg">💪</div>
-            <div class="font-bold">${avatarResponse.stats?.strength || 10}</div>
-            <div class="text-sm text-gray-400">${getModifier(avatarResponse.stats?.strength)}</div>
-          </div>
-          <div class="bg-gray-800/50 p-3 rounded-lg text-center">
-            <div title="Dexterity" class="text-lg">🎯</div>
-            <div class="font-bold">${avatarResponse.stats?.dexterity || 10}</div>
-            <div class="text-sm text-gray-400">${getModifier(avatarResponse.stats?.dexterity)}</div>
-          </div>
-          <div class="bg-gray-800/50 p-3 rounded-lg text-center">
-            <div title="Constitution" class="text-lg">🏋️</div>
-            <div class="font-bold">${avatarResponse.stats?.constitution || 10}</div>
-            <div class="text-sm text-gray-400">${getModifier(avatarResponse.stats?.constitution)}</div>
-          </div>
-          <div class="bg-gray-800/50 p-3 rounded-lg text-center">
-            <div title="Intelligence" class="text-lg">🧠</div>
-            <div class="font-bold">${avatarResponse.stats?.intelligence || 10}</div>
-            <div class="text-sm text-gray-400">${getModifier(avatarResponse.stats?.intelligence)}</div>
-          </div>
-          <div class="bg-gray-800/50 p-3 rounded-lg text-center">
-            <div title="Wisdom" class="text-lg">👁️</div>
-            <div class="font-bold">${avatarResponse.stats?.wisdom || 10}</div>
-            <div class="text-sm text-gray-400">${getModifier(avatarResponse.stats?.wisdom)}</div>
-          </div>
-          <div class="bg-gray-800/50 p-3 rounded-lg text-center">
-            <div title="Charisma" class="text-lg">👑</div>
-            <div class="font-bold">${avatarResponse.stats?.charisma || 10}</div>
-            <div class="text-sm text-gray-400">${getModifier(avatarResponse.stats?.charisma)}</div>
+        <div class="bg-gray-800/50 p-4 rounded-lg w-full mb-4">
+          <h3 class="font-bold text-lg mb-3">Ability Scores</h3>
+          <div class="grid grid-cols-2 gap-3">
+            <div class="flex items-center gap-3">
+              <span title="Strength" class="text-xl">💪</span>
+              <div>
+                <div class="font-medium">${avatarResponse.stats?.strength || 10}</div>
+                <div class="text-xs text-gray-400">Strength (${getModifier(avatarResponse.stats?.strength)})</div>
+              </div>
+            </div>
+            <div class="flex items-center gap-3">
+              <span title="Dexterity" class="text-xl">🎯</span>
+              <div>
+                <div class="font-medium">${avatarResponse.stats?.dexterity || 10}</div>
+                <div class="text-xs text-gray-400">Dexterity (${getModifier(avatarResponse.stats?.dexterity)})</div>
+              </div>
+            </div>
+            <div class="flex items-center gap-3">
+              <span title="Constitution" class="text-xl">🏋️</span>
+              <div>
+                <div class="font-medium">${avatarResponse.stats?.constitution || 10}</div>
+                <div class="text-xs text-gray-400">Constitution (${getModifier(avatarResponse.stats?.constitution)})</div>
+              </div>
+            </div>
+            <div class="flex items-center gap-3">
+              <span title="Intelligence" class="text-xl">🧠</span>
+              <div>
+                <div class="font-medium">${avatarResponse.stats?.intelligence || 10}</div>
+                <div class="text-xs text-gray-400">Intelligence (${getModifier(avatarResponse.stats?.intelligence)})</div>
+              </div>
+            </div>
+            <div class="flex items-center gap-3">
+              <span title="Wisdom" class="text-xl">👁️</span>
+              <div>
+                <div class="font-medium">${avatarResponse.stats?.wisdom || 10}</div>
+                <div class="text-xs text-gray-400">Wisdom (${getModifier(avatarResponse.stats?.wisdom)})</div>
+              </div>
+            </div>
+            <div class="flex items-center gap-3">
+              <span title="Charisma" class="text-xl">👑</span>
+              <div>
+                <div class="font-medium">${avatarResponse.stats?.charisma || 10}</div>
+                <div class="text-xs text-gray-400">Charisma (${getModifier(avatarResponse.stats?.charisma)})</div>
+              </div>
+            </div>
           </div>
         </div>
 
