@@ -1,41 +1,27 @@
+window.components = window.components || {};
 
-function ViewToggle({ currentView, onViewChange }) {
-  return (
-    <div className="flex justify-center gap-4 mb-8">
-      <button
-        className={`px-4 py-2 rounded ${
-          currentView === 'collection' ? 'bg-blue-600 text-white' : 'bg-gray-700 text-gray-300'
-        }`}
-        onClick={() => onViewChange('collection')}
-      >
-        Collection
-      </button>
-      <button
-        className={`px-4 py-2 rounded ${
-          currentView === 'leaderboard' ? 'bg-purple-600 text-white' : 'bg-gray-700 text-gray-300'
-        }`}
-        onClick={() => onViewChange('leaderboard')}
-      >
-        Leaderboard
-      </button>
-      <button
-        className={`px-4 py-2 rounded ${
-          currentView === 'combat' ? 'bg-red-600 text-white' : 'bg-gray-700 text-gray-300'
-        }`}
-        onClick={() => onViewChange('combat')}
-      >
-        Combat Log
-      </button>
-      <button
-        className={`px-4 py-2 rounded ${
-          currentView === 'tribes' ? 'bg-green-600 text-white' : 'bg-gray-700 text-gray-300'
-        }`}
-        onClick={() => onViewChange('tribes')}
-      >
-        Tribes
-      </button>
-    </div>
-  );
+function ViewToggle(currentView, onViewChange) {
+  const container = document.createElement('div');
+  container.className = 'flex justify-center gap-4 mb-8';
+
+  const views = [
+    { name: 'collection', label: 'Collection', color: 'blue' },
+    { name: 'leaderboard', label: 'Leaderboard', color: 'purple' },
+    { name: 'combat', label: 'Combat Log', color: 'red' },
+    { name: 'tribes', label: 'Tribes', color: 'green' }
+  ];
+
+  views.forEach(view => {
+    const button = document.createElement('button');
+    button.className = `px-4 py-2 rounded ${
+      currentView === view.name ? `bg-${view.color}-600 text-white` : 'bg-gray-700 text-gray-300'
+    }`;
+    button.textContent = view.label;
+    button.onclick = () => onViewChange(view.name);
+    container.appendChild(button);
+  });
+
+  return container;
 }
 
-export { ViewToggle };
+window.components.ViewToggle = ViewToggle;

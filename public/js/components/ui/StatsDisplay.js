@@ -1,45 +1,66 @@
 
-import { ProgressRing } from './ProgressRing';
+window.components = window.components || {};
 
-function StatsDisplay({ stats, size = "small" }) {
+function StatsDisplay(stats, size = "small") {
   const { hp = 0, attack = 0, defense = 0 } = stats || {};
+  const container = document.createElement('div');
   
   if (size === "small") {
-    return (
-      <div className="flex gap-2 text-xs text-gray-400">
-        {hp > 0 && <span title="HP">❤️ {hp}</span>}
-        {attack > 0 && <span title="Attack">⚔️ {attack}</span>}
-        {defense > 0 && <span title="Defense">🛡️ {defense}</span>}
-      </div>
-    );
-  }
+    container.className = "flex gap-2 text-xs text-gray-400";
+    if (hp > 0) {
+      const hpSpan = document.createElement('span');
+      hpSpan.title = "HP";
+      hpSpan.textContent = `❤️ ${hp}`;
+      container.appendChild(hpSpan);
+    }
+    if (attack > 0) {
+      const attackSpan = document.createElement('span');
+      attackSpan.title = "Attack";
+      attackSpan.textContent = `⚔️ ${attack}`;
+      container.appendChild(attackSpan);
+    }
+    if (defense > 0) {
+      const defenseSpan = document.createElement('span');
+      defenseSpan.title = "Defense";
+      defenseSpan.textContent = `🛡️ ${defense}`;
+      container.appendChild(defenseSpan);
+    }
+  } else {
+    container.className = "space-y-4";
+    
+    if (hp > 0) {
+      const hpContainer = document.createElement('div');
+      hpContainer.className = "flex justify-center";
+      const hpContent = document.createElement('div');
+      hpContent.className = "text-lg font-bold";
+      hpContent.textContent = `❤️ ${hp}`;
+      hpContainer.appendChild(hpContent);
+      container.appendChild(hpContainer);
+    }
 
-  return (
-    <div className="space-y-4">
-      {hp > 0 && (
-        <div className="flex justify-center">
-          <ProgressRing 
-            value={hp}
-            maxValue={100}
-            size={80}
-            centerContent={
-              <div className="text-lg font-bold">❤️ {hp}</div>
-            }
-          />
-        </div>
-      )}
-      <div className="grid grid-cols-2 gap-2 text-center">
-        <div className="bg-gray-800 rounded p-2">
-          <div className="text-sm text-gray-400">Attack</div>
-          <div className="text-xl">⚔️ {attack}</div>
-        </div>
-        <div className="bg-gray-800 rounded p-2">
-          <div className="text-sm text-gray-400">Defense</div>
-          <div className="text-xl">🛡️ {defense}</div>
-        </div>
-      </div>
-    </div>
-  );
+    const statsGrid = document.createElement('div');
+    statsGrid.className = "grid grid-cols-2 gap-2 text-center";
+    
+    const attackDiv = document.createElement('div');
+    attackDiv.className = "bg-gray-800 rounded p-2";
+    attackDiv.innerHTML = `
+      <div class="text-sm text-gray-400">Attack</div>
+      <div class="text-xl">⚔️ ${attack}</div>
+    `;
+    
+    const defenseDiv = document.createElement('div');
+    defenseDiv.className = "bg-gray-800 rounded p-2";
+    defenseDiv.innerHTML = `
+      <div class="text-sm text-gray-400">Defense</div>
+      <div class="text-xl">🛡️ ${defense}</div>
+    `;
+    
+    statsGrid.appendChild(attackDiv);
+    statsGrid.appendChild(defenseDiv);
+    container.appendChild(statsGrid);
+  }
+  
+  return container;
 }
 
-export { StatsDisplay };
+window.components.StatsDisplay = StatsDisplay;

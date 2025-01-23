@@ -2,7 +2,7 @@
 // Initialize window components
 window.components = window.components || {};
 
-const TierBadge = ({ tier }) => {
+function TierBadge(tier) {
   const colors = {
     'S': 'bg-purple-600',
     'A': 'bg-blue-600', 
@@ -11,10 +11,11 @@ const TierBadge = ({ tier }) => {
     'U': 'bg-gray-600'
   };
 
-  return React.createElement('span', {
-    className: `px-2 py-1 rounded text-xs font-bold ${colors[tier] || colors['U']}`
-  }, `Tier ${tier}`);
-};
+  const span = document.createElement('span');
+  span.className = `px-2 py-1 rounded text-xs font-bold ${colors[tier] || colors['U']}`;
+  span.textContent = `Tier ${tier}`;
+  return span;
+}
 
 // Add TierBadge to window components
 window.components.TierBadge = TierBadge;
