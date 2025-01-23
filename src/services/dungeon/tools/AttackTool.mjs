@@ -57,10 +57,12 @@ export class AttackTool extends BaseTool {
     for (let i = 0; i < retries; i++) {
       try {
         const stats = await this.dungeonService.getAvatarStats(avatarId);
-        if (!stats) {
+        
+        // Validate or regenerate stats
+        if (!stats || !this.validateStats(stats)) {
           const avatar = await this.dungeonService.avatarService.getAvatarById(avatarId);
           const statService = new StatGenerationService();
-          const generatedStats = statService.generateStatsFromDate(avatar.createdAt || new Date());
+          const generatedStats = statService.generateStatsFromDate(avatar?.createdAt || new Date());
           
           return await this.dungeonService.createAvatarStats({
             _id: new ObjectId(),
@@ -109,6 +111,19 @@ export class AttackTool extends BaseTool {
     
     await this.dungeonService.avatarService.updateAvatar(targetAvatar);
     return `💥 ${message.author.username} knocked out ${targetAvatar.name} for ${damage} damage! ${targetAvatar.lives} lives remaining! 💫`;
+  }
+
+  validateStats(stats) {
+    // Check if required stats exist and are within valid ranges
+    const requiredStats = ['hp', 'strength', 'dexterity', 'constitution', 'intelligence', 'wisdom', 'charisma'];
+    
+    return requiredStats.every(stat => {
+      const value = stats[stat];
+      return typeof value === 'number' && 
+             !isNaN(value) && 
+             value >= 0 && 
+             value <= 30; // D&D-style max
+    });
   }
 
   getDescription() {
