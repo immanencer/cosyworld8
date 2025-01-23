@@ -16,6 +16,23 @@ function TabButton({ label, isActive, onClick }) {
   );
 }
 
+function AvatarModal({ isOpen, onClose, avatar }) {
+  if (!isOpen || !avatar) return null;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
+      <div className="bg-white p-8 rounded-lg shadow-lg">
+        <button onClick={onClose} className="absolute top-4 right-4">Close</button>
+        <img src={avatar.thumbnailUrl || avatar.imageUrl} alt={avatar.name} className="w-32 h-32 rounded-full mx-auto mb-4" />
+        <h3 className="text-lg font-semibold text-center">{avatar.name}</h3>
+        <p className="text-gray-600 text-center">Score: {avatar.score}</p>
+        {avatar.model && <p className="text-gray-600 text-center">{avatar.model}</p>}
+      </div>
+    </div>
+  );
+}
+
+
 function App() {
   const [wallet, setWallet] = useState(null);
   const [activeTab, setActiveTab] = useState("owned");
@@ -23,6 +40,9 @@ function App() {
   const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(false);
   const [hasMore, setHasMore] = useState(true);
+  const [selectedAvatar, setSelectedAvatar] = useState(null); // Added state for modal
+  const [isModalOpen, setIsModalOpen] = useState(false); // Added state for modal
+
 
   useEffect(() => {
     if (activeTab === "leaderboard") {
@@ -69,52 +89,53 @@ function App() {
         return (
           <div>
             <div className="space-y-4">
-              {leaderboard.map((avatar) => {
-                const tier = window.getTierFromModel(avatar.model);
-                return (
-                  <div key={avatar._id} className="bg-gray-800 p-4 rounded-lg flex items-center gap-4">
-                    <div className={`relative shrink-0 ring-2 rounded-full p-1 ${
-                      {
-                        'S': 'ring-purple-600',
-                        'A': 'ring-blue-600',
-                        'B': 'ring-green-600',
-                        'C': 'ring-yellow-600',
-                        'U': 'ring-gray-600'
-                      }[tier]
-                    }`}>
-                      <img
-                        src={avatar.thumbnailUrl || avatar.imageUrl}
-                        alt={avatar.name}
-                        className="w-16 h-16 object-cover rounded-full"
-                      />
-                    </div>
-                    <div className="flex-grow">
-                      <h3 className="text-lg font-semibold">{avatar.name}</h3>
-                      <p className="text-sm text-gray-400">Score: {avatar.score}</p>
-                      {avatar.model && (
-                        <p className="text-xs text-gray-500">{avatar.model}</p>
-                      )}
-                    </div>
+              {leaderboard.map((avatar) => (
+                <div
+                  key={avatar._id}
+                  className="bg-gray-800 p-4 rounded-lg flex items-center gap-4 cursor-pointer"
+                  onClick={() => { setSelectedAvatar(avatar); setIsModalOpen(true); }} // Open modal on click
+                >
+                  <div className={`relative shrink-0 ring-2 rounded-full p-1 ${
+                    {
+                      'S': 'ring-purple-600',
+                      'A': 'ring-blue-600',
+                      'B': 'ring-green-600',
+                      'C': 'ring-yellow-600',
+                      'U': 'ring-gray-600'
+                    }[window.getTierFromModel(avatar.model)]
+                  }`}>
+                    <img
+                      src={avatar.thumbnailUrl || avatar.imageUrl}
+                      alt={avatar.name}
+                      className="w-16 h-16 object-cover rounded-full"
+                    />
                   </div>
-                );
-              })}
+                  <div className="flex-grow">
+                    <h3 className="text-lg font-semibold">{avatar.name}</h3>
+                    <p className="text-sm text-gray-400">Score: {avatar.score}</p>
+                    {avatar.model && (
+                      <p className="text-xs text-gray-500">{avatar.model}</p>
+                    )}
+                  </div>
+                </div>
+              ))}
             </div>
             {hasMore && (
-              <div 
+              <div
                 ref={node => {
                   if (!node) return;
-                  
+
                   const observer = new IntersectionObserver(entries => {
                     if (entries[0].isIntersecting && !loading && hasMore) {
                       setPage(prevPage => prevPage + 1);
                     }
-                  }, { 
+                  }, {
                     rootMargin: '100px',
-                    threshold: 0.1 
+                    threshold: 0.1
                   });
-                  
+
                   observer.observe(node);
-                  
+
                   // Store observer reference for cleanup
                   if (node._observer) {
                     node._observer.disconnect();
@@ -168,6 +189,7 @@ function App() {
       </div>
 
       {renderTabContent()}
+      <AvatarModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} avatar={selectedAvatar} /> {/* Added modal */}
     </div>
   );
 }
