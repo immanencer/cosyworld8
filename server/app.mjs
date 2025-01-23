@@ -683,11 +683,19 @@ app.get('/api/dungeon/log', async (req, res) => {
 
         // Add location details if available 
         const location = locationDetails[entry.target] || {};
-        additionalData.location = location.name ? {
-          name: location.name,
-          imageUrl: location.imageUrl || null,
-          description: location.description || ''
+        // Get location details for both target and current location
+        const locationKey = entry.target || entry.location;
+        const locationData = locationDetails[locationKey];
+        additionalData.location = locationData ? {
+          name: locationData.name,
+          imageUrl: locationData.imageUrl || null,
+          description: locationData.description || ''
         } : null;
+
+        // For move actions, include targetImageUrl for backward compatibility
+        if (entry.action === 'move' && locationData?.imageUrl) {
+          additionalData.targetImageUrl = locationData.imageUrl;
+        }
 
         return {
           ...entry,
