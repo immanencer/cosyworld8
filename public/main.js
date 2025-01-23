@@ -47,6 +47,79 @@ const fetchJSON = async (url) => {
  */
 const getModifier = (score) => {
   if (typeof score !== "number") return 0;
+
+async function showAvatarDetails(avatarId) {
+  const modal = document.getElementById('avatar-modal');
+  const modalContent = document.getElementById('modal-content');
+  
+  modal.classList.remove('hidden');
+  modalContent.innerHTML = 'Loading...';
+  
+  try {
+    const [avatarResponse, xAuthStatusResponse] = await Promise.all([
+      fetchJSON(`/api/avatars/details/${avatarId}`),
+      fetchJSON(`/auth/x/status/${avatarId}`)
+    ]);
+
+    const claimed = xAuthStatusResponse?.authorized;
+    
+    modalContent.innerHTML = `
+      <div class="flex flex-col items-center">
+        <img src="${avatarResponse.imageUrl}" 
+             alt="${avatarResponse.name}" 
+             class="w-64 h-64 object-cover rounded-lg mb-4">
+        
+        <h1 class="text-2xl font-bold mb-2">${avatarResponse.name}</h1>
+        <p class="text-gray-400 mb-4">${avatarResponse.description || ''}</p>
+        
+        <div class="space-y-4 w-full">
+          ${!state.wallet ? `
+            <button onclick="connectWallet()" 
+                    class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">
+              Connect Wallet
+            </button>
+          ` : ''}
+          
+          ${state.wallet && !claimed ? `
+            <button onclick="claimAvatar('${avatarId}')"
+                    class="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded">
+              Claim Avatar & Connect X Account
+            </button>
+          ` : ''}
+          
+          ${claimed ? `
+            <div class="text-green-500 text-center">
+              Avatar claimed and X account connected
+            </div>
+          ` : ''}
+        </div>
+      </div>
+      <button onclick="closeAvatarModal()" 
+              class="absolute top-4 right-4 text-gray-400 hover:text-white">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+        </svg>
+      </button>
+    `;
+  } catch (error) {
+    console.error('Error loading avatar details:', error);
+    modalContent.innerHTML = `Error loading avatar details: ${error.message}`;
+  }
+}
+
+function closeAvatarModal() {
+  const modal = document.getElementById('avatar-modal');
+  modal.classList.add('hidden');
+}
+
+// Close modal when clicking outside
+document.addEventListener('click', (e) => {
+  const modal = document.getElementById('avatar-modal');
+  if (e.target === modal) {
+    closeAvatarModal();
+  }
+});
+
   return Math.floor((score - 10) / 2);
 };
 
@@ -450,8 +523,14 @@ async function loadLeaderboard() {
   try {
     // Create container for leaderboard items with grid layout
     content.innerHTML = `
-      <div id="leaderboard-items" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 p-4"></div>
+      <div id="leaderboard-items" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 p-4"></div>
       <div id="leaderboard-loader" class="text-center py-8 hidden">Loading more...</div>
+      <div id="avatar-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden flex items-center justify-center p-4">
+        <div class="bg-gray-800 rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+          <div id="modal-content" class="p-6">
+          </div>
+        </div>
+      </div>
     `;
 
     const leaderboardItems = document.getElementById('leaderboard-items');
@@ -475,7 +554,7 @@ async function loadLeaderboard() {
           const div = document.createElement('div');
           div.className = 'bg-gray-800 p-4 rounded-lg hover:bg-gray-700 transition-colors';
           div.innerHTML = `
-            <a href="/avatar-details.html?id=${avatar._id}" class="block">
+            <a href="#" onclick="showAvatarDetails('${avatar._id}'); return false;" class="block">
               <img
                 src="${avatar.thumbnailUrl || avatar.imageUrl}"
                 alt="${avatar.name}"
