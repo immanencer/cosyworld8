@@ -134,6 +134,7 @@ export default function avatarRoutes(db) {
       // Get pre-calculated scores with avatar details in one query
       const avatars = await db.collection('avatar_scores')
         .aggregate([
+          { $match: { score: { $exists: true } } },
           { $sort: { score: -1 } },
           { $skip: skip },
           { $limit: limit },
