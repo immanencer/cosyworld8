@@ -568,12 +568,13 @@ export default function avatarRoutes(db) {
             variants.map((v) => thumbnailService.generateThumbnail(v.imageUrl))
           );
 
+          const avatarId = typeof primaryAvatar._id === 'string' ? new ObjectId(primaryAvatar._id) : primaryAvatar._id;
           const [ancestry, stats] = await Promise.all([
-            getAvatarAncestry(db, primaryAvatar._id),
+            getAvatarAncestry(db, avatarId),
             db.collection('dungeon_stats').findOne({
               $or: [
-                { avatarId: primaryAvatar._id },
-                { avatarId: primaryAvatar._id.toString() },
+                { avatarId: avatarId },
+                { avatarId: avatarId.toString() },
               ],
             }),
           ]);
