@@ -137,18 +137,33 @@ async function loadOwnedAvatars() {
 
 async function loadGallery() {
   try {
+    content.innerHTML = '<div class="text-center py-12">Loading gallery...</div>';
     const response = await fetch('/api/avatars/gallery?page=1&limit=12');
+    
     if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
     }
+    
     const data = await response.json();
     if (!data.success) {
       throw new Error(data.error || 'Failed to load gallery');
     }
-    content.innerHTML = (data.avatars || []).map(renderAvatar).join('') || 'No avatars found';
+    
+    if (!data.avatars?.length) {
+      content.innerHTML = '<div class="text-center py-12">No avatars found</div>';
+      return;
+    }
+    
+    content.innerHTML = data.avatars.map(avatar => renderAvatar({
+      ...avatar,
+      thumbnailUrl: avatar.thumbnailUrl || avatar.imageUrl
+    })).join('');
   } catch (error) {
     console.error('Gallery loading error:', error);
-    content.innerHTML = '<div class="text-center py-12 text-red-500">Failed to load gallery</div>';
+    content.innerHTML = `<div class="text-center py-12 text-red-500">
+      Failed to load gallery: ${error.message}
+    </div>`;
   }
 }
 

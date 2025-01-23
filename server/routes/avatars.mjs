@@ -112,19 +112,31 @@ export default function (db) {
         throw new Error('Database connection not established');
       }
 
-      const avatars = await db.collection('avatars')
-        .find({})
-        .sort({ createdAt: -1 })
-        .skip(skip)
-        .limit(limit)
-        .toArray() || [];
+      const [avatars, total] = await Promise.all([
+        db.collection('avatars')
+          .find({})
+          .sort({ createdAt: -1 })
+          .skip(skip)
+          .limit(limit)
+          .toArray(),
+        db.collection('avatars').countDocuments()
+      ]);
+
+      // Generate thumbnails if needed
+      const avatarsWithThumbs = await Promise.all(
+        (avatars || []).map(async (avatar) => ({
+          ...avatar,
+          thumbnailUrl: avatar.thumbnailUrl || avatar.imageUrl
+        }))
+      );
 
       res.json({ 
         success: true,
-        avatars,
+        avatars: avatarsWithThumbs,
         page,
         limit,
-        total: avatars.length
+        total,
+        hasMore: avatarsWithThumbs.length === limit
       });
     } catch (error) {
       console.error('Error fetching gallery:', error);
