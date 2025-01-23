@@ -13,15 +13,15 @@ async function connectWallet() {
       alert('Please install Phantom wallet');
       return;
     }
-    
+
     // Wait for provider to be ready
     await new Promise(resolve => setTimeout(resolve, 100));
-    
+
     const resp = await phantomProvider.connect();
     if (!resp?.publicKey) {
       throw new Error('No public key received');
     }
-    
+
     state.wallet = {
       publicKey: resp.publicKey.toString()
     };
@@ -149,13 +149,13 @@ async function loadOwnedAvatars() {
     if (!response.ok) {
       throw new Error(`HTTP error! status: ${response.status}`);
     }
-    
+
     const data = await response.json();
     if (!data.avatars) {
       content.innerHTML = '<div class="text-center py-12">No avatars found</div>';
       return;
     }
-    
+
     content.innerHTML = data.avatars.map(renderAvatar).join('');
   } catch (error) {
     console.error('Error loading owned avatars:', error);
@@ -169,18 +169,18 @@ async function loadActionLog() {
   try {
     content.innerHTML = '<div class="text-center py-12">Loading action log...</div>';
     const response = await fetch('/api/dungeon/log');
-    
+
     if (!response.ok) {
       throw new Error(`HTTP error! status: ${response.status}`);
     }
-    
+
     const actions = await response.json();
-    
+
     if (!actions?.length) {
       content.innerHTML = '<div class="text-center py-12">No actions found</div>';
       return;
     }
-    
+
     content.innerHTML = actions.map(action => `
       <div class="bg-gray-800 p-4 mb-2 rounded-lg hover:bg-gray-700 transition-colors">
         <div class="flex items-center gap-4">
@@ -220,26 +220,52 @@ async function loadActionLog() {
                     <h4 class="font-semibold mb-2">⚔️ Actor Stats</h4>
                     <div class="flex gap-4 mb-4">
                       <div class="text-center">
-                        <div class="text-2xl font-bold text-red-500">${action.actorStats?.hp || 'N/A'}</div>`
-                : ''}
-                      <div class="text-xs text-gray-400">HP</div>
+                        <div class="text-2xl font-bold text-red-500">${action.actorStats?.hp || 'N/A'}</div>
+                        <div class="text-xs text-gray-400">HP</div>
+                      </div>
+                      <div class="text-center">
+                        <div class="text-2xl font-bold text-blue-500">${action.actorStats?.strength || 'N/A'}</div>
+                        <div class="text-xs text-gray-400">STR</div>
+                      </div>
+                      <div class="text-center">
+                        <div class="text-2xl font-bold text-green-500">${action.actorStats?.dexterity ? (10 + Math.floor((action.actorStats.dexterity - 10) / 2)) : 'N/A'}</div>
+                        <div class="text-xs text-gray-400">AC</div>
+                      </div>
                     </div>
-                    <div class="text-center">
-                      <div class="text-2xl font-bold text-blue-500">${action.actorStats?.strength || 'N/A'}</div>
-                      <div class="text-xs text-gray-400">STR</div>
-                    </div>
-                    <div class="text-center">
-                      <div class="text-2xl font-bold text-green-500">${10 + Math.floor((action.actorStats?.dexterity - 10) / 2) || 'N/A'}</div>
-                      <div class="text-xs text-gray-400">AC</div>
+                    <div class="grid grid-cols-2 gap-2 text-sm">
+                      <p>DEX: ${action.actorStats?.dexterity || 'N/A'} (${Math.floor((action.actorStats?.dexterity - 10) / 2) || '0'})</p>
+                      <p>CON: ${action.actorStats?.constitution || 'N/A'} (${Math.floor((action.actorStats?.constitution - 10) / 2) || '0'})</p>
+                      <p>INT: ${action.actorStats?.intelligence || 'N/A'} (${Math.floor((action.actorStats?.intelligence - 10) / 2) || '0'})</p>
+                      <p>WIS: ${action.actorStats?.wisdom || 'N/A'} (${Math.floor((action.actorStats?.wisdom - 10) / 2) || '0'})</p>
+                      <p>CHA: ${action.actorStats?.charisma || 'N/A'} (${Math.floor((action.actorStats?.charisma - 10) / 2) || '0'})</p>
                     </div>
                   </div>
-                  <div class="grid grid-cols-2 gap-2 text-sm">
-                    <p>DEX: ${action.actorStats?.dexterity || 'N/A'} (${Math.floor((action.actorStats?.dexterity - 10) / 2) || '0'})</p>
-                    <p>CON: ${action.actorStats?.constitution || 'N/A'} (${Math.floor((action.actorStats?.constitution - 10) / 2) || '0'})</p>
-                    <p>INT: ${action.actorStats?.intelligence || 'N/A'} (${Math.floor((action.actorStats?.intelligence - 10) / 2) || '0'})</p>
-                    <p>WIS: ${action.actorStats?.wisdom || 'N/A'} (${Math.floor((action.actorStats?.wisdom - 10) / 2) || '0'})</p>
-                    <p>CHA: ${action.actorStats?.charisma || 'N/A'} (${Math.floor((action.actorStats?.charisma - 10) / 2) || '0'})</p>
-                  </div>
+                  ${action.targetName ? `
+                    <div>
+                      <h4 class="font-semibold mb-2">Target Details</h4>
+                      <div class="flex gap-4 mb-4">
+                        <div class="text-center">
+                          <div class="text-2xl font-bold text-red-500">${action.targetStats?.hp || 'N/A'}</div>
+                          <div class="text-xs text-gray-400">HP</div>
+                        </div>
+                        <div class="text-center">
+                          <div class="text-2xl font-bold text-blue-500">${action.targetStats?.strength || 'N/A'}</div>
+                          <div class="text-xs text-gray-400">STR</div>
+                        </div>
+                        <div class="text-center">
+                          <div class="text-2xl font-bold text-green-500">${action.targetStats?.dexterity ? (10 + Math.floor((action.targetStats.dexterity - 10) / 2)) : 'N/A'}</div>
+                          <div class="text-xs text-gray-400">AC</div>
+                        </div>
+                      </div>
+                      <div class="grid grid-cols-2 gap-2 text-sm">
+                        <p>DEX: ${action.targetStats?.dexterity || 'N/A'} (${Math.floor((action.targetStats?.dexterity - 10) / 2) || '0'})</p>
+                        <p>CON: ${action.targetStats?.constitution || 'N/A'} (${Math.floor((action.targetStats?.constitution - 10) / 2) || '0'})</p>
+                        <p>INT: ${action.targetStats?.intelligence || 'N/A'} (${Math.floor((action.targetStats?.intelligence - 10) / 2) || '0'})</p>
+                        <p>WIS: ${action.targetStats?.wisdom || 'N/A'} (${Math.floor((action.targetStats?.wisdom - 10) / 2) || '0'})</p>
+                        <p>CHA: ${action.targetStats?.charisma || 'N/A'} (${Math.floor((action.targetStats?.charisma - 10) / 2) || '0'})</p>
+                      </div>
+                    </div>
+                  ` : ''}
                 </div>
                 ${action.targetName ? `
                   <div>
@@ -254,7 +280,7 @@ async function loadActionLog() {
                         <div class="text-xs text-gray-400">STR</div>
                       </div>
                       <div class="text-center">
-                        <div class="text-2xl font-bold text-green-500">${10 + Math.floor((action.targetStats?.dexterity - 10) / 2) || 'N/A'}</div>
+                        <div class="text-2xl font-bold text-green-500">${action.targetStats?.dexterity ? (10 + Math.floor((action.targetStats.dexterity - 10) / 2)) : 'N/A'}</div>
                         <div class="text-xs text-gray-400">AC</div>
                       </div>
                     </div>
