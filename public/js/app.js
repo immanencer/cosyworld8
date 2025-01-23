@@ -118,9 +118,20 @@ async function loadOwnedAvatars() {
 }
 
 async function loadGallery() {
-  const response = await fetch('/api/avatars/gallery?page=1&limit=12');
-  const data = await response.json();
-  content.innerHTML = data.avatars.map(renderAvatar).join('');
+  try {
+    const response = await fetch('/api/avatars/gallery?page=1&limit=12');
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    const data = await response.json();
+    if (!data.success) {
+      throw new Error(data.error || 'Failed to load gallery');
+    }
+    content.innerHTML = (data.avatars || []).map(renderAvatar).join('') || 'No avatars found';
+  } catch (error) {
+    console.error('Gallery loading error:', error);
+    content.innerHTML = '<div class="text-center py-12 text-red-500">Failed to load gallery</div>';
+  }
 }
 
 async function loadLeaderboard() {

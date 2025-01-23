@@ -115,10 +115,19 @@ export default function (db) {
         .limit(limit)
         .toArray();
 
-      res.json({ avatars });
+      res.json({ 
+        success: true,
+        avatars: avatars || [],
+        page,
+        limit
+      });
     } catch (error) {
       console.error('Error fetching gallery:', error);
-      res.status(500).json({ error: error.message });
+      res.status(500).json({ 
+        success: false, 
+        error: 'Failed to fetch gallery',
+        details: process.env.NODE_ENV === 'development' ? error.message : undefined
+      });
     }
   });
 
