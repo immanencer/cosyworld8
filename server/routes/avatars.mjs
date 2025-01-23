@@ -122,6 +122,87 @@ export default function (db) {
     }
   });
 
+  // Get avatar location
+  router.get('/:avatarId/location', async (req, res) => {
+    try {
+      const avatar = await db.collection('avatars').findOne(
+        { _id: req.params.avatarId },
+        { projection: { currentLocation: 1 } }
+      );
+      
+      if (!avatar?.currentLocation) {
+        return res.json({ location: null });
+      }
+
+      const location = await db.collection('locations').findOne(
+        { _id: avatar.currentLocation }
+      );
+
+      res.json({ location });
+    } catch (error) {
+      console.error('Error fetching avatar location:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Get avatar memories
+  router.get('/:avatarId/memories', async (req, res) => {
+    try {
+      const memories = await db.collection('memories')
+        .find({ avatarId: req.params.avatarId })
+        .sort({ timestamp: -1 })
+        .limit(10)
+        .toArray();
+
+      res.json({ memories });
+    } catch (error) {
+      console.error('Error fetching avatar memories:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Get avatar narratives and messages
+  router.get('/:avatarId/narratives', async (req, res) => {
+    try {
+      const [narratives, messages] = await Promise.all([
+        db.collection('narratives')
+          .find({ avatarId: req.params.avatarId })
+          .sort({ timestamp: -1 })
+          .limit(10)
+          .toArray(),
+        db.collection('messages')
+          .find({ avatarId: req.params.avatarId })
+          .sort({ timestamp: -1 })
+          .limit(10)
+          .toArray()
+      ]);
+
+      res.json({ 
+        narratives,
+        recentMessages: messages,
+      });
+    } catch (error) {
+      console.error('Error fetching avatar narratives:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Get avatar actions
+  router.get('/:avatarId/actions', async (req, res) => {
+    try {
+      const actions = await db.collection('dungeon_actions')
+        .find({ avatarId: req.params.avatarId })
+        .sort({ timestamp: -1 })
+        .limit(10)
+        .toArray();
+
+      res.json({ actions });
+    } catch (error) {
+      console.error('Error fetching avatar actions:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
   router.get('/leaderboard', async (req, res) => {
     try {
       const page = parseInt(req.query.page) || 1;

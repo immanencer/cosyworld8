@@ -1,15 +1,44 @@
 
 const AvatarModal = ({ avatar, onClose }) => {
   const [currentIndex, setCurrentIndex] = useState(0);
+  const [activityData, setActivityData] = useState({
+    messages: [],
+    memories: [],
+    narratives: [],
+    location: null,
+    dungeonStats: avatar?.stats || { attack: 0, defense: 0, hp: 0 },
+    dungeonActions: []
+  });
+
   const variants = avatar?.variants || [avatar];
   const currentVariant = variants[currentIndex];
   const tier = getTierFromModel(avatar.model);
 
   useEffect(() => {
+    if (avatar?._id) {
+      Promise.all([
+        fetch(`/api/avatars/${avatar._id}/narratives`).then(r => r.json()),
+        fetch(`/api/avatars/${avatar._id}/memories`).then(r => r.json()),
+        fetch(`/api/avatars/${avatar._id}/location`).then(r => r.json()),
+        fetch(`/api/avatars/${avatar._id}/actions`).then(r => r.json())
+      ])
+      .then(([narrativeData, memoryData, locationData, actionsData]) => {
+        setActivityData({
+          messages: narrativeData?.recentMessages || [],
+          memories: memoryData?.memories || [],
+          narratives: narrativeData?.narratives || [],
+          location: locationData?.location,
+          dungeonStats: avatar?.stats || narrativeData?.dungeonStats,
+          dungeonActions: actionsData?.actions || []
+        });
+      })
+      .catch(error => console.error("Error fetching activity data:", error));
+    }
+  }, [avatar?._id]);
+
+  useEffect(() => {
     const handleEsc = (event) => {
-      if (event.key === 'Escape') {
-        onClose();
-      }
+      if (event.key === 'Escape') onClose();
     };
     window.addEventListener('keydown', handleEsc);
     return () => window.removeEventListener('keydown', handleEsc);
@@ -17,7 +46,7 @@ const AvatarModal = ({ avatar, onClose }) => {
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-      <div className="bg-gray-800 rounded-lg p-6 max-w-4xl w-full max-h-[90vh] overflow-y-auto relative">
+      <div className="bg-gray-800 rounded-lg p-6 max-w-7xl w-full max-h-[90vh] overflow-y-auto relative">
         {/* Header */}
         <div className="flex justify-between items-start mb-6">
           <div className="flex items-center gap-4">
@@ -30,12 +59,12 @@ const AvatarModal = ({ avatar, onClose }) => {
               </div>
             </div>
           </div>
-          <button onClick={onClose} className="text-gray-400 hover:text-white">×</button>
+          <button onClick={onClose} className="text-gray-400 hover:text-white text-2xl">×</button>
         </div>
 
-        <div className="grid grid-cols-3 gap-6">
+        <div className="grid grid-cols-12 gap-6">
           {/* Left Column: Image and Stats */}
-          <div>
+          <div className="col-span-4">
             <div className="relative aspect-square mb-4">
               <img 
                 src={currentVariant.imageUrl} 
@@ -54,11 +83,22 @@ const AvatarModal = ({ avatar, onClose }) => {
                 </div>
               )}
             </div>
-            <StatsDisplay stats={avatar.stats} />
+            
+            <div className="bg-gray-700 rounded-lg p-4 mb-4">
+              <h3 className="text-xl font-bold mb-2">Stats</h3>
+              <StatsDisplay stats={activityData.dungeonStats} size="large" />
+            </div>
+
+            {activityData.location && (
+              <div className="bg-gray-700 rounded-lg p-4">
+                <h3 className="text-xl font-bold mb-2">Current Location</h3>
+                <p className="text-gray-300">{activityData.location.name}</p>
+              </div>
+            )}
           </div>
 
-          {/* Right Column: Description and Details */}
-          <div className="col-span-2 space-y-4">
+          {/* Right Column: Description, Personality, and Activity */}
+          <div className="col-span-8 space-y-4">
             <div className="bg-gray-700 rounded-lg p-4">
               <h3 className="text-xl font-bold mb-2">Description</h3>
               <p className="text-gray-300">{currentVariant.description}</p>
@@ -71,10 +111,42 @@ const AvatarModal = ({ avatar, onClose }) => {
               </div>
             )}
 
-            {avatar.narrativesSummary && (
+            {activityData.memories.length > 0 && (
+              <div className="bg-gray-700 rounded-lg p-4">
+                <h3 className="text-xl font-bold mb-2">Memories</h3>
+                <div className="space-y-2">
+                  {activityData.memories.map((memory, idx) => (
+                    <div key={idx} className="text-gray-300 border-b border-gray-600 last:border-0 pb-2">
+                      {memory.content}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {activityData.dungeonActions.length > 0 && (
+              <div className="bg-gray-700 rounded-lg p-4">
+                <h3 className="text-xl font-bold mb-2">Recent Actions</h3>
+                <div className="space-y-2">
+                  {activityData.dungeonActions.map((action, idx) => (
+                    <div key={idx} className="text-gray-300 border-b border-gray-600 last:border-0 pb-2">
+                      {action.description}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {activityData.narratives.length > 0 && (
               <div className="bg-gray-700 rounded-lg p-4">
                 <h3 className="text-xl font-bold mb-2">Recent Activity</h3>
-                <p className="text-gray-300">{avatar.narrativesSummary}</p>
+                <div className="space-y-2">
+                  {activityData.narratives.map((narrative, idx) => (
+                    <div key={idx} className="text-gray-300 border-b border-gray-600 last:border-0 pb-2">
+                      {narrative.content}
+                    </div>
+                  ))}
+                </div>
               </div>
             )}
           </div>
