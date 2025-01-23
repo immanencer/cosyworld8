@@ -407,9 +407,9 @@ export default function avatarRoutes(db) {
   });
 
   // ------------------------------------
-  // 10) GET /details/:avatarId
+  // 10) GET /:avatarId
   // ------------------------------------
-  router.get('/details/:avatarId', async (req, res) => {
+  router.get('/:avatarId', async (req, res) => {
     try {
       const { avatarId } = req.params;
 
@@ -424,6 +424,10 @@ export default function avatarRoutes(db) {
       if (!avatar) {
         return res.status(404).json({ error: 'Avatar not found' });
       }
+
+      // Generate thumbnail if needed
+      const thumbnailUrl = await thumbnailService.generateThumbnail(avatar.imageUrl);
+      avatar.thumbnailUrl = thumbnailUrl;
 
       res.json(avatar);
     } catch (error) {
