@@ -131,81 +131,69 @@ export default function avatarRoutes(db) {
       const skip = (page - 1) * limit;
       const { tier } = req.query;
 
-      // Get pre-calculated scores
-      const scores = await db.collection('avatar_scores')
-        .find({})
-        .sort({ score: -1 })
-        .skip(skip)
-        .limit(limit)
-        .toArray();
-      
-      const avatarNames = scores.map(s => s.name);
-      
-      // Get avatar details
-      const avatars = await db.collection('avatars')
-        .find({ 
-          name: { $in: avatarNames },
-          ...(tier && tier !== 'All' ? {
-            model: {
-              $in: models
-                .filter(m => rarityToTier[m.rarity] === tier)
-                .map(m => m.model)
-            }
-          } : {})
-        })
-        .toArray();
-
-      if (tier && tier !== 'All') {
-        if (tier === 'U') {
-          pipeline.push({
-            $match: {
-              $or: [
-                { 'variants.0.model': { $exists: false } },
-                { 'variants.0.model': null },
+      // Get pre-calculated scores with avatar details in one query
+      const avatars = await db.collection('avatar_scores')
+        .aggregate([
+          { $sort: { score: -1 } },
+          { $skip: skip },
+          { $limit: limit },
+          {
+            $lookup: {
+              from: 'avatars',
+              let: { avatarName: '$name' },
+              pipeline: [
                 {
-                  'variants.0.model': {
-                    $nin: models.map(m => m.model)
+                  $match: {
+                    $expr: { $eq: ['$name', '$$avatarName'] },
+                    ...(tier && tier !== 'All' ? {
+                      model: {
+                        $in: models
+                          .filter(m => rarityToTier[m.rarity] === tier)
+                          .map(m => m.model)
+                      }
+                    } : {})
                   }
                 }
-              ]
+              ],
+              as: 'avatarDetails'
             }
-          });
-        } else {
-          pipeline.push({
-            $match: {
-              'variants.0.model': {
-                $in: models
-                  .filter(m => rarityToTier[m.rarity] === tier)
-                  .map(m => m.model)
-              }
+          },
+          { $unwind: '$avatarDetails' },
+          {
+            $project: {
+              _id: '$avatarDetails._id',
+              name: '$avatarDetails.name',
+              imageUrl: '$avatarDetails.imageUrl',
+              thumbnailUrl: '$avatarDetails.thumbnailUrl',
+              model: '$avatarDetails.model',
+              score: 1
             }
-          });
-        }
-      }
-
-      if (lastMessageCount && lastId) {
-        const parsedCount = parseInt(lastMessageCount, 10) || 0;
-        pipeline.push({
-          $match: {
-            $or: [
-              { messageCount: { $lt: parsedCount } },
-              {
-                $and: [
-                  { messageCount: parsedCount },
-                  { _id: { $gt: lastId } }
-                ]
-              }
-            ]
           }
-        });
-      }
+        ]).toArray();
 
-      pipeline.push({ $limit: limit + 1 });
+      // Generate thumbnails if needed
+      const avatarsWithThumbs = await Promise.all(
+        avatars.map(async (avatar) => {
+          try {
+            const thumbnailUrl = await thumbnailService.generateThumbnail(avatar.imageUrl);
+            return { ...avatar, thumbnailUrl };
+          } catch (err) {
+            console.error(`Thumbnail failed for avatar ${avatar._id}:`, err);
+            return { ...avatar, thumbnailUrl: avatar.imageUrl };
+          }
+        })
+      );
 
-      const results = await db
-        .collection('messages')
-        .aggregate(pipeline, { allowDiskUse: true })
-        .toArray();
+      // Get total count for pagination
+      const total = await db.collection('avatar_scores').countDocuments();
+
+      return res.json({
+        avatars: avatarsWithThumbs,
+        total,
+        page,
+        totalPages: Math.ceil(total / limit),
+        hasMore: avatarsWithThumbs.length === limit
+      });
 
       const details = await Promise.all(
         results.map(async (result) => {
