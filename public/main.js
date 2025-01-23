@@ -59,7 +59,7 @@ async function showAvatarDetails(avatarId) {
   
   try {
     const [avatarResponse, xAuthStatusResponse] = await Promise.all([
-      fetchJSON(`/api/avatars/details/${avatarId}`),
+      fetchJSON(`/api/avatars/${avatarId}`),
       fetchJSON(`/auth/x/status/${avatarId}`)
     ]);
 
