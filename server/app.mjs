@@ -11,7 +11,6 @@ import { thumbnailService } from './services/thumbnailService.mjs';
 const app = express();
 const PORT = process.env.PORT || 3080;
 
-// Middleware
 app.use(cors());
 app.use(express.json());
 app.use(express.static('public'));
@@ -20,8 +19,6 @@ app.use(express.static('public'));
 const mongoUri = process.env.MONGO_URI || 'mongodb://localhost:27017';
 const mongoDbName = process.env.MONGO_DB_NAME || 'cosyworld';
 const mongoClient = new MongoClient(mongoUri);
-
-// Shared MongoDB reference, assigned once connected
 let db = null;
 
 /**
@@ -84,36 +81,37 @@ async function initializeIndexes(db) {
     console.log('Database indexes created successfully');
   } catch (error) {
     console.error('Error creating indexes:', error);
-    // Not throwing here; missing indexes is not fatal to the app
   }
 }
 
-// Attempt to connect to MongoDB once during startup
+// Connect to MongoDB once during startup
 (async () => {
   try {
     if (!process.env.MONGO_URI) {
-      console.warn('MONGO_URI not set in environment variables, using default localhost');
+      console.warn('MONGO_URI not set, using default localhost');
     }
 
     await mongoClient.connect();
     db = mongoClient.db(mongoDbName);
 
-    // MongoClient doesn't always populate these fields, so fallback to 'unknown'
     const hostInfo =
-      mongoClient.options.srvHost ||
-      mongoClient.options.hosts?.[0] ||
+      mongoClient?.options?.srvHost ||
+      mongoClient?.options?.hosts?.[0] ||
       'unknown host';
     console.log(`Connected to MongoDB at: ${hostInfo}`);
 
     // Initialize indexes
     await initializeIndexes(db);
 
-    // Mounting external routes (each route file is passed `db` where needed)
+    // Mount external routes
     app.use('/api/avatars', await avatarRoutes(db));
-    app.use('/api/tribes', await tribeRoutes(db)); // Ensure db is passed here
+    app.use('/api/tribes', await tribeRoutes(db));
     app.use('/api/xauth', await xauthRoutes(db));
     app.use('/api/wiki', await wikiRoutes);
-    app.use('/api/models', await import('./routes/models.mjs').then(m => m.default(db)));
+    app.use(
+      '/api/models',
+      await import('./routes/models.mjs').then((m) => m.default(db))
+    );
 
     // Start Server
     app.listen(PORT, '0.0.0.0', () => {
@@ -121,10 +119,6 @@ async function initializeIndexes(db) {
     });
   } catch (error) {
     console.error('Failed to connect to MongoDB:', error);
-    console.error('Please check if:');
-    console.error('1. MongoDB is running');
-    console.error('2. MONGO_URI environment variable is set correctly');
-    console.error('3. Network allows connection to MongoDB');
     process.exit(1);
   }
 })().catch((error) => {
@@ -132,7 +126,8 @@ async function initializeIndexes(db) {
   process.exit(1);
 });
 
-// Helper: Rarity to tier
+// ---- Helper Functions ----
+
 const rarityToTier = {
   legendary: 'S',
   rare: 'A',
@@ -140,7 +135,9 @@ const rarityToTier = {
   common: 'C',
 };
 
-// Helper: Escape RegEx
+/**
+ * Escapes a string for use in a RegExp pattern.
+ */
 function escapeRegExp(string) {
   return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
@@ -149,7 +146,7 @@ function escapeRegExp(string) {
  * Returns array of ancestors (parents of an avatar) by iterating up the family tree.
  * @param {import('mongodb').Db} db
  * @param {string|ObjectId} avatarId
- * @returns {Promise<Array>} - The ancestry chain from child to oldest parent.
+ * @returns {Promise<Array>} The ancestry chain from child to oldest parent.
  */
 async function getAvatarAncestry(db, avatarId) {
   const ancestry = [];
@@ -159,9 +156,10 @@ async function getAvatarAncestry(db, avatarId) {
   );
 
   while (currentAvatar?.parents?.length) {
+    // If parents is an array of ObjectId or string IDs, we do:
     const parentId = currentAvatar.parents[0];
     const parent = await db.collection('avatars').findOne(
-      { _id: ObjectId.createFromTime(parentId) },
+      { _id: new ObjectId(parentId) }, // <--- fix from createFromTime()
       { projection: { _id: 1, name: 1, imageUrl: 1, emoji: 1, parents: 1 } }
     );
     if (!parent) break;
@@ -172,25 +170,26 @@ async function getAvatarAncestry(db, avatarId) {
   return ancestry;
 }
 
+// ---- Leaderboard Routes ----
+
 /**
- * Leaderboard Endpoint
- * - Aggregates messages by username
- * - Looks up any avatars that match that username
- * - Returns a paginated + possibly tier-filtered leaderboard
+ * GET /api/leaderboard/minted
+ * Returns top minted NFTs with stats; up to 100 results sorted by score.
  */
 app.get('/api/leaderboard/minted', async (req, res) => {
   try {
     if (!db) throw new Error('Database not connected');
 
-    const mintedAvatars = await db.collection('minted_nfts')
+    const mintedAvatars = await db
+      .collection('minted_nfts')
       .aggregate([
         {
           $lookup: {
             from: 'avatars',
             localField: 'avatarId',
             foreignField: '_id',
-            as: 'avatar'
-          }
+            as: 'avatar',
+          },
         },
         { $unwind: '$avatar' },
         {
@@ -198,8 +197,8 @@ app.get('/api/leaderboard/minted', async (req, res) => {
             from: 'dungeon_stats',
             localField: 'avatarId',
             foreignField: 'avatarId',
-            as: 'stats'
-          }
+            as: 'stats',
+          },
         },
         { $unwind: { path: '$stats', preserveNullAndEmptyArrays: true } },
         {
@@ -211,14 +210,20 @@ app.get('/api/leaderboard/minted', async (req, res) => {
             score: {
               $add: [
                 { $ifNull: ['$stats.wins', 0] },
-                { $multiply: [{ $ifNull: ['$stats.hp', 0] }, 10] }
-              ]
-            }
-          }
+                {
+                  $multiply: [
+                    { $ifNull: ['$stats.hp', 0] },
+                    10,
+                  ],
+                },
+              ],
+            },
+          },
         },
         { $sort: { score: -1 } },
-        { $limit: 100 }
-      ]).toArray();
+        { $limit: 100 },
+      ])
+      .toArray();
 
     res.json(mintedAvatars);
   } catch (error) {
@@ -227,9 +232,16 @@ app.get('/api/leaderboard/minted', async (req, res) => {
   }
 });
 
+/**
+ * GET /api/leaderboard
+ * Aggregates messages by username => finds matching avatars => returns a paginated leaderboard.
+ */
 app.get('/api/leaderboard', async (req, res) => {
   try {
     if (!db) throw new Error('Database not connected');
+
+    const { tier, lastMessageCount, lastId } = req.query;
+    const limit = parseInt(req.query.limit, 10) || 24;
 
     const pipeline = [
       // 1) Group messages by case-insensitive authorUsername
@@ -257,7 +269,7 @@ app.get('/api/leaderboard', async (req, res) => {
           },
         },
       },
-      // 2) Sort by messageCount (descending)
+      // 2) Sort by messageCount desc
       { $sort: { messageCount: -1 } },
       // 3) Lookup avatars that match the case-insensitive username
       {
@@ -267,7 +279,9 @@ app.get('/api/leaderboard', async (req, res) => {
           pipeline: [
             {
               $match: {
-                $expr: { $eq: [{ $toLower: '$name' }, '$$username'] },
+                $expr: {
+                  $eq: [{ $toLower: '$name' }, '$$username'],
+                },
               },
             },
             { $sort: { createdAt: -1 } },
@@ -275,15 +289,14 @@ app.get('/api/leaderboard', async (req, res) => {
           as: 'variants',
         },
       },
-      // 4) Filter out any docs that have no avatars
+      // 4) Filter out docs that have no avatars
       { $match: { 'variants.0': { $exists: true } } },
     ];
 
-    // Optional Tier Filter
-    const { tier } = req.query;
+    // Tier filter if any
     if (tier && tier !== 'All') {
-      // 'U' means "un-tiered" (no recognized model)
       if (tier === 'U') {
+        // Untiered
         pipeline.push({
           $match: {
             $or: [
@@ -296,7 +309,6 @@ app.get('/api/leaderboard', async (req, res) => {
           },
         });
       } else {
-        // Filter by model whose rarity => tier
         pipeline.push({
           $match: {
             'variants.0.model': {
@@ -309,17 +321,16 @@ app.get('/api/leaderboard', async (req, res) => {
       }
     }
 
-    // Pagination
-    const lastMessageCount = parseInt(req.query.lastMessageCount, 10);
-    const lastId = req.query.lastId;
+    // Optional "scroll/pagination" using lastMessageCount + lastId
+    // Warning: _id here is a string from $group, so $gt is lexical
     if (lastMessageCount && lastId) {
       pipeline.push({
         $match: {
           $or: [
-            { messageCount: { $lt: lastMessageCount } },
+            { messageCount: { $lt: parseInt(lastMessageCount, 10) } },
             {
               $and: [
-                { messageCount: lastMessageCount },
+                { messageCount: parseInt(lastMessageCount, 10) },
                 { _id: { $gt: lastId } },
               ],
             },
@@ -328,8 +339,7 @@ app.get('/api/leaderboard', async (req, res) => {
       });
     }
 
-    // Limit + 1 for "hasMore" detection
-    const limit = parseInt(req.query.limit, 10) || 24;
+    // Limit + 1 for "hasMore"
     pipeline.push({ $limit: limit + 1 });
 
     const results = await db
@@ -337,21 +347,20 @@ app.get('/api/leaderboard', async (req, res) => {
       .aggregate(pipeline, { allowDiskUse: true })
       .toArray();
 
-    // Ensure avatars are fetched correctly
-    const avatars = await db.collection('avatars').find({}).toArray();
-
-    // For each aggregated result, pick the "primary" avatar and compute ancestry + stats
-    const avatarDetails = await Promise.all(
+    // For each aggregated result, pick the first "primary" avatar, fetch ancestry + stats
+    const details = await Promise.all(
       results.map(async (result) => {
-        const variants = result.variants;
+        const variants = result.variants || [];
         const primaryAvatar = variants[0];
         if (!primaryAvatar) return null;
 
-        const thumbnails = await Promise.all(
-          variants.map((v) => thumbnailService.generateThumbnail(v.imageUrl))
+        // Generate thumbnails in parallel
+        const thumbs = await Promise.all(
+          variants.map((v) =>
+            thumbnailService.generateThumbnail(v.imageUrl)
+          )
         );
 
-        // Get ancestry and stats for the primary avatar
         const [ancestry, stats] = await Promise.all([
           getAvatarAncestry(db, primaryAvatar._id),
           db.collection('dungeon_stats').findOne({
@@ -366,30 +375,30 @@ app.get('/api/leaderboard', async (req, res) => {
           ...primaryAvatar,
           variants: variants.map((v, i) => ({
             ...v,
-            thumbnailUrl: thumbnails[i],
+            thumbnailUrl: thumbs[i],
           })),
           ancestry,
           messageCount: result.messageCount,
           lastMessage: result.lastMessage,
-          // Filter out null entries and keep only up to 5
-          recentMessages: result.recentMessages.filter((m) => m !== null).slice(0, 5),
+          recentMessages: result.recentMessages
+            .filter((m) => m !== null)
+            .slice(0, 5),
           stats: stats || { attack: 0, defense: 0, hp: 0 },
-          score: result.messageCount, // Calculate score based on message count
+          score: result.messageCount, // or any custom formula
         };
       })
     );
 
-    // Filter out any null avatarDetail
-    const filteredDetails = avatarDetails.filter(Boolean);
-
+    const filtered = details.filter(Boolean);
     const hasMore = results.length > limit;
-    const avatarsToReturn = results.slice(0, limit);
-    const lastItem = avatarsToReturn[avatarsToReturn.length - 1];
+
+    // The "last item" for pagination reference
+    const lastItem = results.slice(0, limit).pop();
 
     return res.json({
-      avatars: filteredDetails,
+      avatars: filtered.slice(0, limit),
       hasMore,
-      total: filteredDetails.length,
+      total: filtered.length,
       lastMessageCount: lastItem?.messageCount || null,
       lastId: lastItem?._id || null,
     });
@@ -399,19 +408,32 @@ app.get('/api/leaderboard', async (req, res) => {
   }
 });
 
+// ---- Avatar-Related Routes ----
+
 /**
- * First GET /api/avatar/:id/narratives route
- * This one returns an object: { narratives, recentMessages, dungeonStats }
+ * GET /api/avatar/:id/narratives
+ * Returns narratives, recent messages, and dungeon stats in one response.
  */
 app.get('/api/avatar/:id/narratives', async (req, res) => {
   try {
     if (!db) throw new Error('Database not connected');
 
     const avatarId = new ObjectId(req.params.id);
+
     // Fetch data in parallel
     const [narratives, messages, dungeonStats] = await Promise.all([
-      db.collection('narratives').find({ avatarId }).sort({ timestamp: -1 }).limit(10).toArray(),
-      db.collection('messages').find({ avatarId }).sort({ timestamp: -1 }).limit(5).toArray(),
+      db
+        .collection('narratives')
+        .find({ avatarId })
+        .sort({ timestamp: -1 })
+        .limit(10)
+        .toArray(),
+      db
+        .collection('messages')
+        .find({ avatarId })
+        .sort({ timestamp: -1 })
+        .limit(5)
+        .toArray(),
       db.collection('dungeon_stats').findOne({ avatarId }),
     ]);
 
@@ -432,21 +454,22 @@ app.get('/api/avatar/:id/narratives', async (req, res) => {
 });
 
 /**
- * Memories Endpoint
- * - Returns up to 10 recent memories for the given avatarId
+ * GET /api/avatar/:id/memories
+ * Returns up to 10 recent memories for the given avatarId.
  */
 app.get('/api/avatar/:id/memories', async (req, res) => {
   try {
     if (!db) throw new Error('Database not connected');
 
+    const id = req.params.id;
+    // Some stored as strings, some as ObjectId. Support both:
+    const query = {
+      $or: [{ avatarId: new ObjectId(id) }, { avatarId: id }],
+    };
+
     const memories = await db
       .collection('memories')
-      .find({
-        $or: [
-          { avatarId: new ObjectId(req.params.id) },
-          { avatarId: req.params.id },
-        ],
-      })
+      .find(query)
       .sort({ timestamp: -1 })
       .limit(10)
       .toArray();
@@ -459,41 +482,17 @@ app.get('/api/avatar/:id/memories', async (req, res) => {
 });
 
 /**
- * Second GET /api/avatar/:id/narratives route
- * This one returns an array of narratives directly
- * (By default, in Express, this overrides the above route if the paths are identical)
- */
-app.get('/api/avatar/:id/narratives', async (req, res) => {
-  try {
-    if (!db) throw new Error('Database not connected');
-
-    const narratives = await db
-      .collection('narratives')
-      .find({ avatarId: new ObjectId(req.params.id) })
-      .sort({ timestamp: -1 })
-      .limit(10)
-      .toArray();
-
-    res.json(narratives);
-  } catch (error) {
-    console.error('Error fetching narratives (second route):', error);
-    res.status(500).json({ error: error.message });
-  }
-});
-
-/**
- * Dungeon-Actions Endpoint
- * - Returns up to 10 latest actions in the dungeon log for this avatar
+ * GET /api/avatar/:id/dungeon-actions
+ * Returns up to 10 latest actions in the dungeon log for this avatar.
  */
 app.get('/api/avatar/:id/dungeon-actions', async (req, res) => {
   try {
     if (!db) throw new Error('Database not connected');
 
     const avatarId = new ObjectId(req.params.id);
-    const avatar = await db.collection('avatars').findOne(
-      { _id: avatarId },
-      { projection: { name: 1 } }
-    );
+    const avatar = await db
+      .collection('avatars')
+      .findOne({ _id: avatarId }, { projection: { name: 1 } });
 
     if (!avatar) {
       return res.status(404).json({ error: 'Avatar not found' });
@@ -501,7 +500,9 @@ app.get('/api/avatar/:id/dungeon-actions', async (req, res) => {
 
     const actions = await db
       .collection('dungeon_log')
-      .find({ $or: [{ actor: avatar.name }, { target: avatar.name }] })
+      .find({
+        $or: [{ actor: avatar.name }, { target: avatar.name }],
+      })
       .sort({ timestamp: -1 })
       .limit(10)
       .toArray();
@@ -514,7 +515,8 @@ app.get('/api/avatar/:id/dungeon-actions', async (req, res) => {
 });
 
 /**
- * Avatar Search Endpoint
+ * GET /api/avatars/search
+ * Returns up to 5 avatars whose name matches the query.
  */
 app.get('/api/avatars/search', async (req, res) => {
   try {
@@ -525,30 +527,35 @@ app.get('/api/avatars/search', async (req, res) => {
       return res.json({ avatars: [] });
     }
 
-    const escapedName = escapeRegExp(name);
-    const avatars = await db
+    const regex = new RegExp(escapeRegExp(name), 'i');
+    const found = await db
       .collection('avatars')
-      .find({ name: { $regex: escapedName, $options: 'i' } })
+      .find({ name: regex })
       .limit(5)
       .toArray();
 
-    const avatarsWithThumbs = await Promise.all(
-      avatars.map(async (avatar) => ({
+    // Generate thumbnails in parallel
+    const avatars = await Promise.all(
+      found.map(async (avatar) => ({
         ...avatar,
-        thumbnailUrl: await thumbnailService.generateThumbnail(avatar.imageUrl),
+        thumbnailUrl: await thumbnailService.generateThumbnail(
+          avatar.imageUrl
+        ),
       }))
     );
 
-    res.json({ avatars: avatarsWithThumbs });
+    res.json({ avatars });
   } catch (error) {
     console.error('Avatar search error:', error);
     res.status(500).json({ error: error.message });
   }
 });
 
+// ---- Dungeon Log Endpoint ----
+
 /**
- * Dungeon Log Endpoint
- * - Returns up to 50 latest combat logs, enriched with actor/target info
+ * GET /api/dungeon/log
+ * Returns up to 50 latest combat logs, enriched with actor/target stats & additional data.
  */
 app.get('/api/dungeon/log', async (req, res) => {
   try {
@@ -561,48 +568,17 @@ app.get('/api/dungeon/log', async (req, res) => {
       .limit(50)
       .toArray();
 
-    // Fetch related stats and additional data
+    // Enrich each log entry
     const enrichedLog = await Promise.all(
       combatLog.map(async (entry) => {
-        const [actorStats, targetStats] = await Promise.all([
-          db.collection('dungeon_stats').findOne({ avatarId: entry.actorId }),
-          entry.targetId ? db.collection('dungeon_stats').findOne({ avatarId: entry.targetId }) : null
-        ]);
-
-        // Fetch additional data based on action type
-        let additionalData = {};
-        if (entry.action === 'remember') {
-          const memory = await db.collection('memories')
-            .findOne({ avatarId: entry.actorId, timestamp: entry.timestamp });
-          if (memory) additionalData.memory = memory.content;
-        } else if (entry.action === 'xpost') {
-          const tweet = await db.collection('tweets')
-            .findOne({ avatarId: entry.actorId, timestamp: entry.timestamp });
-          if (tweet) additionalData.tweet = tweet.content;
-        }
-        
-        return {
-          ...entry,
-          actorStats,
-          targetStats,
-          ...additionalData
-        };
-      })
-    );
-      combatLog.map(async (entry) => {
-        // Try exact match first, then case-insensitive
+        // 1) Find Avatars for actor & target
         const [actor, target] = await Promise.all([
           db.collection('avatars').findOne(
             { name: entry.actor },
             { projection: { _id: 1, name: 1, imageUrl: 1, emoji: 1 } }
           ) ||
           db.collection('avatars').findOne(
-            {
-              name: {
-                $regex: `^${escapeRegExp(entry.actor)}$`,
-                $options: 'i',
-              },
-            },
+            { name: { $regex: `^${escapeRegExp(entry.actor)}$`, $options: 'i' } },
             { projection: { _id: 1, name: 1, imageUrl: 1, emoji: 1 } }
           ),
           entry.target
@@ -611,12 +587,7 @@ app.get('/api/dungeon/log', async (req, res) => {
               { projection: { _id: 1, name: 1, imageUrl: 1, emoji: 1 } }
             ) ||
             db.collection('avatars').findOne(
-              {
-                name: {
-                  $regex: `^${escapeRegExp(entry.target)}$`,
-                  $options: 'i',
-                },
-              },
+              { name: { $regex: `^${escapeRegExp(entry.target)}$`, $options: 'i' } },
               { projection: { _id: 1, name: 1, imageUrl: 1, emoji: 1 } }
             )
             : null,
@@ -631,18 +602,51 @@ app.get('/api/dungeon/log', async (req, res) => {
             : null,
         ]);
 
+        // 2) Fetch stats
+        const [actorStats, targetStats] = await Promise.all([
+          actor
+            ? db
+              .collection('dungeon_stats')
+              .findOne({ avatarId: actor._id.toString() })
+            : null,
+          target
+            ? db
+              .collection('dungeon_stats')
+              .findOne({ avatarId: target._id.toString() })
+            : null,
+        ]);
+
+        // 3) Additional data based on action
+        let additionalData = {};
+        if (entry.action === 'remember') {
+          const memory = await db.collection('memories').findOne({
+            avatarId: actor?._id,
+            timestamp: entry.timestamp,
+          });
+          if (memory) additionalData.memory = memory.content;
+        } else if (entry.action === 'xpost') {
+          const tweet = await db.collection('tweets').findOne({
+            avatarId: actor?._id,
+            timestamp: entry.timestamp,
+          });
+          if (tweet) additionalData.tweet = tweet.content;
+        }
+
         return {
           ...entry,
           actorId: actor?._id || null,
-          targetId: target?._id || null,
           actorName: actor?.name || entry.actor,
           actorEmoji: actor?.emoji || null,
           actorImageUrl: actor?.imageUrl || null,
           actorThumbnailUrl: actorThumb,
+          actorStats,
+          targetId: target?._id || null,
           targetName: target?.name || entry.target,
           targetEmoji: target?.emoji || null,
           targetImageUrl: target?.imageUrl || null,
           targetThumbnailUrl: targetThumb,
+          targetStats,
+          ...additionalData,
         };
       })
     );
@@ -654,10 +658,8 @@ app.get('/api/dungeon/log', async (req, res) => {
   }
 });
 
+// ---- Healthcheck ----
 
-/**
- * Health Check Endpoint
- */
 app.get('/api/health', (req, res) => {
   if (!db) {
     return res.status(503).json({
@@ -671,7 +673,7 @@ app.get('/api/health', (req, res) => {
 
 /**
  * GET /api/avatars/:id
- * - Returns full avatar details, including ancestry, stats, and all name-based variants
+ * Returns full avatar details, including ancestry, stats, and name-based variants.
  */
 app.get('/api/avatars/:id', async (req, res) => {
   try {
@@ -683,6 +685,7 @@ app.get('/api/avatars/:id', async (req, res) => {
       return res.status(404).json({ error: 'Avatar not found' });
     }
 
+    // In parallel: ancestry, variants, stats
     const [ancestry, variants, stats] = await Promise.all([
       getAvatarAncestry(db, avatarId),
       db
@@ -695,8 +698,11 @@ app.get('/api/avatars/:id', async (req, res) => {
       }),
     ]);
 
-    const thumbnails = await Promise.all(
-      variants.map((v) => thumbnailService.generateThumbnail(v.imageUrl))
+    // Generate thumbnails for each variant
+    const thumbs = await Promise.all(
+      variants.map((v) =>
+        thumbnailService.generateThumbnail(v.imageUrl)
+      )
     );
 
     res.json({
@@ -705,7 +711,7 @@ app.get('/api/avatars/:id', async (req, res) => {
       stats: stats || { attack: 0, defense: 0, hp: 0 },
       variants: variants.map((v, i) => ({
         ...v,
-        thumbnailUrl: thumbnails[i],
+        thumbnailUrl: thumbs[i],
       })),
     });
   } catch (error) {
@@ -714,9 +720,8 @@ app.get('/api/avatars/:id', async (req, res) => {
   }
 });
 
-/**
- * Graceful Shutdown
- */
+// ---- Graceful Shutdown ----
+
 process.on('SIGINT', async () => {
   try {
     await mongoClient.close();
