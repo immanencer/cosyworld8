@@ -122,10 +122,7 @@ document.addEventListener('click', (e) => {
   }
 });
 
-  return Math.floor((score - 10) / 2);
-};
-
-/**
+  /**
  * Renders a small stats block for actors or targets.
  * @param {Object} stats
  * @param {string} title
