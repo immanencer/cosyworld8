@@ -4,12 +4,8 @@
   "main": "src/index.mjs",
   "type": "module",
   "scripts": {
-    "build:css": "tailwindcss -i ./src/tailwind.css -o ./public/css/tailwind.css --minify",
-    "build:js": "babel public/js/wiki.js -o public/js/wiki.min.js && babel public/js/app.js -o public/js/app.min.js",
-    "build": "npm run build:css && npm run build:js",
-    "build:wiki": "mkdir -p dist && cp -r public/* dist/ && npm run build:js && npm run build:css && cp -r docs dist/content",
-    "start": "concurrently \"node src/index.mjs\" \"npm run build && node server/app.mjs\"",
-    "dev": "npm run build && node src/index.mjs",
+    "start": "concurrently \"node src/index.mjs\" \"node server/app.mjs\"",
+    "dev": "node src/index.mjs",
     "wiki": "npm run build:wiki",
     "serve": "node server/app.mjs"
   },
