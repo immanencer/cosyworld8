@@ -129,29 +129,31 @@ export default function avatarRoutes(db) {
       const page = Math.max(1, parseInt(req.query.page, 10) || 1);
       const limit = Math.min(100, Math.max(1, parseInt(req.query.limit, 10) || 12));
       const skip = (page - 1) * limit;
-      const { lastMessageCount, lastId, tier } = req.query;
+      const { tier } = req.query;
 
-      const pipeline = [
-        { $sort: { messageCount: -1 } },
-        {
-          $lookup: {
-            from: 'avatars',
-            let: { username: '$_id' },
-            pipeline: [
-              {
-                $match: {
-                  $expr: {
-                    $eq: [{ $toLower: '$name' }, '$$username']
-                  }
-                }
-              },
-              { $sort: { createdAt: -1 } }
-            ],
-            as: 'variants'
-          }
-        },
-        { $match: { 'variants.0': { $exists: true } } }
-      ];
+      // Get pre-calculated scores
+      const scores = await db.collection('avatar_scores')
+        .find({})
+        .sort({ score: -1 })
+        .skip(skip)
+        .limit(limit)
+        .toArray();
+      
+      const avatarNames = scores.map(s => s.name);
+      
+      // Get avatar details
+      const avatars = await db.collection('avatars')
+        .find({ 
+          name: { $in: avatarNames },
+          ...(tier && tier !== 'All' ? {
+            model: {
+              $in: models
+                .filter(m => rarityToTier[m.rarity] === tier)
+                .map(m => m.model)
+            }
+          } : {})
+        })
+        .toArray();
 
       if (tier && tier !== 'All') {
         if (tier === 'U') {
