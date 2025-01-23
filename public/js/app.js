@@ -6,6 +6,24 @@ const state = {
   loading: false
 };
 
+async function connectWallet() {
+  try {
+    const phantomProvider = window?.phantom?.solana;
+    if (!phantomProvider) {
+      alert('Please install Phantom wallet');
+      return;
+    }
+    const resp = await phantomProvider.connect();
+    state.wallet = {
+      publicKey: resp.publicKey.toString()
+    };
+    loadContent();
+  } catch (err) {
+    console.error('Failed to connect wallet:', err);
+    alert('Failed to connect wallet');
+  }
+}
+
 // DOM Elements
 const content = document.getElementById('content');
 const tabButtons = document.querySelectorAll('[data-tab]');

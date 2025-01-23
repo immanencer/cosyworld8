@@ -108,18 +108,23 @@ export default function (db) {
       const limit = parseInt(req.query.limit) || 12;
       const skip = (page - 1) * limit;
 
+      if (!db) {
+        throw new Error('Database connection not established');
+      }
+
       const avatars = await db.collection('avatars')
         .find({})
         .sort({ createdAt: -1 })
         .skip(skip)
         .limit(limit)
-        .toArray();
+        .toArray() || [];
 
       res.json({ 
         success: true,
-        avatars: avatars || [],
+        avatars,
         page,
-        limit
+        limit,
+        total: avatars.length
       });
     } catch (error) {
       console.error('Error fetching gallery:', error);
