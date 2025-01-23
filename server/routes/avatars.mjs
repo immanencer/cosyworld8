@@ -5,21 +5,32 @@ import { NFTMintingService } from '../../src/services/nftMintService.mjs';
 const router = express.Router();
 
 export default function (db) {
-  // Get paginated avatars with thumbnails
+  // Get paginated avatars with thumbnails and filtering
   router.get('/', async (req, res) => {
     try {
       const page = Math.max(1, parseInt(req.query.page) || 1);
       const limit = Math.min(100, Math.max(1, parseInt(req.query.limit) || 50));
       const skip = ((page - 1) * limit);
+      const view = req.query.view || 'all'; // gallery, owned, all
+
+      let query = {};
+      let sort = { createdAt: -1 };
+
+      // Handle different views
+      if (view === 'owned' && req.query.walletAddress) {
+        const nftMintService = new NFTMintingService(db);
+        const ownedIds = await nftMintService.getOwnedAvatarIds(req.query.walletAddress);
+        query._id = { $in: ownedIds };
+      }
 
       const [avatars, total] = await Promise.all([
         db.collection('avatars')
-          .find({})
-          .sort({ emoji: -1 })
+          .find(query)
+          .sort(sort)
           .skip(skip)
           .limit(limit)
           .toArray(),
-        db.collection('avatars').estimatedDocumentCount()
+        db.collection('avatars').countDocuments(query)
       ]);
 
       // Ensure thumbnail directory exists
@@ -102,51 +113,7 @@ export default function (db) {
     }
   });
 
-  router.get('/gallery', async (req, res) => {
-    try {
-      const page = parseInt(req.query.page) || 1;
-      const limit = parseInt(req.query.limit) || 12;
-      const skip = (page - 1) * limit;
-
-      if (!db) {
-        throw new Error('Database connection not established');
-      }
-
-      const [avatars, total] = await Promise.all([
-        db.collection('avatars')
-          .find({})
-          .sort({ createdAt: -1 })
-          .skip(skip)
-          .limit(limit)
-          .toArray(),
-        db.collection('avatars').countDocuments()
-      ]);
-
-      // Generate thumbnails if needed
-      const avatarsWithThumbs = await Promise.all(
-        (avatars || []).map(async (avatar) => ({
-          ...avatar,
-          thumbnailUrl: avatar.thumbnailUrl || avatar.imageUrl
-        }))
-      );
-
-      res.json({ 
-        success: true,
-        avatars: avatarsWithThumbs,
-        page,
-        limit,
-        total,
-        hasMore: avatarsWithThumbs.length === limit
-      });
-    } catch (error) {
-      console.error('Error fetching gallery:', error);
-      res.status(500).json({ 
-        success: false, 
-        error: 'Failed to fetch gallery',
-        details: process.env.NODE_ENV === 'development' ? error.message : undefined
-      });
-    }
-  });
+  // Gallery route removed - now handled by main avatars route
 
   // Get avatar location
   router.get('/:avatarId/location', async (req, res) => {

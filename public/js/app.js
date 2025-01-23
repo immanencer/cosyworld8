@@ -130,7 +130,7 @@ function getTierFromModel(model) {
 
 // Data Loading Functions
 async function loadOwnedAvatars() {
-  const response = await fetch(`/api/avatars/owned/${state.wallet.publicKey}?page=1&limit=12`);
+  const response = await fetch(`/api/avatars?view=owned&walletAddress=${state.wallet.publicKey}&page=1&limit=12`);
   const data = await response.json();
   content.innerHTML = data.avatars.map(renderAvatar).join('');
 }
@@ -138,7 +138,7 @@ async function loadOwnedAvatars() {
 async function loadGallery() {
   try {
     content.innerHTML = '<div class="text-center py-12">Loading gallery...</div>';
-    const response = await fetch('/api/avatars/gallery?page=1&limit=12');
+    const response = await fetch('/api/avatars?view=gallery&page=1&limit=12');
     
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
@@ -146,9 +146,6 @@ async function loadGallery() {
     }
     
     const data = await response.json();
-    if (!data.success) {
-      throw new Error(data.error || 'Failed to load gallery');
-    }
     
     if (!data.avatars?.length) {
       content.innerHTML = '<div class="text-center py-12">No avatars found</div>';
