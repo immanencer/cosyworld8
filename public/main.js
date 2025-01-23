@@ -47,7 +47,7 @@ const getModifier = (score) => {
  * @returns {string} HTML
  */
 const renderStats = (stats = {}, title = "Details") => {
-  if (!stats || Object.keys(stats).length === 0) {
+  if (!stats || typeof stats !== 'object' || Object.keys(stats).filter(k => typeof stats[k] === 'number').length === 0) {
     return `<div class="text-gray-400">${title}: Not available</div>`;
   }
 
@@ -313,7 +313,7 @@ async function loadActionLog() {
                         action.action === "attack"
                           ? "⚔️ attacked"
                           : action.action === "defend"
-                            ? "🛡️ defended"
+                            ? "🛡️ took a defensive stance"
                             : action.action === "move"
                               ? "🚶‍♂️ moved to"
                               : action.action === "remember"
@@ -324,7 +324,7 @@ async function loadActionLog() {
                       }
                     </span>
                     ${
-                      action.targetName
+                      action.action !== "defend" && action.targetName
                         ? `<span class="font-semibold"> → ${action.targetName}</span>`
                         : ""
                     }
