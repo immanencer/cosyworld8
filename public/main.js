@@ -47,6 +47,8 @@ const fetchJSON = async (url) => {
  */
 const getModifier = (score) => {
   if (typeof score !== "number") return 0;
+  return Math.floor((score - 10) / 2);
+};
 
 async function showAvatarDetails(avatarId) {
   const modal = document.getElementById('avatar-modal');
@@ -523,8 +525,9 @@ async function loadLeaderboard() {
   try {
     // Create container for leaderboard items with grid layout
     content.innerHTML = `
-      <div id="leaderboard-items" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 p-4"></div>
-      <div id="leaderboard-loader" class="text-center py-8 hidden">Loading more...</div>
+      <div class="max-w-7xl mx-auto px-4">
+        <div id="leaderboard-items" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 gap-6"></div>
+        <div id="leaderboard-loader" class="text-center py-8 hidden">Loading more...</div>
       <div id="avatar-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden flex items-center justify-center p-4">
         <div class="bg-gray-800 rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto">
           <div id="modal-content" class="p-6">
@@ -552,9 +555,9 @@ async function loadLeaderboard() {
 
         data.avatars.forEach((avatar) => {
           const div = document.createElement('div');
-          div.className = 'bg-gray-800 p-4 rounded-lg hover:bg-gray-700 transition-colors';
+          div.className = 'bg-gray-800 p-6 rounded-lg hover:bg-gray-700 transition-colors shadow-lg';
           div.innerHTML = `
-            <a href="#" onclick="showAvatarDetails('${avatar._id}'); return false;" class="block">
+            <button onclick="showAvatarDetails('${avatar._id}')" class="w-full text-left">
               <img
                 src="${avatar.thumbnailUrl || avatar.imageUrl}"
                 alt="${avatar.name}"
@@ -574,7 +577,7 @@ async function loadLeaderboard() {
                   </span>
                 </div>
               </div>
-            </a>
+            </button>
           `;
           leaderboardItems.appendChild(div);
         });
