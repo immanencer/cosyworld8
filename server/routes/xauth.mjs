@@ -2,9 +2,8 @@ import express from 'express';
 import { TwitterApi } from 'twitter-api-v2';
 import { getDb } from '../services/dbConnection.mjs';
 
-const router = express.Router();
-
-export default async function () {
+export default async function xAuthRouter() {
+    const router = express.Router();
     const db = await getDb();
     // X API configuration
     const X_CLIENT_ID = process.env.X_CLIENT_ID;
@@ -293,5 +292,6 @@ export default async function () {
         }
     });
 
+    // Return the configured router
     return router;
 }
