@@ -37,9 +37,13 @@ const clipDescription = (text) => {
 };
 
 // Export as window components to be accessible globally
-window.utils = {
+// Initialize window.utils if not exists
+window.utils = window.utils || {};
+
+// Add utils to window object
+Object.assign(window.utils, {
   getModelRarity,
   getTierFromModel,
   clipDescription,
   MarkdownContent
-};
+});

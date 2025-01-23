@@ -12,5 +12,8 @@ const TierBadge = ({ tier }) => {
   }, `Tier ${tier}`);
 };
 
-// Add to window.components to be accessible globally
+// Initialize window.components if not exists
+window.components = window.components || {};
+
+// Add TierBadge to components
 window.components.TierBadge = TierBadge;

@@ -177,7 +177,7 @@ function AvatarModal({ isOpen, onClose, avatar, wallet }) {
 
   if (!isOpen || !avatar) return null;
 
-  const tier = getTierFromModel(avatar.model);
+  const tier = getTierFromModel(avatar?.model);
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
