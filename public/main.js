@@ -66,10 +66,22 @@ async function showAvatarDetails(avatarId) {
     const claimed = xAuthStatusResponse?.authorized;
     
     modalContent.innerHTML = `
-      <div class="flex flex-col items-center relative">
-        <img src="${avatarResponse.imageUrl}" 
-             alt="${avatarResponse.name}" 
-             class="w-64 h-64 object-cover rounded-lg mb-4 border-2 border-gray-700">
+      <div class="flex flex-col items-center relative bg-parchment text-gray-900">
+        <div class="w-full p-6 bg-gray-800 text-white">
+          <div class="flex items-center gap-4">
+            <img src="${avatarResponse.imageUrl}" 
+                 alt="${avatarResponse.name}" 
+                 class="w-32 h-32 object-cover rounded-full border-4 border-gray-600">
+            <div>
+              <h1 class="text-3xl font-medieval mb-1">${avatarResponse.name}</h1>
+              <div class="flex items-center gap-2">
+                <span class="px-2 py-1 rounded text-xs font-bold ${getTierColor(avatarResponse.model)}">
+                  Tier ${getTierFromModel(avatarResponse.model)}
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
         
         <div class="absolute top-2 right-2 px-2 py-1 rounded text-xs font-bold ${getTierColor(avatarResponse.model)}">
           Tier ${getTierFromModel(avatarResponse.model)}
@@ -78,20 +90,58 @@ async function showAvatarDetails(avatarId) {
         <h1 class="text-2xl font-bold mb-2">${avatarResponse.name}</h1>
         <p class="text-gray-400 mb-4 text-center">${avatarResponse.description || 'No description available'}</p>
         
-        <div class="grid grid-cols-3 gap-4 w-full mb-6">
-          <div class="bg-gray-800 p-3 rounded-lg text-center">
-            <div class="text-xl font-bold text-blue-400">${avatarResponse.score || 0}</div>
-            <div class="text-xs text-gray-400">SCORE</div>
+        <div class="grid grid-cols-6 gap-4 w-full p-6 bg-white rounded-lg shadow-inner">
+          <div class="stat-block">
+            <div class="text-sm font-bold text-gray-700">STRENGTH</div>
+            <div class="text-2xl font-bold">${avatarResponse.stats?.strength || 10}</div>
+            <div class="text-sm text-gray-600">${getModifier(avatarResponse.stats?.strength)}</div>
           </div>
-          <div class="bg-gray-800 p-3 rounded-lg text-center">
-            <div class="text-xl font-bold text-green-400">${avatarResponse.stats?.wins || 0}</div>
-            <div class="text-xs text-gray-400">WINS</div>
+          <div class="stat-block">
+            <div class="text-sm font-bold text-gray-700">DEXTERITY</div>
+            <div class="text-2xl font-bold">${avatarResponse.stats?.dexterity || 10}</div>
+            <div class="text-sm text-gray-600">${getModifier(avatarResponse.stats?.dexterity)}</div>
           </div>
-          <div class="bg-gray-800 p-3 rounded-lg text-center">
-            <div class="text-xl font-bold text-red-400">${avatarResponse.stats?.hp || 0}</div>
-            <div class="text-xs text-gray-400">HP</div>
+          <div class="stat-block">
+            <div class="text-sm font-bold text-gray-700">CONSTITUTION</div>
+            <div class="text-2xl font-bold">${avatarResponse.stats?.constitution || 10}</div>
+            <div class="text-sm text-gray-600">${getModifier(avatarResponse.stats?.constitution)}</div>
+          </div>
+          <div class="stat-block">
+            <div class="text-sm font-bold text-gray-700">INTELLIGENCE</div>
+            <div class="text-2xl font-bold">${avatarResponse.stats?.intelligence || 10}</div>
+            <div class="text-sm text-gray-600">${getModifier(avatarResponse.stats?.intelligence)}</div>
+          </div>
+          <div class="stat-block">
+            <div class="text-sm font-bold text-gray-700">WISDOM</div>
+            <div class="text-2xl font-bold">${avatarResponse.stats?.wisdom || 10}</div>
+            <div class="text-sm text-gray-600">${getModifier(avatarResponse.stats?.wisdom)}</div>
+          </div>
+          <div class="stat-block">
+            <div class="text-sm font-bold text-gray-700">CHARISMA</div>
+            <div class="text-2xl font-bold">${avatarResponse.stats?.charisma || 10}</div>
+            <div class="text-sm text-gray-600">${getModifier(avatarResponse.stats?.charisma)}</div>
+          </div>
+
+          <div class="col-span-6 mt-4 p-4 bg-gray-100 rounded-lg">
+            <div class="flex justify-between items-center mb-2">
+              <div class="text-lg font-bold">Hit Points</div>
+              <div class="text-xl font-bold text-red-600">${avatarResponse.stats?.hp || 0}</div>
+            </div>
+            <div class="flex justify-between items-center">
+              <div class="text-lg font-bold">Armor Class</div>
+              <div class="text-xl font-bold">${10 + getModifier(avatarResponse.stats?.dexterity)}</div>
+            </div>
           </div>
         </div>
+
+        <style>
+          .stat-block {
+            @apply bg-gray-100 p-3 rounded-lg text-center border border-gray-300;
+          }
+          .font-medieval {
+            font-family: 'Crimson Text', serif;
+          }
+        </style>
         
         <div class="space-y-4 w-full">
           ${!state.wallet ? `
@@ -593,8 +643,8 @@ async function loadLeaderboard() {
       <div class="max-w-7xl mx-auto px-4">
         <div id="leaderboard-items" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 gap-6"></div>
         <div id="leaderboard-loader" class="text-center py-8 hidden">Loading more...</div>
-      <div id="avatar-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden flex items-center justify-center p-4">
-        <div class="bg-gray-800 rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+      <div id="avatar-modal" class="fixed inset-0 bg-black bg-opacity-75 hidden flex items-center justify-center p-4">
+        <div class="bg-parchment rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto shadow-2xl">
           <div id="modal-content" class="p-6">
           </div>
         </div>
