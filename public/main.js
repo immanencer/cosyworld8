@@ -489,6 +489,13 @@ async function loadLeaderboard() {
         scrollState.page++;
       } catch (error) {
         console.error("Failed to load more leaderboard items:", error);
+        // Show error message to user
+        const errorDiv = document.createElement('div');
+        errorDiv.className = 'text-red-500 text-center py-4';
+        errorDiv.textContent = 'Failed to load more items. Please try again later.';
+        leaderboardItems.appendChild(errorDiv);
+        // Stop infinite scroll since we hit an error
+        scrollState.hasMore = false;
       } finally {
         scrollState.loading = false;
         loader.classList.add('hidden');
