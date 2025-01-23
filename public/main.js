@@ -431,40 +431,82 @@ async function loadActionLog() {
  * Load the leaderboard data from /api/leaderboard.
  */
 async function loadLeaderboard() {
+  const state = {
+    page: 1,
+    loading: false,
+    hasMore: true
+  };
+
   try {
-    const data = await fetchJSON("/api/leaderboard?page=1&limit=12");
-    if (
-      !data.avatars ||
-      !Array.isArray(data.avatars) ||
-      data.avatars.length === 0
-    ) {
-      content.innerHTML =
-        '<div class="text-center py-12">No leaderboard data found</div>';
-      return;
+    // Create container for leaderboard items
+    content.innerHTML = `
+      <div id="leaderboard-items" class="space-y-4"></div>
+      <div id="leaderboard-loader" class="text-center py-8 hidden">Loading more...</div>
+    `;
+
+    const leaderboardItems = document.getElementById('leaderboard-items');
+    const loader = document.getElementById('leaderboard-loader');
+
+    async function loadMore() {
+      if (state.loading || !state.hasMore) return;
+      
+      state.loading = true;
+      loader.classList.remove('hidden');
+
+      try {
+        const data = await fetchJSON(`/api/leaderboard?page=${state.page}&limit=12`);
+        
+        if (!data.avatars || !Array.isArray(data.avatars)) {
+          state.hasMore = false;
+          return;
+        }
+
+        data.avatars.forEach((avatar) => {
+          const div = document.createElement('div');
+          div.className = 'bg-gray-800 p-4 rounded-lg flex items-center gap-4 hover:bg-gray-700 transition-colors';
+          div.innerHTML = `
+            <a href="/avatar-details.html?id=${avatar._id}" class="flex items-center gap-4 w-full">
+              <img
+                src="${avatar.thumbnailUrl || avatar.imageUrl}"
+                alt="${avatar.name}"
+                class="w-16 h-16 object-cover rounded-full"
+              >
+              <div>
+                <h3 class="text-lg font-semibold">${avatar.name}</h3>
+                <p class="text-sm text-gray-400">Score: ${avatar.score || 0}</p>
+                ${
+                  avatar.model
+                    ? `<p class="text-xs text-gray-500">${avatar.model}</p>`
+                    : ""
+                }
+              </div>
+            </a>
+          `;
+          leaderboardItems.appendChild(div);
+        });
+
+        state.hasMore = data.avatars.length === 12;
+        state.page++;
+      } catch (error) {
+        console.error("Failed to load more leaderboard items:", error);
+      } finally {
+        state.loading = false;
+        loader.classList.add('hidden');
+      }
     }
 
-    content.innerHTML = data.avatars
-      .map((avatar) => {
-        return `
-          <div class="bg-gray-800 p-4 rounded-lg flex items-center gap-4">
-            <img
-              src="${avatar.thumbnailUrl || avatar.imageUrl}"
-              alt="${avatar.name}"
-              class="w-16 h-16 object-cover rounded-full"
-            >
-            <div>
-              <h3 class="text-lg font-semibold">${avatar.name}</h3>
-              <p class="text-sm text-gray-400">Score: ${avatar.score}</p>
-              ${
-                avatar.model
-                  ? `<p class="text-xs text-gray-500">${avatar.model}</p>`
-                  : ""
-              }
-            </div>
-          </div>
-        `;
-      })
-      .join("");
+    // Initial load
+    await loadMore();
+
+    // Set up infinite scroll
+    const observer = new IntersectionObserver((entries) => {
+      if (entries[0].isIntersecting) {
+        loadMore();
+      }
+    }, { threshold: 0.5 });
+
+    observer.observe(loader);
+
   } catch (error) {
     console.error("Failed to load leaderboard:", error);
     content.innerHTML = `<div class="text-center py-12 text-red-500">
