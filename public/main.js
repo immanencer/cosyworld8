@@ -321,6 +321,40 @@ async function loadContent() {
 }
 
 //
+// AVATAR CLAIMING
+//
+
+async function claimAvatar(avatarId) {
+  if (!state.wallet) {
+    alert('Please connect your wallet first');
+    return;
+  }
+
+  try {
+    const response = await fetch(`/api/avatars/${avatarId}/claim`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        walletAddress: state.wallet.publicKey
+      })
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'Failed to claim avatar');
+    }
+
+    // Close modal and reload content
+    closeAvatarModal();
+    await loadContent();
+  } catch (error) {
+    console.error('Error claiming avatar:', error);
+    alert(error.message);
+  }
+}
+
 // TAB-SPECIFIC LOADERS
 //
 
