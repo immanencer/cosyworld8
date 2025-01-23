@@ -1,7 +1,8 @@
 const { useState, useEffect } = React;
 const { createRoot } = ReactDOM;
-
-// const { getTierFromModel } = './utils/index';
+const { TierBadge } = window.components;
+const { getTierFromModel, MarkdownContent } = window.utils;
+const { StatsDisplay, ActivityFeed } = window.components;
 
 const WalletButton = window.WalletButton;
 
@@ -31,6 +32,127 @@ function AvatarModal({ isOpen, onClose, avatar, wallet }) {
       Promise.all([
         fetch(`/api/avatars/${avatar._id}/narratives`).then(r => r.json()),
         fetch(`/api/avatars/${avatar._id}/memories`).then(r => r.json()),
+
+// Gallery View Component
+function GalleryView({ onSelectAvatar }) {
+  const [avatars, setAvatars] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [page, setPage] = useState(1);
+  const [hasMore, setHasMore] = useState(true);
+
+  useEffect(() => {
+    if (page === 1) {
+      setAvatars([]);
+    }
+    fetchGallery();
+  }, [page]);
+
+  const fetchGallery = async () => {
+    setLoading(true);
+    try {
+      const response = await fetch(`/api/avatars/gallery?page=${page}&limit=12`);
+      const data = await response.json();
+      setAvatars(prev => [...prev, ...data.avatars]);
+      setHasMore(data.avatars.length === 12);
+    } catch (error) {
+      console.error('Error fetching gallery:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      {avatars.map(avatar => (
+        <div 
+          key={avatar._id}
+          className="bg-gray-800 rounded-lg p-4 cursor-pointer hover:bg-gray-700 transition"
+          onClick={() => onSelectAvatar(avatar)}
+        >
+          <img 
+            src={avatar.thumbnailUrl || avatar.imageUrl} 
+            alt={avatar.name}
+            className="w-full aspect-square object-cover rounded-lg mb-4"
+          />
+          <h3 className="text-lg font-semibold">{avatar.name}</h3>
+          {avatar.model && <p className="text-sm text-gray-400">{avatar.model}</p>}
+        </div>
+      ))}
+      {hasMore && (
+        <div ref={node => {
+          if (!node) return;
+          const observer = new IntersectionObserver(entries => {
+            if (entries[0].isIntersecting && !loading) {
+              setPage(p => p + 1);
+            }
+          });
+          observer.observe(node);
+          return () => observer.disconnect();
+        }} className="h-10" />
+      )}
+    </div>
+  );
+}
+
+// Owned Avatars Component
+function OwnedAvatars({ wallet, onSelectAvatar }) {
+  const [avatars, setAvatars] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [page, setPage] = useState(1);
+  const [hasMore, setHasMore] = useState(true);
+
+  useEffect(() => {
+    if (!wallet?.publicKey) return;
+    fetchOwnedAvatars();
+  }, [wallet?.publicKey, page]);
+
+  const fetchOwnedAvatars = async () => {
+    setLoading(true);
+    try {
+      const response = await fetch(`/api/avatars/owned/${wallet.publicKey}?page=${page}&limit=12`);
+      const data = await response.json();
+      setAvatars(prev => [...prev, ...data.avatars]);
+      setHasMore(data.hasMore);
+    } catch (error) {
+      console.error('Error fetching owned avatars:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      {avatars.map(avatar => (
+        <div 
+          key={avatar._id}
+          className="bg-gray-800 rounded-lg p-4 cursor-pointer hover:bg-gray-700 transition"
+          onClick={() => onSelectAvatar(avatar)}
+        >
+          <img 
+            src={avatar.thumbnailUrl || avatar.imageUrl} 
+            alt={avatar.name}
+            className="w-full aspect-square object-cover rounded-lg mb-4"
+          />
+          <h3 className="text-lg font-semibold">{avatar.name}</h3>
+          {avatar.model && <p className="text-sm text-gray-400">{avatar.model}</p>}
+        </div>
+      ))}
+      {hasMore && (
+        <div ref={node => {
+          if (!node) return;
+          const observer = new IntersectionObserver(entries => {
+            if (entries[0].isIntersecting && !loading) {
+              setPage(p => p + 1);
+            }
+          });
+          observer.observe(node);
+          return () => observer.disconnect();
+        }} className="h-10" />
+      )}
+    </div>
+  );
+}
+
         fetch(`/api/avatars/${avatar._id}/location`).then(r => r.json()),
         fetch(`/api/avatars/${avatar._id}/actions`).then(r => r.json())
       ])
@@ -186,9 +308,24 @@ function App() {
   const renderTabContent = () => {
     switch (activeTab) {
       case "owned":
-        return <div className="text-center py-12">Your owned avatars will appear here</div>;
+        return wallet ? (
+          <OwnedAvatars wallet={wallet} onSelectAvatar={(avatar) => {
+            setSelectedAvatar(avatar);
+            setIsModalOpen(true);
+          }} />
+        ) : (
+          <div className="text-center py-12">Connect your wallet to view owned avatars</div>
+        );
       case "gallery":
-        return <div className="text-center py-12">Gallery content coming soon</div>;
+        return <GalleryView onSelectAvatar={(avatar) => {
+          setSelectedAvatar(avatar);
+          setIsModalOpen(true);
+        }} />;
+      case "tribes":
+        return <TribesView onSelectAvatar={(avatar) => {
+          setSelectedAvatar(avatar);
+          setIsModalOpen(true);
+        }} />;
       case "leaderboard":
         return (
           <div>
