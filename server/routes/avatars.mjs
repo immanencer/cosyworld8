@@ -237,14 +237,20 @@ router.get('/leaderboard', async (req, res) => {
       const skip = (page - 1) * limit;
 
       const avatars = await db.collection('avatars')
-        .find({})
+        .find({ score: { $exists: true } }) // Only get avatars with scores
         .sort({ score: -1 })
         .skip(skip)
-        .limit(limit + 1) // Get one extra to determine if there are more
+        .limit(limit + 1)
         .toArray();
 
-      const hasMore = avatars.length > limit;
-      const paginatedAvatars = avatars.slice(0, limit);
+      // Transform avatars to ensure proper _id handling
+      const transformedAvatars = avatars.map(avatar => ({
+        ...avatar,
+        _id: avatar._id.toString() // Convert ObjectId to string
+      }));
+
+      const hasMore = transformedAvatars.length > limit;
+      const paginatedAvatars = transformedAvatars.slice(0, limit);
 
       res.json({ 
         avatars: paginatedAvatars,
