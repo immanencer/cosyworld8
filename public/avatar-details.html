@@ -86,9 +86,13 @@
 
             try {
                 const [avatarResponse, xAuthStatusResponse] = await Promise.all([
-                    fetch(`/api/avatars/${avatarId}`),
+                    fetch(`/api/avatars/details/${avatarId}`),
                     checkXAuthStatus(avatarId)
                 ]);
+
+                if (!avatarResponse.ok) {
+                    throw new Error(`Failed to load avatar: ${avatarResponse.status}`);
+                }
 
                 const avatar = await avatarResponse.json();
                 state.avatar = avatar;

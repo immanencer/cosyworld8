@@ -431,7 +431,7 @@ async function loadActionLog() {
  * Load the leaderboard data from /api/leaderboard.
  */
 async function loadLeaderboard() {
-  const state = {
+  let scrollState = {
     page: 1,
     loading: false,
     hasMore: true
@@ -448,16 +448,16 @@ async function loadLeaderboard() {
     const loader = document.getElementById('leaderboard-loader');
 
     async function loadMore() {
-      if (state.loading || !state.hasMore) return;
+      if (scrollState.loading || !scrollState.hasMore) return;
       
-      state.loading = true;
+      scrollState.loading = true;
       loader.classList.remove('hidden');
 
       try {
-        const data = await fetchJSON(`/api/leaderboard?page=${state.page}&limit=12`);
+        const data = await fetchJSON(`/api/avatars/leaderboard?page=${scrollState.page}&limit=12`);
         
         if (!data.avatars || !Array.isArray(data.avatars)) {
-          state.hasMore = false;
+          scrollState.hasMore = false;
           return;
         }
 
@@ -485,12 +485,12 @@ async function loadLeaderboard() {
           leaderboardItems.appendChild(div);
         });
 
-        state.hasMore = data.avatars.length === 12;
-        state.page++;
+        scrollState.hasMore = data.avatars.length === 12;
+        scrollState.page++;
       } catch (error) {
         console.error("Failed to load more leaderboard items:", error);
       } finally {
-        state.loading = false;
+        scrollState.loading = false;
         loader.classList.add('hidden');
       }
     }
