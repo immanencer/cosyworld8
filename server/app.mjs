@@ -580,8 +580,15 @@ app.get('/api/dungeon/log', async (req, res) => {
             .findOne({ avatarId: entry.actorId, timestamp: entry.timestamp });
           if (tweet) additionalData.tweet = tweet.content;
         }
-
-    const enrichedLog = await Promise.all(
+        
+        return {
+          ...entry,
+          actorStats,
+          targetStats,
+          ...additionalData
+        };
+      })
+    );
       combatLog.map(async (entry) => {
         // Try exact match first, then case-insensitive
         const [actor, target] = await Promise.all([
