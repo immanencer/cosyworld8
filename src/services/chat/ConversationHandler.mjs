@@ -318,12 +318,7 @@ ${dungeonPrompt}
 Recent messages:
 ${context.recentMessages.map(m => `${m.author}: ${m.content}`).join('\n')}
 
-you’re ${avatar.name}. 
-
-keep it chill, fun, and full of emojis 🎉. stay in character, make it a vibe, and keep everyone hooked.
-
-use short replies unless they ask for more. no need for caps or grammar police 🚫✍️. emojis, slang, and casual vibes are totally your thing 😎✨.
-
+Reply in character with a short message, no more than one or two sentences unless the user has requested a longer response.
           `.trim()
         }
       ], { model: avatar.model });
