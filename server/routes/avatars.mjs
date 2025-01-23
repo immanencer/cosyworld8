@@ -205,7 +205,32 @@ export default function (db) {
     }
   });
 
-  router.get('/leaderboard', async (req, res) => {
+  // Get avatar details endpoint
+router.get('/details/:avatarId', async (req, res) => {
+  try {
+    const { avatarId } = req.params;
+    
+    // Validate if ID is in correct format
+    if (!avatarId.match(/^[0-9a-fA-F]{24}$/)) {
+      return res.status(400).json({ error: 'Invalid avatar ID format' });
+    }
+
+    const avatar = await db.collection('avatars').findOne({ 
+      _id: new ObjectId(avatarId)
+    });
+
+    if (!avatar) {
+      return res.status(404).json({ error: 'Avatar not found' });
+    }
+
+    res.json(avatar);
+  } catch (error) {
+    console.error('Error fetching avatar details:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+router.get('/leaderboard', async (req, res) => {
     try {
       const page = parseInt(req.query.page) || 1;
       const limit = parseInt(req.query.limit) || 12;
