@@ -240,21 +240,17 @@ router.get('/leaderboard', async (req, res) => {
         .find({})
         .sort({ score: -1 })
         .skip(skip)
-        .limit(limit)
+        .limit(limit + 1) // Get one extra to determine if there are more
         .toArray();
 
-      if (!avatars) {
-        return res.status(404).json({ 
-          error: 'No avatars found',
-          avatars: [] 
-        });
-      }
+      const hasMore = avatars.length > limit;
+      const paginatedAvatars = avatars.slice(0, limit);
 
       res.json({ 
-        avatars,
+        avatars: paginatedAvatars,
         page,
         limit,
-        hasMore: avatars.length === limit
+        hasMore
       });
     } catch (error) {
       console.error('Error fetching leaderboard:', error);
