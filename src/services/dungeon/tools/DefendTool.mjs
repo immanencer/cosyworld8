@@ -15,9 +15,9 @@ export class DefendTool extends BaseTool {
     
     setTimeout(async () => {
       const currentStats = await this.dungeonService.getAvatarStats(avatarId);
-      // Only remove boost if defense hasn't been modified by other effects
-      if (currentStats.defense === stats.defense) {
-        currentStats.defense = originalDefense;
+      // Only remove boost if dexterity hasn't been modified by other effects
+      if (currentStats.dexterity === stats.dexterity) {
+        currentStats.dexterity = originalDexterity;
         await this.dungeonService.updateAvatarStats(avatarId, currentStats);
       }
     }, boostDuration);
