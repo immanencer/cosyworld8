@@ -681,13 +681,13 @@ app.get('/api/dungeon/log', async (req, res) => {
           if (tweet) additionalData.tweet = tweet.content;
         }
 
-        // Add location details if available
+        // Add location details if available 
         const location = locationDetails[entry.target] || {};
-        additionalData.location = {
+        additionalData.location = location.name ? {
           name: location.name,
-          imageUrl: location.imageUrl,
-          description: location.description
-        }
+          imageUrl: location.imageUrl || null,
+          description: location.description || ''
+        } : null;
 
         return {
           ...entry,
