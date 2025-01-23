@@ -836,4 +836,41 @@ process.on('SIGINT', async () => {
   }
 });
 
+// Avatar claim endpoint
+app.post('/api/avatars/:avatarId/claim', async (req, res) => {
+  try {
+    const { avatarId } = req.params;
+    const { walletAddress } = req.body;
+
+    if (!walletAddress) {
+      return res.status(400).json({ error: 'Wallet address required' });
+    }
+
+    const avatar = await db.collection('avatars').findOne({
+      _id: ObjectId.createFromHexString(avatarId)
+    });
+
+    if (!avatar) {
+      return res.status(404).json({ error: 'Avatar not found' });
+    }
+
+    // Check if avatar is already claimed
+    const existingClaim = await db.collection('x_auth').findOne({ avatarId });
+    if (existingClaim) {
+      return res.status(400).json({ error: 'Avatar already claimed' });
+    }
+
+    // Update avatar status
+    await db.collection('avatars').updateOne(
+      { _id: ObjectId.createFromHexString(avatarId) },
+      { $set: { claimed: true, claimedBy: walletAddress }}
+    );
+
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Error claiming avatar:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 export default app;

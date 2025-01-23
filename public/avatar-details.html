@@ -1,0 +1,147 @@
+
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Avatar Details</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/@solana/web3.js@latest/lib/index.iife.min.js"></script>
+</head>
+<body class="bg-gray-900 text-white min-h-screen">
+    <div id="content" class="container mx-auto px-4 py-8">
+        <div id="avatar-details" class="max-w-2xl mx-auto bg-gray-800 rounded-lg p-6">
+            Loading...
+        </div>
+    </div>
+
+    <script>
+        const state = {
+            wallet: null,
+            avatar: null,
+            xAuthStatus: null
+        };
+
+        async function connectWallet() {
+            try {
+                const phantomProvider = window?.phantom?.solana;
+                if (!phantomProvider) {
+                    alert("Please install the Phantom wallet extension");
+                    return;
+                }
+
+                const resp = await phantomProvider.connect();
+                state.wallet = {
+                    publicKey: resp.publicKey.toString()
+                };
+                
+                updateUI();
+            } catch (err) {
+                console.error("Failed to connect wallet:", err);
+                alert("Failed to connect wallet");
+            }
+        }
+
+        async function checkXAuthStatus(avatarId) {
+            const response = await fetch(`/auth/x/status/${avatarId}`);
+            const data = await response.json();
+            state.xAuthStatus = data;
+            return data;
+        }
+
+        async function claimAvatar(avatarId) {
+            if (!state.wallet?.publicKey) {
+                alert("Please connect your wallet first");
+                return;
+            }
+
+            try {
+                const response = await fetch(`/api/avatars/${avatarId}/claim`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        walletAddress: state.wallet.publicKey
+                    })
+                });
+
+                if (!response.ok) {
+                    throw new Error('Failed to claim avatar');
+                }
+
+                window.location.href = `/auth/x/auth-url?avatarId=${avatarId}&walletAddress=${state.wallet.publicKey}`;
+            } catch (error) {
+                console.error('Error claiming avatar:', error);
+                alert('Failed to claim avatar: ' + error.message);
+            }
+        }
+
+        async function loadAvatarDetails() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const avatarId = urlParams.get('id');
+
+            if (!avatarId) {
+                document.getElementById('avatar-details').innerHTML = 'Avatar ID not provided';
+                return;
+            }
+
+            try {
+                const [avatarResponse, xAuthStatusResponse] = await Promise.all([
+                    fetch(`/api/avatars/${avatarId}`),
+                    checkXAuthStatus(avatarId)
+                ]);
+
+                const avatar = await avatarResponse.json();
+                state.avatar = avatar;
+                
+                updateUI();
+            } catch (error) {
+                console.error('Error loading avatar details:', error);
+                document.getElementById('avatar-details').innerHTML = 'Error loading avatar details';
+            }
+        }
+
+        function updateUI() {
+            if (!state.avatar) return;
+
+            const claimed = state.xAuthStatus?.authorized;
+            const walletConnected = !!state.wallet?.publicKey;
+
+            document.getElementById('avatar-details').innerHTML = `
+                <div class="flex flex-col items-center">
+                    <img src="${state.avatar.imageUrl}" 
+                         alt="${state.avatar.name}" 
+                         class="w-64 h-64 object-cover rounded-lg mb-4">
+                    
+                    <h1 class="text-2xl font-bold mb-2">${state.avatar.name}</h1>
+                    <p class="text-gray-400 mb-4">${state.avatar.description || ''}</p>
+                    
+                    <div class="space-y-4 w-full">
+                        ${!walletConnected ? `
+                            <button onclick="connectWallet()" 
+                                    class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">
+                                Connect Wallet
+                            </button>
+                        ` : ''}
+                        
+                        ${walletConnected && !claimed ? `
+                            <button onclick="claimAvatar('${state.avatar._id}')"
+                                    class="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded">
+                                Claim Avatar & Connect X Account
+                            </button>
+                        ` : ''}
+                        
+                        ${claimed ? `
+                            <div class="text-green-500 text-center">
+                                Avatar claimed and X account connected
+                            </div>
+                        ` : ''}
+                    </div>
+                </div>
+            `;
+        }
+
+        // Initialize
+        loadAvatarDetails();
+    </script>
+</body>
+</html>
