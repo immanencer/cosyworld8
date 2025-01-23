@@ -94,27 +94,79 @@ async function showAvatarDetails(avatarId) {
         </div>
         
         <h1 class="text-2xl font-bold mb-2">${avatarResponse.name}</h1>
-        <p class="text-gray-400 mb-4 text-center">${avatarResponse.description || 'No description available'}</p>
         
-        <!-- Compact Stats -->
-        <div class="flex flex-wrap gap-2 w-full p-4 bg-white/10 rounded-lg text-sm">
-          <div class="flex items-center gap-1">
-            <span class="font-bold text-red-500">HP ${avatarResponse.stats?.hp || 0}</span>
-            <span class="text-gray-400">|</span>
-            <span class="font-bold text-blue-500">AC ${10 + getModifier(avatarResponse.stats?.dexterity)}</span>
+        <!-- Character Sheet Header -->
+        <div class="grid grid-cols-3 gap-4 w-full mb-4">
+          <!-- Core Stats -->
+          <div class="bg-gray-800/50 p-4 rounded-lg">
+            <div class="flex flex-col gap-2">
+              <div class="flex justify-between items-center">
+                <span class="text-red-500">❤️ HP</span>
+                <span class="font-bold">${avatarResponse.stats?.hp || 0}</span>
+              </div>
+              <div class="flex justify-between items-center">
+                <span class="text-blue-500">🛡️ AC</span>
+                <span class="font-bold">${10 + getModifier(avatarResponse.stats?.dexterity)}</span>
+              </div>
+              <div class="flex justify-between items-center">
+                <span class="text-purple-500">⚡ Initiative</span>
+                <span class="font-bold">+${getModifier(avatarResponse.stats?.dexterity)}</span>
+              </div>
+            </div>
           </div>
-          <div class="text-gray-400">|</div>
-          <div title="Strength">STR ${avatarResponse.stats?.strength || 10} (${getModifier(avatarResponse.stats?.strength)})</div>
-          <div class="text-gray-400">|</div>
-          <div title="Dexterity">DEX ${avatarResponse.stats?.dexterity || 10} (${getModifier(avatarResponse.stats?.dexterity)})</div>
-          <div class="text-gray-400">|</div>
-          <div title="Constitution">CON ${avatarResponse.stats?.constitution || 10} (${getModifier(avatarResponse.stats?.constitution)})</div>
-          <div class="text-gray-400">|</div>
-          <div title="Intelligence">INT ${avatarResponse.stats?.intelligence || 10} (${getModifier(avatarResponse.stats?.intelligence)})</div>
-          <div class="text-gray-400">|</div>
-          <div title="Wisdom">WIS ${avatarResponse.stats?.wisdom || 10} (${getModifier(avatarResponse.stats?.wisdom)})</div>
-          <div class="text-gray-400">|</div>
-          <div title="Charisma">CHA ${avatarResponse.stats?.charisma || 10} (${getModifier(avatarResponse.stats?.charisma)})</div>
+          
+          <!-- Class & Level -->
+          <div class="bg-gray-800/50 p-4 rounded-lg">
+            <h3 class="text-sm font-bold mb-2">Class & Level</h3>
+            <p class="text-gray-400">Adventurer 1</p>
+            <p class="text-xs text-gray-500 mt-1">XP: 0 / 1000</p>
+          </div>
+          
+          <!-- Status -->
+          <div class="bg-gray-800/50 p-4 rounded-lg">
+            <h3 class="text-sm font-bold mb-2">Status</h3>
+            <p class="text-green-400">🟢 Active</p>
+          </div>
+        </div>
+
+        <!-- Ability Scores -->
+        <div class="grid grid-cols-3 gap-2 w-full mb-4">
+          <div class="bg-gray-800/50 p-3 rounded-lg text-center">
+            <div title="Strength" class="text-lg">💪</div>
+            <div class="font-bold">${avatarResponse.stats?.strength || 10}</div>
+            <div class="text-sm text-gray-400">${getModifier(avatarResponse.stats?.strength)}</div>
+          </div>
+          <div class="bg-gray-800/50 p-3 rounded-lg text-center">
+            <div title="Dexterity" class="text-lg">🎯</div>
+            <div class="font-bold">${avatarResponse.stats?.dexterity || 10}</div>
+            <div class="text-sm text-gray-400">${getModifier(avatarResponse.stats?.dexterity)}</div>
+          </div>
+          <div class="bg-gray-800/50 p-3 rounded-lg text-center">
+            <div title="Constitution" class="text-lg">🏋️</div>
+            <div class="font-bold">${avatarResponse.stats?.constitution || 10}</div>
+            <div class="text-sm text-gray-400">${getModifier(avatarResponse.stats?.constitution)}</div>
+          </div>
+          <div class="bg-gray-800/50 p-3 rounded-lg text-center">
+            <div title="Intelligence" class="text-lg">🧠</div>
+            <div class="font-bold">${avatarResponse.stats?.intelligence || 10}</div>
+            <div class="text-sm text-gray-400">${getModifier(avatarResponse.stats?.intelligence)}</div>
+          </div>
+          <div class="bg-gray-800/50 p-3 rounded-lg text-center">
+            <div title="Wisdom" class="text-lg">👁️</div>
+            <div class="font-bold">${avatarResponse.stats?.wisdom || 10}</div>
+            <div class="text-sm text-gray-400">${getModifier(avatarResponse.stats?.wisdom)}</div>
+          </div>
+          <div class="bg-gray-800/50 p-3 rounded-lg text-center">
+            <div title="Charisma" class="text-lg">👑</div>
+            <div class="font-bold">${avatarResponse.stats?.charisma || 10}</div>
+            <div class="text-sm text-gray-400">${getModifier(avatarResponse.stats?.charisma)}</div>
+          </div>
+        </div>
+
+        <!-- Inventory -->
+        <div class="bg-gray-800/50 p-4 rounded-lg mb-4">
+          <h3 class="font-bold text-lg mb-2">📦 Inventory</h3>
+          <div class="text-gray-400 text-sm">No items yet</div>
         </div>
 
         <!-- Description & Personality -->
