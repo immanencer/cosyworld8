@@ -437,43 +437,42 @@ export default function avatarRoutes(db) {
   });
 
   // -------------------------------------------------
-  // 11) GET /leaderboard (Advanced aggregator version)
-  //     - Example: Aggregates messages -> finds avatars
-  //     - Optional tier filtering & pagination
+  // 11) GET /leaderboard
   // -------------------------------------------------
   router.get('/leaderboard', async (req, res) => {
     try {
-      const { tier, lastMessageCount, lastId, limit: limitStr } = req.query;
-      // Default limit 24, but never exceed 100
-      const limit = Math.min(parseInt(limitStr, 10) || 24, 100);
+      const page = Math.max(1, parseInt(req.query.page, 10) || 1);
+      const limit = Math.min(100, Math.max(1, parseInt(req.query.limit, 10) || 12));
+      const skip = (page - 1) * limit;
 
-      // Pipeline grouping messages by username
-      const pipeline = [
-        // 1) Group messages by case-insensitive authorUsername
-        {
-          $group: {
-            _id: { $toLower: '$authorUsername' },
-            messageCount: { $sum: 1 },
-            lastMessage: { $max: '$timestamp' },
-            recentMessages: {
-              $push: {
-                $cond: {
-                  if: {
-                    $gte: [
-                      '$timestamp',
-                      { $subtract: [new Date(), 1000 * 60 * 60 * 24] },
-                    ],
-                  },
-                  then: {
-                    content: { $substr: ['$content', 0, 200] },
-                    timestamp: '$timestamp',
-                  },
-                  else: null,
-                },
-              },
-            },
-          },
-        },
+      const [avatars, total] = await Promise.all([
+        db.collection('avatars')
+          .find({})
+          .sort({ score: -1 })
+          .skip(skip)
+          .limit(limit)
+          .toArray(),
+        db.collection('avatars').countDocuments()
+      ]);
+
+      // Generate thumbnails for avatars
+      const avatarsWithThumbs = await Promise.all(
+        avatars.map(async (avatar) => {
+          const thumbnailUrl = await thumbnailService.generateThumbnail(avatar.imageUrl);
+          return { 
+            ...avatar,
+            thumbnailUrl,
+            score: avatar.score || 0
+          };
+        })
+      );
+
+      return res.json({
+        avatars: avatarsWithThumbs,
+        total,
+        page,
+        totalPages: Math.ceil(total / limit)
+      });
         // 2) Sort by messageCount desc
         { $sort: { messageCount: -1 } },
         // 3) Lookup avatars matching the case-insensitive username

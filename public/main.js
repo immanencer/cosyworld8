@@ -543,12 +543,13 @@ async function loadLeaderboard() {
       loader.classList.remove('hidden');
 
       try {
-        const data = await fetchJSON(`/api/avatars/leaderboard?page=${scrollState.page}&limit=12&sort=score`);
+        const data = await fetchJSON(`/api/avatars/leaderboard?page=${scrollState.page}&limit=12`);
         
-        if (!data.avatars || !Array.isArray(data.avatars)) {
-          scrollState.hasMore = false;
-          return;
+        if (!data || !data.avatars || !Array.isArray(data.avatars)) {
+          throw new Error('Invalid response format');
         }
+
+        scrollState.hasMore = scrollState.page < data.totalPages;
 
         data.avatars.forEach((avatar) => {
           const div = document.createElement('div');
