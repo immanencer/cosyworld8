@@ -25,4 +25,10 @@ const clipDescription = (text) => {
   return doubleNewline > -1 ? text.slice(0, doubleNewline) : text;
 };
 
-window.getTierFromModel = getTierFromModel;
+// Expose utils to window object
+window.utils = {
+  getModelRarity,
+  getTierFromModel,
+  clipDescription,
+  rarityToTier
+};
