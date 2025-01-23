@@ -582,20 +582,37 @@ app.get('/api/dungeon/log', async (req, res) => {
       .limit(50)
       .toArray();
 
-    // Get unique location names from move actions
+    // Get unique location names from all relevant actions
     const locationNames = [...new Set(
       combatLog
-        .filter(log => log.action === 'move' && log.target)
+        .filter(log => (log.action === 'move' || log.location) && log.target)
         .map(log => log.target)
     )];
 
-    // Fetch location details
+    // Fetch location details with full projection
     const locationDetails = await db.collection('locations')
-      .find({ name: { $in: locationNames } })
+      .find({ 
+        name: { $in: locationNames }
+      }, {
+        projection: {
+          name: 1,
+          description: 1,
+          imageUrl: 1,
+          updatedAt: 1
+        }
+      })
       .toArray()
       .then(locations => locations.reduce((acc, loc) => {
-        if (!acc[loc.name] || new Date(loc.updatedAt) > new Date(acc[loc.name].updatedAt)) {
-          acc[loc.name] = loc;
+        // Keep the most recently updated version of each location
+        if (!acc[loc.name] || 
+            (loc.updatedAt && (!acc[loc.name].updatedAt || 
+             new Date(loc.updatedAt) > new Date(acc[loc.name].updatedAt)))) {
+          acc[loc.name] = {
+            name: loc.name,
+            description: loc.description,
+            imageUrl: loc.imageUrl,
+            updatedAt: loc.updatedAt
+          };
         }
         return acc;
       }, {}));
