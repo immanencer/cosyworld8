@@ -781,7 +781,7 @@ app.get('/api/health', async (req, res) => {
 app.get('/api/avatars/:id', async (req, res) => {
   try {
     const database = ensureDbConnection();
-    const avatarId = new ObjectId(req.params.id);
+    const avatarId = ObjectId.createFromTime(req.params.id);
 
     const avatar = await database.collection('avatars').findOne({ _id: avatarId });
     if (!avatar) {
@@ -863,7 +863,7 @@ app.post('/api/avatars/:avatarId/claim', async (req, res) => {
     // Update avatar status
     await db.collection('avatars').updateOne(
       { _id: ObjectId.createFromHexString(avatarId) },
-      { $set: { claimed: true, claimedBy: walletAddress }}
+      { $set: { claimed: true, claimedBy: walletAddress } }
     );
 
     res.json({ success: true });
