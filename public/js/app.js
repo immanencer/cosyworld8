@@ -13,14 +13,23 @@ async function connectWallet() {
       alert('Please install Phantom wallet');
       return;
     }
+    
+    // Wait for provider to be ready
+    await new Promise(resolve => setTimeout(resolve, 100));
+    
     const resp = await phantomProvider.connect();
+    if (!resp?.publicKey) {
+      throw new Error('No public key received');
+    }
+    
     state.wallet = {
       publicKey: resp.publicKey.toString()
     };
-    loadContent();
+    await loadContent();
   } catch (err) {
     console.error('Failed to connect wallet:', err);
-    alert('Failed to connect wallet');
+    alert('Failed to connect wallet. Please try again.');
+    state.wallet = null;
   }
 }
 
@@ -130,9 +139,30 @@ function getTierFromModel(model) {
 
 // Data Loading Functions
 async function loadOwnedAvatars() {
-  const response = await fetch(`/api/avatars?view=owned&walletAddress=${state.wallet.publicKey}&page=1&limit=12`);
-  const data = await response.json();
-  content.innerHTML = data.avatars.map(renderAvatar).join('');
+  try {
+    if (!state.wallet?.publicKey) {
+      content.innerHTML = '<div class="text-center py-12">Please connect your wallet first</div>';
+      return;
+    }
+
+    const response = await fetch(`/api/avatars?view=owned&walletAddress=${state.wallet.publicKey}&page=1&limit=12`);
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    
+    const data = await response.json();
+    if (!data.avatars) {
+      content.innerHTML = '<div class="text-center py-12">No avatars found</div>';
+      return;
+    }
+    
+    content.innerHTML = data.avatars.map(renderAvatar).join('');
+  } catch (error) {
+    console.error('Error loading owned avatars:', error);
+    content.innerHTML = `<div class="text-center py-12 text-red-500">
+      Failed to load avatars: ${error.message}
+    </div>`;
+  }
 }
 
 async function loadActionLog() {
