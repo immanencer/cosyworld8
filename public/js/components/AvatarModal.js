@@ -1,4 +1,3 @@
-
 const AvatarModal = ({ avatar, onClose }) => {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [activityData, setActivityData] = useState({
@@ -12,7 +11,7 @@ const AvatarModal = ({ avatar, onClose }) => {
 
   const variants = avatar?.variants || [avatar];
   const currentVariant = variants[currentIndex];
-  const tier = getTierFromModel(avatar.model);
+  const tier = window.getTierFromModel ? window.getTierFromModel(avatar?.model) : 'U';
 
   useEffect(() => {
     if (avatar?._id) {
@@ -50,12 +49,12 @@ const AvatarModal = ({ avatar, onClose }) => {
         {/* Header */}
         <div className="flex justify-between items-start mb-6">
           <div className="flex items-center gap-4">
-            <span className="text-3xl">{avatar.emoji}</span>
+            <span className="text-3xl">{avatar?.emoji}</span>
             <div>
-              <h2 className="text-2xl font-bold">{avatar.name}</h2>
+              <h2 className="text-2xl font-bold">{avatar?.name}</h2>
               <div className="flex items-center gap-2">
                 <TierBadge tier={tier} />
-                {avatar.model && <span className="text-sm text-gray-400">{avatar.model}</span>}
+                {avatar?.model && <span className="text-sm text-gray-400">{avatar.model}</span>}
               </div>
             </div>
           </div>
@@ -67,8 +66,8 @@ const AvatarModal = ({ avatar, onClose }) => {
           <div className="col-span-4">
             <div className="relative aspect-square mb-4">
               <img 
-                src={currentVariant.imageUrl} 
-                alt={avatar.name}
+                src={currentVariant?.imageUrl} 
+                alt={avatar?.name}
                 className="w-full h-full object-cover rounded-lg"
               />
               {variants.length > 1 && (
@@ -83,7 +82,7 @@ const AvatarModal = ({ avatar, onClose }) => {
                 </div>
               )}
             </div>
-            
+
             <div className="bg-gray-700 rounded-lg p-4 mb-4">
               <h3 className="text-xl font-bold mb-2">Stats</h3>
               <StatsDisplay stats={activityData.dungeonStats} size="large" />
@@ -101,10 +100,10 @@ const AvatarModal = ({ avatar, onClose }) => {
           <div className="col-span-8 space-y-4">
             <div className="bg-gray-700 rounded-lg p-4">
               <h3 className="text-xl font-bold mb-2">Description</h3>
-              <p className="text-gray-300">{currentVariant.description}</p>
+              <p className="text-gray-300">{currentVariant?.description}</p>
             </div>
-            
-            {currentVariant.personality && (
+
+            {currentVariant?.personality && (
               <div className="bg-gray-700 rounded-lg p-4">
                 <h3 className="text-xl font-bold mb-2">Personality</h3>
                 <p className="text-gray-300">{currentVariant.personality}</p>

@@ -1,3 +1,4 @@
+
 // Utility functions
 const getTierFromModel = (model) => {
   if (!model) return 'U';
@@ -16,7 +17,7 @@ const MarkdownContent = ({ content }) => {
   });
 };
 
-// Import models configuration from server
+// Models configuration
 const getModelRarity = (modelName) => {
   const models = window.modelsConfig || [];
   const model = models.find(m => m.model === modelName);
@@ -36,14 +37,15 @@ const clipDescription = (text) => {
   return doubleNewline > -1 ? text.slice(0, doubleNewline) : text;
 };
 
-// Export as window components to be accessible globally
 // Initialize window.utils if not exists
 window.utils = window.utils || {};
+window.getTierFromModel = getTierFromModel;
 
 // Add utils to window object
 Object.assign(window.utils, {
   getModelRarity,
   getTierFromModel,
   clipDescription,
-  MarkdownContent
+  MarkdownContent,
+  rarityToTier
 });
