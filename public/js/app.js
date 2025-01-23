@@ -191,7 +191,14 @@ async function loadActionLog() {
             <div class="flex items-center justify-between">
               <div>
                 <span class="font-semibold">${action.actorName}</span>
-                <span class="text-gray-400">used ${action.action}</span>
+                <span class="text-gray-400">
+                  ${action.action === 'attack' ? '⚔️ attacked' :
+                    action.action === 'defend' ? '🛡️ defended' :
+                    action.action === 'move' ? '🚶‍♂️ moved to' :
+                    action.action === 'remember' ? '💭 remembered' :
+                    action.action === 'xpost' ? '🐦 posted' :
+                    `used ${action.action}`}
+                </span>
                 ${action.targetName ? `<span class="font-semibold"> → ${action.targetName}</span>` : ''}
               </div>
               <button 
@@ -207,9 +214,10 @@ async function loadActionLog() {
               ${new Date(action.timestamp).toLocaleString()}
             </div>
             <div class="action-details hidden mt-4 p-3 bg-gray-900 rounded-lg">
+              ${['attack', 'defend'].includes(action.action) ? `
               <div class="grid grid-cols-2 gap-4">
                 <div>
-                  <h4 class="font-semibold mb-2">Actor Details</h4>
+                  <h4 class="font-semibold mb-2">⚔️ Actor Stats</h4>
                   <div class="flex gap-4 mb-4">
                     <div class="text-center">
                       <div class="text-2xl font-bold text-red-500">${action.actorStats?.hp || 'N/A'}</div>
@@ -259,9 +267,14 @@ async function loadActionLog() {
                   </div>
                 ` : ''}
               </div>
+              ${action.action === 'move' && action.targetImageUrl ? `
+                <div class="mt-4">
+                  <img src="${action.targetImageUrl}" alt="Location" class="w-full rounded-lg">
+                </div>
+              ` : ''}
               ${action.result ? `
                 <div class="mt-4">
-                  <h4 class="font-semibold mb-2">Result</h4>
+                  <h4 class="font-semibold mb-2">📝 Result</h4>
                   <p class="text-gray-300">${action.result}</p>
                 </div>
               ` : ''}
