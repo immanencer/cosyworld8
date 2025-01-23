@@ -97,42 +97,78 @@ async function showAvatarDetails(avatarId) {
         
         <!-- Character Sheet Header -->
         <div class="grid grid-cols-2 gap-4 w-full mb-4">
-          <!-- Class, Level & Stats -->
-          <div class="bg-gray-800/50 p-4 rounded-lg">
-            <h3 class="text-sm font-bold mb-2">Class & Level</h3>
-            <p class="text-gray-400">Adventurer 1</p>
-            <p class="text-xs text-gray-500 mb-3">XP: 0 / 1000</p>
-            
-            <div class="flex flex-col gap-2">
-              <div class="flex justify-between items-center">
-                <span class="text-red-500">❤️ HP</span>
-                <span class="font-bold">${avatarResponse.stats?.hp || 0}</span>
+          <!-- Class & Level -->
+          <div class="bg-gray-100 p-4 rounded-lg text-gray-900">
+            <h3 class="text-lg font-bold mb-2">Class & Level</h3>
+            <p class="text-gray-700">Adventurer 1</p>
+            <p class="text-sm text-gray-600 mb-3">XP: 0 / 1000</p>
+            <div class="grid grid-cols-3 gap-2">
+              <div class="text-center">
+                <div class="text-red-500 font-bold">❤️ ${avatarResponse.stats?.hp || 0}</div>
+                <div class="text-xs text-gray-600">HP</div>
               </div>
-              <div class="flex justify-between items-center">
-                <span class="text-blue-500">🛡️ AC</span>
-                <span class="font-bold">${10 + getModifier(avatarResponse.stats?.dexterity)}</span>
+              <div class="text-center">
+                <div class="text-blue-500 font-bold">🛡️ ${10 + getModifier(avatarResponse.stats?.dexterity)}</div>
+                <div class="text-xs text-gray-600">AC</div>
               </div>
-              <div class="flex justify-between items-center">
-                <span class="text-purple-500">⚡ Initiative</span>
-                <span class="font-bold">+${getModifier(avatarResponse.stats?.dexterity)}</span>
+              <div class="text-center">
+                <div class="text-purple-500 font-bold">⚡ ${getModifier(avatarResponse.stats?.dexterity)}</div>
+                <div class="text-xs text-gray-600">Initiative</div>
               </div>
             </div>
           </div>
           
-          <!-- Items -->
-          <div class="bg-gray-800/50 p-4 rounded-lg">
-            <h3 class="text-sm font-bold mb-2">Equipment</h3>
-            <div class="space-y-1">
-              <p class="text-gray-400 text-sm flex items-center gap-2">
+          <!-- Ability Scores -->
+          <div class="bg-gray-100 p-4 rounded-lg text-gray-900">
+            <h3 class="text-lg font-bold mb-2">Ability Scores</h3>
+            <div class="grid grid-cols-2 gap-2 text-sm">
+              <div class="flex items-center gap-2">
+                <span>💪</span>
+                <span class="text-gray-700">STR: ${avatarResponse.stats?.strength || 0}</span>
+              </div>
+              <div class="flex items-center gap-2">
+                <span>🎯</span>
+                <span class="text-gray-700">DEX: ${avatarResponse.stats?.dexterity || 0}</span>
+              </div>
+              <div class="flex items-center gap-2">
+                <span>🏋️</span>
+                <span class="text-gray-700">CON: ${avatarResponse.stats?.constitution || 0}</span>
+              </div>
+              <div class="flex items-center gap-2">
+                <span>🧠</span>
+                <span class="text-gray-700">INT: ${avatarResponse.stats?.intelligence || 0}</span>
+              </div>
+              <div class="flex items-center gap-2">
+                <span>👁️</span>
+                <span class="text-gray-700">WIS: ${avatarResponse.stats?.wisdom || 0}</span>
+              </div>
+              <div class="flex items-center gap-2">
+                <span>👑</span>
+                <span class="text-gray-700">CHA: ${avatarResponse.stats?.charisma || 0}</span>
+              </div>
+            </div>
+          </div>
+          
+          <!-- Equipment -->
+          <div class="bg-gray-100 p-4 rounded-lg text-gray-900">
+            <h3 class="text-lg font-bold mb-2">Equipment</h3>
+            <div class="space-y-2">
+              <p class="text-gray-700 flex items-center gap-2">
                 <span>🗡️</span> No weapon equipped
               </p>
-              <p class="text-gray-400 text-sm flex items-center gap-2">
+              <p class="text-gray-700 flex items-center gap-2">
                 <span>🛡️</span> No armor equipped
               </p>
-              <p class="text-gray-400 text-sm flex items-center gap-2">
+              <p class="text-gray-700 flex items-center gap-2">
                 <span>💍</span> No accessories
               </p>
             </div>
+          </div>
+          
+          <!-- Inventory -->
+          <div class="bg-gray-100 p-4 rounded-lg text-gray-900">
+            <h3 class="text-lg font-bold mb-2">📦 Inventory</h3>
+            <div class="text-gray-700">No items yet</div>
           </div>
         </div>
 
