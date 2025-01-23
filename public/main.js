@@ -1,6 +1,16 @@
 //
 // GLOBAL STATE
 //
+
+async function retryLeaderboardLoad(page) {
+  const leaderboardItems = document.getElementById('leaderboard-items');
+  const errorDiv = leaderboardItems.querySelector('.text-red-500');
+  if (errorDiv) {
+    errorDiv.remove();
+  }
+  await loadLeaderboard();
+}
+
 const state = {
   wallet: null,
   activeTab: "owned",
@@ -489,13 +499,20 @@ async function loadLeaderboard() {
         scrollState.page++;
       } catch (error) {
         console.error("Failed to load more leaderboard items:", error);
-        // Show error message to user
+        // Show error message with retry button
         const errorDiv = document.createElement('div');
         errorDiv.className = 'text-red-500 text-center py-4';
-        errorDiv.textContent = 'Failed to load more items. Please try again later.';
+        errorDiv.innerHTML = `
+          Failed to load more items
+          <button 
+            class="ml-4 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+            onclick="retryLeaderboardLoad(${scrollState.page})"
+          >
+            Retry
+          </button>
+        `;
         leaderboardItems.appendChild(errorDiv);
-        // Stop infinite scroll since we hit an error
-        scrollState.hasMore = false;
+        scrollState.loading = false;
       } finally {
         scrollState.loading = false;
         loader.classList.add('hidden');
