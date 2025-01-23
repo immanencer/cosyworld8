@@ -448,9 +448,9 @@ async function loadLeaderboard() {
   };
 
   try {
-    // Create container for leaderboard items
+    // Create container for leaderboard items with grid layout
     content.innerHTML = `
-      <div id="leaderboard-items" class="space-y-4"></div>
+      <div id="leaderboard-items" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 p-4"></div>
       <div id="leaderboard-loader" class="text-center py-8 hidden">Loading more...</div>
     `;
 
@@ -473,22 +473,27 @@ async function loadLeaderboard() {
 
         data.avatars.forEach((avatar) => {
           const div = document.createElement('div');
-          div.className = 'bg-gray-800 p-4 rounded-lg flex items-center gap-4 hover:bg-gray-700 transition-colors';
+          div.className = 'bg-gray-800 p-4 rounded-lg hover:bg-gray-700 transition-colors';
           div.innerHTML = `
-            <a href="/avatar-details.html?id=${avatar._id}" class="flex items-center gap-4 w-full">
+            <a href="/avatar-details.html?id=${avatar._id}" class="block">
               <img
                 src="${avatar.thumbnailUrl || avatar.imageUrl}"
                 alt="${avatar.name}"
-                class="w-16 h-16 object-cover rounded-full"
+                class="w-full aspect-square object-cover rounded-lg mb-3"
               >
-              <div>
-                <h3 class="text-lg font-semibold">${avatar.name}</h3>
+              <div class="space-y-1">
+                <h3 class="text-lg font-semibold truncate">${avatar.name}</h3>
                 <p class="text-sm text-gray-400">Score: ${avatar.score || 0}</p>
                 ${
                   avatar.model
-                    ? `<p class="text-xs text-gray-500">${avatar.model}</p>`
+                    ? `<p class="text-xs text-gray-500 truncate">${avatar.model}</p>`
                     : ""
                 }
+                <div class="mt-2">
+                  <span class="px-2 py-1 rounded text-xs font-bold ${getTierColor(avatar.model)}">
+                    Tier ${getTierFromModel(avatar.model)}
+                  </span>
+                </div>
               </div>
             </a>
           `;
@@ -508,7 +513,7 @@ async function loadLeaderboard() {
         
         // Show error message with retry button
         const errorDiv = document.createElement('div');
-        errorDiv.className = 'text-red-500 text-center py-4 error-message';
+        errorDiv.className = 'text-red-500 text-center py-4 error-message col-span-full';
         errorDiv.innerHTML = `
           ${error.message || 'Failed to load more items'}
           <button 
@@ -520,7 +525,6 @@ async function loadLeaderboard() {
         `;
         leaderboardItems.appendChild(errorDiv);
         
-        // Keep scrollState.hasMore true so we can retry
         scrollState.hasMore = true;
         scrollState.loading = false;
       } finally {
