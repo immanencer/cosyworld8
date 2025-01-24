@@ -514,16 +514,16 @@ async function loadActionLog() {
 async function loadLeaderboard() {
   if (state.activeTab === "leaderboard") {
     window.scrollState = {
-      page: 1,
+      cursor: null,
       loading: false,
       hasMore: true,
-      initialized: false,
+      initialized: false
     };
   } else {
     window.scrollState = window.scrollState || {
-      page: 1,
+      cursor: null,
       loading: false,
-      hasMore: true,
+      hasMore: true
     };
   }
 
@@ -566,8 +566,9 @@ async function loadLeaderboard() {
 
       try {
         const data = await fetchJSON(
-          `/api/avatars/leaderboard?page=${scrollState.page}&limit=12`,
+          `/api/avatars/leaderboard?limit=12${scrollState.cursor ? `&cursor=${scrollState.cursor}` : ''}`,
         );
+        scrollState.cursor = data.nextCursor;
 
         if (!data || !data.avatars || !Array.isArray(data.avatars)) {
           throw new Error("Invalid response format");
