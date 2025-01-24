@@ -830,29 +830,6 @@ async function showAvatarDetails(avatarId) {
           </div>
         </div>
 
-        <!-- Additional Sections -->
-        <div class="bg-gray-800/50 p-4 rounded-lg w-full mb-4">
-          <h3 class="font-bold text-lg mb-3">Ability Scores (detailed)</h3>
-          <div class="grid grid-cols-2 gap-3">
-            <!-- Example repeated logic if needed -->
-            <div class="flex items-center gap-3">
-              <span title="Strength" class="text-xl">💪</span>
-              <div>
-                <div class="font-medium">${avatarResponse.stats?.strength || 10}</div>
-                <div class="text-xs text-gray-400">
-                  STR (${getModifier(avatarResponse.stats?.strength || 10)})
-                </div>
-              </div>
-            </div>
-            <!-- Repeat for DEX, CON, INT, WIS, CHA if desired -->
-          </div>
-        </div>
-
-        <div class="bg-gray-800/50 p-4 rounded-lg mb-4 w-full">
-          <h3 class="font-bold text-lg mb-2">📦 Inventory (detailed)</h3>
-          <p class="text-gray-400 text-sm">No items yet</p>
-        </div>
-
         <!-- Description & Personality -->
         <div class="mt-4 space-y-4 w-full px-4">
           <div class="bg-white/10 p-4 rounded-lg">
