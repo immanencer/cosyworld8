@@ -561,8 +561,9 @@ async function loadLeaderboard() {
     async function loadMore() {
       if (scrollState.loading || !scrollState.hasMore) return;
 
-      scrollState.loading = true;
-      loader.classList.remove("hidden");
+      try {
+        scrollState.loading = true;
+        loader.classList.remove("hidden");
 
       try {
         const data = await fetchJSON(
@@ -606,9 +607,13 @@ async function loadLeaderboard() {
           leaderboardItems.appendChild(div);
         });
 
-        scrollState.hasMore = data.avatars.length === 12;
-        scrollState.page++;
-      } catch (error) {
+        scrollState.hasMore = data.hasMore;
+        scrollState.cursor = data.nextCursor;
+      } finally {
+        scrollState.loading = false;
+        loader.classList.add("hidden");
+      }
+    } catch (error) {
         console.error("Failed to load more leaderboard items:", error);
 
         const existingError = leaderboardItems.querySelector(".error-message");

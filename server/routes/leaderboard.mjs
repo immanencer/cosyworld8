@@ -30,6 +30,7 @@ export default function leaderboardRoutes(db) {
       } : { $match: {} };
 
       const pipeline = [
+        // First group to deduplicate usernames and get latest avatar
         {
           $group: {
             _id: { $toLower: '$authorUsername' },
@@ -37,9 +38,11 @@ export default function leaderboardRoutes(db) {
             lastMessage: { $max: '$timestamp' }
           }
         },
+        // Sort first by message count then by username for stable pagination
         { $sort: { messageCount: -1, _id: 1 } },
         matchStage,
         { $limit: limit + 1 },
+        // Look up the most recent avatar AFTER pagination
         {
           $lookup: {
             from: 'avatars',
