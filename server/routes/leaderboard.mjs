@@ -91,6 +91,7 @@ export default function leaderboardRoutes(db) {
       const limit = Math.min(parseInt(limitStr, 10) || 24, 100);
 
       const pipeline = [
+        // Initial grouping to get message counts and recent activity
         {
           $group: {
             _id: { $toLower: '$authorUsername' },
@@ -115,7 +116,29 @@ export default function leaderboardRoutes(db) {
             },
           },
         },
+        // Sort by message count for leaderboard
         { $sort: { messageCount: -1 } },
+        // Lookup most recent avatar for each username
+        {
+          $lookup: {
+            from: 'avatars',
+            let: { username: '$_id' },
+            pipeline: [
+              {
+                $match: {
+                  $expr: { $eq: [{ $toLower: '$name' }, '$$username'] }
+                }
+              },
+              { $sort: { createdAt: -1 } },
+              { $limit: 1 }
+            ],
+            as: 'avatar'
+          }
+        },
+        // Filter out users without avatars
+        { $match: { 'avatar.0': { $exists: true } } },
+        // Unwind the single avatar
+        { $unwind: '$avatar' },
         {
           $lookup: {
             from: 'avatars',
