@@ -1,3 +1,4 @@
+import { MongoClient, ObjectId } from 'mongodb';
 import sharp from 'sharp';
 import crypto from 'crypto';
 import path from 'path';
@@ -34,7 +35,7 @@ class ThumbnailService {
       if (!response.ok) {
         throw new Error(`Failed to fetch image: ${response.statusText}`);
       }
-      
+
       const buffer = await response.arrayBuffer();
       await sharp(Buffer.from(buffer))
         .resize(THUMB_SIZE, THUMB_SIZE, { fit: 'cover' })
