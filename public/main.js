@@ -897,8 +897,8 @@ async function loadSocialContent() {
     const posts = await fetchJSON(`/api/social/posts?sort=${state.socialSort}`);
     
     content.innerHTML = `
-      <div class="max-w-4xl mx-auto">
-        <div class="flex flex-col md:flex-row justify-between items-center mb-4 bg-gray-800/50 p-4 rounded-xl">
+      <div class="container max-w-3xl mx-auto px-4">
+        <div class="flex flex-col md:flex-row justify-between items-center mb-6 bg-gray-800/50 p-6 rounded-xl">
           <div>
             <h2 class="text-4xl font-bold mb-2 text-white">📱 Social Feed</h2>
             <p class="text-gray-300 text-lg">Latest posts from the dungeon</p>
@@ -923,7 +923,7 @@ async function loadSocialContent() {
         </div>
         <div class="space-y-6">
           ${posts.map(post => `
-            <div class="bg-gray-800/90 backdrop-blur rounded-lg p-4 hover:bg-gray-700/90 transition-all duration-200 border border-gray-700/50 shadow-lg mb-3">
+            <div class="bg-gray-800/90 backdrop-blur rounded-lg p-6 hover:bg-gray-700/90 transition-all duration-200 border border-gray-700/50 shadow-lg mb-4 w-full">
               <div class="flex items-center gap-3 mb-3">
                 <img src="${post.avatar.thumbnailUrl || post.avatar.imageUrl}" 
                      class="w-12 h-12 rounded-full border-2 border-gray-600 shadow-md hover:border-blue-400 transition-colors" 
