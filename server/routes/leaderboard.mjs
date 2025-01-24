@@ -3,7 +3,7 @@ import { ObjectId } from 'mongodb';
 import models from '../../src/models.config.mjs';
 
 const rarityToTier = {
-  legendary: 'S', 
+  legendary: 'S',
   rare: 'A',
   uncommon: 'B',
   common: 'C',
@@ -17,50 +17,32 @@ export default function leaderboardRoutes(db) {
       const { tier, cursor, limit: limitStr } = req.query;
       const limit = Math.min(parseInt(limitStr, 10) || 24, 100);
 
-      const matchStage = cursor ? {
-        $match: {
-          $or: [
-            { messageCount: { $lt: parseInt(cursor.split(':')[0]) } },
-            { 
-              messageCount: parseInt(cursor.split(':')[0]),
-              _id: { $gt: cursor.split(':')[1] }
-            }
-          ]
-        }
-      } : { $match: {} };
-
       const pipeline = [
-        // First group to deduplicate usernames and get latest avatar
+        // First group by username to get the latest avatar and total score
         {
           $group: {
-            _id: { $toLower: '$authorUsername' },
-            messageCount: { $sum: 1 },
-            lastMessage: { $max: '$timestamp' }
+            _id: { $toLower: '$name' },
+            avatar: { $first: '$$ROOT' },
+            score: { $sum: '$score' },
+            lastActive: { $max: '$lastActive' }
           }
         },
-        // Sort first by message count then by username for stable pagination
-        { $sort: { messageCount: -1, _id: 1 } },
-        matchStage,
+        // Sort by score descending
+        { $sort: { score: -1 } },
+        // Add cursor-based pagination
+        ...(cursor ? [{
+          $match: {
+            $or: [
+              { score: { $lt: parseInt(cursor.split(':')[0]) } },
+              { 
+                score: parseInt(cursor.split(':')[0]),
+                _id: { $gt: cursor.split(':')[1] }
+              }
+            ]
+          }
+        }] : []),
         { $limit: limit + 1 },
-        // Look up the most recent avatar AFTER pagination
-        {
-          $lookup: {
-            from: 'avatars',
-            let: { username: '$_id' },
-            pipeline: [
-              {
-                $match: {
-                  $expr: { $eq: [{ $toLower: '$name' }, '$$username'] }
-                }
-              },
-              { $sort: { createdAt: -1 } },
-              { $limit: 1 }
-            ],
-            as: 'avatar'
-          }
-        },
-        { $match: { 'avatar.0': { $exists: true } } },
-        { $unwind: '$avatar' },
+        // Look up stats
         {
           $lookup: {
             from: 'dungeon_stats',
@@ -68,32 +50,37 @@ export default function leaderboardRoutes(db) {
             pipeline: [
               {
                 $match: {
-                  $expr: {
-                    $eq: ['$avatarId', { $toString: '$$avatarId' }]
-                  }
+                  $expr: { $eq: ['$avatarId', { $toString: '$$avatarId' }] }
                 }
               }
             ],
             as: 'stats'
           }
         },
+        // Project final shape
         {
-          $addFields: {
-            stats: {
-              $ifNull: [{ $arrayElemAt: ['$stats', 0] }, { attack: 0, defense: 0, hp: 0 }]
-            }
+          $project: {
+            _id: '$avatar._id',
+            name: '$avatar.name',
+            imageUrl: '$avatar.imageUrl',
+            thumbnailUrl: '$avatar.thumbnailUrl',
+            model: '$avatar.model',
+            score: 1,
+            lastActive: 1,
+            stats: { $arrayElemAt: ['$stats', 0] }
           }
         }
       ];
 
+      // Add tier filtering if specified
       if (tier && tier !== 'All') {
         if (tier === 'U') {
-          pipeline.push({
+          pipeline.unshift({
             $match: {
               $or: [
-                { 'avatar.model': { $exists: false } },
-                { 'avatar.model': null },
-                { 'avatar.model': { $nin: models.map(m => m.model) } }
+                { model: { $exists: false } },
+                { model: null },
+                { model: { $nin: models.map(m => m.model) } }
               ]
             }
           });
@@ -101,29 +88,24 @@ export default function leaderboardRoutes(db) {
           const validModels = models
             .filter(m => rarityToTier[m.rarity] === tier)
             .map(m => m.model);
-          pipeline.push({
-            $match: { 'avatar.model': { $in: validModels } }
+          pipeline.unshift({
+            $match: { model: { $in: validModels } }
           });
         }
       }
 
       const results = await db
-        .collection('messages')
-        .aggregate(pipeline, { allowDiskUse: true })
+        .collection('avatars')
+        .aggregate(pipeline)
         .toArray();
 
       const hasMore = results.length > limit;
       const items = results.slice(0, limit);
       const lastItem = items[items.length - 1];
-      const nextCursor = hasMore ? `${lastItem.messageCount}:${lastItem._id}` : null;
+      const nextCursor = hasMore ? `${lastItem.score}:${lastItem._id}` : null;
 
       res.json({
-        avatars: items.map(item => ({
-          ...item.avatar,
-          messageCount: item.messageCount,
-          lastMessage: item.lastMessage,
-          stats: item.stats
-        })),
+        avatars: items,
         nextCursor,
         hasMore
       });

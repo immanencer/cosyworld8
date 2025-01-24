@@ -512,18 +512,14 @@ async function loadActionLog() {
 }
 
 async function loadLeaderboard() {
+  // Reset scroll state when tab is activated
   if (state.activeTab === "leaderboard") {
     window.scrollState = {
       cursor: null,
       loading: false,
       hasMore: true,
-      initialized: false
-    };
-  } else {
-    window.scrollState = window.scrollState || {
-      cursor: null,
-      loading: false,
-      hasMore: true
+      initialized: false,
+      avatars: new Map() // Use Map to track unique avatars
     };
   }
 
@@ -577,11 +573,14 @@ async function loadLeaderboard() {
 
         scrollState.hasMore = scrollState.page < data.totalPages;
 
+        // Add new avatars to the Map to ensure uniqueness
         data.avatars.forEach((avatar) => {
-          const div = document.createElement("div");
-          div.className =
-            "bg-gray-800 p-3 rounded-lg hover:bg-gray-700 transition-colors shadow-lg";
-          div.innerHTML = `
+          if (!scrollState.avatars.has(avatar._id)) {
+            scrollState.avatars.set(avatar._id, avatar);
+            const div = document.createElement("div");
+            div.className =
+              "bg-gray-800 p-3 rounded-lg hover:bg-gray-700 transition-colors shadow-lg";
+            div.innerHTML = `
             <button
               onclick="showAvatarDetails('${avatar._id}')"
               class="w-full text-left flex gap-3 items-center"
