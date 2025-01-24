@@ -7,6 +7,7 @@ export default function healthRoutes(db) {
   router.get('/', async (req, res) => {
     try {
       if (!db) {
+        console.error('Health check failed: Database not connected');
         return res.status(503).json({
           status: 'error',
           message: 'Database not connected',
@@ -14,9 +15,10 @@ export default function healthRoutes(db) {
       }
       res.json({ status: 'ok', database: 'connected' });
     } catch (err) {
+      console.error('Health check error:', err);
       res.status(503).json({
         status: 'error',
-        message: 'Database not connected',
+        message: err.message || 'Database not connected',
       });
     }
   });
