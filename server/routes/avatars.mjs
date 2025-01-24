@@ -210,50 +210,15 @@ export default function avatarRoutes(db) {
             ? new ObjectId(primaryAvatar._id) 
             : primaryAvatar._id;
 
-          router.get('/:avatarId/stats', async (req, res) => {
-    try {
-      const { avatarId } = req.params;
-      const avatar = await db.collection('avatars').findOne({ 
-        _id: new ObjectId(avatarId) 
-      });
-      
-      if (!avatar) {
-        return res.status(404).json({ error: 'Avatar not found' });
-      }
-
-      // Try to get existing stats first
-      let stats = await db.collection('dungeon_stats').findOne({ 
-        avatarId: avatar._id 
-      });
-
-      // Generate if none exist
-      if (!stats) {
-        stats = new StatGenerationService().generateStatsFromDate(avatar.createdAt || new Date());
-        // Save generated stats
-        await db.collection('dungeon_stats').updateOne(
-          { avatarId: avatar._id },
-          { $set: stats },
-          { upsert: true }
-        );
-      }
-
-      res.json(stats);
-    } catch (error) {
-      console.error('Error getting avatar stats:', error);
-      res.status(500).json({ error: error.message });
-    }
-  });
-
-// Original code
-const [ancestry, stats] = await Promise.all([
-  getAvatarAncestry(db, avatarId),
-  db.collection('dungeon_stats').findOne({
-    $or: [
-      { avatarId: avatarId },
-      { avatarId: avatarId.toString() }
-    ]
-  })
-]);
+          const [ancestry, stats] = await Promise.all([
+            getAvatarAncestry(db, avatarId),
+            db.collection('dungeon_stats').findOne({
+              $or: [
+                { avatarId: avatarId },
+                { avatarId: avatarId.toString() }
+              ]
+            })
+          ]);
 
           return {
             ...primaryAvatar,
@@ -647,9 +612,47 @@ const [ancestry, stats] = await Promise.all([
     }
   });
 
+  // ------------------------------------
+  // 9) GET /:avatarId/stats
+  // ------------------------------------
+  router.get('/:avatarId/stats', async (req, res) => {
+    try {
+      const { avatarId } = req.params;
+      const avatar = await db.collection('avatars').findOne({ 
+        _id: new ObjectId(avatarId) 
+      });
+
+      if (!avatar) {
+        return res.status(404).json({ error: 'Avatar not found' });
+      }
+
+      // Try to get existing stats first
+      let stats = await db.collection('dungeon_stats').findOne({ 
+        avatarId: new ObjectId(avatarId)
+      });
+
+      // Generate if none exist
+      if (!stats) {
+        const statService = new StatGenerationService();
+        stats = statService.generateStatsFromDate(avatar.createdAt || new Date());
+        // Save generated stats
+        await db.collection('dungeon_stats').updateOne(
+          { avatarId: new ObjectId(avatarId) },
+          { $set: stats },
+          { upsert: true }
+        );
+      }
+
+      res.json(stats);
+    } catch (error) {
+      console.error('Error getting avatar stats:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
   // --------------------------------------------
-  // 9) GET /:avatarId/dungeon-actions
-  //    (uses "dungeon_log" to fetch avatar’s log)
+  // 10) GET /:avatarId/dungeon-actions
+  //    (uses "dungeon_log" to fetch avatar's log)
   // --------------------------------------------
   router.get('/:avatarId/dungeon-actions', async (req, res) => {
     try {
