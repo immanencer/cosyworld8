@@ -1,6 +1,7 @@
 
 import { Router } from 'express';
 import Fuse from 'fuse.js';
+import { thumbnailService } from '../services/thumbnailService.mjs';
 
 function escapeRegExp(string) {
   return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
