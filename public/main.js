@@ -15,6 +15,7 @@ const state = {
   wallet: null,
   activeTab: "owned",
   loading: false,
+  socialSort: "new"
 };
 
 //
@@ -520,6 +521,9 @@ async function loadContent() {
         content.innerHTML =
           '<div class="text-center py-12">Tribes content coming soon</div>';
         break;
+      case "social":
+        await loadSocialContent();
+        break;
       default:
         content.innerHTML = `<div class="text-center py-12 text-red-500">
           Unknown tab: ${state.activeTab}
@@ -888,3 +892,95 @@ async function loadLeaderboard() {
 document.addEventListener("DOMContentLoaded", () => {
   loadContent();
 });
+async function loadSocialContent() {
+  try {
+    const posts = await fetchJSON(`/api/social/posts?sort=${state.socialSort}`);
+    
+    content.innerHTML = `
+      <div class="max-w-4xl mx-auto p-4">
+        <div class="flex justify-between items-center mb-6">
+          <h2 class="text-2xl font-bold">Social Feed</h2>
+          <select 
+            onchange="setSocialSort(this.value)"
+            class="bg-gray-700 text-white rounded px-3 py-2"
+          >
+            <option value="new" ${state.socialSort === 'new' ? 'selected' : ''}>Latest</option>
+            <option value="top" ${state.socialSort === 'top' ? 'selected' : ''}>Top</option>
+          </select>
+        </div>
+        <div class="space-y-4">
+          ${posts.map(post => `
+            <div class="bg-gray-800 rounded-lg p-4">
+              <div class="flex items-center gap-3 mb-2">
+                <img src="${post.avatar.thumbnailUrl || post.avatar.imageUrl}" 
+                     class="w-10 h-10 rounded-full" 
+                     alt="${post.avatar.name}">
+                <div>
+                  <div class="font-bold">${post.avatar.name}</div>
+                  <div class="text-sm text-gray-400">
+                    ${new Date(post.timestamp).toLocaleString()}
+                  </div>
+                </div>
+              </div>
+              <p class="mb-4">${post.content}</p>
+              <div class="flex gap-4 text-sm text-gray-400">
+                <button onclick="likePost('${post._id}')" 
+                        class="flex items-center gap-1 hover:text-red-500">
+                  ${post.likedBy?.includes(state.wallet?.publicKey) ? '❤️' : '🤍'} 
+                  ${post.likes || 0}
+                </button>
+                <button onclick="repostPost('${post._id}')"
+                        class="flex items-center gap-1 hover:text-green-500">
+                  ${post.repostedBy?.includes(state.wallet?.publicKey) ? '🔁' : '↻'}
+                  ${post.reposts || 0}
+                </button>
+              </div>
+            </div>
+          `).join('')}
+        </div>
+      </div>
+    `;
+  } catch (error) {
+    console.error('Error loading social content:', error);
+    content.innerHTML = `
+      <div class="text-center py-12 text-red-500">
+        Failed to load social content: ${error.message}
+      </div>
+    `;
+  }
+}
+
+async function setSocialSort(sort) {
+  state.socialSort = sort;
+  await loadSocialContent();
+}
+
+async function likePost(postId) {
+  if (!state.wallet) {
+    alert('Please connect your wallet first');
+    return;
+  }
+  
+  await fetch(`/api/social/posts/${postId}/like`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ walletAddress: state.wallet.publicKey })
+  });
+  
+  await loadSocialContent();
+}
+
+async function repostPost(postId) {
+  if (!state.wallet) {
+    alert('Please connect your wallet first');
+    return;
+  }
+  
+  await fetch(`/api/social/posts/${postId}/repost`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ walletAddress: state.wallet.publicKey })
+  });
+  
+  await loadSocialContent();
+}

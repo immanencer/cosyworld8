@@ -84,7 +84,7 @@ export class XPostTool extends BaseTool {
             const auth = await db.collection('x_auth').findOne({ avatarId: avatar._id.toString() });
 
             if (!auth?.accessToken) {
-                return '❌ Not authorized to post on X. Please connect your account first.';
+                return '⚠️ Not connected to X - saving post locally only';
             }
 
             let accessToken = auth.accessToken;

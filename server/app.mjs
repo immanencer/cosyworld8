@@ -12,6 +12,7 @@ import avatarRoutes from './routes/avatars.mjs';
 import tribeRoutes from './routes/tribes.mjs';
 import xauthRoutes from './routes/xauth.mjs';
 import wikiRoutes from './routes/wiki.mjs';
+import socialRoutes from './routes/social.mjs'; // Added social routes
 
 // ----- Express & Environment Setup -----
 const app = express();
@@ -130,7 +131,8 @@ async function initializeIndexes(database) {
     // Tribes, xauth, wiki, models
     app.use('/api/tribes', await tribeRoutes(db));
     app.use('/auth/x', await xauthRoutes(db));
-    app.use('/api/wiki', wikiRoutes);
+    app.use('/api/wiki', wikiRoutes(db));
+    app.use('/api/social', socialRoutes(db)); // Added social routes
     app.use(
       '/api/models',
       await import('./routes/models.mjs').then((m) => m.default(db))
