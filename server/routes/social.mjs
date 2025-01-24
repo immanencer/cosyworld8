@@ -10,90 +10,29 @@ export default function socialRoutes(db) {
       const { sort = 'new', page = 1, limit = 20 } = req.query;
       const skip = (parseInt(page) - 1) * parseInt(limit);
 
-      // Query both collections and merge results
-      const [dungeonPosts, socialPosts] = await Promise.all([
-        // Get posts from dungeon_log
-        db.collection('dungeon_log').aggregate([
-          {
-            $match: {
-              action: 'xpost',
-              result: { 
-                $exists: true, 
-                $ne: null,
-                $not: { $regex: '^(❌|x)', $options: 'i' }
-              }
-            }
-          },
-          {
-            $project: {
-              content: {
-                $replaceAll: {
-                  input: {
-                    $replaceAll: {
-                      input: '$result',
-                      find: '✅ Posted to X: "',
-                      replacement: ''
-                    }
-                  },
-                  find: '"',
-                  replacement: ''
-                }
-              },
-              timestamp: 1,
-              actorId: 1,
-              likes: { $ifNull: ['$likes', 0] },
-              reposts: { $ifNull: ['$reposts', 0] },
-              likedBy: { $ifNull: ['$likedBy', []] },
-              repostedBy: { $ifNull: ['$repostedBy', []] }
-            }
-          }
-        ]).toArray(),
-        
-        // Get posts from social_posts
-        db.collection('social_posts').aggregate([
-          {
-            $project: {
-              content: 1,
-              timestamp: 1,
-              actorId: '$avatarId',
-              likes: { $ifNull: ['$likes', 0] },
-              reposts: { $ifNull: ['$reposts', 0] },
-              likedBy: { $ifNull: ['$likedBy', []] },
-              repostedBy: { $ifNull: ['$repostedBy', []] }
-            }
-          }
-        ]).toArray()
-      ]);
-
-      // Combine and sort all posts
-      let allPosts = [...dungeonPosts, ...socialPosts];
-      
-      // Sort posts based on query parameter
-      if (sort === 'top') {
-        allPosts.sort((a, b) => (b.likes - a.likes) || (b.timestamp - a.timestamp));
-      } else {
-        allPosts.sort((a, b) => b.timestamp - a.timestamp);
-      }
-
-      // Apply pagination
-      allPosts = allPosts.slice(skip, skip + parseInt(limit));
-
-      // Lookup avatars for the filtered posts
       let pipeline = [
         {
           $match: {
-            _id: { $in: allPosts.map(p => new ObjectId(p.actorId)) }
+            action: 'xpost',
+            result: { 
+              $exists: true, 
+              $ne: null,
+              $not: { $regex: '^(❌|x)', $options: 'i' }
+            }
           }
         },
         {
           $lookup: {
             from: 'avatars',
-            let: { actorId: '$actorId' },
+            let: { actorName: { $replaceAll: { input: '$actor', find: ' used xpost.', replacement: '' } } },
             pipeline: [
               {
                 $match: {
                   $expr: { 
-                    $eq: [{ $toString: '$_id' }, '$$actorId']
+                    $eq: [
+                      { $trim: { input: '$name' } },
+                      { $trim: { input: { $replaceAll: { input: '$$actorName', find: '🐦 ', replacement: '' } } } }
+                    ]
                   }
                 }
               }
@@ -110,26 +49,39 @@ export default function socialRoutes(db) {
         pipeline.unshift({ $sort: { timestamp: -1 } });
       }
 
-      const avatars = await db.collection('avatars')
+      const posts = await db.collection('dungeon_log')
         .aggregate([
+          ...pipeline,
+          { $skip: skip },
+          { $limit: parseInt(limit) },
           {
-            $match: {
-              _id: { $in: allPosts.map(p => new ObjectId(p.actorId)) }
+            $project: {
+              _id: 1,
+              content: {
+                $replaceAll: {
+                  input: {
+                    $replaceAll: {
+                      input: '$result',
+                      find: '✅ Posted to X: "',
+                      replacement: ''
+                    }
+                  },
+                  find: '"',
+                  replacement: ''
+                }
+              },
+              timestamp: 1,
+              action: 1,
+              actor: 1,
+              target: 1,
+              avatar: 1,
+              likes: { $ifNull: ['$likes', 0] },
+              reposts: { $ifNull: ['$reposts', 0] },
+              likedBy: { $ifNull: ['$likedBy', []] },
+              repostedBy: { $ifNull: ['$repostedBy', []] }
             }
           }
         ]).toArray();
-
-      // Combine posts with avatar data and ensure thumbnails
-      const posts = allPosts.map(post => {
-        const avatar = avatars.find(a => a._id.toString() === post.actorId.toString());
-        return {
-          ...post,
-          avatar: avatar ? {
-            ...avatar,
-            thumbnailUrl: avatar.thumbnailUrl || avatar.imageUrl // Fallback to main image if no thumbnail
-          } : null
-        };
-      }).filter(post => post.avatar); // Only return posts with valid avatars
 
       res.json(posts);
     } catch (error) {
