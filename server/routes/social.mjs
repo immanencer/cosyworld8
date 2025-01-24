@@ -12,12 +12,20 @@ export default function socialRoutes(db) {
       let pipeline = [
         {
           $match: {
-            action: 'xpost',
-            result: { 
-              $exists: true, 
-              $ne: null,
-              $not: { $regex: '^(❌|x)', $options: 'i' }
-            },
+            $or: [
+              {
+                action: 'xpost',
+                result: { 
+                  $exists: true, 
+                  $ne: null,
+                  $not: { $regex: '^(❌|x)', $options: 'i' }
+                }
+              },
+              {
+                action: 'remember',
+                memory: { $exists: true, $ne: null }
+              }
+            ],
             actorId: { $exists: true }
           }
         },
@@ -55,16 +63,28 @@ export default function socialRoutes(db) {
             $project: {
               _id: 1,
               content: {
-                $replaceAll: {
-                  input: {
+                $cond: {
+                  if: { $eq: ['$action', 'remember'] },
+                  then: {
                     $replaceAll: {
-                      input: '$result',
-                      find: '✨ Posted to X and feed: ',
+                      input: '$memory',
+                      find: '[🧠 Memory generated: "',
                       replacement: ''
                     }
                   },
-                  find: '"',
-                  replacement: ''
+                  else: {
+                    $replaceAll: {
+                      input: {
+                        $replaceAll: {
+                          input: '$result',
+                          find: '✨ Posted to X and feed: ',
+                          replacement: ''
+                        }
+                      },
+                      find: '"',
+                      replacement: ''
+                    }
+                  }
                 }
               },
               timestamp: 1,
