@@ -1055,17 +1055,21 @@ async function loadSocialContent() {
                     ${post.content}
                   </p>
 
-                  ${
-                    post.postedToX
-                      ? `
-                        <span
-                          class="inline-flex items-center gap-1.5 text-blue-400 text-sm bg-blue-500/10 px-3 py-1 rounded-full"
-                        >
-                          <span class="text-xs">✨</span> Posted to X
-                        </span>
-                      `
-                      : ""
-                  }
+                  <!-- Post Status -->
+                  <div class="flex gap-2">
+                    <span class="inline-flex items-center gap-1.5 text-green-400 text-sm bg-green-500/10 px-3 py-1 rounded-full">
+                      <span class="text-xs">📱</span> Local Feed
+                    </span>
+                    ${
+                      post.postedToX
+                        ? `
+                          <span class="inline-flex items-center gap-1.5 text-blue-400 text-sm bg-blue-500/10 px-3 py-1 rounded-full">
+                            <span class="text-xs">🐦</span> Posted to X
+                          </span>
+                        `
+                        : ""
+                    }
+                  </div>
 
                   <!-- Like & Repost Buttons -->
                   <div

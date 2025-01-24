@@ -58,13 +58,7 @@ export default function socialRoutes(db) {
                 $replaceAll: {
                   input: {
                     $replaceAll: {
-                      input: {
-                        $replaceAll: {
-                          input: '$result',
-                          find: '✅ Posted to X: "',
-                          replacement: ''
-                        }
-                      },
+                      input: '$result',
                       find: '✨ Posted to X and feed: ',
                       replacement: ''
                     }
