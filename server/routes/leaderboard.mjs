@@ -1,30 +1,7 @@
-
 import { Router } from 'express';
 import { ObjectId } from 'mongodb';
 import models from '../../src/models.config.mjs';
 import { thumbnailService } from '../services/thumbnailService.mjs';
-
-// Helper function for avatar ancestry
-async function getAvatarAncestry(db, avatarId) {
-  const ancestry = [];
-  let currentAvatar = await db.collection('avatars').findOne(
-    { _id: new ObjectId(avatarId) },
-    { projection: { parents: 1 } }
-  );
-
-  while (currentAvatar?.parents?.length) {
-    const parentId = currentAvatar.parents[0];
-    const parent = await db.collection('avatars').findOne(
-      { _id: new ObjectId(parentId) },
-      { projection: { _id: 1, name: 1, imageUrl: 1, emoji: 1, parents: 1 } }
-    );
-    if (!parent) break;
-    ancestry.push(parent);
-    currentAvatar = parent;
-  }
-
-  return ancestry;
-}
 
 const rarityToTier = {
   legendary: 'S',
@@ -36,160 +13,53 @@ const rarityToTier = {
 export default function leaderboardRoutes(db) {
   const router = Router();
 
-  router.get('/minted', async (req, res) => {
-    try {
-      const mintedAvatars = await db
-        .collection('minted_nfts')
-        .aggregate([
-          {
-            $lookup: {
-              from: 'avatars',
-              localField: 'avatarId',
-              foreignField: '_id',
-              as: 'avatar',
-            },
-          },
-          { $unwind: '$avatar' },
-          {
-            $lookup: {
-              from: 'dungeon_stats',
-              localField: 'avatarId',
-              foreignField: 'avatarId',
-              as: 'stats',
-            },
-          },
-          { $unwind: { path: '$stats', preserveNullAndEmptyArrays: true } },
-          {
-            $project: {
-              _id: '$avatar._id',
-              name: '$avatar.name',
-              imageUrl: '$avatar.imageUrl',
-              thumbnailUrl: '$avatar.thumbnailUrl',
-              score: {
-                $add: [
-                  { $ifNull: ['$stats.wins', 0] },
-                  { $multiply: [{ $ifNull: ['$stats.hp', 0] }, 10] },
-                ],
-              },
-            },
-          },
-          { $sort: { score: -1 } },
-          { $limit: 100 },
-        ])
-        .toArray();
+  /**
+   * Helper function to fetch ancestry for an avatar
+   */
+  async function getAvatarAncestry(db, avatarId) {
+    const ancestry = [];
+    let currentAvatar = await db.collection('avatars').findOne(
+      { _id: new ObjectId(avatarId) },
+      { projection: { parents: 1 } }
+    );
 
-      res.json(mintedAvatars);
-    } catch (error) {
-      console.error('Minted leaderboard error:', error);
-      res.status(500).json({ error: error.message });
+    while (currentAvatar?.parents?.length) {
+      const parentId = currentAvatar.parents[0];
+      const parent = await db.collection('avatars').findOne(
+        { _id: new ObjectId(parentId) },
+        { projection: { _id: 1, name: 1, imageUrl: 1, emoji: 1, parents: 1 } }
+      );
+      if (!parent) break;
+      ancestry.push(parent);
+      currentAvatar = parent;
     }
-  });
 
+    return ancestry;
+  }
+
+  /**
+   * GET /leaderboard
+   * Fetches paginated leaderboard with most recent avatar per user
+   */
   router.get('/', async (req, res) => {
     try {
       const { tier, lastMessageCount, lastId, limit: limitStr } = req.query;
       const limit = Math.min(parseInt(limitStr, 10) || 24, 100);
+      const parsedCount = parseInt(lastMessageCount, 10) || 0;
 
       const pipeline = [
-        // Initial grouping to get message counts and recent activity
+        // Group messages by lowercase authorUsername
         {
           $group: {
             _id: { $toLower: '$authorUsername' },
             messageCount: { $sum: 1 },
             lastMessage: { $max: '$timestamp' },
-            recentMessages: {
-              $push: {
-                $cond: {
-                  if: {
-                    $gte: [
-                      '$timestamp',
-                      { $subtract: [new Date(), 1000 * 60 * 60 * 24] },
-                    ],
-                  },
-                  then: {
-                    content: { $substr: ['$content', 0, 200] },
-                    timestamp: '$timestamp',
-                  },
-                  else: null,
-                },
-              },
-            },
           },
         },
-        // Sort by message count for leaderboard
-        { $sort: { messageCount: -1 } },
-        // Lookup most recent avatar for each username
+        // Sort by messageCount DESC, then _id ASC for stable ordering
+        { $sort: { messageCount: -1, _id: 1 } },
+        // Pagination: skip items based on lastMessageCount and lastId
         {
-          $lookup: {
-            from: 'avatars',
-            let: { username: '$_id' },
-            pipeline: [
-              {
-                $match: {
-                  $expr: { $eq: [{ $toLower: '$name' }, '$$username'] }
-                }
-              },
-              { $sort: { createdAt: -1 } },
-              { $limit: 1 }
-            ],
-            as: 'avatar'
-          }
-        },
-        // Filter out users without avatars
-        { $match: { 'avatar.0': { $exists: true } } },
-        // Unwind the single avatar
-        { $unwind: '$avatar' },
-        {
-          $lookup: {
-            from: 'avatars',
-            let: { username: '$_id' },
-            pipeline: [
-              {
-                $match: {
-                  $expr: {
-                    $eq: [{ $toLower: '$name' }, '$$username'],
-                  },
-                },
-              },
-              { $sort: { createdAt: -1 } },
-            ],
-            as: 'variants',
-          },
-        },
-        { $match: { 'variants.0': { $exists: true } } },
-      ];
-
-      if (tier && tier !== 'All') {
-        if (tier === 'U') {
-          pipeline.push({
-            $match: {
-              $or: [
-                { 'variants.0.model': { $exists: false } },
-                { 'variants.0.model': null },
-                {
-                  'variants.0.model': {
-                    $nin: models.map((m) => m.model),
-                  },
-                },
-              ],
-            },
-          });
-        } else {
-          pipeline.push({
-            $match: {
-              'variants.0.model': {
-                $in: models
-                  .filter((m) => rarityToTier[m.rarity] === tier)
-                  .map((m) => m.model),
-              },
-            },
-          });
-        }
-      }
-
-      if (lastMessageCount && lastId) {
-        const parsedCount = parseInt(lastMessageCount, 10) || 0;
-        pipeline.push({
           $match: {
             $or: [
               { messageCount: { $lt: parsedCount } },
@@ -201,64 +71,91 @@ export default function leaderboardRoutes(db) {
               },
             ],
           },
-        });
-      }
+        },
+        // Limit the results to (limit + 1) to check for more pages
+        { $limit: limit + 1 },
+        // Lookup the most recent avatar for each username
+        {
+          $lookup: {
+            from: 'avatars',
+            let: { username: '$_id' },
+            pipeline: [
+              {
+                $match: {
+                  $expr: { $eq: [{ $toLower: '$name' }, '$$username'] },
+                },
+              },
+              { $sort: { createdAt: -1 } },
+              { $limit: 1 },
+            ],
+            as: 'avatar',
+          },
+        },
+        // Filter out users without avatars
+        { $match: { 'avatar.0': { $exists: true } } },
+        // Unwind the avatar array to simplify processing
+        { $unwind: '$avatar' },
+      ];
 
-      pipeline.push({ $limit: limit + 1 });
+      // Optional: Filter by tier
+      if (tier && tier !== 'All') {
+        if (tier === 'U') {
+          pipeline.push({
+            $match: {
+              $or: [
+                { 'avatar.model': { $exists: false } },
+                { 'avatar.model': null },
+                { 'avatar.model': { $nin: models.map((m) => m.model) } },
+              ],
+            },
+          });
+        } else {
+          const validModels = models
+            .filter((m) => rarityToTier[m.rarity] === tier)
+            .map((m) => m.model);
+
+          pipeline.push({
+            $match: { 'avatar.model': { $in: validModels } },
+          });
+        }
+      }
 
       const results = await db
         .collection('messages')
         .aggregate(pipeline, { allowDiskUse: true })
         .toArray();
 
-      const details = await Promise.all(
+      const avatars = await Promise.all(
         results.map(async (result) => {
-          const variants = result.variants || [];
-          const primaryAvatar = variants[0];
-          if (!primaryAvatar) return null;
+          const avatar = result.avatar;
 
-          const thumbs = await Promise.all(
-            variants.map((v) =>
-              thumbnailService.generateThumbnail(v.imageUrl)
-            )
-          );
-
+          // Get ancestry and stats for the avatar
           const [ancestry, stats] = await Promise.all([
-            getAvatarAncestry(db, primaryAvatar._id),
+            getAvatarAncestry(db, avatar._id),
             db.collection('dungeon_stats').findOne({
               $or: [
-                { avatarId: primaryAvatar._id },
-                { avatarId: primaryAvatar._id.toString() },
+                { avatarId: avatar._id },
+                { avatarId: avatar._id.toString() },
               ],
             }),
           ]);
 
           return {
-            ...primaryAvatar,
-            variants: variants.map((v, i) => ({
-              ...v,
-              thumbnailUrl: thumbs[i],
-            })),
+            ...avatar,
             ancestry,
             messageCount: result.messageCount,
             lastMessage: result.lastMessage,
-            recentMessages: (result.recentMessages || [])
-              .filter((m) => m !== null)
-              .slice(0, 5),
             stats: stats || { attack: 0, defense: 0, hp: 0 },
-            score: result.messageCount,
           };
         })
       );
 
-      const filtered = details.filter(Boolean);
       const hasMore = results.length > limit;
       const lastItem = results.slice(0, limit).pop();
 
-      return res.json({
-        avatars: filtered.slice(0, limit),
+      res.json({
+        avatars: avatars.slice(0, limit),
         hasMore,
-        total: filtered.length,
         lastMessageCount: lastItem?.messageCount || null,
         lastId: lastItem?._id || null,
       });
