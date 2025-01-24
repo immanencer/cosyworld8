@@ -129,7 +129,8 @@ export class DungeonService {
       await this.dungeonLog.logAction({
         channelId: message.channel.id,
         action: command,
-        actor: message.author.id,
+        actorId: message.author.id,
+        actor: message.author.username,
         actorName: `${tool.emoji || '🛠️'} ${message.author.username} used ${command}.`,
         target: params[0],
         result

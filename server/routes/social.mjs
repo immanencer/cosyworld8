@@ -24,18 +24,12 @@ export default function socialRoutes(db) {
         {
           $lookup: {
             from: 'avatars',
-            let: { actorId: { $toString: '$actor' } },
+            let: { actorId: '$actorId' },
             pipeline: [
               {
                 $match: {
                   $expr: {
-                    $eq: ['$_id', { 
-                      $cond: {
-                        if: { $eq: [{ $strLenCP: '$$actorId' }, 24] },
-                        then: { $toObjectId: '$$actorId' },
-                        else: null
-                      }
-                    }]
+                    $eq: ['$_id', { $toObjectId: '$$actorId' }]
                   }
                 }
               }
