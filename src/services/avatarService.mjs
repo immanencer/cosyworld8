@@ -253,6 +253,8 @@ export class AvatarGenerationService {
           "${userPrompt}".
           
           Please respond in the following JSON format. ONLY provide valid JSON as a response.
+
+          If the prompt contains any language other than English, please provide ALL details in that language and specify that this is the avatar's first langage in their personality.
           Creatively fill in any details without comment, keep all responses to no more than four sentences. 
           {
             "name": "<name the character>",
