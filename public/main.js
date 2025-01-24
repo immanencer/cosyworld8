@@ -710,23 +710,52 @@ async function showAvatarDetails(avatarId) {
       <div class="flex flex-col items-center relative bg-parchment text-gray-900">
         <!-- Header Section -->
         <div class="w-full p-6 bg-gray-800 text-white">
-          <div class="flex items-center gap-4">
-            <img
-              src="${avatarResponse.imageUrl}"
-              alt="${avatarResponse.name}"
-              class="w-32 h-32 object-cover rounded-full border-4 border-gray-600"
-            >
-            <div>
-              <h1 class="text-3xl font-bold mb-1">${avatarResponse.name}</h1>
-              <div class="flex items-center gap-2">
-                <span
-                  class="px-2 py-1 rounded text-xs font-bold ${getTierColor(
-                    avatarResponse.model,
-                  )}"
-                >
-                  Tier ${getTierFromModel(avatarResponse.model)}
-                </span>
+          <div class="flex items-center justify-between gap-4">
+            <div class="flex items-center gap-4">
+              <img
+                src="${avatarResponse.imageUrl}"
+                alt="${avatarResponse.name}"
+                class="w-32 h-32 object-cover rounded-full border-4 border-gray-600"
+              >
+              <div>
+                <h1 class="text-3xl font-bold mb-1">${avatarResponse.name}</h1>
+                <div class="flex items-center gap-2">
+                  <span
+                    class="px-2 py-1 rounded text-xs font-bold ${getTierColor(
+                      avatarResponse.model,
+                    )}"
+                  >
+                    Tier ${getTierFromModel(avatarResponse.model)}
+                  </span>
+                </div>
               </div>
+            </div>
+            <div class="flex-shrink-0">
+              ${
+                !state.wallet
+                  ? `
+                    <button
+                      onclick="connectWallet()"
+                      class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-lg transition-colors text-sm"
+                    >
+                      Connect Wallet
+                    </button>
+                  `
+                  : !claimed
+                    ? `
+                      <button
+                        onclick="claimAvatar('${avatarId}')"
+                        class="px-4 py-2 bg-green-600 hover:bg-green-700 text-white font-bold rounded-lg transition-colors text-sm"
+                      >
+                        Claim Avatar
+                      </button>
+                    `
+                    : `
+                      <div class="px-4 py-2 bg-green-600/20 text-green-400 rounded-lg text-sm">
+                        Avatar Claimed
+                      </div>
+                    `
+              }
             </div>
           </div>
         </div>
@@ -888,96 +917,7 @@ async function showAvatarDetails(avatarId) {
           </div>
         </div>
 
-        <!-- Claim or Connect Buttons -->
-        <div class="space-y-4 w-full p-4">
-          ${
-            !state.wallet
-              ? `
-                <button
-                  onclick="connectWallet()"
-                  class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-lg transition-colors"
-                >
-                  <div class="flex items-center justify-center gap-2">
-                    <svg
-                      class="w-5 h-5"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
-                        stroke-width="2"
-                        d="M12 15v2m-6 4h12a2 2 0
-                           002-2v-6a2 2 0
-                           00-2-2H6a2 2 0
-                           00-2 2v6a2 2 0
-                           002 2zm10-10V7a4 4 0
-                           00-8 0v4h8z"
-                      />
-                    </svg>
-                    Connect Wallet
-                  </div>
-                </button>
-              `
-              : ""
-          }
-
-          ${
-            state.wallet && !claimed
-              ? `
-                <button
-                  onclick="claimAvatar('${avatarId}')"
-                  class="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-4 rounded-lg transition-colors"
-                >
-                  <div class="flex items-center justify-center gap-2">
-                    <svg
-                      class="w-5 h-5"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
-                        stroke-width="2"
-                        d="M9 12l2 2 4-4m6 2a9 9 0
-                           11-18 0 9 9 0
-                           0118 0z"
-                      />
-                    </svg>
-                    Claim Avatar &amp; Connect X Account
-                  </div>
-                </button>
-              `
-              : ""
-          }
-
-          ${
-            claimed
-              ? `
-                <div class="bg-green-600/20 text-green-400 py-3 px-4 rounded-lg text-center">
-                  <div class="flex items-center justify-center gap-2">
-                    <svg
-                      class="w-5 h-5"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
-                        stroke-width="2"
-                        d="M5 13l4 4L19 7"
-                      />
-                    </svg>
-                    Avatar claimed and X account connected
-                  </div>
-                </div>
-              `
-              : ""
-          }
-        </div>
+        
       </div>
 
       <button
