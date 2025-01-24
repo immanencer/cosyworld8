@@ -12,6 +12,11 @@ export default function socialRoutes(db) {
 
       let pipeline = [
         {
+          $match: {
+            action: 'xpost'
+          }
+        },
+        {
           $lookup: {
             from: 'avatars',
             let: { actorName: '$actor' },
