@@ -30,6 +30,10 @@ async function initializeApp() {
     const db = client.db(mongoDbName);
     console.log(`Connected to MongoDB database: ${mongoDbName}`);
 
+    // Start scoring service
+    await import('../src/services/scoring/scoringWorker.mjs');
+    console.log('Started scoring service');
+
     // Initialize indexes
     await initializeIndexes(db);
 

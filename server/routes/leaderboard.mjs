@@ -57,6 +57,16 @@ export default function leaderboardRoutes(db) {
           }
         },
 
+        // Join with avatar_scores
+        {
+          $lookup: {
+            from: 'avatar_scores',
+            localField: '_id',
+            foreignField: 'avatarId',
+            as: 'scoreData'
+          }
+        },
+
         // Project final shape
         {
           $project: {
@@ -65,7 +75,7 @@ export default function leaderboardRoutes(db) {
             imageUrl: 1,
             thumbnailUrl: 1,
             model: 1,
-            score: 1,
+            score: { $arrayElemAt: ['$scoreData.score', 0] },
             lastActive: 1,
             stats: { $arrayElemAt: ['$stats', 0] }
           }
