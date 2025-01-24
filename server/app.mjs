@@ -3,7 +3,9 @@ import cors from 'cors';
 import { MongoClient } from 'mongodb';
 
 // External route modules
-import othersRoutes from './routes/others.mjs';
+import leaderboardRoutes from './routes/leaderboard.mjs';
+import dungeonRoutes from './routes/dungeon.mjs';
+import healthRoutes from './routes/health.mjs';
 import avatarRoutes from './routes/avatars.mjs';
 import tribeRoutes from './routes/tribes.mjs';
 import xauthRoutes from './routes/xauth.mjs';
@@ -32,7 +34,9 @@ async function initializeApp() {
     await initializeIndexes(db);
 
     // Mount routes with database connection
-    app.use('/api', othersRoutes(db));
+    app.use('/api/leaderboard', leaderboardRoutes(db));
+    app.use('/api/dungeon', dungeonRoutes(db));
+    app.use('/api/health', healthRoutes(db));
     app.use('/api/avatars', avatarRoutes(db));
     app.use('/api/tribes', tribeRoutes(db));
     app.use('/auth/x', xauthRoutes(db));
