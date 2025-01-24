@@ -526,11 +526,13 @@ async function loadActionLog() {
  * Leaderboard Tab
  */
 async function loadLeaderboard() {
-  const scrollState = {
+  window.scrollState = window.scrollState || {
     page: 1,
     loading: false,
-    hasMore: true,
+    hasMore: true
   };
+  
+  const scrollState = window.scrollState;
 
   try {
     content.innerHTML = `
@@ -653,13 +655,19 @@ async function loadLeaderboard() {
     // Set up infinite scroll
     const observer = new IntersectionObserver(
       (entries) => {
-        if (entries[0].isIntersecting) {
+        if (entries[0].isIntersecting && !scrollState.loading && scrollState.hasMore) {
           loadMore();
         }
       },
-      { threshold: 0.5 },
+      { threshold: 0.1, rootMargin: '100px' }
     );
     observer.observe(loader);
+    
+    // Initial load
+    if (!scrollState.initialized) {
+      scrollState.initialized = true;
+      await loadMore();
+    }
   } catch (error) {
     console.error("Failed to load leaderboard:", error);
     content.innerHTML = `
