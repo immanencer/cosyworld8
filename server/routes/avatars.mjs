@@ -299,14 +299,18 @@ const [ancestry, stats] = await Promise.all([
       let query;
 
       try {
-        // First attempt to use as ObjectId
-        query = { _id: new ObjectId(avatarId) };
-      } catch {
-        // If not a valid ObjectId, try as string
+        query = { 
+          $or: [
+            { _id: new ObjectId(avatarId) },
+            { _id: avatarId },
+            { name: avatarId }
+          ]
+        };
+      } catch (err) {
         query = { 
           $or: [
             { _id: avatarId },
-            { name: avatarId } // Also try matching by name
+            { name: avatarId }
           ]
         };
       }
