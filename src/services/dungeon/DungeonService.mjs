@@ -111,7 +111,8 @@ export class DungeonService {
         await this.dungeonLog.logAction({
           channelId: message.channel.id,
           action: command,
-          actor: message.author.username,
+          actor: message.author.id,
+          actorName: message.author.username,
           target: params[0],
           result,
           isCustom: true

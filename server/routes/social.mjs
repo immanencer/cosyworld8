@@ -22,23 +22,18 @@ export default function socialRoutes(db) {
           }
         },
         {
-          $addFields: {
-            actorId: {
-              $toObjectId: {
-                $replaceAll: {
-                  input: '$actor',
-                  find: ' used xpost.',
-                  replacement: ''
-                }
-              }
-            }
-          }
-        },
-        {
           $lookup: {
             from: 'avatars',
-            localField: 'actorId',
-            foreignField: '_id',
+            let: { actorId: '$actor' },
+            pipeline: [
+              {
+                $match: {
+                  $expr: {
+                    $eq: ['$_id', { $toObjectId: '$$actorId' }]
+                  }
+                }
+              }
+            ],
             as: 'avatar'
           }
         },
@@ -75,6 +70,7 @@ export default function socialRoutes(db) {
               timestamp: 1,
               action: 1,
               actor: 1,
+              actorName: 1,
               target: 1,
               avatar: 1,
               likes: { $ifNull: ['$likes', 0] },
@@ -94,17 +90,20 @@ export default function socialRoutes(db) {
   router.post('/posts/:id/like', async (req, res) => {
     try {
       const { id } = req.params;
-      const { walletAddress } = req.body;
+      const { walletAddress, avatarId } = req.body;
       
-      if (!walletAddress) {
-        return res.status(400).json({ error: 'Wallet address required' });
+      if (!walletAddress || !avatarId) {
+        return res.status(400).json({ error: 'Wallet address and avatar ID required' });
       }
 
       await db.collection('dungeon_log').updateOne(
         { _id: new ObjectId(id) },
         { 
           $inc: { likes: 1 },
-          $addToSet: { likedBy: walletAddress }
+          $addToSet: { 
+            likedBy: walletAddress,
+            likedByAvatars: avatarId
+          }
         }
       );
 
@@ -117,17 +116,20 @@ export default function socialRoutes(db) {
   router.post('/posts/:id/repost', async (req, res) => {
     try {
       const { id } = req.params;
-      const { walletAddress } = req.body;
+      const { walletAddress, avatarId } = req.body;
 
-      if (!walletAddress) {
-        return res.status(400).json({ error: 'Wallet address required' });
+      if (!walletAddress || !avatarId) {
+        return res.status(400).json({ error: 'Wallet address and avatar ID required' });
       }
 
       await db.collection('dungeon_log').updateOne(
         { _id: new ObjectId(id) },
         { 
           $inc: { reposts: 1 },
-          $addToSet: { repostedBy: walletAddress }
+          $addToSet: { 
+            repostedBy: walletAddress,
+            repostedByAvatars: avatarId
+          }
         }
       );
 
