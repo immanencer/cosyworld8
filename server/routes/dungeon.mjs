@@ -53,33 +53,21 @@ export default function dungeonRoutes(db) {
       const enrichedLog = await Promise.all(
         combatLog.map(async (entry) => {
           const [actor, target] = await Promise.all([
-            db.collection('avatars').findOne(
-              { name: entry.actor },
-              { projection: { _id: 1, name: 1, imageUrl: 1, emoji: 1 } }
-            ) ||
-            db.collection('avatars').findOne(
-              {
-                name: {
-                  $regex: `^${escapeRegExp(entry.actor)}$`,
-                  $options: 'i',
-                },
-              },
-              { projection: { _id: 1, name: 1, imageUrl: 1, emoji: 1 } }
-            ),
+            db.collection('avatars').findOne({
+              $or: [
+                { _id: entry.actorId ? new ObjectId(entry.actorId) : null },
+                { name: entry.actor },
+                { name: { $regex: `^${escapeRegExp(entry.actor)}$`, $options: 'i' } }
+              ]
+            }, { projection: { _id: 1, name: 1, imageUrl: 1, emoji: 1 } }),
             entry.target
-              ? db.collection('avatars').findOne(
-                { name: entry.target },
-                { projection: { _id: 1, name: 1, imageUrl: 1, emoji: 1 } }
-              ) ||
-              db.collection('avatars').findOne(
-                {
-                  name: {
-                    $regex: `^${escapeRegExp(entry.target)}$`,
-                    $options: 'i',
-                  },
-                },
-                { projection: { _id: 1, name: 1, imageUrl: 1, emoji: 1 } }
-              )
+              ? db.collection('avatars').findOne({
+                $or: [
+                  { _id: entry.targetId ? new ObjectId(entry.targetId) : null },
+                  { name: entry.target },
+                  { name: { $regex: `^${escapeRegExp(entry.target)}$`, $options: 'i' } }
+                ]
+              }, { projection: { _id: 1, name: 1, imageUrl: 1, emoji: 1 } })
               : null,
           ]);
 
