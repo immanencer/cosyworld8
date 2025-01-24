@@ -26,12 +26,6 @@ const tabButtons = document.querySelectorAll("[data-tab]");
 //
 // HELPER FUNCTIONS
 //
-
-/**
- * Fetch JSON with error checking.
- * @param {string} url
- * @returns {Promise<any>} JSON data
- */
 const fetchJSON = async (url) => {
   const response = await fetch(url);
   if (!response.ok) {
@@ -40,21 +34,11 @@ const fetchJSON = async (url) => {
   return response.json();
 };
 
-/**
- * Compute DnD-style ability modifier.
- * @param {number} score
- * @returns {number}
- */
 const getModifier = (score) => {
   if (typeof score !== "number") return 0;
   return Math.floor((score - 10) / 2);
 };
 
-/**
- * Determine tier letter from model name.
- * @param {string} model
- * @returns {string} 'S', 'A', 'B', 'C', or 'U'
- */
 function getTierFromModel(model) {
   if (!model) return "U"; // Unknown
   if (model.includes("gpt-4")) return "S";
@@ -63,11 +47,6 @@ function getTierFromModel(model) {
   return "C";
 }
 
-/**
- * Determine color class from tier.
- * @param {string} model
- * @returns {string} Tailwind CSS class
- */
 function getTierColor(model) {
   const tier = getTierFromModel(model);
   const colors = {
@@ -83,13 +62,6 @@ function getTierColor(model) {
 //
 // RENDER FUNCTIONS
 //
-
-/**
- * Render a small stats block for actions (actors or targets).
- * @param {Object} stats
- * @param {string} title
- * @returns {string} HTML
- */
 const renderStats = (stats = {}, title = "Details") => {
   if (
     !stats ||
@@ -139,11 +111,6 @@ const renderStats = (stats = {}, title = "Details") => {
   `;
 };
 
-/**
- * Render a single avatar card for display.
- * @param {Object} avatar
- * @returns {string} HTML
- */
 function renderAvatar(avatar) {
   return `
     <div class="bg-gray-800 rounded-lg p-4 hover:bg-gray-700 transition">
@@ -202,7 +169,6 @@ async function connectWallet() {
       return;
     }
 
-    // Tiny delay to ensure the provider is ready
     await new Promise((resolve) => setTimeout(resolve, 100));
 
     const resp = await phantomProvider.connect();
@@ -289,7 +255,6 @@ async function claimAvatar(avatarId) {
       throw new Error(error.error || "Failed to claim avatar");
     }
 
-    // Close modal and reload content
     closeAvatarModal();
     await loadContent();
   } catch (error) {
@@ -301,10 +266,6 @@ async function claimAvatar(avatarId) {
 //
 // LOADERS PER TAB
 //
-
-/**
- * Owned Avatars Tab
- */
 async function loadOwnedAvatars() {
   if (!state.wallet) {
     content.innerHTML = `
@@ -355,9 +316,6 @@ async function loadOwnedAvatars() {
   }
 }
 
-/**
- * Actions Tab
- */
 async function loadActionLog() {
   try {
     const actions = await fetchJSON("/api/dungeon/log");
@@ -371,146 +329,177 @@ async function loadActionLog() {
     }
 
     content.innerHTML = actions
-      .map(
-        (action) => `
-        <div class="bg-gray-800 p-4 mb-2 rounded-lg hover:bg-gray-700 transition-colors">
-          <div class="flex flex-col sm:flex-row items-center gap-4">
-            ${
-              action.actorThumbnailUrl
-                ? `<img
-                    src="${action.actorThumbnailUrl}"
-                    alt="${action.actorName}"
-                    class="w-12 h-12 rounded-full"
-                  >`
-                : ""
-            }
-            <div class="flex-1">
-              <div class="flex items-center justify-between">
-                <div>
-                  <span class="font-semibold">${action.actorName}</span>
-                  <span class="text-gray-400">
+      .map((action) => {
+        // Clean up the "result" text (often has a prefix like "✨ Posted to X and feed: ...")
+        const resultText = action.result
+          ? action.result.replace(/^✨ Posted to X and feed:\s*/, "")
+          : "";
+
+        // Clean up the "memory" text (often has a bracketed prefix like "[🧠 Memory generated: "...")
+        const memoryText = action.memory
+          ? action.memory.replace(/\[🧠 Memory generated:\s*"(.*?)"\]$/s, "$1")
+          : "";
+
+        // Decide whether to label the block as "Post Content" (for xpost/post) or "Result"
+        const isPostAction =
+          action.action === "xpost" || action.action === "post";
+        const headingForResult = isPostAction ? "Post Content" : "Result";
+
+        // Hide “memory” block if it duplicates the exact same text we already displayed
+        const showMemory = memoryText && memoryText !== resultText;
+
+        return `
+          <div class="bg-gray-800 p-4 mb-2 rounded-lg hover:bg-gray-700 transition-colors">
+            <div class="flex flex-col sm:flex-row items-center gap-4">
+              ${
+                action.actorThumbnailUrl
+                  ? `<img
+                      src="${action.actorThumbnailUrl}"
+                      alt="${action.actorName}"
+                      class="w-12 h-12 rounded-full"
+                    >`
+                  : ""
+              }
+              <div class="flex-1">
+                <div class="flex items-center justify-between">
+                  <div>
+                    <span class="font-semibold">${action.actorName}</span>
+                    <span class="text-gray-400">
+                      ${
+                        action.action === "attack"
+                          ? "⚔️ attacked"
+                          : action.action === "defend"
+                            ? "🛡️ took a defensive stance"
+                            : action.action === "move"
+                              ? "🚶‍♂️ moved to"
+                              : action.action === "remember"
+                                ? "💭 remembered"
+                                : action.action === "xpost"
+                                  ? "🐦 posted"
+                                  : `used ${action.action}`
+                      }
+                    </span>
                     ${
-                      action.action === "attack"
-                        ? "⚔️ attacked"
-                        : action.action === "defend"
-                          ? "🛡️ took a defensive stance"
-                          : action.action === "move"
-                            ? "🚶‍♂️ moved to"
-                            : action.action === "remember"
-                              ? "💭 remembered"
-                              : action.action === "xpost"
-                                ? "🐦 posted"
-                                : `used ${action.action}`
+                      (action.action === "attack" ||
+                        action.action === "move") &&
+                      action.targetName
+                        ? `<span class="font-semibold"> → ${action.targetName}</span>`
+                        : ""
                     }
-                  </span>
+                  </div>
+                  <button
+                    onclick="this.closest('.bg-gray-800').querySelector('.action-details').classList.toggle('hidden')"
+                    class="text-gray-400 hover:text-white transition-colors"
+                  >
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      class="h-5 w-5"
+                      fill="currentColor"
+                      viewBox="0 0 20 20"
+                    >
+                      <path
+                        fill-rule="evenodd"
+                        clip-rule="evenodd"
+                        d="M5.293 7.293a1 1 0
+                           011.414 0L10 10.586l3.293-3.293a1 1 0
+                           011.414 1.414l-4 4a1 1 0
+                           01-1.414 0l-4-4a1 1 0
+                           010-1.414z"
+                      />
+                    </svg>
+                  </button>
+                </div>
+                <div class="text-sm text-gray-500">
+                  ${new Date(action.timestamp).toLocaleString()}
+                </div>
+
+                <!-- Collapsible details -->
+                <div class="action-details hidden mt-4 p-3 bg-gray-900 rounded-lg">
                   ${
-                    action.action !== "defend" && action.targetName
-                      ? `<span class="font-semibold"> → ${action.targetName}</span>`
+                    // If it's an attack/defend, show stats
+                    ["attack", "defend"].includes(action.action)
+                      ? `
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          ${renderStats(action.actorStats, "⚔️ Actor Stats")}
+                          ${
+                            action.targetName
+                              ? renderStats(
+                                  action.targetStats,
+                                  "Target Details",
+                                )
+                              : ""
+                          }
+                        </div>
+                      `
+                      : ""
+                  }
+
+                  ${
+                    // If there's a location image (e.g., from a move action), show it
+                    (action.action === "move" && action.targetImageUrl) ||
+                    (action.location && action.location.imageUrl)
+                      ? `
+                        <div class="mt-4">
+                          <h4 class="font-semibold mb-2">
+                            ${action.location?.name || "Location"}
+                          </h4>
+                          <img
+                            src="${
+                              action.location?.imageUrl || action.targetImageUrl
+                            }"
+                            alt="${action.location?.name || "Location"}"
+                            class="w-full h-48 object-cover rounded-lg"
+                          >
+                          ${
+                            action.location?.description
+                              ? `<p class="mt-2 text-sm text-gray-400">
+                                  ${action.location.description}
+                                </p>`
+                              : ""
+                          }
+                        </div>
+                      `
+                      : ""
+                  }
+
+                  ${
+                    resultText
+                      ? `
+                        <div class="mt-4">
+                          <h4 class="font-semibold mb-2">📝 ${headingForResult}</h4>
+                          <p class="text-gray-300 whitespace-pre-wrap break-words">${resultText}</p>
+                        </div>
+                      `
+                      : ""
+                  }
+
+                  ${
+                    showMemory
+                      ? `
+                        <div class="mt-4">
+                          <h4 class="font-semibold mb-2">Memory</h4>
+                          <p class="text-gray-300 whitespace-pre-wrap break-words">${memoryText}</p>
+                        </div>
+                      `
+                      : ""
+                  }
+
+                  ${
+                    action.tweet
+                      ? `
+                        <div class="mt-4">
+                          <h4 class="font-semibold mb-2">Posted to X</h4>
+                          <p class="text-gray-300">${action.tweet}</p>
+                        </div>
+                      `
                       : ""
                   }
                 </div>
-                <button
-                  onclick="this.closest('.bg-gray-800').querySelector('.action-details').classList.toggle('hidden')"
-                  class="text-gray-400 hover:text-white transition-colors"
-                >
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    class="h-5 w-5"
-                    fill="currentColor"
-                    viewBox="0 0 20 20"
-                  >
-                    <path
-                      fill-rule="evenodd"
-                      clip-rule="evenodd"
-                      d="M5.293 7.293a1 1 0
-                         011.414 0L10 10.586l3.293-3.293a1 1 0
-                         011.414 1.414l-4 4a1 1 0
-                         01-1.414 0l-4-4a1 1 0
-                         010-1.414z"
-                    />
-                  </svg>
-                </button>
-              </div>
-              <div class="text-sm text-gray-500">
-                ${new Date(action.timestamp).toLocaleString()}
-              </div>
-
-              <!-- Collapsible details -->
-              <div class="action-details hidden mt-4 p-3 bg-gray-900 rounded-lg">
-                ${
-                  ["attack", "defend"].includes(action.action)
-                    ? `
-                      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        ${renderStats(action.actorStats, "⚔️ Actor Stats")}
-                        ${
-                          action.targetName
-                            ? renderStats(action.targetStats, "Target Details")
-                            : ""
-                        }
-                      </div>
-                    `
-                    : ""
-                }
-                ${
-                  (action.action === "move" && action.targetImageUrl) ||
-                  (action.location && action.location.imageUrl)
-                    ? `
-                      <div class="mt-4">
-                        <h4 class="font-semibold mb-2">
-                          ${action.location?.name || "Location"}
-                        </h4>
-                        <img
-                          src="${action.location?.imageUrl || action.targetImageUrl}"
-                          alt="${action.location?.name || "Location"}"
-                          class="w-full h-48 object-cover rounded-lg"
-                        >
-                        ${
-                          action.location?.description
-                            ? `<p class="mt-2 text-sm text-gray-400">
-                                ${action.location.description}
-                              </p>`
-                            : ""
-                        }
-                      </div>
-                    `
-                    : ""
-                }
-                ${
-                  action.result
-                    ? `
-                      <div class="mt-4">
-                        <h4 class="font-semibold mb-2">📝 Result</h4>
-                        <p class="text-gray-300">${action.result.replace(/^✨ Posted to X and feed: /, '')}</p>
-                      </div>
-                    `
-                    : ""
-                }
-                ${
-                  action.memory
-                    ? `
-                      <div class="mt-4">
-                        <h4 class="font-semibold mb-2">Memory</h4>
-                        <p class="text-gray-300">${action.memory.replace(/\[🧠 Memory generated: "(.*?)"\]$/g, '$1')}</p>
-                      </div>
-                    `
-                    : ""
-                }
-                ${
-                  action.tweet
-                    ? `
-                      <div class="mt-4">
-                        <h4 class="font-semibold mb-2">Posted to X</h4>
-                        <p class="text-gray-300">${action.tweet}</p>
-                      </div>
-                    `
-                    : ""
-                }
               </div>
             </div>
           </div>
-        </div>
-      `,
-      )
+        `;
+      })
       .join("");
   } catch (error) {
     console.error("Action log loading error:", error);
@@ -522,11 +511,7 @@ async function loadActionLog() {
   }
 }
 
-/**
- * Leaderboard Tab
- */
 async function loadLeaderboard() {
-  // Reset scroll state when entering leaderboard tab
   if (state.activeTab === "leaderboard") {
     window.scrollState = {
       page: 1,
@@ -620,19 +605,16 @@ async function loadLeaderboard() {
           leaderboardItems.appendChild(div);
         });
 
-        // Check if there's another page
         scrollState.hasMore = data.avatars.length === 12;
         scrollState.page++;
       } catch (error) {
         console.error("Failed to load more leaderboard items:", error);
 
-        // Clear any existing error messages
         const existingError = leaderboardItems.querySelector(".error-message");
         if (existingError) {
           existingError.remove();
         }
 
-        // Show error message with retry button
         const errorDiv = document.createElement("div");
         errorDiv.className =
           "text-red-500 text-center py-4 error-message col-span-full";
@@ -672,7 +654,6 @@ async function loadLeaderboard() {
     );
     observer.observe(loader);
 
-    // Initial load
     if (!scrollState.initialized) {
       scrollState.initialized = true;
       await loadMore();
@@ -687,9 +668,6 @@ async function loadLeaderboard() {
   }
 }
 
-//
-// AVATAR DETAILS MODAL (used in Leaderboard tab, etc.)
-//
 async function showAvatarDetails(avatarId) {
   const modal = document.getElementById("avatar-modal");
   const modalContent = document.getElementById("modal-content");
@@ -712,9 +690,7 @@ async function showAvatarDetails(avatarId) {
       fetchJSON(`/api/avatars/${avatarId}/stats`),
     ]);
 
-    // Merge stats into avatar response
     avatarResponse.stats = statsResponse;
-
     avatarResponse.narratives = narrativesResponse?.narratives || [];
     avatarResponse.actions = actionsResponse?.actions || [];
 
@@ -906,21 +882,21 @@ async function showAvatarDetails(avatarId) {
                       .slice(0, 3)
                       .map(
                         (action) => `
-                    <div class="text-sm text-gray-300">
-                      ${
-                        action.action === "attack"
-                          ? "⚔️"
-                          : action.action === "defend"
-                            ? "🛡️"
-                            : action.action === "move"
-                              ? "🚶"
-                              : action.action === "remember"
-                                ? "💭"
-                                : "❓"
-                      }
-                      ${action.description || action.action}
-                    </div>
-                  `,
+                          <div class="text-sm text-gray-300">
+                            ${
+                              action.action === "attack"
+                                ? "⚔️"
+                                : action.action === "defend"
+                                  ? "🛡️"
+                                  : action.action === "move"
+                                    ? "🚶"
+                                    : action.action === "remember"
+                                      ? "💭"
+                                      : "❓"
+                            }
+                            ${action.description || action.action}
+                          </div>
+                        `,
                       )
                       .join("")
                   : '<div class="text-gray-500 text-sm">No recent actions recorded.</div>'
@@ -955,7 +931,9 @@ async function showAvatarDetails(avatarId) {
     modalContent.innerHTML = `
       <div class="text-center py-8">
         <div class="text-red-500 font-semibold mb-4">
-          Error loading avatar details: ${error.message || "Unknown error occurred"}
+          Error loading avatar details: ${
+            error.message || "Unknown error occurred"
+          }
         </div>
         <button 
           onclick="closeAvatarModal()" 
@@ -973,7 +951,7 @@ function closeAvatarModal() {
   modal.classList.add("hidden");
 }
 
-// Close modal when clicking outside
+// Close modal on backdrop click
 document.addEventListener("click", (e) => {
   const modal = document.getElementById("avatar-modal");
   if (e.target === modal) {
@@ -1051,19 +1029,27 @@ async function loadSocialContent() {
                   </div>
 
                   <!-- Post Content -->
-                  <p class="mb-4 text-lg text-gray-100">
+                  <p 
+                    class="mb-4 text-lg text-gray-100 whitespace-pre-wrap break-words leading-relaxed"
+                  >
                     ${post.content}
                   </p>
 
-                  <!-- Post Status -->
-                  <div class="flex gap-2">
-                    <span class="inline-flex items-center gap-1.5 text-green-400 text-sm bg-green-500/10 px-3 py-1 rounded-full">
+                  <!-- Post Status Badges -->
+                  <div class="flex gap-2 mb-4">
+                    <!-- Always a 'Local Feed' indicator -->
+                    <span 
+                      class="inline-flex items-center gap-1.5 text-green-400 text-sm bg-green-500/10 px-3 py-1 rounded-full"
+                    >
                       <span class="text-xs">📱</span> Local Feed
                     </span>
+
                     ${
                       post.postedToX
                         ? `
-                          <span class="inline-flex items-center gap-1.5 text-blue-400 text-sm bg-blue-500/10 px-3 py-1 rounded-full">
+                          <span 
+                            class="inline-flex items-center gap-1.5 text-blue-400 text-sm bg-blue-500/10 px-3 py-1 rounded-full"
+                          >
                             <span class="text-xs">🐦</span> Posted to X
                           </span>
                         `
@@ -1073,7 +1059,7 @@ async function loadSocialContent() {
 
                   <!-- Like & Repost Buttons -->
                   <div
-                    class="flex flex-col sm:flex-row gap-4 mt-6 text-sm text-gray-300 border-t border-gray-700/50 pt-4"
+                    class="flex flex-col sm:flex-row gap-4 mt-2 text-sm text-gray-300 border-t border-gray-700/50 pt-4"
                   >
                     <button
                       onclick="likePost('${post._id}')"
@@ -1097,6 +1083,7 @@ async function loadSocialContent() {
                       </span>
                       <span>${post.likes || 0}</span>
                     </button>
+
                     <button
                       onclick="repostPost('${post._id}')"
                       class="
@@ -1120,6 +1107,7 @@ async function loadSocialContent() {
                       <span>${post.reposts || 0}</span>
                     </button>
 
+                    <!-- Timestamp again on the right side -->
                     <span class="flex items-center gap-2 text-gray-500 sm:ml-auto">
                       <span>🕒</span>
                       ${new Date(post.timestamp).toLocaleString()}
@@ -1142,17 +1130,11 @@ async function loadSocialContent() {
   }
 }
 
-/**
- * Update the chosen sort type for social posts and reload.
- */
 async function setSocialSort(sort) {
   state.socialSort = sort;
   await loadSocialContent();
 }
 
-/**
- * Like a post.
- */
 async function likePost(postId) {
   if (!state.wallet) {
     alert("Please connect your wallet first");
@@ -1168,9 +1150,6 @@ async function likePost(postId) {
   await loadSocialContent();
 }
 
-/**
- * Repost a post.
- */
 async function repostPost(postId) {
   if (!state.wallet) {
     alert("Please connect your wallet first");
