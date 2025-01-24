@@ -626,14 +626,15 @@ export default function avatarRoutes(db) {
         return res.status(404).json({ error: 'Avatar not found' });
       }
 
+      const statService = new StatGenerationService();
+      
       // Try to get existing stats first
       let stats = await db.collection('dungeon_stats').findOne({ 
         avatarId: new ObjectId(avatarId)
       });
 
-      // Generate if none exist
-      if (!stats) {
-        const statService = new StatGenerationService();
+      // Generate new stats if none exist or if current stats are invalid
+      if (!stats || !statService.validateStats(stats)) {
         stats = statService.generateStatsFromDate(avatar.createdAt || new Date());
         // Save generated stats
         await db.collection('dungeon_stats').updateOne(
