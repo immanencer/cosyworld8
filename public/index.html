@@ -1,32 +1,70 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <title>RATi AVATAR System</title>
+  <head>
+    <meta charset="UTF-8" />
+    <title>RATi AVATAR System</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
-<link href="https://fonts.googleapis.com/css2?family=Crimson+Text:wght@400;600;700&display=swap" rel="stylesheet">
+    <!-- Google Fonts -->
+    <link
+      href="https://fonts.googleapis.com/css2?family=Crimson+Text:wght@400;600;700&display=swap"
+      rel="stylesheet"
+    />
 
-  <!-- Tailwind CSS (optional for styling) -->
-  <script src="https://cdn.tailwindcss.com"></script>
-</head>
-<body class="bg-gray-900 text-white">
-  <!-- Tabs -->
-  <div class="flex gap-2 p-4">
-    <button class="px-4 py-2 bg-blue-600 rounded" data-tab="owned">Owned Avatars</button>
-    <button class="px-4 py-2 bg-gray-700 rounded" data-tab="actions">Actions</button>
-    <button class="px-4 py-2 bg-gray-700 rounded" data-tab="leaderboard">Leaderboard</button>
-    <button data-tab="tribes" class="px-4 py-2 bg-gray-700 rounded">
-          Tribes
-        </button>
-        <button data-tab="social" class="px-4 py-2 bg-gray-700 rounded">
-          Social
-        </button>
-  </div>
+    <!-- Tailwind CSS (CDN) -->
+    <script src="https://cdn.tailwindcss.com"></script>
+  </head>
+  <body class="bg-gray-900 text-white font-sans">
+    <!-- Tabs Navigation -->
+    <nav class="flex gap-2 p-4" role="tablist" aria-label="RATi Avatar Tabs">
+      <button
+        class="px-4 py-2 bg-blue-600 rounded"
+        data-tab="owned"
+        role="tab"
+        aria-selected="true"
+      >
+        Owned Avatars
+      </button>
+      <button
+        class="px-4 py-2 bg-gray-700 rounded"
+        data-tab="actions"
+        role="tab"
+        aria-selected="false"
+      >
+        Actions
+      </button>
+      <button
+        class="px-4 py-2 bg-gray-700 rounded"
+        data-tab="leaderboard"
+        role="tab"
+        aria-selected="false"
+      >
+        Leaderboard
+      </button>
+      <button
+        class="px-4 py-2 bg-gray-700 rounded"
+        data-tab="tribes"
+        role="tab"
+        aria-selected="false"
+      >
+        Tribes
+      </button>
+      <button
+        class="px-4 py-2 bg-gray-700 rounded"
+        data-tab="social"
+        role="tab"
+        aria-selected="false"
+      >
+        Social
+      </button>
+    </nav>
 
-  <!-- Main Content -->
-  <div id="content" class="p-4 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4"></div>
+    <!-- Main Content Section -->
+    <main id="content" class="p-4" role="tabpanel">
+      <!-- Content (owned avatars, actions, etc.) is injected by main.js -->
+    </main>
 
-  <!-- Main JS -->
-  <script src="main.js"></script>
-</body>
+    <!-- Main JS -->
+    <script src="main.js"></script>
+  </body>
 </html>
