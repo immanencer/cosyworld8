@@ -512,14 +512,18 @@ async function loadActionLog() {
 }
 
 async function loadLeaderboard() {
-  // Reset scroll state when tab is activated
   if (state.activeTab === "leaderboard") {
     window.scrollState = {
       cursor: null,
       loading: false,
       hasMore: true,
-      initialized: false,
-      avatars: new Map() // Use Map to track unique avatars
+      initialized: false
+    };
+  } else {
+    window.scrollState = window.scrollState || {
+      cursor: null,
+      loading: false,
+      hasMore: true
     };
   }
 
@@ -560,9 +564,10 @@ async function loadLeaderboard() {
       try {
         scrollState.loading = true;
         loader.classList.remove("hidden");
-        
+
+      try {
         const data = await fetchJSON(
-          `/api/avatars/leaderboard?limit=12${scrollState.cursor ? `&cursor=${scrollState.cursor}` : ''}`,
+          `/api/leaderboard?limit=12${scrollState.cursor ? `&cursor=${scrollState.cursor}` : ''}`,
         );
         scrollState.cursor = data.nextCursor;
 
@@ -572,14 +577,11 @@ async function loadLeaderboard() {
 
         scrollState.hasMore = scrollState.page < data.totalPages;
 
-        // Add new avatars to the Map to ensure uniqueness
         data.avatars.forEach((avatar) => {
-          if (!scrollState.avatars.has(avatar._id)) {
-            scrollState.avatars.set(avatar._id, avatar);
-            const div = document.createElement("div");
-            div.className =
-              "bg-gray-800 p-3 rounded-lg hover:bg-gray-700 transition-colors shadow-lg";
-            div.innerHTML = `
+          const div = document.createElement("div");
+          div.className =
+            "bg-gray-800 p-3 rounded-lg hover:bg-gray-700 transition-colors shadow-lg";
+          div.innerHTML = `
             <button
               onclick="showAvatarDetails('${avatar._id}')"
               class="w-full text-left flex gap-3 items-center"
@@ -607,7 +609,11 @@ async function loadLeaderboard() {
 
         scrollState.hasMore = data.hasMore;
         scrollState.cursor = data.nextCursor;
-      } catch (error) {
+      } finally {
+        scrollState.loading = false;
+        loader.classList.add("hidden");
+      }
+    } catch (error) {
         console.error("Failed to load more leaderboard items:", error);
 
         const existingError = leaderboardItems.querySelector(".error-message");

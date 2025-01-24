@@ -18,53 +18,52 @@ export default function leaderboardRoutes(db) {
       const limit = Math.min(parseInt(limitStr, 10) || 24, 100);
 
       const pipeline = [
-        // First group by username to get the latest avatar and total score
-        {
-          $group: {
-            _id: { $toLower: '$name' },
-            avatar: { $first: '$$ROOT' },
-            score: { $sum: '$score' },
-            lastActive: { $max: '$lastActive' }
-          }
-        },
+        // (Optionally filter by tier or model first)
+        // e.g. if (tier !== 'All') pipeline.push({ $match: ... })
+
         // Sort by score descending
         { $sort: { score: -1 } },
+
         // Add cursor-based pagination
-        ...(cursor ? [{
-          $match: {
-            $or: [
-              { score: { $lt: parseInt(cursor.split(':')[0]) } },
-              { 
-                score: parseInt(cursor.split(':')[0]),
-                _id: { $gt: cursor.split(':')[1] }
-              }
+        ...(cursor
+          ? [
+              {
+                $match: {
+                  $or: [
+                    { score: { $lt: parseInt(cursorScore, 10) } },
+                    {
+                      score: parseInt(cursorScore, 10),
+                      _id: { $gt: cursorId },
+                    },
+                  ],
+                },
+              },
             ]
-          }
-        }] : []),
+          : []
+        ),
+
         { $limit: limit + 1 },
-        // Look up stats
+
+        // Lookup stats
         {
           $lookup: {
             from: 'dungeon_stats',
-            let: { avatarId: '$avatar._id' },
+            let: { avatarId: '$_id' },
             pipeline: [
-              {
-                $match: {
-                  $expr: { $eq: ['$avatarId', { $toString: '$$avatarId' }] }
-                }
-              }
+              { $match: { $expr: { $eq: ['$avatarId', { $toString: '$$avatarId'}] } } }
             ],
             as: 'stats'
           }
         },
+
         // Project final shape
         {
           $project: {
-            _id: '$avatar._id',
-            name: '$avatar.name',
-            imageUrl: '$avatar.imageUrl',
-            thumbnailUrl: '$avatar.thumbnailUrl',
-            model: '$avatar.model',
+            _id: 1,
+            name: 1,
+            imageUrl: 1,
+            thumbnailUrl: 1,
+            model: 1,
             score: 1,
             lastActive: 1,
             stats: { $arrayElemAt: ['$stats', 0] }
