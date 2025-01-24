@@ -22,21 +22,23 @@ export default function socialRoutes(db) {
           }
         },
         {
-          $lookup: {
-            from: 'avatars',
-            let: { actorName: { $replaceAll: { input: '$actor', find: ' used xpost.', replacement: '' } } },
-            pipeline: [
-              {
-                $match: {
-                  $expr: { 
-                    $eq: [
-                      { $trim: { input: '$name' } },
-                      { $trim: { input: { $replaceAll: { input: '$$actorName', find: '🐦 ', replacement: '' } } } }
-                    ]
-                  }
+          $addFields: {
+            actorId: {
+              $toObjectId: {
+                $replaceAll: {
+                  input: '$actor',
+                  find: ' used xpost.',
+                  replacement: ''
                 }
               }
-            ],
+            }
+          }
+        },
+        {
+          $lookup: {
+            from: 'avatars',
+            localField: 'actorId',
+            foreignField: '_id',
             as: 'avatar'
           }
         },
