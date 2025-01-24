@@ -1,5 +1,6 @@
 
 import { Router } from 'express';
+import { MongoClient, ObjectId } from 'mongodb';
 import Fuse from 'fuse.js';
 import { thumbnailService } from '../services/thumbnailService.mjs';
 
