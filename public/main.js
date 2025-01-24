@@ -539,7 +539,7 @@ async function loadLeaderboard() {
       <div class="max-w-7xl mx-auto px-4">
         <div
           id="leaderboard-items"
-          class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 gap-6"
+          class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 3xl:grid-cols-5 gap-3"
         ></div>
         <div
           id="leaderboard-loader"
@@ -583,27 +583,22 @@ async function loadLeaderboard() {
         data.avatars.forEach((avatar) => {
           const div = document.createElement("div");
           div.className =
-            "bg-gray-800 p-6 rounded-lg hover:bg-gray-700 transition-colors shadow-lg";
+            "bg-gray-800 p-3 rounded-lg hover:bg-gray-700 transition-colors shadow-lg";
           div.innerHTML = `
             <button
               onclick="showAvatarDetails('${avatar._id}')"
-              class="w-full text-left"
+              class="w-full text-left flex gap-3 items-center"
             >
               <img
                 src="${avatar.thumbnailUrl || avatar.imageUrl}"
                 alt="${avatar.name}"
-                class="w-full aspect-square object-cover rounded-lg mb-3"
+                class="w-16 h-16 object-cover rounded-lg flex-shrink-0"
               >
-              <div class="space-y-1">
-                <h3 class="text-lg font-semibold truncate">${avatar.name}</h3>
-                <p class="text-sm text-gray-400">Score: ${avatar.score || 0}</p>
-                ${
-                  avatar.model
-                    ? `<p class="text-xs text-gray-500 truncate">${avatar.model}</p>`
-                    : ""
-                }
-                <div class="mt-2">
-                  <span class="px-2 py-1 rounded text-xs font-bold ${getTierColor(
+              <div class="min-w-0 flex-1">
+                <h3 class="text-sm font-semibold truncate">${avatar.name}</h3>
+                <p class="text-xs text-gray-400">Score: ${avatar.score || 0}</p>
+                <div class="flex items-center gap-2 mt-1">
+                  <span class="px-1.5 py-0.5 rounded text-xs font-bold ${getTierColor(
                     avatar.model,
                   )}">
                     Tier ${getTierFromModel(avatar.model)}
