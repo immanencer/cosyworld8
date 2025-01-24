@@ -30,8 +30,8 @@ export default function socialRoutes(db) {
                 $match: {
                   $expr: { 
                     $eq: [
-                      { $trim: { input: '$name' } },
-                      { $trim: { input: { $replaceAll: { input: '$$actorName', find: '🐦 ', replacement: '' } } } }
+                      { $toLower: { $trim: { input: '$name' } } },
+                      { $toLower: { $trim: { input: { $replaceAll: { input: '$$actorName', find: '🐦 ', replacement: '' } } } } }
                     ]
                   }
                 }
