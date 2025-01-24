@@ -1,25 +1,17 @@
 
 import express from 'express';
 import { TwitterApi } from 'twitter-api-v2';
-import { getDb } from '../services/dbConnection.mjs';
 
-const router = express.Router();
+const DEFAULT_TOKEN_EXPIRY = 7200; // 2 hours in seconds
+const TEMP_AUTH_EXPIRY = 10 * 60 * 1000; // 10 minutes in milliseconds
 
-// Initialize router with database connection
-const initRouter = async () => {
-    const db = await getDb();
+export default function xauthRoutes(db) {
+    const router = express.Router();
     
-    // X API configuration
-    const X_CLIENT_ID = process.env.X_CLIENT_ID;
-    const X_CLIENT_SECRET = process.env.X_CLIENT_SECRET;
-    const X_CALLBACK_URL = process.env.X_CALLBACK_URL;
-    const DEFAULT_TOKEN_EXPIRY = 7200; // 2 hours in seconds
-    const TEMP_AUTH_EXPIRY = 10 * 60 * 1000; // 10 minutes in milliseconds
-
     async function refreshAccessToken(auth) {
         const client = new TwitterApi({
-            clientId: X_CLIENT_ID,
-            clientSecret: X_CLIENT_SECRET
+            clientId: process.env.X_CLIENT_ID,
+            clientSecret: process.env.X_CLIENT_SECRET
         });
 
         try {
@@ -66,14 +58,14 @@ const initRouter = async () => {
             await db.collection('x_auth').deleteOne({ avatarId });
 
             const client = new TwitterApi({
-                clientId: X_CLIENT_ID,
-                clientSecret: X_CLIENT_SECRET
+                clientId: process.env.X_CLIENT_ID,
+                clientSecret: process.env.X_CLIENT_SECRET
             });
 
             const stateData = encodeURIComponent(JSON.stringify({ walletAddress, avatarId }));
 
             const { url, codeVerifier, state } = await client.generateOAuth2AuthLink(
-                X_CALLBACK_URL,
+                process.env.X_CALLBACK_URL,
                 {
                     scope: ['tweet.read', 'tweet.write', 'users.read', 'offline.access'],
                     state: stateData
@@ -127,14 +119,14 @@ const initRouter = async () => {
             }
 
             const client = new TwitterApi({
-                clientId: X_CLIENT_ID,
-                clientSecret: X_CLIENT_SECRET
+                clientId: process.env.X_CLIENT_ID,
+                clientSecret: process.env.X_CLIENT_SECRET
             });
 
             const { accessToken, refreshToken, expiresIn } = await client.loginWithOAuth2({
                 code,
                 codeVerifier: storedAuth.codeVerifier,
-                redirectUri: X_CALLBACK_URL
+                redirectUri: process.env.X_CALLBACK_URL
             });
 
             await db.collection('x_auth').updateOne(
@@ -283,10 +275,6 @@ const initRouter = async () => {
             res.status(500).json({ error: error.message });
         }
     });
-};
 
-// Initialize the router
-initRouter().catch(console.error);
-
-// Export the router directly
-export default router;
+    return router;
+}
