@@ -20,6 +20,12 @@ export class ConversationHandler {
     this.GLOBAL_NARRATIVE_COOLDOWN = 60 * 60 * 1000; // 1 hour
     this.lastGlobalNarrativeTime = 0;
 
+    // Channel rate limiting
+    this.channelLastMessage = new Map(); // channelId -> timestamp
+    this.CHANNEL_COOLDOWN = 30 * 1000; // 30 seconds
+    this.MAX_RESPONSES_PER_MESSAGE = 2; // Maximum number of AI responses per human message
+    this.channelResponders = new Map(); // channelId -> Set of avatar IDs who responded
+
     // Required Discord permissions
     this.requiredPermissions = [
       'ViewChannel',
@@ -267,6 +273,31 @@ Share your dreams, personality, goals, and important memories.
       return null;
     }
 
+    // Check channel cooldown
+    const lastMessageTime = this.channelLastMessage.get(channel.id) || 0;
+    if (Date.now() - lastMessageTime < this.CHANNEL_COOLDOWN) {
+      this.logger.debug(`Channel ${channel.id} is on cooldown`);
+      return null;
+    }
+
+    // Initialize or get responders set for this channel
+    if (!this.channelResponders.has(channel.id)) {
+      this.channelResponders.set(channel.id, new Set());
+    }
+    const responders = this.channelResponders.get(channel.id);
+
+    // Check if we've hit the response limit
+    if (responders.size >= this.MAX_RESPONSES_PER_MESSAGE) {
+      this.logger.debug(`Channel ${channel.id} has reached maximum responses`);
+      return null;
+    }
+
+    // Check if this avatar has already responded
+    if (responders.has(avatar._id)) {
+      this.logger.debug(`Avatar ${avatar.name} has already responded in channel ${channel.id}`);
+      return null;
+    }
+
     try {
       // Fetch recent channel messages
       const messages = await channel.messages.fetch({ limit: 18 });
@@ -385,6 +416,15 @@ Reply in character with a short, casual message, suitable for this discord chann
           avatar.imageUrl
         );
       }
+
+      // Update rate limiting tracking on successful response
+      this.channelLastMessage.set(channel.id, Date.now());
+      this.channelResponders.get(channel.id).add(avatar._id);
+
+      // Clear responders list after cooldown period
+      setTimeout(() => {
+        this.channelResponders.set(channel.id, new Set());
+      }, this.CHANNEL_COOLDOWN);
 
       return response;
     } catch (error) {
