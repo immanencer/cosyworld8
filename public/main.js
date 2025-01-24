@@ -560,8 +560,7 @@ async function loadLeaderboard() {
       try {
         scrollState.loading = true;
         loader.classList.remove("hidden");
-
-      try {
+        
         const data = await fetchJSON(
           `/api/avatars/leaderboard?limit=12${scrollState.cursor ? `&cursor=${scrollState.cursor}` : ''}`,
         );
@@ -608,11 +607,7 @@ async function loadLeaderboard() {
 
         scrollState.hasMore = data.hasMore;
         scrollState.cursor = data.nextCursor;
-      } finally {
-        scrollState.loading = false;
-        loader.classList.add("hidden");
-      }
-    } catch (error) {
+      } catch (error) {
         console.error("Failed to load more leaderboard items:", error);
 
         const existingError = leaderboardItems.querySelector(".error-message");
