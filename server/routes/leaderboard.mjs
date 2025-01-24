@@ -26,19 +26,20 @@ export default function leaderboardRoutes(db) {
 
         // Add cursor-based pagination
         ...(cursor
-          ? [
-              {
+          ? (() => {
+              const [cursorScore, cursorId] = cursor.split(':');
+              return [{
                 $match: {
                   $or: [
                     { score: { $lt: parseInt(cursorScore, 10) } },
                     {
                       score: parseInt(cursorScore, 10),
-                      _id: { $gt: cursorId },
+                      _id: { $gt: new ObjectId(cursorId) },
                     },
                   ],
                 },
-              },
-            ]
+              }];
+            })()
           : []
         ),
 
