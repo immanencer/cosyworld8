@@ -1030,7 +1030,19 @@ async function showAvatarDetails(avatarId) {
     `;
   } catch (error) {
     console.error("Error loading avatar details:", error);
-    modalContent.innerHTML = `Error loading avatar details: ${error.message}`;
+    modalContent.innerHTML = `
+      <div class="text-center py-8">
+        <div class="text-red-500 font-semibold mb-4">
+          Error loading avatar details: ${error.message || 'Unknown error occurred'}
+        </div>
+        <button 
+          onclick="closeAvatarModal()" 
+          class="px-4 py-2 bg-gray-600 hover:bg-gray-700 rounded transition-colors"
+        >
+          Close
+        </button>
+      </div>
+    `;
   }
 }
 
