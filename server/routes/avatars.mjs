@@ -210,15 +210,33 @@ export default function avatarRoutes(db) {
             ? new ObjectId(primaryAvatar._id) 
             : primaryAvatar._id;
 
-          const [ancestry, stats] = await Promise.all([
-            getAvatarAncestry(db, avatarId),
-            db.collection('dungeon_stats').findOne({
-              $or: [
-                { avatarId: avatarId },
-                { avatarId: avatarId.toString() }
-              ]
-            })
-          ]);
+          router.get('/:avatarId/stats', async (req, res) => {
+  try {
+    const { avatarId } = req.params;
+    const avatar = await db.collection('avatars').findOne({ _id: new ObjectId(avatarId) });
+    
+    if (!avatar) {
+      return res.status(404).json({ error: 'Avatar not found' });
+    }
+
+    const stats = new StatGenerationService().generateStatsFromDate(avatar.createdAt || new Date());
+    res.json(stats);
+  } catch (error) {
+    console.error('Error getting avatar stats:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Original code
+const [ancestry, stats] = await Promise.all([
+  getAvatarAncestry(db, avatarId),
+  db.collection('dungeon_stats').findOne({
+    $or: [
+      { avatarId: avatarId },
+      { avatarId: avatarId.toString() }
+    ]
+  })
+]);
 
           return {
             ...primaryAvatar,

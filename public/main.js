@@ -694,12 +694,17 @@ async function showAvatarDetails(avatarId) {
       xAuthStatusResponse,
       narrativesResponse,
       actionsResponse,
+      statsResponse
     ] = await Promise.all([
       fetchJSON(`/api/avatars/${avatarId}`),
       fetchJSON(`/auth/x/status/${avatarId}`),
       fetchJSON(`/api/avatars/${avatarId}/narratives`),
       fetchJSON(`/api/avatars/${avatarId}/dungeon-actions`),
+      fetchJSON(`/api/avatars/${avatarId}/stats`)
     ]);
+
+    // Merge stats into avatar response
+    avatarResponse.stats = statsResponse;
 
     avatarResponse.narratives = narrativesResponse?.narratives || [];
     avatarResponse.actions = actionsResponse?.actions || [];
