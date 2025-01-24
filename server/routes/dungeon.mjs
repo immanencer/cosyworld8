@@ -5,6 +5,7 @@ import Fuse from 'fuse.js';
 import { thumbnailService } from '../services/thumbnailService.mjs';
 
 function escapeRegExp(string) {
+  if (!string) return '';
   return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
