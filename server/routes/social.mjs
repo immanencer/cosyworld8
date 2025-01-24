@@ -29,7 +29,7 @@ export default function socialRoutes(db) {
               {
                 $match: {
                   $expr: { 
-                    $eq: ['$_id', { $toObjectId: '$$actorId' }]
+                    $eq: [{ $toString: '$_id' }, '$$actorId']
                   }
                 }
               }
