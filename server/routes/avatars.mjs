@@ -296,18 +296,25 @@ const [ancestry, stats] = await Promise.all([
   router.get('/:avatarId', async (req, res) => {
     try {
       const { avatarId } = req.params;
+      let query;
 
-      // Handle both string IDs and ObjectId
-      const query = { 
-        $or: [
-          { _id: new ObjectId(avatarId) },
-          { _id: avatarId }
-        ]
-      };
+      try {
+        // First attempt to use as ObjectId
+        query = { _id: new ObjectId(avatarId) };
+      } catch {
+        // If not a valid ObjectId, try as string
+        query = { 
+          $or: [
+            { _id: avatarId },
+            { name: avatarId } // Also try matching by name
+          ]
+        };
+      }
 
       const avatar = await db.collection('avatars').findOne(query);
 
       if (!avatar) {
+        console.error(`Avatar not found for id/name: ${avatarId}`);
         return res.status(404).json({ error: 'Avatar not found' });
       }
 
@@ -318,11 +325,10 @@ const [ancestry, stats] = await Promise.all([
       res.json(avatar);
     } catch (error) {
       console.error('Error fetching avatar details:', error);
-      // Handle invalid ObjectId format gracefully
-      if (error.message.includes('ObjectId')) {
-        return res.status(400).json({ error: 'Invalid avatar ID format' });
-      }
-      res.status(500).json({ error: error.message });
+      res.status(500).json({ 
+        error: 'Failed to fetch avatar details',
+        details: process.env.NODE_ENV === 'development' ? error.message : undefined
+      });
     }
   });
   // -----------------------------
