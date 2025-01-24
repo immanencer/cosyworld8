@@ -297,13 +297,15 @@ const [ancestry, stats] = await Promise.all([
     try {
       const { avatarId } = req.params;
 
-      if (!avatarId.match(/^[0-9a-fA-F]{24}$/)) {
-        return res.status(400).json({ error: 'Invalid avatar ID format' });
-      }
+      // Handle both string IDs and ObjectId
+      const query = { 
+        $or: [
+          { _id: new ObjectId(avatarId) },
+          { _id: avatarId }
+        ]
+      };
 
-      const avatar = await db
-        .collection('avatars')
-        .findOne({ _id: new ObjectId(avatarId) });
+      const avatar = await db.collection('avatars').findOne(query);
 
       if (!avatar) {
         return res.status(404).json({ error: 'Avatar not found' });
@@ -316,6 +318,10 @@ const [ancestry, stats] = await Promise.all([
       res.json(avatar);
     } catch (error) {
       console.error('Error fetching avatar details:', error);
+      // Handle invalid ObjectId format gracefully
+      if (error.message.includes('ObjectId')) {
+        return res.status(400).json({ error: 'Invalid avatar ID format' });
+      }
       res.status(500).json({ error: error.message });
     }
   });
