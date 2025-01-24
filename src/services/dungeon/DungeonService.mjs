@@ -134,6 +134,7 @@ export class DungeonService {
         displayName: `${tool.emoji || '🛠️'} ${message.author.username}`,
         target: params[0],
         result,
+        memory: command === 'remember' ? result.replace('[🧠 Memory generated: "', '').replace('"]', '') : null,
         tool: command,
         emoji: tool.emoji,
         isCustom: false

@@ -1,4 +1,3 @@
-
 import { MongoClient } from 'mongodb';
 
 export class DungeonLog {
@@ -11,7 +10,7 @@ export class DungeonLog {
     try {
       await client.connect();
       const db = client.db(process.env.MONGO_DB_NAME);
-      
+
       // Structure the action log entry
       const logEntry = {
         channelId: action.channelId,
@@ -21,6 +20,7 @@ export class DungeonLog {
         displayName: action.displayName || action.actorName,
         target: action.target,
         result: action.result,
+        memory: action.memory, // Added memory field
         metadata: {
           tool: action.tool || null,
           emoji: action.emoji || null,
