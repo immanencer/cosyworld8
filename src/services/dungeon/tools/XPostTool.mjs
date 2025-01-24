@@ -104,11 +104,28 @@ export class XPostTool extends BaseTool {
             const twitterClient = new TwitterApi(accessToken);
             const v2Client = twitterClient.v2;
 
-            // Post the tweet
-            const tweet = params.join(' ');
-            await v2Client.tweet(tweet);
+            const message = params.join(' ');
+            let result = message;
+            let xStatus = false;
 
-            return `✅ Posted to X: "${tweet}"`;
+            try {
+                // Try posting to X if authorized
+                if (auth?.accessToken) {
+                    await v2Client.tweet(message);
+                    xStatus = true;
+                }
+
+                // Always store the post
+                await db.collection('social_posts').insertOne({
+                    avatarId: avatar._id,
+                    content: message,
+                    timestamp: new Date(),
+                    postedToX: xStatus,
+                    likes: 0,
+                    reposts: 0
+                });
+
+                return xStatus ? `✨ Posted to X and feed: ${message}` : `📱 Posted to feed: ${message}`;
 
         } catch (error) {
             if (error.code === 401) {

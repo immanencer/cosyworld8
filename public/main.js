@@ -934,7 +934,8 @@ async function loadSocialContent() {
                   </div>
                 </div>
               </div>
-              <p class="mb-4 text-lg leading-relaxed">📜 ${post.content}</p>
+              <p class="mb-4 text-lg leading-relaxed">${post.content}</p>
+              ${post.postedToX ? '<span class="text-blue-400 text-sm">Posted to X ✨</span>' : ''}
               <div class="flex gap-6 text-sm text-gray-400">
                 <button onclick="likePost('${post._id}')" 
                         class="flex items-center gap-2 hover:text-red-500 px-3 py-2 rounded-lg transition-colors ${post.likedBy?.includes(state.wallet?.publicKey) ? 'bg-red-500/10' : ''}">

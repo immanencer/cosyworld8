@@ -57,7 +57,19 @@ export default function socialRoutes(db) {
           {
             $project: {
               _id: 1,
-              content: '$result',
+              content: {
+                $replaceAll: {
+                  input: {
+                    $replaceAll: {
+                      input: '$result',
+                      find: '✅ Posted to X: "',
+                      replacement: ''
+                    }
+                  },
+                  find: '"',
+                  replacement: ''
+                }
+              },
               timestamp: 1,
               action: 1,
               actor: 1,
