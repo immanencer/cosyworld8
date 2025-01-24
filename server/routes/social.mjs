@@ -1,4 +1,3 @@
-
 import { Router } from 'express';
 import { MongoClient, ObjectId } from 'mongodb';
 
@@ -59,8 +58,14 @@ export default function socialRoutes(db) {
                 $replaceAll: {
                   input: {
                     $replaceAll: {
-                      input: '$result',
-                      find: '✅ Posted to X: "',
+                      input: {
+                        $replaceAll: {
+                          input: '$result',
+                          find: '✅ Posted to X: "',
+                          replacement: ''
+                        }
+                      },
+                      find: '✨ Posted to X and feed: ',
                       replacement: ''
                     }
                   },
@@ -92,7 +97,7 @@ export default function socialRoutes(db) {
     try {
       const { id } = req.params;
       const { walletAddress, avatarId } = req.body;
-      
+
       if (!walletAddress || !avatarId) {
         return res.status(400).json({ error: 'Wallet address and avatar ID required' });
       }

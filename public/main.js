@@ -1052,7 +1052,7 @@ async function loadSocialContent() {
 
                   <!-- Post Content -->
                   <p class="mb-4 text-lg text-gray-100">
-                    ${post.content.replace(/^✨ Posted to X and feed: /, '')}
+                    ${post.content}
                   </p>
 
                   ${
