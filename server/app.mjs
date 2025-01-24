@@ -35,7 +35,7 @@ async function initializeApp() {
     app.use('/api', othersRoutes(db));
     app.use('/api/avatars', avatarRoutes(db));
     app.use('/api/tribes', tribeRoutes(db));
-    app.use('/auth/x', xauthRoutes(db));
+    app.use('/auth/x', xauthRoutes);
     app.use('/api/wiki', wikiRoutes(db));
     app.use('/api/social', socialRoutes(db));
 

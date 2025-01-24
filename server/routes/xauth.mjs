@@ -1,10 +1,14 @@
+
 import express from 'express';
 import { TwitterApi } from 'twitter-api-v2';
 import { getDb } from '../services/dbConnection.mjs';
 
-export default async function xAuthRouter() {
-    const router = express.Router();
+const router = express.Router();
+
+// Initialize router with database connection
+const initRouter = async () => {
     const db = await getDb();
+    
     // X API configuration
     const X_CLIENT_ID = process.env.X_CLIENT_ID;
     const X_CLIENT_SECRET = process.env.X_CLIENT_SECRET;
@@ -38,7 +42,6 @@ export default async function xAuthRouter() {
 
             return { accessToken, expiresAt };
         } catch (error) {
-            // Only delete the auth entry if it's specifically a token validation error
             if (error.code === 401 || error.message?.includes('invalid_grant')) {
                 await db.collection('x_auth').deleteOne({ avatarId: auth.avatarId });
             }
@@ -46,14 +49,13 @@ export default async function xAuthRouter() {
         }
     }
 
-
-    // Cleanup expired temporary auth data
     async function cleanupTempAuth() {
         const expiryTime = new Date(Date.now() - TEMP_AUTH_EXPIRY);
         await db.collection('x_auth_temp').deleteMany({
             createdAt: { $lt: expiryTime }
         });
     }
+
     router.get('/auth-url', async (req, res) => {
         try {
             const { walletAddress, avatarId } = req.query;
@@ -61,7 +63,6 @@ export default async function xAuthRouter() {
                 return res.status(400).json({ error: 'Missing wallet address or avatar ID' });
             }
 
-            // Remove any existing auth entry for this avatar before starting new auth flow
             await db.collection('x_auth').deleteOne({ avatarId });
 
             const client = new TwitterApi({
@@ -79,7 +80,7 @@ export default async function xAuthRouter() {
                 }
             );
 
-            await cleanupTempAuth(db); // Cleanup old temporary auth data
+            await cleanupTempAuth();
 
             await db.collection('x_auth_temp').updateOne(
                 { avatarId },
@@ -153,23 +154,22 @@ export default async function xAuthRouter() {
             await db.collection('x_auth_temp').deleteOne({ avatarId });
 
             res.send(`
-            <script>
-                window.opener.postMessage({ type: 'X_AUTH_SUCCESS' }, '*');
-                window.close();
-            </script>
-        `);
-
+                <script>
+                    window.opener.postMessage({ type: 'X_AUTH_SUCCESS' }, '*');
+                    window.close();
+                </script>
+            `);
         } catch (error) {
             console.error('OAuth callback error:', error);
             res.send(`
-            <script>
-                window.opener.postMessage({ 
-                    type: 'X_AUTH_ERROR', 
-                    error: '${error.message}'
-                }, '*');
-                window.close();
-            </script>
-        `);
+                <script>
+                    window.opener.postMessage({ 
+                        type: 'X_AUTH_ERROR', 
+                        error: '${error.message}'
+                    }, '*');
+                    window.close();
+                </script>
+            `);
         }
     });
 
@@ -178,30 +178,26 @@ export default async function xAuthRouter() {
             const auth = await db.collection('x_auth').findOne({
                 avatarId: req.params.avatarId
             });
-    
+
             if (!auth) {
                 return res.json({ authorized: false });
             }
-    
+
             try {
-                // If token is expired, try to refresh it
                 if (new Date() >= new Date(auth.expiresAt) && auth.refreshToken) {
                     const { expiresAt } = await refreshAccessToken(auth);
                     return res.json({ authorized: true, expiresAt });
                 }
-    
-                // Verify the token with a test API call
+
                 const client = new TwitterApi(auth.accessToken);
                 await client.v2.me();
-    
+
                 return res.json({
                     authorized: true,
                     expiresAt: auth.expiresAt
                 });
             } catch (error) {
-                // Only consider it unauthorized if it's specifically a token validation error
                 if (error.code === 401 || error.message?.includes('invalid_grant')) {
-                    // Clean up invalid token
                     await db.collection('x_auth').deleteOne({ avatarId: req.params.avatarId });
                     return res.json({
                         authorized: false,
@@ -209,8 +205,7 @@ export default async function xAuthRouter() {
                         requiresReauth: true
                     });
                 }
-    
-                // For other errors, maintain the authorized state but return the error
+
                 return res.json({
                     authorized: true,
                     expiresAt: auth.expiresAt,
@@ -223,7 +218,6 @@ export default async function xAuthRouter() {
         }
     });
 
-    // Update verify-wallet route similarly to status route
     router.get('/verify-wallet/:avatarId', async (req, res) => {
         try {
             const auth = await db.collection('x_auth').findOne({
@@ -251,7 +245,6 @@ export default async function xAuthRouter() {
                 }
             }
 
-            // Verify the token is still valid
             try {
                 const client = new TwitterApi(auth.accessToken);
                 await client.v2.me();
@@ -275,7 +268,6 @@ export default async function xAuthRouter() {
         }
     });
 
-    // Add this route in your existing router
     router.post('/disconnect/:avatarId', async (req, res) => {
         try {
             const result = await db.collection('x_auth').deleteOne({
@@ -291,7 +283,10 @@ export default async function xAuthRouter() {
             res.status(500).json({ error: error.message });
         }
     });
+};
 
-    // Return the configured router
-    return router;
-}
+// Initialize the router
+initRouter().catch(console.error);
+
+// Export the router directly
+export default router;
