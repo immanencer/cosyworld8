@@ -124,6 +124,137 @@ export default function avatarRoutes(db) {
     }
   });
 
+  router.get('/leaderboard', async (req, res) => {
+    try {
+      const page = Math.max(1, parseInt(req.query.page, 10) || 1);
+      const limit = Math.min(100, Math.max(1, parseInt(req.query.limit, 10) || 12));
+      const skip = (page - 1) * limit;
+      const { tier } = req.query;
+
+      // Get pre-calculated scores with avatar details in one query
+      const avatars = await db.collection('avatar_scores')
+        .aggregate([
+          { $match: { score: { $exists: true } } },
+          { $sort: { score: -1 } },
+          { $skip: skip },
+          { $limit: limit },
+          {
+            $lookup: {
+              from: 'avatars',
+              let: { avatarName: '$name' },
+              pipeline: [
+                {
+                  $match: {
+                    $expr: { $eq: ['$name', '$$avatarName'] },
+                    ...(tier && tier !== 'All' ? {
+                      model: {
+                        $in: models
+                          .filter(m => rarityToTier[m.rarity] === tier)
+                          .map(m => m.model)
+                      }
+                    } : {})
+                  }
+                }
+              ],
+              as: 'avatarDetails'
+            }
+          },
+          { $unwind: '$avatarDetails' },
+          {
+            $project: {
+              _id: '$avatarDetails._id',
+              name: '$avatarDetails.name',
+              imageUrl: '$avatarDetails.imageUrl',
+              thumbnailUrl: '$avatarDetails.thumbnailUrl',
+              model: '$avatarDetails.model',
+              score: 1
+            }
+          }
+        ]).toArray();
+
+      // Generate thumbnails if needed
+      const avatarsWithThumbs = await Promise.all(
+        avatars.map(async (avatar) => {
+          try {
+            const thumbnailUrl = await thumbnailService.generateThumbnail(avatar.imageUrl);
+            return { ...avatar, thumbnailUrl };
+          } catch (err) {
+            console.error(`Thumbnail failed for avatar ${avatar._id}:`, err);
+            return { ...avatar, thumbnailUrl: avatar.imageUrl };
+          }
+        })
+      );
+
+      // Get total count for pagination
+      const total = await db.collection('avatar_scores').countDocuments();
+
+      return res.json({
+        avatars: avatarsWithThumbs,
+        total,
+        page,
+        totalPages: Math.ceil(total / limit),
+        hasMore: avatarsWithThumbs.length === limit
+      });
+
+      const details = await Promise.all(
+        results.map(async (result) => {
+          const variants = result.variants || [];
+          const primaryAvatar = variants[0];
+          if (!primaryAvatar) return null;
+
+          const thumbs = await Promise.all(
+            variants.map(v => thumbnailService.generateThumbnail(v.imageUrl))
+          );
+
+          const avatarId = typeof primaryAvatar._id === 'string' 
+            ? new ObjectId(primaryAvatar._id) 
+            : primaryAvatar._id;
+
+          const [ancestry, stats] = await Promise.all([
+            getAvatarAncestry(db, avatarId),
+            db.collection('dungeon_stats').findOne({
+              $or: [
+                { avatarId: avatarId },
+                { avatarId: avatarId.toString() }
+              ]
+            })
+          ]);
+
+          return {
+            ...primaryAvatar,
+            variants: variants.map((v, i) => ({
+              ...v,
+              thumbnailUrl: thumbs[i]
+            })),
+            ancestry,
+            messageCount: result.messageCount,
+            lastMessage: result.lastMessage,
+            recentMessages: (result.recentMessages || [])
+              .filter(m => m !== null)
+              .slice(0, 5),
+            stats: stats || { attack: 0, defense: 0, hp: 0 },
+            score: result.messageCount
+          };
+        })
+      );
+
+      const filtered = details.filter(Boolean);
+      const hasMore = results.length > limit;
+      const lastItem = results.slice(0, limit).pop();
+
+      return res.json({
+        avatars: filtered.slice(0, limit),
+        hasMore,
+        total: filtered.length,
+        lastMessageCount: lastItem?.messageCount || null,
+        lastId: lastItem?._id || null
+      });
+    } catch (error) {
+      console.error('Leaderboard error:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
   // ------------------------------------
   // 10) GET /:avatarId
   // ------------------------------------
