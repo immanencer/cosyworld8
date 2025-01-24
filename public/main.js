@@ -526,11 +526,21 @@ async function loadActionLog() {
  * Leaderboard Tab
  */
 async function loadLeaderboard() {
-  window.scrollState = window.scrollState || {
-    page: 1,
-    loading: false,
-    hasMore: true
-  };
+  // Reset scroll state when entering leaderboard tab
+  if (state.activeTab === 'leaderboard') {
+    window.scrollState = {
+      page: 1,
+      loading: false,
+      hasMore: true,
+      initialized: false
+    };
+  } else {
+    window.scrollState = window.scrollState || {
+      page: 1,
+      loading: false,
+      hasMore: true
+    };
+  }
   
   const scrollState = window.scrollState;
 
