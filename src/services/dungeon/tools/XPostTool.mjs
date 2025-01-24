@@ -1,3 +1,4 @@
+
 import { BaseTool } from './BaseTool.mjs';
 import { TwitterApi } from 'twitter-api-v2';
 import { MongoClient } from 'mongodb';
@@ -82,35 +83,30 @@ export class XPostTool extends BaseTool {
             const db = client.db(process.env.MONGO_DB_NAME);
 
             const auth = await db.collection('x_auth').findOne({ avatarId: avatar._id.toString() });
-
-            if (!auth?.accessToken) {
-                return '⚠️ Not connected to X - saving post locally only';
-            }
-
-            let accessToken = auth.accessToken;
-
-            // If token is expired but we have a refresh token, try to refresh
-            if (new Date() >= new Date(auth.expiresAt) && auth.refreshToken) {
-                try {
-                    accessToken = await this.refreshAccessToken(db, auth);
-                } catch (error) {
-                    return '❌ Failed to refresh X authorization. Please reconnect your account.';
-                }
-            } else if (new Date() >= new Date(auth.expiresAt)) {
-                return '❌ X authorization expired. Please reconnect your account.';
-            }
-
-            // Initialize Twitter client with access token
-            const twitterClient = new TwitterApi(accessToken);
-            const v2Client = twitterClient.v2;
-
             const message = params.join(' ');
             let result = message;
             let xStatus = false;
 
             try {
-                // Try posting to X if authorized
                 if (auth?.accessToken) {
+                    let accessToken = auth.accessToken;
+
+                    // If token is expired but we have a refresh token, try to refresh
+                    if (new Date() >= new Date(auth.expiresAt) && auth.refreshToken) {
+                        try {
+                            accessToken = await this.refreshAccessToken(db, auth);
+                        } catch (error) {
+                            return '❌ Failed to refresh X authorization. Please reconnect your account.';
+                        }
+                    } else if (new Date() >= new Date(auth.expiresAt)) {
+                        return '❌ X authorization expired. Please reconnect your account.';
+                    }
+
+                    // Initialize Twitter client with access token
+                    const twitterClient = new TwitterApi(accessToken);
+                    const v2Client = twitterClient.v2;
+
+                    // Try posting to X
                     await v2Client.tweet(message);
                     xStatus = true;
                 }
@@ -127,12 +123,13 @@ export class XPostTool extends BaseTool {
 
                 return xStatus ? `✨ Posted to X and feed: ${message}` : `📱 Posted to feed: ${message}`;
 
-        } catch (error) {
-            if (error.code === 401) {
-                return '❌ X authorization invalid. Please reconnect your account.';
+            } catch (error) {
+                if (error.code === 401) {
+                    return '❌ X authorization invalid. Please reconnect your account.';
+                }
+                this.dungeonService.logger.error(`Error posting to X: ${error.message}`);
+                return `❌ Failed to post to X: ${error.message}`;
             }
-            this.dungeonService.logger.error(`Error posting to X: ${error.message}`);
-            return `❌ Failed to post to X: ${error.message}`;
         } finally {
             await client.close();
         }
