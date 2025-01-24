@@ -480,7 +480,7 @@ async function loadActionLog() {
                     ? `
                       <div class="mt-4">
                         <h4 class="font-semibold mb-2">📝 Result</h4>
-                        <p class="text-gray-300">${action.result}</p>
+                        <p class="text-gray-300">${action.result.replace(/^✨ Posted to X and feed: /, '')}</p>
                       </div>
                     `
                     : ""
@@ -490,7 +490,7 @@ async function loadActionLog() {
                     ? `
                       <div class="mt-4">
                         <h4 class="font-semibold mb-2">Memory</h4>
-                        <p class="text-gray-300">${action.memory}</p>
+                        <p class="text-gray-300">${action.memory.replace(/\[🧠 Memory generated: "(.*?)"\]$/g, '$1')}</p>
                       </div>
                     `
                     : ""
