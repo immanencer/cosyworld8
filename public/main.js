@@ -940,7 +940,7 @@ async function showAvatarDetails(avatarId) {
           fill="none"
           viewBox="0 0 24 24"
           stroke="currentColor"
-        >
+        >>
           <path
             stroke-linecap="round"
             stroke-linejoin="round"
@@ -1051,8 +1051,8 @@ async function loadSocialContent() {
                   </div>
 
                   <!-- Post Content -->
-                  <p class="mb-4 text-lg leading-relaxed text-gray-100 pl-2">
-                    ${post.content}
+                  <p class="mb-4 text-lg text-gray-100">
+                    ${post.content.replace(/^✨ Posted to X and feed: /, '')}
                   </p>
 
                   ${
