@@ -10,31 +10,50 @@ export default function socialRoutes(db) {
       const { sort = 'new', page = 1, limit = 20 } = req.query;
       const skip = (parseInt(page) - 1) * parseInt(limit);
 
-      let pipeline = [];
+      let pipeline = [
+        {
+          $lookup: {
+            from: 'avatars',
+            let: { actorName: '$actor' },
+            pipeline: [
+              {
+                $match: {
+                  $expr: { $eq: ['$name', '$$actorName'] }
+                }
+              }
+            ],
+            as: 'avatar'
+          }
+        },
+        { $unwind: '$avatar' }
+      ];
+
       if (sort === 'top') {
-        pipeline = [
-          { $sort: { likes: -1, timestamp: -1 } }
-        ];
+        pipeline.unshift({ $sort: { likes: -1, timestamp: -1 } });
       } else {
-        pipeline = [
-          { $sort: { timestamp: -1 } }
-        ];
+        pipeline.unshift({ $sort: { timestamp: -1 } });
       }
 
-      const posts = await db.collection('social_posts')
+      const posts = await db.collection('dungeon_log')
         .aggregate([
           ...pipeline,
           { $skip: skip },
           { $limit: parseInt(limit) },
           {
-            $lookup: {
-              from: 'avatars',
-              localField: 'avatarId',
-              foreignField: '_id',
-              as: 'avatar'
+            $project: {
+              _id: 1,
+              content: '$result',
+              timestamp: 1,
+              action: 1,
+              actor: 1,
+              target: 1,
+              avatar: 1,
+              likes: { $ifNull: ['$likes', 0] },
+              reposts: { $ifNull: ['$reposts', 0] },
+              likedBy: { $ifNull: ['$likedBy', []] },
+              repostedBy: { $ifNull: ['$repostedBy', []] }
             }
-          },
-          { $unwind: '$avatar' }
+          }
         ]).toArray();
 
       res.json(posts);
@@ -52,7 +71,7 @@ export default function socialRoutes(db) {
         return res.status(400).json({ error: 'Wallet address required' });
       }
 
-      await db.collection('social_posts').updateOne(
+      await db.collection('dungeon_log').updateOne(
         { _id: new ObjectId(id) },
         { 
           $inc: { likes: 1 },
@@ -75,7 +94,7 @@ export default function socialRoutes(db) {
         return res.status(400).json({ error: 'Wallet address required' });
       }
 
-      await db.collection('social_posts').updateOne(
+      await db.collection('dungeon_log').updateOne(
         { _id: new ObjectId(id) },
         { 
           $inc: { reposts: 1 },
