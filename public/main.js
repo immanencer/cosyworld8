@@ -897,55 +897,56 @@ async function loadSocialContent() {
     const posts = await fetchJSON(`/api/social/posts?sort=${state.socialSort}`);
     
     content.innerHTML = `
-      <div class="max-w-4xl mx-auto p-4">
-        <div class="flex justify-between items-center mb-6">
+      <div class="max-w-3xl mx-auto p-4">
+        <div class="flex justify-between items-center mb-8 bg-gray-800/50 p-6 rounded-xl">
           <div>
-            <h2 class="text-3xl font-bold mb-2">📱 Social Feed</h2>
-            <p class="text-gray-400">Latest posts from the dungeon</p>
+            <h2 class="text-4xl font-bold mb-2 text-white">📱 Social Feed</h2>
+            <p class="text-gray-300 text-lg">Latest posts from the dungeon</p>
           </div>
-          <div class="flex items-center gap-4">
-            <h3 class="font-medium">🔄 Sort by:</h3>
-            <button 
-              onclick="setSocialSort('new')"
-              class="${state.socialSort === 'new' ? 'bg-blue-600' : 'bg-gray-700'} px-4 py-2 rounded-lg hover:bg-blue-500 transition-colors"
-            >
-              ⏰ Latest
-            </button>
-            <button
-              onclick="setSocialSort('top')"
-              class="${state.socialSort === 'top' ? 'bg-blue-600' : 'bg-gray-700'} px-4 py-2 rounded-lg hover:bg-blue-500 transition-colors"
-            >
-              🔥 Top
-            </button>
-          </div> 
-            
+          <div class="flex flex-col items-end gap-3">
+            <h3 class="font-medium text-gray-300 text-lg">🔄 Sort by</h3>
+            <div class="flex gap-2">
+              <button 
+                onclick="setSocialSort('new')"
+                class="${state.socialSort === 'new' ? 'bg-blue-600 ring-2 ring-blue-400' : 'bg-gray-700'} px-6 py-2.5 rounded-lg hover:bg-blue-500 transition-all font-medium"
+              >
+                ⏰ Latest
+              </button>
+              <button
+                onclick="setSocialSort('top')"
+                class="${state.socialSort === 'top' ? 'bg-blue-600 ring-2 ring-blue-400' : 'bg-gray-700'} px-6 py-2.5 rounded-lg hover:bg-blue-500 transition-all font-medium"
+              >
+                🔥 Top
+              </button>
+            </div>
+          </div>
         </div>
-        <div class="space-y-4">
+        <div class="space-y-6">
           ${posts.map(post => `
-            <div class="bg-gray-800 rounded-lg p-4 hover:bg-gray-700 transition-colors">
-              <div class="flex items-center gap-3 mb-3">
+            <div class="bg-gray-800/90 backdrop-blur rounded-xl p-6 hover:bg-gray-700/90 transition-all duration-200 border border-gray-700/50 shadow-lg">
+              <div class="flex items-center gap-4 mb-4">
                 <img src="${post.avatar.thumbnailUrl || post.avatar.imageUrl}" 
-                     class="w-12 h-12 rounded-full border-2 border-gray-700" 
+                     class="w-14 h-14 rounded-full border-2 border-gray-600 shadow-md hover:border-blue-400 transition-colors" 
                      alt="${post.avatar.name}">
                 <div>
-                  <div class="font-bold text-lg">${post.avatar.name}</div>
-                  <div class="text-sm text-gray-400">
+                  <div class="font-bold text-xl text-white">${post.avatar.name}</div>
+                  <div class="text-sm text-gray-400 mt-0.5">
                     ${new Date(post.timestamp).toLocaleString()}
                   </div>
                 </div>
               </div>
-              <p class="mb-4 text-lg leading-relaxed">${post.content}</p>
-              ${post.postedToX ? '<span class="text-blue-400 text-sm">Posted to X ✨</span>' : ''}
-              <div class="flex gap-6 text-sm text-gray-400">
+              <p class="mb-4 text-lg leading-relaxed text-gray-100 pl-2">${post.content}</p>
+              ${post.postedToX ? '<span class="inline-flex items-center gap-1.5 text-blue-400 text-sm bg-blue-500/10 px-3 py-1 rounded-full"><span class="text-xs">✨</span> Posted to X</span>' : ''}
+              <div class="flex gap-4 mt-6 text-sm text-gray-300 border-t border-gray-700/50 pt-4">
                 <button onclick="likePost('${post._id}')" 
-                        class="flex items-center gap-2 hover:text-red-500 px-3 py-2 rounded-lg transition-colors ${post.likedBy?.includes(state.wallet?.publicKey) ? 'bg-red-500/10' : ''}">
-                  <span class="text-lg">${post.likedBy?.includes(state.wallet?.publicKey) ? '❤️' : '🤍'}</span>
-                  <span>${post.likes || 0} likes</span>
+                        class="flex items-center gap-2 hover:text-red-400 px-4 py-2 rounded-lg transition-all ${post.likedBy?.includes(state.wallet?.publicKey) ? 'bg-red-500/10 text-red-400' : ''} hover:bg-red-500/10">
+                  <span class="text-xl">${post.likedBy?.includes(state.wallet?.publicKey) ? '❤️' : '🤍'}</span>
+                  <span>${post.likes || 0}</span>
                 </button>
                 <button onclick="repostPost('${post._id}')"
-                        class="flex items-center gap-2 hover:text-green-500 px-3 py-2 rounded-lg transition-colors ${post.repostedBy?.includes(state.wallet?.publicKey) ? 'bg-green-500/10' : ''}">
-                  <span class="text-lg">${post.repostedBy?.includes(state.wallet?.publicKey) ? '🔁' : '↻'}</span>
-                  <span>${post.reposts || 0} reposts</span>
+                        class="flex items-center gap-2 hover:text-green-400 px-4 py-2 rounded-lg transition-all ${post.repostedBy?.includes(state.wallet?.publicKey) ? 'bg-green-500/10 text-green-400' : ''} hover:bg-green-500/10">
+                  <span class="text-xl">${post.repostedBy?.includes(state.wallet?.publicKey) ? '🔁' : '↻'}</span>
+                  <span>${post.reposts || 0}</span>
                 </button>
                 <span class="flex items-center gap-2 text-gray-500 ml-auto">
                   <span>🕒</span>
