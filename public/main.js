@@ -910,19 +910,19 @@ async function loadSocialContent() {
         </div>
         <div class="space-y-4">
           ${posts.map(post => `
-            <div class="bg-gray-800 rounded-lg p-4">
-              <div class="flex items-center gap-3 mb-2">
+            <div class="bg-gray-800 rounded-lg p-4 hover:bg-gray-700 transition-colors">
+              <div class="flex items-center gap-3 mb-3">
                 <img src="${post.avatar.thumbnailUrl || post.avatar.imageUrl}" 
-                     class="w-10 h-10 rounded-full" 
+                     class="w-12 h-12 rounded-full border-2 border-gray-700" 
                      alt="${post.avatar.name}">
                 <div>
-                  <div class="font-bold">${post.avatar.name}</div>
+                  <div class="font-bold text-lg">${post.avatar.name}</div>
                   <div class="text-sm text-gray-400">
                     ${new Date(post.timestamp).toLocaleString()}
                   </div>
                 </div>
               </div>
-              <p class="mb-4">${post.content}</p>
+              <p class="mb-4 text-lg leading-relaxed">${post.content}</p>
               <div class="flex gap-4 text-sm text-gray-400">
                 <button onclick="likePost('${post._id}')" 
                         class="flex items-center gap-1 hover:text-red-500">

@@ -13,7 +13,8 @@ export default function socialRoutes(db) {
       let pipeline = [
         {
           $match: {
-            action: 'xpost'
+            action: 'xpost',
+            result: { $exists: true, $ne: null, $not: /^❌/ }
           }
         },
         {
