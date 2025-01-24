@@ -17,8 +17,7 @@ export default function socialRoutes(db) {
             result: { 
               $exists: true, 
               $ne: null,
-              $not: /^❌/,
-              $regex: /^[^x]/i  // Exclude results starting with x
+              $not: { $regex: '^(❌|x)', $options: 'i' }
             }
           }
         },

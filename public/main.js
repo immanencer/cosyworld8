@@ -918,12 +918,7 @@ async function loadSocialContent() {
               🔥 Top
             </button>
           </div> 
-            onchange="setSocialSort(this.value)"
-            class="bg-gray-700 text-white rounded px-3 py-2"
-          >
-            <option value="new" ${state.socialSort === 'new' ? 'selected' : ''}>Latest</option>
-            <option value="top" ${state.socialSort === 'top' ? 'selected' : ''}>Top</option>
-          </select>
+            
         </div>
         <div class="space-y-4">
           ${posts.map(post => `
