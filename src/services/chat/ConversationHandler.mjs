@@ -119,12 +119,35 @@ export class ConversationHandler {
         await this.avatarService.updateAvatar(avatar);
       }
 
-      // Gather memories
-      const memoryRecords = await this.memoryService.getMemories(avatar._id);
+      // Gather memories and recent actions
+      const [memoryRecords, recentActions] = await Promise.all([
+        this.memoryService.getMemories(avatar._id),
+        this.dungeonService.dungeonLog.getRecentActions(avatar.channelId)
+      ]);
+
       const memories = (memoryRecords || []).map(m => m.memory).join('\n');
+      const actions = (recentActions || [])
+        .filter(action => action.actorId === avatar._id.toString())
+        .map(a => `${a.description || a.action}`)
+        .join('\n');
+
+      // Get narrative channel content if available
+      let narrativeContent = '';
+      if (avatar.innerMonologueChannel) {
+        try {
+          const channel = await this.client.channels.fetch(avatar.innerMonologueChannel);
+          const messages = await channel.messages.fetch({ limit: 10 });
+          narrativeContent = messages
+            .filter(m => !m.content.startsWith('🌪️')) // Skip previous personality updates
+            .map(m => m.content)
+            .join('\n');
+        } catch (error) {
+          this.logger.error(`Error fetching narrative content: ${error.message}`);
+        }
+      }
 
       // Build narrative prompt
-      const prompt = this.buildNarrativePrompt(avatar, memories);
+      const prompt = this.buildNarrativePrompt(avatar, memories, actions, narrativeContent);
 
       // Call AI service
       const narrative = await this.aiService.chat([
@@ -132,7 +155,10 @@ export class ConversationHandler {
           role: 'system',
           content: avatar.prompt || `You are ${avatar.name}. ${avatar.personality}`
         },
-        { role: 'assistant', content: `I remember: ${memories}` },
+        { 
+          role: 'assistant', 
+          content: `Current personality: ${avatar.dynamicPersonality || 'None yet'}\n\nMemories: ${memories}\n\nRecent actions: ${actions}\n\nNarrative thoughts: ${narrativeContent}` 
+        },
         { role: 'user', content: prompt }
       ], { model: avatar.model });
 
@@ -166,17 +192,25 @@ export class ConversationHandler {
    * @param {string} memories 
    * @returns {string}
    */
-  buildNarrativePrompt(avatar, memories) {
+  buildNarrativePrompt(avatar, memories, actions, narrativeContent) {
     return `
 You are ${avatar.name || ''}.
 
-${avatar.personality || ''}
+Base personality: ${avatar.personality || ''}
+Current dynamic personality: ${avatar.dynamicPersonality || 'None yet'}
 
-${avatar.description || ''}
+Physical description: ${avatar.description || ''}
 
+Recent memories:
 ${memories}
 
-Share your dreams, personality, goals, and important memories.
+Recent actions:
+${actions}
+
+Recent thoughts and reflections:
+${narrativeContent}
+
+Based on all of the above context, share an updated personality that reflects your recent experiences, actions, and growth. Focus on how these events have shaped your character.
     `.trim();
   }
 
