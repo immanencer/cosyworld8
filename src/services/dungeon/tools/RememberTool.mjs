@@ -2,6 +2,7 @@
 import { MemoryService } from '../../memoryService.mjs';
 import { OpenRouterService } from '../../openrouterService.mjs';
 import { BaseTool } from './BaseTool.mjs';
+import { sendAsWebhook } from '../../discordService.mjs';
 
 export class RememberTool extends BaseTool {
   constructor(dungeonService) {

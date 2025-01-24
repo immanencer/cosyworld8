@@ -6,6 +6,8 @@ import { MongoClient, ObjectId } from 'mongodb';
 import Replicate from 'replicate';
 import fs from 'fs/promises';
 
+const OPENROUTER_MODEL = process.env.OPENROUTER_MODEL || 'openai/gpt-4o';
+
 export class LocationService {
   /**
    * Constructs a new LocationService.
@@ -275,7 +277,7 @@ If already suitable, return as is. If it needs editing, revise it while preservi
           }
         ],
         {
-          model: 'openai/gpt-4o'
+          model: OPENROUTER_MODEL
         }
       );
 
@@ -318,7 +320,7 @@ If already suitable, return as is. If it needs editing, revise it while preservi
           }
         ],
         {
-          model: 'openai/gpt-4o'
+          model: OPENROUTER_MODEL
         }
       );
       const locationImage = await this.generateLocationImage(
@@ -331,6 +333,10 @@ If already suitable, return as is. If it needs editing, revise it while preservi
         name: cleanLocationName,
         autoArchiveDuration: 60
       });
+
+      if (!thread) {
+        throw new Error('Failed to create thread for location');
+      }
 
       // Post the location image
       await thread.send({

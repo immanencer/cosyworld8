@@ -16,17 +16,9 @@ export class ConversationHandler {
     // Memory service for storing and retrieving memories
     this.memoryService = new MemoryService(this.logger);
 
-    // Cooldowns and timing
-    this.channelCooldowns = new Map();
-    this.COOLDOWN_TIME = 6 * 60 * 60 * 1000; // 6 hours
-    this.SUMMARY_LIMIT = 5;
-    this.IDLE_TIME = 60 * 60 * 1000;        // 1 hour
-    this.lastUpdate = Date.now();
-
-    // Update cooldown times
-    this.HUMAN_RESPONSE_COOLDOWN = 5000;     // 5 seconds for human messages
-    this.BOT_RESPONSE_COOLDOWN = 300000;     // 5 minutes for bot messages
-    this.INITIAL_RESPONSE_COOLDOWN = 10000;  // 10 seconds after joining channel
+    // Global narrative cooldown: only generate one narrative per hour
+    this.GLOBAL_NARRATIVE_COOLDOWN = 60 * 60 * 1000; // 1 hour
+    this.lastGlobalNarrativeTime = 0;
 
     // Required Discord permissions
     this.requiredPermissions = [
@@ -45,7 +37,7 @@ export class ConversationHandler {
   }
 
   /**
-   * Initializes the MongoDB client and database connection, ensuring a single instance is used.
+   * Initializes the MongoDB client and database connection.
    */
   async _initializeDb() {
     if (!process.env.MONGO_URI || !process.env.MONGO_DB_NAME) {
@@ -55,7 +47,6 @@ export class ConversationHandler {
 
     try {
       this.dbClient = new MongoClient(process.env.MONGO_URI);
-
       await this.dbClient.connect();
       this.db = this.dbClient.db(process.env.MONGO_DB_NAME);
       this.logger.info('Successfully connected to MongoDB.');
@@ -99,8 +90,7 @@ export class ConversationHandler {
   }
 
   /**
-   * Generates a narrative or reflection for an avatar, respecting cooldowns.
-   * This narrative can be used to update the avatar's dynamic prompts.
+   * Generates a narrative or reflection for an avatar, subject to a global 1-hour cooldown.
    * @param {*} avatar 
    * @returns {string | null} The generated narrative (if any).
    */
@@ -111,9 +101,9 @@ export class ConversationHandler {
         return null;
       }
 
-      const lastNarrative = await this.getLastNarrative(avatar._id);
-      if (lastNarrative && Date.now() - lastNarrative.timestamp < this.COOLDOWN_TIME) {
-        this.logger.info(`Narrative cooldown active for ${avatar.name}`);
+      // Check the global narrative cooldown
+      if (Date.now() - this.lastGlobalNarrativeTime < this.GLOBAL_NARRATIVE_COOLDOWN) {
+        this.logger.info('Global narrative cooldown active. Skipping narrative generation.');
         return null;
       }
 
@@ -140,6 +130,11 @@ export class ConversationHandler {
         { role: 'user', content: prompt }
       ], { model: avatar.model });
 
+      if (!narrative) {
+        this.logger.error(`No narrative generated for ${avatar.name}.`);
+        return null;
+      }
+
       // Store the narrative and update the avatar
       await this.storeNarrative(avatar._id, narrative);
       this.updateNarrativeHistory(avatar, narrative);
@@ -148,6 +143,9 @@ export class ConversationHandler {
       avatar.prompt = await this.buildSystemPrompt(avatar);
       avatar.dynamicPrompt = narrative;
       await this.avatarService.updateAvatar(avatar);
+
+      // Update the global cooldown timestamp
+      this.lastGlobalNarrativeTime = Date.now();
 
       return narrative;
     } catch (error) {
@@ -208,16 +206,15 @@ Share your dreams, personality, goals, and important memories.
         this.logger.error('DB not initialized. Cannot fetch narrative.');
         return null;
       }
-      const lastNarrative = await this.db.collection('narratives').findOne(
-        {
-          $or: [
-            { avatarId },
-            { avatarId: avatarId.toString() },
-            { avatarId: { $exists: false } }
-          ]
-        },
-        { sort: { timestamp: -1 } }
-      );
+      const lastNarrative = await this.db
+        .collection('narratives')
+        .findOne(
+          { $or: [
+              { avatarId },
+              { avatarId: avatarId.toString() }
+            ]},
+          { sort: { timestamp: -1 } }
+        );
       return lastNarrative;
     } catch (error) {
       this.logger.error(`Error fetching last narrative for avatar ${avatarId}: ${error.message}`);
@@ -248,8 +245,11 @@ Share your dreams, personality, goals, and important memories.
     const narrativeData = { timestamp: Date.now(), content, guildName };
     avatar.narrativeHistory = avatar.narrativeHistory || [];
     avatar.narrativeHistory.unshift(narrativeData);
-    avatar.narrativeHistory = avatar.narrativeHistory.slice(0, this.SUMMARY_LIMIT);
 
+    // Keep only the most recent 5 narratives (optional; remove if not desired)
+    avatar.narrativeHistory = avatar.narrativeHistory.slice(0, 5);
+
+    // Create a brief summary string for the avatar (optional)
     avatar.narrativesSummary = avatar.narrativeHistory
       .map(r => `[${new Date(r.timestamp).toLocaleDateString()}] ${r.guildName}: ${r.content}`)
       .join('\n\n');
@@ -304,7 +304,6 @@ Share your dreams, personality, goals, and important memories.
 
       // Build system and dungeon prompts
       const systemPrompt = await this.buildSystemPrompt(avatar);
-      // This could be varied for example if we wanted them to play nethack.
       const dungeonPrompt = await this.buildDungeonPrompt(avatar);
 
       // Generate response via AI service
@@ -321,7 +320,8 @@ ${dungeonPrompt}
 Recent messages:
 ${context.recentMessages.map(m => `${m.author}: ${m.content}`).join('\n')}
 
-Reply in character with a short, casual message, suitable for this discord channel.`.trim()
+Reply in character with a short, casual message, suitable for this discord channel.
+          `.trim()
         }
       ], { model: avatar.model });
 
@@ -335,27 +335,23 @@ Reply in character with a short, casual message, suitable for this discord chann
         response = response.replace(`${avatar.name}:`, '').trim();
       }
 
-      // Truncate overly long responses at a newline near 2000 chars
+      // Truncate overly long responses at a safe position near 2000 chars
       if (response.length > 2000) {
-        this.logger.warn(`Truncating response for ${avatar.name} to avoid exceed Discord limit`);
+        this.logger.warn(`Truncating response for ${avatar.name} to avoid exceeding Discord limit`);
         const safeIndex = response.lastIndexOf('\n', 1500);
-        if (safeIndex > 0) {
-          response = response.substring(0, safeIndex);
-        } else {
-          response = response.substring(0, 1500);
-        }
+        response = safeIndex > 0
+          ? response.substring(0, safeIndex)
+          : response.substring(0, 1500);
       }
 
       // Extract and process dungeon tool commands
       const { commands, cleanText } = this.dungeonService.extractToolCommands(response);
-
       let sentMessage = null;
       let commandResults = [];
 
       // If there are commands, process them first
       if (commands.length > 0) {
         this.logger.info(`Processing ${commands.length} command(s) for ${avatar.name}`);
-
         commandResults = await Promise.all(
           commands.map(cmd =>
             this.dungeonService.processAction(
