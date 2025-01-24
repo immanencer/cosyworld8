@@ -24,11 +24,16 @@ export default function socialRoutes(db) {
         {
           $lookup: {
             from: 'avatars',
-            let: { actorName: '$actor' },
+            let: { actorName: { $replaceAll: { input: '$actor', find: ' used xpost.', replacement: '' } } },
             pipeline: [
               {
                 $match: {
-                  $expr: { $eq: ['$name', '$$actorName'] }
+                  $expr: { 
+                    $eq: [
+                      { $trim: { input: '$name' } },
+                      { $trim: { input: { $replaceAll: { input: '$$actorName', find: '🐦 ', replacement: '' } } } }
+                    ]
+                  }
                 }
               }
             ],
