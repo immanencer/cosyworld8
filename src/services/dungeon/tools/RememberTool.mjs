@@ -44,7 +44,8 @@ export class RememberTool extends BaseTool {
         avatar.imageUrl
       );
     }
-    return `[🧠 Memory generated: "${memory}"]`;
+    const formattedMemory = memory.trim();
+    return `[🧠 Memory generated: "${formattedMemory}"]`;
   }
 
   getDescription() {
