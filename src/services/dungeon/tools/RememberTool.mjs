@@ -45,6 +45,7 @@ export class RememberTool extends BaseTool {
       );
     }
     const formattedMemory = memory.trim();
+    this.logger?.debug(`Generated memory: ${formattedMemory}`);
     return `[🧠 Memory generated: "${formattedMemory}"]`;
   }
 
