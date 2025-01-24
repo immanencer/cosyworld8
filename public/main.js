@@ -374,7 +374,7 @@ async function loadActionLog() {
       .map(
         (action) => `
         <div class="bg-gray-800 p-4 mb-2 rounded-lg hover:bg-gray-700 transition-colors">
-          <div class="flex items-center gap-4">
+          <div class="flex flex-col sm:flex-row items-center gap-4">
             ${
               action.actorThumbnailUrl
                 ? `<img
@@ -440,7 +440,7 @@ async function loadActionLog() {
                 ${
                   ["attack", "defend"].includes(action.action)
                     ? `
-                      <div class="grid grid-cols-2 gap-4">
+                      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                         ${renderStats(action.actorStats, "⚔️ Actor Stats")}
                         ${
                           action.targetName
@@ -527,21 +527,21 @@ async function loadActionLog() {
  */
 async function loadLeaderboard() {
   // Reset scroll state when entering leaderboard tab
-  if (state.activeTab === 'leaderboard') {
+  if (state.activeTab === "leaderboard") {
     window.scrollState = {
       page: 1,
       loading: false,
       hasMore: true,
-      initialized: false
+      initialized: false,
     };
   } else {
     window.scrollState = window.scrollState || {
       page: 1,
       loading: false,
-      hasMore: true
+      hasMore: true,
     };
   }
-  
+
   const scrollState = window.scrollState;
 
   try {
@@ -660,14 +660,18 @@ async function loadLeaderboard() {
     // Set up infinite scroll
     const observer = new IntersectionObserver(
       (entries) => {
-        if (entries[0].isIntersecting && !scrollState.loading && scrollState.hasMore) {
+        if (
+          entries[0].isIntersecting &&
+          !scrollState.loading &&
+          scrollState.hasMore
+        ) {
           loadMore();
         }
       },
-      { threshold: 0.1, rootMargin: '100px' }
+      { threshold: 0.1, rootMargin: "100px" },
     );
     observer.observe(loader);
-    
+
     // Initial load
     if (!scrollState.initialized) {
       scrollState.initialized = true;
@@ -699,13 +703,13 @@ async function showAvatarDetails(avatarId) {
       xAuthStatusResponse,
       narrativesResponse,
       actionsResponse,
-      statsResponse
+      statsResponse,
     ] = await Promise.all([
       fetchJSON(`/api/avatars/${avatarId}`),
       fetchJSON(`/auth/x/status/${avatarId}`),
       fetchJSON(`/api/avatars/${avatarId}/narratives`),
       fetchJSON(`/api/avatars/${avatarId}/dungeon-actions`),
-      fetchJSON(`/api/avatars/${avatarId}/stats`)
+      fetchJSON(`/api/avatars/${avatarId}/stats`),
     ]);
 
     // Merge stats into avatar response
@@ -719,54 +723,52 @@ async function showAvatarDetails(avatarId) {
     modalContent.innerHTML = `
       <div class="flex flex-col items-center relative bg-parchment text-gray-900">
         <!-- Header Section -->
-        <div class="w-full p-6 bg-gray-800 text-white">
-          <div class="flex items-center justify-between gap-4">
-            <div class="flex items-center gap-4">
-              <img
-                src="${avatarResponse.imageUrl}"
-                alt="${avatarResponse.name}"
-                class="w-32 h-32 object-cover rounded-full border-4 border-gray-600"
-              >
-              <div>
-                <h1 class="text-3xl font-bold mb-1">${avatarResponse.name}</h1>
-                <div class="flex items-center gap-2">
-                  <span
-                    class="px-2 py-1 rounded text-xs font-bold ${getTierColor(
-                      avatarResponse.model,
-                    )}"
-                  >
-                    Tier ${getTierFromModel(avatarResponse.model)}
-                  </span>
-                </div>
+        <div class="w-full p-6 bg-gray-800 text-white flex flex-col sm:flex-row items-center justify-between gap-4">
+          <div class="flex items-center gap-4">
+            <img
+              src="${avatarResponse.imageUrl}"
+              alt="${avatarResponse.name}"
+              class="w-32 h-32 object-cover rounded-full border-4 border-gray-600"
+            >
+            <div>
+              <h1 class="text-3xl font-bold mb-1">${avatarResponse.name}</h1>
+              <div class="flex items-center gap-2">
+                <span
+                  class="px-2 py-1 rounded text-xs font-bold ${getTierColor(
+                    avatarResponse.model,
+                  )}"
+                >
+                  Tier ${getTierFromModel(avatarResponse.model)}
+                </span>
               </div>
             </div>
-            <div class="flex-shrink-0">
-              ${
-                !state.wallet
+          </div>
+          <div class="flex-shrink-0">
+            ${
+              !state.wallet
+                ? `
+                  <button
+                    onclick="connectWallet()"
+                    class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-lg transition-colors text-sm"
+                  >
+                    Connect Wallet
+                  </button>
+                `
+                : !claimed
                   ? `
-                    <button
-                      onclick="connectWallet()"
-                      class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-lg transition-colors text-sm"
-                    >
-                      Connect Wallet
-                    </button>
-                  `
-                  : !claimed
-                    ? `
-                      <button
-                        onclick="claimAvatar('${avatarId}')"
-                        class="px-4 py-2 bg-green-600 hover:bg-green-700 text-white font-bold rounded-lg transition-colors text-sm"
-                      >
-                        Claim Avatar
-                      </button>
-                    `
-                    : `
-                      <div class="px-4 py-2 bg-green-600/20 text-green-400 rounded-lg text-sm">
-                        Avatar Claimed
-                      </div>
-                    `
-              }
-            </div>
+                  <button
+                    onclick="claimAvatar('${avatarId}')"
+                    class="px-4 py-2 bg-green-600 hover:bg-green-700 text-white font-bold rounded-lg transition-colors text-sm"
+                  >
+                    Claim Avatar
+                  </button>
+                `
+                  : `
+                  <div class="px-4 py-2 bg-green-600/20 text-green-400 rounded-lg text-sm">
+                    Avatar Claimed
+                  </div>
+                `
+            }
           </div>
         </div>
 
@@ -783,7 +785,7 @@ async function showAvatarDetails(avatarId) {
         <h1 class="text-2xl font-bold mt-4">${avatarResponse.name}</h1>
 
         <!-- Character Info -->
-        <div class="grid grid-cols-2 gap-4 w-full mb-4 mt-4">
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 w-full mb-4 mt-4 px-4">
           <!-- Class & Level -->
           <div class="bg-gray-100 p-4 rounded-lg text-gray-900">
             <h3 class="text-lg font-bold mb-2">Class & Level</h3>
@@ -870,7 +872,7 @@ async function showAvatarDetails(avatarId) {
         </div>
 
         <!-- Description & Personality -->
-        <div class="mt-4 space-y-4 w-full px-4">
+        <div class="mt-4 space-y-4 w-full px-4 mb-8">
           <div class="bg-white/10 p-4 rounded-lg">
             <h3 class="font-bold text-lg mb-2">Description</h3>
             <p class="text-gray-300">
@@ -926,8 +928,6 @@ async function showAvatarDetails(avatarId) {
             </div>
           </div>
         </div>
-
-        
       </div>
 
       <button
@@ -955,7 +955,7 @@ async function showAvatarDetails(avatarId) {
     modalContent.innerHTML = `
       <div class="text-center py-8">
         <div class="text-red-500 font-semibold mb-4">
-          Error loading avatar details: ${error.message || 'Unknown error occurred'}
+          Error loading avatar details: ${error.message || "Unknown error occurred"}
         </div>
         <button 
           onclick="closeAvatarModal()" 
@@ -1036,7 +1036,7 @@ async function loadSocialContent() {
                   class="bg-gray-800/90 backdrop-blur rounded-lg p-6 hover:bg-gray-700/90 transition-all duration-200 border border-gray-700/50 shadow-lg"
                 >
                   <!-- Avatar & Timestamp -->
-                  <div class="flex items-center gap-3 mb-3">
+                  <div class="flex flex-col sm:flex-row items-center gap-3 mb-3">
                     <img
                       src="${post.avatar.thumbnailUrl || post.avatar.imageUrl}"
                       class="w-12 h-12 rounded-full border-2 border-gray-600 shadow-md hover:border-blue-400 transition-colors"
@@ -1069,7 +1069,7 @@ async function loadSocialContent() {
 
                   <!-- Like & Repost Buttons -->
                   <div
-                    class="flex gap-4 mt-6 text-sm text-gray-300 border-t border-gray-700/50 pt-4"
+                    class="flex flex-col sm:flex-row gap-4 mt-6 text-sm text-gray-300 border-t border-gray-700/50 pt-4"
                   >
                     <button
                       onclick="likePost('${post._id}')"
@@ -1116,7 +1116,7 @@ async function loadSocialContent() {
                       <span>${post.reposts || 0}</span>
                     </button>
 
-                    <span class="flex items-center gap-2 text-gray-500 ml-auto">
+                    <span class="flex items-center gap-2 text-gray-500 sm:ml-auto">
                       <span>🕒</span>
                       ${new Date(post.timestamp).toLocaleString()}
                     </span>
