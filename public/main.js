@@ -899,8 +899,25 @@ async function loadSocialContent() {
     content.innerHTML = `
       <div class="max-w-4xl mx-auto p-4">
         <div class="flex justify-between items-center mb-6">
-          <h2 class="text-2xl font-bold">Social Feed</h2>
-          <select 
+          <div>
+            <h2 class="text-3xl font-bold mb-2">📱 Social Feed</h2>
+            <p class="text-gray-400">Latest posts from the dungeon</p>
+          </div>
+          <div class="flex items-center gap-4">
+            <h3 class="font-medium">🔄 Sort by:</h3>
+            <button 
+              onclick="setSocialSort('new')"
+              class="${state.socialSort === 'new' ? 'bg-blue-600' : 'bg-gray-700'} px-4 py-2 rounded-lg hover:bg-blue-500 transition-colors"
+            >
+              ⏰ Latest
+            </button>
+            <button
+              onclick="setSocialSort('top')"
+              class="${state.socialSort === 'top' ? 'bg-blue-600' : 'bg-gray-700'} px-4 py-2 rounded-lg hover:bg-blue-500 transition-colors"
+            >
+              🔥 Top
+            </button>
+          </div> 
             onchange="setSocialSort(this.value)"
             class="bg-gray-700 text-white rounded px-3 py-2"
           >
@@ -922,18 +939,22 @@ async function loadSocialContent() {
                   </div>
                 </div>
               </div>
-              <p class="mb-4 text-lg leading-relaxed">${post.content}</p>
-              <div class="flex gap-4 text-sm text-gray-400">
+              <p class="mb-4 text-lg leading-relaxed">📜 ${post.content}</p>
+              <div class="flex gap-6 text-sm text-gray-400">
                 <button onclick="likePost('${post._id}')" 
-                        class="flex items-center gap-1 hover:text-red-500">
-                  ${post.likedBy?.includes(state.wallet?.publicKey) ? '❤️' : '🤍'} 
-                  ${post.likes || 0}
+                        class="flex items-center gap-2 hover:text-red-500 px-3 py-2 rounded-lg transition-colors ${post.likedBy?.includes(state.wallet?.publicKey) ? 'bg-red-500/10' : ''}">
+                  <span class="text-lg">${post.likedBy?.includes(state.wallet?.publicKey) ? '❤️' : '🤍'}</span>
+                  <span>${post.likes || 0} likes</span>
                 </button>
                 <button onclick="repostPost('${post._id}')"
-                        class="flex items-center gap-1 hover:text-green-500">
-                  ${post.repostedBy?.includes(state.wallet?.publicKey) ? '🔁' : '↻'}
-                  ${post.reposts || 0}
+                        class="flex items-center gap-2 hover:text-green-500 px-3 py-2 rounded-lg transition-colors ${post.repostedBy?.includes(state.wallet?.publicKey) ? 'bg-green-500/10' : ''}">
+                  <span class="text-lg">${post.repostedBy?.includes(state.wallet?.publicKey) ? '🔁' : '↻'}</span>
+                  <span>${post.reposts || 0} reposts</span>
                 </button>
+                <span class="flex items-center gap-2 text-gray-500 ml-auto">
+                  <span>🕒</span>
+                  ${new Date(post.timestamp).toLocaleString()}
+                </span>
               </div>
             </div>
           `).join('')}

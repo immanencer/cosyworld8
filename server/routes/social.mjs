@@ -14,7 +14,12 @@ export default function socialRoutes(db) {
         {
           $match: {
             action: 'xpost',
-            result: { $exists: true, $ne: null, $not: /^❌/ }
+            result: { 
+              $exists: true, 
+              $ne: null,
+              $not: /^❌/,
+              $regex: /^[^x]/i  // Exclude results starting with x
+            }
           }
         },
         {
