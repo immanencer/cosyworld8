@@ -18,7 +18,8 @@ export default function socialRoutes(db) {
               $exists: true, 
               $ne: null,
               $not: { $regex: '^(❌|x)', $options: 'i' }
-            }
+            },
+            actorId: { $exists: true }
           }
         },
         {

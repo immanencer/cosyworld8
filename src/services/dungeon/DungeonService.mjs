@@ -130,10 +130,13 @@ export class DungeonService {
         channelId: message.channel.id,
         action: command,
         actorId: message.author.id,
-        actor: message.author.username,
-        actorName: `${tool.emoji || '🛠️'} ${message.author.username} used ${command}.`,
+        actorName: message.author.username,
+        displayName: `${tool.emoji || '🛠️'} ${message.author.username}`,
         target: params[0],
-        result
+        result,
+        tool: command,
+        emoji: tool.emoji,
+        isCustom: false
       });
       return result;
     } catch (error) {
