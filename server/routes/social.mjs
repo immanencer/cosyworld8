@@ -119,11 +119,17 @@ export default function socialRoutes(db) {
           }
         ]).toArray();
 
-      // Combine posts with avatar data
-      const posts = allPosts.map(post => ({
-        ...post,
-        avatar: avatars.find(a => a._id.toString() === post.actorId.toString())
-      }));
+      // Combine posts with avatar data and ensure thumbnails
+      const posts = allPosts.map(post => {
+        const avatar = avatars.find(a => a._id.toString() === post.actorId.toString());
+        return {
+          ...post,
+          avatar: avatar ? {
+            ...avatar,
+            thumbnailUrl: avatar.thumbnailUrl || avatar.imageUrl // Fallback to main image if no thumbnail
+          } : null
+        };
+      }).filter(post => post.avatar); // Only return posts with valid avatars
 
       res.json(posts);
     } catch (error) {
