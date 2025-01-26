@@ -349,6 +349,7 @@ async function checkDailySummonLimit(userId) {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   
+  const db = mongoClient.db(MONGO_DB_NAME);
   const summonCount = await db.collection('daily_summons').countDocuments({
     userId,
     timestamp: { $gte: today }
@@ -358,6 +359,7 @@ async function checkDailySummonLimit(userId) {
 }
 
 async function trackSummon(userId) {
+  const db = mongoClient.db(MONGO_DB_NAME);
   await db.collection('daily_summons').insertOne({
     userId,
     timestamp: new Date()
