@@ -566,7 +566,7 @@ async function loadLeaderboard() {
 
       try {
         const data = await fetchJSON(
-          `/api/avatars/leaderboard?page=${scrollState.page}&limit=12`,
+          `/api/leaderboard?page=${scrollState.page}&limit=12`,
         );
 
         if (!data || !data.avatars || !Array.isArray(data.avatars)) {

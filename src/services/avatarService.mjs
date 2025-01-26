@@ -253,6 +253,7 @@ export class AvatarGenerationService {
           "${userPrompt}".
           
           Please respond in the following JSON format. ONLY provide valid JSON as a response.
+          If the prompt contains any non-English words, fill out ALL fields in the non-English language.
           Creatively fill in any details without comment, keep all responses to no more than four sentences. 
           {
             "name": "<name the character>",
@@ -495,7 +496,7 @@ export class AvatarGenerationService {
       throw new Error('Error downloading the image: ' + error.message);
     }
   }
-  
+
   /**
    * Creates a new avatar by generating its description and image, then saving it to the database.
    * @param {Object} avatarData - The data for the new avatar.
