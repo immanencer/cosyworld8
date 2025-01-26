@@ -343,11 +343,40 @@ async function handleAttackCommand(message, args) {
  * @param {Message} message - The Discord message object.
  * @param {Array} args - The arguments provided with the command.
  */
+const DAILY_SUMMON_LIMIT = 5; // Configure limit per user per day
+
+async function checkDailySummonLimit(userId) {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  
+  const summonCount = await db.collection('daily_summons').countDocuments({
+    userId,
+    timestamp: { $gte: today }
+  });
+
+  return summonCount < DAILY_SUMMON_LIMIT;
+}
+
+async function trackSummon(userId) {
+  await db.collection('daily_summons').insertOne({
+    userId,
+    timestamp: new Date()
+  });
+}
+
 async function handleSummmonCommand(message, args, breed = false, attributes = {}) {
   let prompt = args.join(' ');
   let existingAvatar = null;
 
   try {
+    // Skip limit check for breeding
+    if (!breed) {
+      const canSummon = await checkDailySummonLimit(message.author.id);
+      if (!canSummon) {
+        await message.reply(`You have reached your daily limit of ${DAILY_SUMMON_LIMIT} summons. Try again tomorrow!`);
+        return;
+      }
+    }
     // 1. Check if we're summoning an existing avatar by exact name
     existingAvatar = await avatarService.getAvatarByName(prompt.trim());
     if (existingAvatar) {
@@ -370,6 +399,11 @@ async function handleSummmonCommand(message, args, breed = false, attributes = {
 
       // Prompt the avatar to respond
       await chatService.respondAsAvatar(message.channel, existingAvatar, true);
+
+      // Track summon if not breeding
+      if (!breed) {
+        await trackSummon(message.author.id);
+      }
 
       // Confirm the command
       await reactToMessage(client, message.channel.id, message.id, '✅');
@@ -464,6 +498,11 @@ async function handleSummmonCommand(message, args, breed = false, attributes = {
 
       // Prompt the new avatar to respond
       await chatService.respondAsAvatar(message.channel, createdAvatar, true);
+
+      // Track summon if not breeding
+      if (!breed) {
+        await trackSummon(message.author.id);
+      }
     } else {
       await reactToMessage(client, message.channel.id, message.id, '❌');
       throw new Error(
