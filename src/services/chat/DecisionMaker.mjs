@@ -107,96 +107,91 @@ export class DecisionMaker {
 
     return activeAvatars;
   }
-
-  /**
-   * Main entry point: determine if the given avatar should respond in the channel.
-   */
   async shouldRespond(channel, avatar, client) {
-    // Validate channel and avatar
-    if (!channel || !channel.id) {
-      this.logger.error('Invalid channel provided to shouldRespond:', channel);
-      return false;
-    }
-    if (!avatar || !avatar._id || !avatar.name) {
-      this.logger.error('Invalid avatar provided to shouldRespond:', avatar);
+    if (!channel || !avatar) {
+      this.logger.error('Invalid channel or avatar');
       return false;
     }
 
-    // Decay the avatar's attention each time we check
+    // Decay attention first
     this._decayAttention(avatar._id);
 
-    // Check if avatar is on a cooldown
+    // Check avatar cooldown
     const { lastResponseTime } = this._getAttentionState(avatar._id);
-    const now = Date.now();
-    if (now - lastResponseTime < this.PER_AVATAR_COOLDOWN) {
-      // avatar is still on cooldown
+    if (Date.now() - lastResponseTime < this.PER_AVATAR_COOLDOWN) {
       return false;
     }
 
-    // Get the latest messages in the channel
     const messages = await channel.messages.fetch({ limit: 8 });
     if (!messages.size) return false;
 
-    // Calculate the ratio of bot messages vs total
-    const botMessageCount = messages.filter(m => m.author.bot).size;
-    const botMessagePercentage = botMessageCount / messages.size - MINIMUM_RESPONSE_PERCENTAGE;
-
     const lastMessage = messages.first();
-    if (!lastMessage) return false;
+    const isHuman = !lastMessage.author.bot;
 
-    // If the last message was from this same avatar, skip
-    if (lastMessage.author.username.toLowerCase() === avatar.name.toLowerCase()) {
-      return false;
-    }
+    // Immediate response conditions for humans
+    if (isHuman) {
+      const mentioned = lastMessage.content.toLowerCase().includes(avatar.name.toLowerCase()) ||
+        (avatar.emoji && lastMessage.content.includes(avatar.emoji));
 
-    // Check for mention of avatar name or emoji
-    const isAvatarMentioned = lastMessage.content.toLowerCase().includes(avatar.name.toLowerCase()) ||
-      (avatar.emoji && lastMessage.content.includes(avatar.emoji));
-    if (isAvatarMentioned) {
-      // Increase attention significantly when specifically mentioned
-      this._adjustAttention(avatar._id, +15);
-
-      // Only respond if not from a bot or if random chance passes for bot mention
-      if (!lastMessage.author.bot || Math.random() > botMessagePercentage) {
-        return await this._evaluateAIResponse(avatar, messages, client);
+      if (mentioned) {
+        this._adjustAttention(avatar._id, +25); // Higher boost for human mentions
+        return true; // Bypass AI check for direct mentions
       }
+    }
+
+    // Bot-to-bot coordination
+    if (!isHuman) {
+      const activeAvatars = this.getRecentlyActiveAvatars(channel.id);
+      if (activeAvatars.length > 0) {
+        // If other avatars recently responded, reduce response likelihood
+        const responseChance = Math.max(0.1, 1 - (activeAvatars.length * 0.3));
+        if (Math.random() > responseChance) return false;
+      }
+    }
+
+    // Attention threshold check
+    if (this._getAttentionState(avatar._id).level < this.MINIMUM_ATTENTION_THRESHOLD) {
       return false;
     }
 
-    // If the avatar's attention is below threshold, skip
-    const { level } = this._getAttentionState(avatar._id);
-    if (level < this.MINIMUM_ATTENTION_THRESHOLD) {
-      // Not enough attention to respond
-      return false;
-    }
-
-    // Fallback: use AI logic to see if there's general context to respond
-    return await this._evaluateAIResponse(avatar, messages, client);
+    // AI evaluation with different thresholds
+    return this._evaluateAIResponse(avatar, messages, client, isHuman);
   }
 
-  /**
-   * Helper to run the AI "decision" step.
-   */
-  async _evaluateAIResponse(avatar, messages, client) {
+  async _evaluateAIResponse(avatar, messages, client, isHuman) {
     try {
-      // Reverse so oldest -> newest
-      const context = messages
-        .reverse()
-        .map(m => ({
-          role: m.author.bot ? 'assistant' : 'user',
-          content: `${m.author.username}: ${m.content}`
-        }));
+      const context = messages.reverse().map(m => ({
+        role: m.author.bot ? 'assistant' : 'user',
+        content: `${m.author.username}: ${m.content}`
+      }));
 
-      const decision = await this.makeDecision(avatar, context, client);
-      if (decision.decision === 'YES') {
-        // Mark avatar responded => sets cooldown and reduces attention
+      // Different prompts for human vs bot interactions
+      const decisionPrompt = [
+        ...context,
+        {
+          role: 'user',
+          content: isHuman
+            ? `As ${avatar.name}, should you respond to this human conversation? YES/NO:`
+            : `As ${avatar.name}, analyze this bot conversation and decide to respond (YES/NO):`
+        }
+      ];
+
+      const aiResponse = await this.aiService.chat(decisionPrompt, {
+        model: DECISION_MODEL,
+        max_tokens: isHuman ? 50 : 100 // Faster response for humans
+      });
+
+      const decision = aiResponse.trim().toUpperCase().startsWith('YES');
+
+      if (decision) {
         this._markAvatarResponded(avatar._id);
-        return true;
+        // Give humans faster follow-up opportunities
+        if (isHuman) this._adjustAttention(avatar._id, +10);
       }
 
-      return false;
+      return decision;
     } catch (error) {
-      this.logger.error(`Error in _evaluateAIResponse for avatar ${avatar.name}: ${error.message}`);
+      this.logger.error(`Evaluation error: ${error.message}`);
       return false;
     }
   }
