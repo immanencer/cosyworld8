@@ -343,7 +343,7 @@ async function handleAttackCommand(message, args) {
  * @param {Message} message - The Discord message object.
  * @param {Array} args - The arguments provided with the command.
  */
-const DAILY_SUMMON_LIMIT = 8; // Configure limit per user per day
+const DAILY_SUMMON_LIMIT = 16; // Configure limit per user per day
 
 async function checkDailySummonLimit(userId) {
   const today = new Date();
@@ -394,11 +394,6 @@ async function handleSummmonCommand(message, args, breed = false, attributes = {
       // Prompt the avatar to respond
       await chatService.respondAsAvatar(message.channel, existingAvatar, true);
 
-      // Track summon if not breeding
-      if (!breed) {
-        await trackSummon(message.author.id);
-      }
-
       // Confirm the command
       await reactToMessage(client, message.channel.id, message.id, '✅');
       return;
@@ -408,7 +403,7 @@ async function handleSummmonCommand(message, args, breed = false, attributes = {
     //    Optional: Restrict non-breed summons by role or user condition
 
 
-    const canSummon = await checkDailySummonLimit(message.author.id);
+    const canSummon = message.author.id === '1175877613017895032' || (await checkDailySummonLimit(message.author.id));
     if (!canSummon) {
       await message.reply(`You have reached your daily limit of ${DAILY_SUMMON_LIMIT} summons. Try again tomorrow!`);
       return;
@@ -496,6 +491,11 @@ async function handleSummmonCommand(message, args, breed = false, attributes = {
         message.id,
         createdAvatar.emoji || '🎉'
       );
+      
+      // Track summon if not breeding
+      if (!breed) {
+        await trackSummon(message.author.id);
+      }
 
       // Prompt the new avatar to respond
       await chatService.respondAsAvatar(message.channel, createdAvatar, true);
