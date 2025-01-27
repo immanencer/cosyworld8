@@ -37,6 +37,22 @@ export class MessageHandler {
     }
   }
 
+  constructor(chatService, avatarService, logger) {
+    this.chatService = chatService;
+    this.avatarService = avatarService;
+    this.logger = logger;
+    this.RECENT_MESSAGES_CHECK = 10;
+    this.PROCESS_INTERVAL = 5 * 60 * 1000;
+    this.ACTIVE_CHANNEL_WINDOW = 5 * 60 * 1000;
+    this.RESPONSE_DELAY = 2000; // Delay between responses
+    this.MAX_CONCURRENT_RESPONSES = 3; // Max concurrent responses per channel
+    this.db = chatService.db;
+    this.messagesCollection = this.db.collection('messages');
+    this.processingMessages = new Set();
+    this.responseQueue = new Map(); // channelId -> {queue: [], processing: number}
+    this.startProcessing();
+  }
+
   async processChannel(channelId) {
     try {
       // Get avatars in channel
@@ -49,36 +65,83 @@ export class MessageHandler {
 
       const recentAvatars = await this.chatService.getLastMentionedAvatars(messages, avatarsInChannel);
       const latestAvatars = await this.chatService.getLastMentionedAvatars([latestMessage], avatarsInChannel);
-      // shuffle(recentAvatars);
-      recentAvatars.sort(t => Math.random() - 0.5);
+      
+      // Randomize order but prioritize recently mentioned avatars
+      const shuffledRecentAvatars = recentAvatars.sort(() => Math.random() - 0.5);
 
-      // deduplicate
-      const recentAvatarSet = new Set([...latestAvatars, ...recentAvatars]);
+      // Deduplicate while maintaining priority order
+      const seenAvatars = new Set();
+      const prioritizedAvatars = [...latestAvatars, ...shuffledRecentAvatars].filter(avatarId => {
+        if (seenAvatars.has(avatarId)) return false;
+        seenAvatars.add(avatarId);
+        return true;
+      });
 
-      [...Array.from(recentAvatarSet)].forEach(async (avatarId) => {
+      // Initialize channel queue if needed
+      if (!this.responseQueue.has(channelId)) {
+        this.responseQueue.set(channelId, { queue: [], processing: 0 });
+      }
+
+      // Add avatars to response queue
+      for (const avatarId of prioritizedAvatars) {
         const avatar = avatarsInChannel.find(a => a._id === avatarId);
         if (!avatar) {
           this.logger.error(`Avatar not found in channel: ${avatarId}`);
-          return;
-        }
-        // Skip if already processing this avatar for this channel
-        const processingKey = `${channelId}-${avatar._id}`;
-        if (this.processingMessages.has(processingKey)) {
-          this.logger.debug(`Skipping already processing response: ${processingKey}`);
-          return;
+          continue;
         }
 
-        try {
-          this.processingMessages.add(processingKey);
-          const avatar = await this.avatarService.getAvatarById(avatarId);
-          if (avatar) {
-            const channel = await this.chatService.client.channels.fetch(channelId);
-            await this.chatService.respondAsAvatar(channel, avatar, !latestMessage.author.bot);
-          }
-        } finally {
-          this.processingMessages.delete(processingKey);
+        const processingKey = `${channelId}-${avatar._id}`;
+        if (this.processingMessages.has(processingKey)) {
+          this.logger.debug(`Skipping already queued response: ${processingKey}`);
+          continue;
         }
-      });
+
+        this.processingMessages.add(processingKey);
+        const queueItem = {
+          avatarId,
+          processingKey,
+          isBot: latestMessage.author.bot
+        };
+
+        const channelQueue = this.responseQueue.get(channelId);
+        channelQueue.queue.push(queueItem);
+        this.processQueue(channelId);
+      }
+    } catch (error) {
+      this.logger.error(`Error processing channel ${channelId}:`, error);
+    }
+  }
+
+  async processQueue(channelId) {
+    const channelQueue = this.responseQueue.get(channelId);
+    if (!channelQueue || channelQueue.processing >= this.MAX_CONCURRENT_RESPONSES) {
+      return;
+    }
+
+    while (channelQueue.queue.length > 0 && channelQueue.processing < this.MAX_CONCURRENT_RESPONSES) {
+      const item = channelQueue.queue.shift();
+      channelQueue.processing++;
+
+      try {
+        const avatar = await this.avatarService.getAvatarById(item.avatarId);
+        if (avatar) {
+          const channel = await this.chatService.client.channels.fetch(channelId);
+          await this.chatService.respondAsAvatar(channel, avatar, !item.isBot);
+          // Add delay between responses
+          await new Promise(resolve => setTimeout(resolve, this.RESPONSE_DELAY));
+        }
+      } catch (error) {
+        this.logger.error(`Error processing avatar response: ${error.message}`);
+      } finally {
+        channelQueue.processing--;
+        this.processingMessages.delete(item.processingKey);
+        // Continue processing queue
+        if (channelQueue.queue.length > 0) {
+          this.processQueue(channelId);
+        }
+      }
+    }
+  }
 
 
     } catch (error) {
