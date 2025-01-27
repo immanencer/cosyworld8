@@ -14,6 +14,7 @@ export default [
   { model: "google/gemini-flash-1.5-8b-exp", rarity: "legendary" },
   { model: "minimax/minimax-01", rarity: "legendary" },
   // Rare models
+  { model: "deepseek/deepseek-r1-distill-llama-70b", rarity: "rare" },
   { model: "eva-unit-01/eva-qwen-2.5-72b", rarity: "rare" },
   { model: "neversleep/llama-3.1-lumimaid-70b", rarity: "rare" },
   { model: "nvidia/llama-3.1-nemotron-70b-instruct", rarity: "rare" },
