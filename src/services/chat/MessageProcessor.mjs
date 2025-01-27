@@ -8,6 +8,9 @@ export class MessageProcessor {
     this.MEAT_EMOJIS = new Set(['🍖', '🥩', '🍗', '🥓', '🌭', '🍔', '🍗']); // All meat-related emojis
     this.SCATTER_COOLDOWN = 60 * 1000; // 1 minute cooldown between scatters
     this.lastScatterTime = new Map(); // channelId -> timestamp
+    this.MAX_AVATARS_PER_CHANNEL = 8;
+    this.channelAvatars = new Map(); // channelId -> Set of avatarIds
+    this.avatarActivityCount = new Map(); // avatarId -> activity count
   }
 
   async checkMessage(message) {
@@ -42,6 +45,11 @@ export class MessageProcessor {
         return;
       }
 
+      // Manage channel limits for scattered avatars
+      for (const targetChannel of availableChannels) {
+        await this.manageChannelAvatars(targetChannel.id);
+      }
+
       // Get avatars in the current channel
       const avatarsInChannel = await this.avatarService.getAvatarsInChannel(channel.id);
       
@@ -69,6 +77,54 @@ export class MessageProcessor {
     } catch (error) {
       console.error('Error in scatterAvatars:', error);
     }
+  }
+
+  incrementAvatarActivity(avatarId) {
+    const count = (this.avatarActivityCount.get(avatarId) || 0) + 1;
+    this.avatarActivityCount.set(avatarId, count);
+  }
+
+  getChannelAvatars(channelId) {
+    return this.channelAvatars.get(channelId) || new Set();
+  }
+
+  async manageChannelAvatars(channelId, newAvatarId) {
+    let channelAvatars = this.getChannelAvatars(channelId);
+    
+    // Add new avatar
+    if (newAvatarId) {
+      // If channel is at capacity, remove least active avatar
+      if (channelAvatars.size >= this.MAX_AVATARS_PER_CHANNEL) {
+        let leastActiveAvatar = null;
+        let lowestActivity = Infinity;
+        
+        for (const avatarId of channelAvatars) {
+          const activity = this.avatarActivityCount.get(avatarId) || 0;
+          if (activity < lowestActivity) {
+            lowestActivity = activity;
+            leastActiveAvatar = avatarId;
+          }
+        }
+        
+        if (leastActiveAvatar) {
+          channelAvatars.delete(leastActiveAvatar);
+          this.avatarActivityCount.delete(leastActiveAvatar);
+          
+          // Update avatar's channel in database
+          const avatar = await this.avatarService.getAvatarById(leastActiveAvatar);
+          if (avatar) {
+            avatar.channelId = null;
+            await this.avatarService.updateAvatar(avatar);
+          }
+        }
+      }
+      
+      channelAvatars.add(newAvatarId);
+      this.channelAvatars.set(channelId, channelAvatars);
+      this.incrementAvatarActivity(newAvatarId);
+    }
+    
+    return channelAvatars;
   }
 
   async getActiveAvatars() {
