@@ -6,11 +6,15 @@ export class MessageHandler {
     this.avatarService = avatarService;
     this.logger = logger;
     this.RECENT_MESSAGES_CHECK = 10;
-    this.PROCESS_INTERVAL = 5 * 60 * 1000; // 30 seconds
-    this.ACTIVE_CHANNEL_WINDOW = 5 * 60 * 1000; // 5 minutes
+    this.PROCESS_INTERVAL = 5 * 60 * 1000;
+    this.ACTIVE_CHANNEL_WINDOW = 5 * 60 * 1000;
+    this.RESPONSE_DELAY = 2000; // Delay between responses
+    this.MAX_CONCURRENT_RESPONSES = 3; // Max concurrent responses per channel
     this.db = chatService.db;
     this.messagesCollection = this.db.collection('messages');
     this.processingMessages = new Set();
+    this.responseQueue = new Map(); // channelId -> {queue: [], processing: number}
+    this.channelTimeMap = new Map();
     this.startProcessing();
   }
 
@@ -20,56 +24,34 @@ export class MessageHandler {
     }, this.PROCESS_INTERVAL);
   }
 
-  channelTimeMap = new Map();
   async processActiveChannels() {
     try {
-      // Find channels with recent messages
       const activeChannels = await this.messagesCollection.distinct('channelId', {
         timestamp: { $gt: Date.now() - this.ACTIVE_CHANNEL_WINDOW }
       });
 
       for (const channelId of activeChannels) {
         await this.processChannel(channelId);
-        this.channelTimeMap[channelId] = Date.now();
+        this.channelTimeMap.set(channelId, Date.now());
       }
     } catch (error) {
       this.logger.error('Error processing active channels:', error);
     }
   }
 
-  constructor(chatService, avatarService, logger) {
-    this.chatService = chatService;
-    this.avatarService = avatarService;
-    this.logger = logger;
-    this.RECENT_MESSAGES_CHECK = 10;
-    this.PROCESS_INTERVAL = 5 * 60 * 1000;
-    this.ACTIVE_CHANNEL_WINDOW = 5 * 60 * 1000;
-    this.RESPONSE_DELAY = 2000; // Delay between responses
-    this.MAX_CONCURRENT_RESPONSES = 3; // Max concurrent responses per channel
-    this.db = chatService.db;
-    this.messagesCollection = this.db.collection('messages');
-    this.processingMessages = new Set();
-    this.responseQueue = new Map(); // channelId -> {queue: [], processing: number}
-    this.startProcessing();
-  }
-
   async processChannel(channelId) {
     try {
-      // Get avatars in channel
       const avatarsInChannel = await this.avatarService.getAvatarsInChannel(channelId);
       if (!avatarsInChannel.length) return;
 
-      // Get recent messages
       const messages = await this.chatService.getRecentMessagesFromDatabase(channelId);
       const latestMessage = messages[messages.length - 1];
 
       const recentAvatars = await this.chatService.getLastMentionedAvatars(messages, avatarsInChannel);
       const latestAvatars = await this.chatService.getLastMentionedAvatars([latestMessage], avatarsInChannel);
-      
-      // Randomize order but prioritize recently mentioned avatars
+
       const shuffledRecentAvatars = recentAvatars.sort(() => Math.random() - 0.5);
 
-      // Deduplicate while maintaining priority order
       const seenAvatars = new Set();
       const prioritizedAvatars = [...latestAvatars, ...shuffledRecentAvatars].filter(avatarId => {
         if (seenAvatars.has(avatarId)) return false;
@@ -77,12 +59,10 @@ export class MessageHandler {
         return true;
       });
 
-      // Initialize channel queue if needed
       if (!this.responseQueue.has(channelId)) {
         this.responseQueue.set(channelId, { queue: [], processing: 0 });
       }
 
-      // Add avatars to response queue
       for (const avatarId of prioritizedAvatars) {
         const avatar = avatarsInChannel.find(a => a._id === avatarId);
         if (!avatar) {
@@ -127,7 +107,6 @@ export class MessageHandler {
         if (avatar) {
           const channel = await this.chatService.client.channels.fetch(channelId);
           await this.chatService.respondAsAvatar(channel, avatar, !item.isBot);
-          // Add delay between responses
           await new Promise(resolve => setTimeout(resolve, this.RESPONSE_DELAY));
         }
       } catch (error) {
@@ -135,17 +114,10 @@ export class MessageHandler {
       } finally {
         channelQueue.processing--;
         this.processingMessages.delete(item.processingKey);
-        // Continue processing queue
         if (channelQueue.queue.length > 0) {
           this.processQueue(channelId);
         }
       }
-    }
-  }
-
-
-    } catch (error) {
-      this.logger.error(`Error processing channel ${channelId}:`, error);
     }
   }
 
@@ -162,17 +134,13 @@ export class MessageHandler {
 
     for (const avatar of avatars) {
       try {
-
         let count = 0;
-
-        // Count name mentions
         const nameRegex = new RegExp(avatar.name.toLowerCase(), 'g');
         const nameMatches = content.match(nameRegex);
         if (nameMatches) {
           count += nameMatches.length;
         }
 
-        // Count emoji mentions
         if (avatar.emoji) {
           const emojiRegex = new RegExp(avatar.emoji, 'g');
           const emojiMatches = content.match(emojiRegex);
@@ -185,7 +153,6 @@ export class MessageHandler {
           this.logger.info(`Found ${count} mentions of avatar: ${avatar.name} (${avatar._id})`);
           mentionCounts.set(avatar._id, count);
         }
-
       } catch (error) {
         this.logger.error(`Error processing avatar in extractMentionsWithCount:`, {
           error: error.message,
