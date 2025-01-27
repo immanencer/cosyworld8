@@ -188,9 +188,19 @@
         throw new Error(`Failed to get or create webhook for channel ${channelId}`);
       }
 
-      // Determine the rarity of the model
+      // Convert rarity to tier
+      const rarityToTier = {
+        legendary: 'S',
+        rare: 'A',
+        uncommon: 'B',
+        common: 'C',
+        undefined: 'U'
+      };
+
+      // Determine the rarity and tier of the model
       const rarity = getModelRarity(model);
-      const embedColor = rarityColors[rarity.toLowerCase()] || rarityColors['no_model'];
+      const tier = rarityToTier[rarity.toLowerCase()] || 'U';
+      const embedColor = rarityColors[rarity.toLowerCase()] || rarityColors['undefined'];
 
       // Create the embed using EmbedBuilder
       const avatarEmbed = new EmbedBuilder()
@@ -222,7 +232,7 @@
             inline: true,
           },
           {
-            name: `🧠 ${rarity}`,
+            name: `🧠 Tier ${tier}`,
             value: model || 'N/A',
             inline: true,
           },
