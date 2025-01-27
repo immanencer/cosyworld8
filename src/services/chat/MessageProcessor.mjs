@@ -5,6 +5,70 @@ export class MessageProcessor {
     this.lastActivityTime = new Map();
     this.ACTIVITY_TIMEOUT = 30 * 60 * 1000; // 30 minutes
     this.guildActivity = new Map(); // guildId -> lastActivity
+    this.MEAT_EMOJIS = new Set(['🍖', '🥩', '🍗', '🥓', '🌭', '🍔', '🍗']); // All meat-related emojis
+    this.SCATTER_COOLDOWN = 60 * 1000; // 1 minute cooldown between scatters
+    this.lastScatterTime = new Map(); // channelId -> timestamp
+  }
+
+  async checkMessage(message) {
+    try {
+      // Check for meat emojis
+      const hasMeatEmoji = [...message.content].some(char => this.MEAT_EMOJIS.has(char));
+      
+      if (hasMeatEmoji && !message.author.bot) {
+        const channelId = message.channel.id;
+        const now = Date.now();
+        const lastScatter = this.lastScatterTime.get(channelId) || 0;
+
+        // Check cooldown
+        if (now - lastScatter >= this.SCATTER_COOLDOWN) {
+          await this.scatterAvatars(message.channel);
+          this.lastScatterTime.set(channelId, now);
+        }
+      }
+    } catch (error) {
+      console.error('Error in checkMessage:', error);
+    }
+  }
+
+  async scatterAvatars(channel) {
+    try {
+      // Get all available text channels in the guild
+      const availableChannels = channel.guild.channels.cache
+        .filter(c => c.isTextBased() && c.id !== channel.id)
+        .map(c => c);
+
+      if (availableChannels.length === 0) {
+        return;
+      }
+
+      // Get avatars in the current channel
+      const avatarsInChannel = await this.avatarService.getAvatarsInChannel(channel.id);
+      
+      for (const avatar of avatarsInChannel) {
+        try {
+          // Pick a random channel
+          const randomChannel = availableChannels[Math.floor(Math.random() * availableChannels.length)];
+          
+          // Update avatar's channel
+          avatar.channelId = randomChannel.id;
+          await this.avatarService.updateAvatar(avatar);
+
+          // Send scatter message
+          await randomChannel.send(`*${avatar.name} ${avatar.emoji || '👻'} scatters here in fear of meat!*`);
+        } catch (error) {
+          console.error(`Error scattering avatar ${avatar.name}:`, error);
+        }
+      }
+
+      // Send message in original channel
+      if (avatarsInChannel.length > 0) {
+        await channel.send('*The smell of meat causes nearby AI to scatter in fear!* 🏃💨');
+      }
+
+    } catch (error) {
+      console.error('Error in scatterAvatars:', error);
+    }
   }
 
   async getActiveAvatars() {
