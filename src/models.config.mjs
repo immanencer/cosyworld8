@@ -1,5 +1,7 @@
 export default [
   // Legendary models
+  
+  { model: "deepseek/deepseek-r1:online", rarity: "legendary" },
   { model: "deepseek/deepseek-r1", rarity: "legendary" },
   { model: "openai/gpt-4o", rarity: "legendary" },
   { model: "meta-llama/llama-3.1-405b-instruct", rarity: "legendary" },
@@ -36,7 +38,6 @@ export default [
   { model: "anthropic/claude-3.5-haiku-20241022:beta", rarity: "rare" },
   { model: "anthropic/claude-3.5-haiku-20241022", rarity: "rare" },
   // Uncommon models
-  { model: "openai/4o-mini", rarity: "uncommon" },
   { model: "anthropic/claude-3.5-haiku:beta", rarity: "uncommon" },
   { model: "meta-llama/llama-3.1-70b-instruct", rarity: "uncommon" },
   { model: "pygmalionai/mythalion-13b", rarity: "uncommon" },
