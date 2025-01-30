@@ -15,6 +15,7 @@ export default [
   { model: "google/gemini-flash-1.5-exp", rarity: "legendary" },
   { model: "google/gemini-flash-1.5-8b-exp", rarity: "legendary" },
   { model: "minimax/minimax-01", rarity: "legendary" },
+  { model: "qwen/qvq-72b-preview", rarity: "legendary" },
   // Rare models
   { model: "deepseek/deepseek-r1-distill-llama-70b", rarity: "rare" },
   { model: "eva-unit-01/eva-qwen-2.5-72b", rarity: "rare" },
@@ -37,6 +38,7 @@ export default [
   { model: "anthropic/claude-3.5-haiku", rarity: "rare" },
   { model: "anthropic/claude-3.5-haiku-20241022:beta", rarity: "rare" },
   { model: "anthropic/claude-3.5-haiku-20241022", rarity: "rare" },
+  { model: "deepseek/deepseek-r1-distill-qwen-32b", rarity: "rare" },
   // Uncommon models
   { model: "anthropic/claude-3.5-haiku:beta", rarity: "uncommon" },
   { model: "meta-llama/llama-3.1-70b-instruct", rarity: "uncommon" },
@@ -70,6 +72,7 @@ export default [
   { model: "openai/gpt-4o-2024-08-06", rarity: "uncommon" },
   { model: "qwen/qwen-2.5-72b-instruct", rarity: "uncommon" },
   { model: "cohere/command-r-08-2024", rarity: "uncommon" },
+  { model: "mistral/mistral-small-24b-instruct-2501", rarity: "uncommon" },
   // Common models
   { model: "meta-llama/llama-3.2-1b-instruct", rarity: "common" },
   { model: "amazon/nova-micro-v1", rarity: "common" },
@@ -111,4 +114,7 @@ export default [
   { model: "meta-llama/llama-3-70b-instruct", rarity: "common" },
   { model: "mistralai/pixtral-12b", rarity: "common" },
   { model: "x-ai/grok-vision-beta", rarity: "common" },
+  { model: "liquid/lfm-3b", rarity: "common" },
+  { model: "liquid/lfm-7b", rarity: "common" },
+   { model: "perplexity/sonar", rarity: "common" },
 ];
