@@ -1,6 +1,5 @@
 export default [
   // Legendary models
-  
   { model: "deepseek/deepseek-r1:online", rarity: "legendary" },
   { model: "deepseek/deepseek-r1", rarity: "legendary" },
   { model: "openai/gpt-4o", rarity: "legendary" },
@@ -72,7 +71,7 @@ export default [
   { model: "openai/gpt-4o-2024-08-06", rarity: "uncommon" },
   { model: "qwen/qwen-2.5-72b-instruct", rarity: "uncommon" },
   { model: "cohere/command-r-08-2024", rarity: "uncommon" },
-  { model: "mistral/mistral-small-24b-instruct-2501", rarity: "uncommon" },
+  { model: "mistralai/mistral-small-24b-instruct-2501", rarity: "uncommon" },
   // Common models
   { model: "meta-llama/llama-3.2-1b-instruct", rarity: "common" },
   { model: "amazon/nova-micro-v1", rarity: "common" },
