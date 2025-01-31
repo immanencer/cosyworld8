@@ -390,7 +390,8 @@ export class AvatarGenerationService {
   async generateAvatarImage(prompt) {
     // Step 1: Initiate the image generation request using Replicate API
     const [output] = await this.replicate.run(
-      "immanencer/mirquo:dac6bb69d1a52b01a48302cb155aa9510866c734bfba94aa4c771c0afb49079f",
+       process.env.REPLICATE_MODEL ||
+"immanencer/mirquo:dac6bb69d1a52b01a48302cb155aa9510866c734bfba94aa4c771c0afb49079f",
       {
         input: {
           prompt: `MRQ ${prompt} holographic black neon watercolors MRQ`,

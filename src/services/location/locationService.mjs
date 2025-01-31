@@ -111,7 +111,7 @@ export class LocationService {
     try {
       // 1. Use Replicate to generate an image
       const [output] = await this.replicate.run(
-        'immanencer/mirquo:dac6bb69d1a52b01a48302cb155aa9510866c734bfba94aa4c771c0afb49079f',
+       process.env.REPLICATE_MODEL || 'immanencer/mirquo:dac6bb69d1a52b01a48302cb155aa9510866c734bfba94aa4c771c0afb49079f',
         {
           input: {
             prompt: `MRQ ${locationName} holographic neon dark watercolor ${description} MRQ`,
