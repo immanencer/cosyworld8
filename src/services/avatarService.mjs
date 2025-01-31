@@ -388,7 +388,7 @@ export class AvatarGenerationService {
    * @returns {string|null} - The URL of the generated image or null if failed.
    */
   async generateAvatarImage(prompt) {
-    const trigger = process.env.LORA_TRIGGER_WORD || 'MRQ';
+    const trigger = process.env.LORA_TRIGGER_WORD || '';
     // Step 1: Initiate the image generation request using Replicate API
     const [output] = await this.replicate.run(
       process.env.REPLICATE_MODEL ||

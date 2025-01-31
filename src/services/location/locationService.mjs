@@ -108,7 +108,7 @@ export class LocationService {
   async generateLocationImage(locationName, description) {
     this.ensureDbConnection();
 
-    const trigger = process.env.LORA_TRIGGER_WORD || 'MRQ';
+    const trigger = process.env.LORA_TRIGGER_WORD || '';
 
     try {
       // 1. Use Replicate to generate an image
