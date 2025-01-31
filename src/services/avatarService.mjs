@@ -388,13 +388,14 @@ export class AvatarGenerationService {
    * @returns {string|null} - The URL of the generated image or null if failed.
    */
   async generateAvatarImage(prompt) {
+    const trigger = process.env.LORA_TRIGGER_WORD || 'MRQ';
     // Step 1: Initiate the image generation request using Replicate API
     const [output] = await this.replicate.run(
-       process.env.REPLICATE_MODEL ||
-"immanencer/mirquo:dac6bb69d1a52b01a48302cb155aa9510866c734bfba94aa4c771c0afb49079f",
+      process.env.REPLICATE_MODEL ||
+      "immanencer/mirquo:dac6bb69d1a52b01a48302cb155aa9510866c734bfba94aa4c771c0afb49079f",
       {
         input: {
-          prompt: `MRQ ${prompt} holographic black neon watercolors MRQ`,
+          prompt: `${trigger} ${prompt} ${trigger}`,
           model: "dev",
           lora_scale: 1,
           num_outputs: 1,
