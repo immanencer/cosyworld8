@@ -20,8 +20,10 @@ export class DecisionMaker {
     // Per‐avatar cooldown & attention
     // -----------------------------
     this.PER_AVATAR_COOLDOWN = 2 * 60 * 1000; // e.g., 2 minutes
-    this.MINIMUM_ATTENTION_THRESHOLD = 10;    // avatar must have at least 10 attention to respond
-    this.ATTENTION_DECAY_INTERVAL = 60 * 1000; // degrade attention every 60 seconds (example)
+    this.MINIMUM_ATTENTION_THRESHOLD = 15;    // increased threshold for ambient responses
+    this.ATTENTION_DECAY_INTERVAL = 45 * 1000; // faster decay for regular avatars
+    this.RECENT_SUMMON_WINDOW = 10 * 60 * 1000; // 10 minute window for recent summons
+    this.RECENT_SUMMON_COOLDOWN = 30 * 1000; // 30 second cooldown for recent summons
 
     // Store attention state in a Map => avatarId -> { level, lastResponseTime, lastMentionTime, lastCheckTime }
     this.avatarAttentionMap = new Map();
@@ -113,13 +115,26 @@ export class DecisionMaker {
       return false;
     }
 
+    // Check if recently summoned
+    const isRecentlySummoned = Date.now() - (avatar.summonedAt || 0) < this.RECENT_SUMMON_WINDOW;
+    
+    // Use different cooldown for recent summons
+    const effectiveCooldown = isRecentlySummoned ? 
+      this.RECENT_SUMMON_COOLDOWN : 
+      this.PER_AVATAR_COOLDOWN;
+
     // Decay attention first
     this._decayAttention(avatar._id);
 
     // Check avatar cooldown
     const { lastResponseTime } = this._getAttentionState(avatar._id);
-    if (Date.now() - lastResponseTime < this.PER_AVATAR_COOLDOWN) {
+    if (Date.now() - lastResponseTime < effectiveCooldown) {
       return false;
+    }
+
+    // Boost recently summoned avatars
+    if (isRecentlySummoned) {
+      this._adjustAttention(avatar._id, +20);
     }
 
     const messages = await channel.messages.fetch({ limit: 8 });
