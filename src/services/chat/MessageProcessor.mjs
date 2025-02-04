@@ -11,6 +11,9 @@ export class MessageProcessor {
     this.MAX_AVATARS_PER_CHANNEL = 8;
     this.channelAvatars = new Map(); // channelId -> Set of avatarIds
     this.avatarActivityCount = new Map(); // avatarId -> activity count
+    this.channelUpdateInterval = 5 * 60 * 1000; // 5 minutes
+    this.lastChannelUpdate = new Map(); // channelId -> timestamp
+    this.startChannelUpdates();
   }
 
   async checkMessage(message) {
@@ -196,3 +199,43 @@ export class MessageProcessor {
     return lastActivity && (Date.now() - lastActivity <= this.ACTIVITY_TIMEOUT);
   }
 }
+
+
+  async startChannelUpdates() {
+    setInterval(async () => {
+      for (const channelId of this.activeChannels) {
+        const lastUpdate = this.lastChannelUpdate.get(channelId) || 0;
+        if (Date.now() - lastUpdate >= this.channelUpdateInterval) {
+          await this.updateChannelAvatar(channelId);
+        }
+      }
+    }, 60000); // Check every minute
+  }
+
+  async updateChannelAvatar(channelId) {
+    try {
+      const avatarsInChannel = await this.avatarService.getAvatarsInChannel(channelId);
+      if (!avatarsInChannel.length) return;
+
+      // Sort avatars by activity and pick the least active one
+      const sortedAvatars = Array.from(avatarsInChannel).sort((a, b) => {
+        const activityA = this.avatarActivityCount.get(a._id) || 0;
+        const activityB = this.avatarActivityCount.get(b._id) || 0;
+        return activityA - activityB;
+      });
+
+      const selectedAvatar = sortedAvatars[0];
+      if (selectedAvatar) {
+        this.incrementAvatarActivity(selectedAvatar._id);
+        this.lastChannelUpdate.set(channelId, Date.now());
+        
+        // Trigger a response from this avatar
+        const channel = await global.client.channels.fetch(channelId);
+        if (channel) {
+          await global.chatService.respondAsAvatar(channel, selectedAvatar, true);
+        }
+      }
+    } catch (error) {
+      console.error(`Error updating channel ${channelId}:`, error);
+    }
+  }
