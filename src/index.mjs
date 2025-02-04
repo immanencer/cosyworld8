@@ -491,7 +491,7 @@ async function handleSummonCommand(message, args, breed = false, attributes = {}
         message.id,
         createdAvatar.emoji || '🎉'
       );
-      
+
       // Track summon if not breeding
       if (!breed) {
         await trackSummon(message.author.id);
@@ -544,7 +544,7 @@ async function handleCommands(message, args, commandLine) {
       return;
     }
 
-    const summonArgsß = message.content.slice(8).trim().split(' ');
+    const summonArgs = message.content.slice(8).trim().split(' ');
     await reactToMessage(client, message.channel.id, message.id, '🔮');
     await handleSummonCommand(message, summonArgs);
   }

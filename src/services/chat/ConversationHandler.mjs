@@ -22,7 +22,7 @@ export class ConversationHandler {
 
     // Channel rate limiting
     this.channelLastMessage = new Map(); // channelId -> timestamp
-    this.CHANNEL_COOLDOWN = 30 * 1000; // 30 seconds
+    this.CHANNEL_COOLDOWN = 5 * 1000; // 30 seconds
     this.MAX_RESPONSES_PER_MESSAGE = 2; // Maximum number of AI responses per human message
     this.channelResponders = new Map(); // channelId -> Set of avatar IDs who responded
 
@@ -155,9 +155,9 @@ export class ConversationHandler {
           role: 'system',
           content: avatar.prompt || `You are ${avatar.name}. ${avatar.personality}`
         },
-        { 
-          role: 'assistant', 
-          content: `Current personality: ${avatar.dynamicPersonality || 'None yet'}\n\nMemories: ${memories}\n\nRecent actions: ${actions}\n\nNarrative thoughts: ${narrativeContent}` 
+        {
+          role: 'assistant',
+          content: `Current personality: ${avatar.dynamicPersonality || 'None yet'}\n\nMemories: ${memories}\n\nRecent actions: ${actions}\n\nNarrative thoughts: ${narrativeContent}`
         },
         { role: 'user', content: prompt }
       ], { model: avatar.model });
@@ -249,10 +249,12 @@ Based on all of the above context, share an updated personality that reflects yo
       const lastNarrative = await this.db
         .collection('narratives')
         .findOne(
-          { $or: [
+          {
+            $or: [
               { avatarId },
               { avatarId: avatarId.toString() }
-            ]},
+            ]
+          },
           { sort: { timestamp: -1 } }
         );
       return lastNarrative;
@@ -385,7 +387,7 @@ ${dungeonPrompt}
 Recent messages:
 ${context.recentMessages.map(m => `${m.author}: ${m.content}`).join('\n')}
 
-Reply in character with a short, casual message, suitable for this discord channel.
+Reply in character as ${avatar.name} with a single short, casual message, suitable for this discord channel.
           `.trim()
         }
       ], { model: avatar.model });

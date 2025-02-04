@@ -1,32 +1,49 @@
 export class MessageProcessor {
-  constructor(avatarService) {
+  /**
+   * @param {object} avatarService - Service for avatar database operations.
+   * @param {object} client - The Discord client instance.
+   * @param {object} chatService - Service used to trigger chat responses.
+   */
+  constructor(avatarService, client, chatService) {
     this.avatarService = avatarService;
+    this.client = client;
+    this.chatService = chatService;
+
     this.activeChannels = new Set();
     this.lastActivityTime = new Map();
     this.ACTIVITY_TIMEOUT = 30 * 60 * 1000; // 30 minutes
-    this.guildActivity = new Map(); // guildId -> lastActivity
-    this.MEAT_EMOJIS = new Set(['🍖', '🥩', '🍗', '🥓', '🌭', '🍔', '🍗']); // All meat-related emojis
+
+    this.guildActivity = new Map(); // Map of guildId -> lastActivity timestamp
+
+    // Set of meat-related emojis (duplicates removed)
+    this.MEAT_EMOJIS = new Set(['🍖', '🥩', '🍗', '🥓', '🌭', '🍔']);
+
     this.SCATTER_COOLDOWN = 60 * 1000; // 1 minute cooldown between scatters
-    this.lastScatterTime = new Map(); // channelId -> timestamp
+    this.lastScatterTime = new Map(); // Map of channelId -> timestamp
+
     this.MAX_AVATARS_PER_CHANNEL = 8;
-    this.channelAvatars = new Map(); // channelId -> Set of avatarIds
-    this.avatarActivityCount = new Map(); // avatarId -> activity count
-    this.channelUpdateInterval = 5 * 60 * 1000; // 5 minutes
-    this.lastChannelUpdate = new Map(); // channelId -> timestamp
+    this.channelAvatars = new Map(); // Map of channelId -> Set of avatarIds
+    this.avatarActivityCount = new Map(); // Map of avatarId -> activity count
+
+    this.channelUpdateInterval = 60 * 1000; // 1 minute update interval for responsiveness
+    this.lastChannelUpdate = new Map(); // Map of channelId -> timestamp
+
+    // Start periodic checks for channel avatar updates.
     this.startChannelUpdates();
   }
 
+  /**
+   * Checks the message for meat emojis and scatters avatars if conditions are met.
+   * @param {object} message - The Discord message object.
+   */
   async checkMessage(message) {
     try {
-      // Check for meat emojis
+      // Only process non-bot messages containing any meat emoji.
       const hasMeatEmoji = [...message.content].some(char => this.MEAT_EMOJIS.has(char));
-      
       if (hasMeatEmoji && !message.author.bot) {
         const channelId = message.channel.id;
         const now = Date.now();
         const lastScatter = this.lastScatterTime.get(channelId) || 0;
-
-        // Check cooldown
         if (now - lastScatter >= this.SCATTER_COOLDOWN) {
           await this.scatterAvatars(message.channel);
           this.lastScatterTime.set(channelId, now);
@@ -37,83 +54,87 @@ export class MessageProcessor {
     }
   }
 
+  /**
+   * Scatters all avatars in the current channel to random other text channels.
+   * @param {object} channel - The current Discord text channel.
+   */
   async scatterAvatars(channel) {
     try {
-      // Get all available text channels in the guild
-      const availableChannels = channel.guild.channels.cache
+      const { guild } = channel;
+      // Get all available text channels except the current one.
+      const availableChannels = guild.channels.cache
         .filter(c => c.isTextBased() && c.id !== channel.id)
         .map(c => c);
+      if (availableChannels.length === 0) return;
 
-      if (availableChannels.length === 0) {
-        return;
-      }
-
-      // Manage channel limits for scattered avatars
+      // Pre-manage avatars for each target channel.
       for (const targetChannel of availableChannels) {
         await this.manageChannelAvatars(targetChannel.id);
       }
 
-      // Get avatars in the current channel
+      // Retrieve avatars in current channel.
       const avatarsInChannel = await this.avatarService.getAvatarsInChannel(channel.id);
-      
       for (const avatar of avatarsInChannel) {
         try {
-          // Pick a random channel
           const randomChannel = availableChannels[Math.floor(Math.random() * availableChannels.length)];
-          
-          // Update avatar's channel
+          // Update avatar's channel ID.
           avatar.channelId = randomChannel.id;
           await this.avatarService.updateAvatar(avatar);
-
-          // Send scatter message
+          // Send scatter message.
           await randomChannel.send(`*${avatar.name} ${avatar.emoji || '👻'} scatters here in fear of meat!*`);
         } catch (error) {
           console.error(`Error scattering avatar ${avatar.name}:`, error);
         }
       }
-
-      // Send message in original channel
       if (avatarsInChannel.length > 0) {
         await channel.send('*The smell of meat causes nearby AI to scatter in fear!* 🏃💨');
       }
-
     } catch (error) {
       console.error('Error in scatterAvatars:', error);
     }
   }
 
+  /**
+   * Increments the activity count for a given avatar.
+   * @param {string} avatarId - The ID of the avatar.
+   */
   incrementAvatarActivity(avatarId) {
-    const count = (this.avatarActivityCount.get(avatarId) || 0) + 1;
-    this.avatarActivityCount.set(avatarId, count);
+    const currentCount = this.avatarActivityCount.get(avatarId) || 0;
+    this.avatarActivityCount.set(avatarId, currentCount + 1);
   }
 
+  /**
+   * Retrieves the Set of avatar IDs for a given channel.
+   * @param {string} channelId
+   * @returns {Set<string>}
+   */
   getChannelAvatars(channelId) {
     return this.channelAvatars.get(channelId) || new Set();
   }
 
-  async manageChannelAvatars(channelId, newAvatarId) {
-    let channelAvatars = this.getChannelAvatars(channelId);
-    
-    // Add new avatar
+  /**
+   * Manages avatars for a channel, adding a new avatar if provided.
+   * Removes the least active avatar if the channel is at capacity.
+   * @param {string} channelId
+   * @param {string} [newAvatarId] - Optional new avatar to add.
+   * @returns {Promise<Set<string>>}
+   */
+  async manageChannelAvatars(channelId, newAvatarId = null) {
+    let avatars = this.getChannelAvatars(channelId);
     if (newAvatarId) {
-      // If channel is at capacity, remove least active avatar
-      if (channelAvatars.size >= this.MAX_AVATARS_PER_CHANNEL) {
+      if (avatars.size >= this.MAX_AVATARS_PER_CHANNEL) {
         let leastActiveAvatar = null;
         let lowestActivity = Infinity;
-        
-        for (const avatarId of channelAvatars) {
+        for (const avatarId of avatars) {
           const activity = this.avatarActivityCount.get(avatarId) || 0;
           if (activity < lowestActivity) {
             lowestActivity = activity;
             leastActiveAvatar = avatarId;
           }
         }
-        
         if (leastActiveAvatar) {
-          channelAvatars.delete(leastActiveAvatar);
+          avatars.delete(leastActiveAvatar);
           this.avatarActivityCount.delete(leastActiveAvatar);
-          
-          // Update avatar's channel in database
           const avatar = await this.avatarService.getAvatarById(leastActiveAvatar);
           if (avatar) {
             avatar.channelId = null;
@@ -121,15 +142,17 @@ export class MessageProcessor {
           }
         }
       }
-      
-      channelAvatars.add(newAvatarId);
-      this.channelAvatars.set(channelId, channelAvatars);
+      avatars.add(newAvatarId);
+      this.channelAvatars.set(channelId, avatars);
       this.incrementAvatarActivity(newAvatarId);
     }
-    
-    return channelAvatars;
+    return avatars;
   }
 
+  /**
+   * Retrieves and normalizes active avatars from the avatar service.
+   * @returns {Promise<object[]>} List of normalized active avatars.
+   */
   async getActiveAvatars() {
     try {
       const avatars = await this.avatarService.getAllAvatars();
@@ -137,13 +160,9 @@ export class MessageProcessor {
         console.warn('No avatars found in database');
         return [];
       }
-      
-      const activeAvatars = avatars
-        .filter(avatar => avatar && typeof avatar === 'object' && (avatar._id || avatar._id))
+      return avatars
         .map(avatar => {
-          const id = avatar._id || avatar._id;
-          
-          // Create normalized avatar object
+          const id = avatar._id || avatar.id;
           return {
             ...avatar,
             id,
@@ -156,52 +175,71 @@ export class MessageProcessor {
           };
         })
         .filter(avatar => {
-          if (!avatar._id || !avatar.name) {
-            console.error('Invalid avatar data after normalization:', JSON.stringify(avatar, null, 2));
+          if (!avatar.id || !avatar.name) {
+            console.error('Invalid avatar data after normalization:', avatar);
             return false;
           }
           return avatar.active;
         });
-
-      return activeAvatars;
     } catch (error) {
       console.error('Error fetching active avatars:', error);
       return [];
     }
   }
 
-  async getActiveChannels(client) {
+  /**
+   * Retrieves channels that are active based on recent guild activity.
+   * @returns {Promise<array>} List of active text channels.
+   */
+  async getActiveChannels() {
     const now = Date.now();
-    const channels = [];
-    
-    for (const [guildId, guild] of client.guilds.cache) {
+    const activeChannels = [];
+    for (const [guildId, guild] of this.client.guilds.cache.entries()) {
       const lastActivity = this.guildActivity.get(guildId) || 0;
       if (now - lastActivity <= this.ACTIVITY_TIMEOUT) {
-        const guildChannels = Array.from(guild.channels.cache.values())
-          .filter(channel => this.activeChannels.has(channel.id) && channel.isTextBased()); // Added channel type check
-        channels.push(...guildChannels);
+        const channels = guild.channels.cache.filter(channel =>
+          this.activeChannels.has(channel.id) && channel.isTextBased()
+        );
+        activeChannels.push(...channels.values());
       }
     }
-    
-    return channels;
+    return activeChannels;
   }
 
-  markChannelActive(channelId, guildId) {
+  /**
+   * Marks a channel (and optionally its guild) as active.
+   * Also triggers an immediate avatar update if needed.
+   * @param {string} channelId
+   * @param {string} [guildId]
+   */
+  markChannelActive(channelId, guildId = null) {
     this.activeChannels.add(channelId);
     this.lastActivityTime.set(channelId, Date.now());
     if (guildId) {
       this.guildActivity.set(guildId, Date.now());
     }
+    // Trigger an immediate channel update if the update interval has elapsed.
+    const lastUpdate = this.lastChannelUpdate.get(channelId) || 0;
+    if (Date.now() - lastUpdate >= this.channelUpdateInterval) {
+      this.updateChannelAvatar(channelId);
+    }
   }
 
+  /**
+   * Checks if a channel is active based on last activity timestamp.
+   * @param {string} channelId
+   * @returns {boolean}
+   */
   isChannelActive(channelId) {
     const lastActivity = this.lastActivityTime.get(channelId);
     return lastActivity && (Date.now() - lastActivity <= this.ACTIVITY_TIMEOUT);
   }
-}
 
-
-  async startChannelUpdates() {
+  /**
+   * Periodically checks channels for avatar updates.
+   * Runs every minute to keep responsiveness high.
+   */
+  startChannelUpdates() {
     setInterval(async () => {
       for (const channelId of this.activeChannels) {
         const lastUpdate = this.lastChannelUpdate.get(channelId) || 0;
@@ -209,33 +247,52 @@ export class MessageProcessor {
           await this.updateChannelAvatar(channelId);
         }
       }
-    }, 60000); // Check every minute
+    }, 60 * 1000); // Check every minute
   }
 
+  /**
+   * Updates an avatar in a channel.
+   * Prioritizes avatars that are marked as active and have higher activity counts.
+   * Triggers a chat response via chatService.
+   * @param {string} channelId
+   */
   async updateChannelAvatar(channelId) {
     try {
       const avatarsInChannel = await this.avatarService.getAvatarsInChannel(channelId);
-      if (!avatarsInChannel.length) return;
+      if (!avatarsInChannel || avatarsInChannel.length === 0) return;
 
-      // Sort avatars by activity and pick the least active one
-      const sortedAvatars = Array.from(avatarsInChannel).sort((a, b) => {
-        const activityA = this.avatarActivityCount.get(a._id) || 0;
-        const activityB = this.avatarActivityCount.get(b._id) || 0;
-        return activityA - activityB;
-      });
+      // Filter for avatars marked as active.
+      const activeAvatars = avatarsInChannel.filter(avatar => avatar.active);
+      let selectedAvatar;
+      if (activeAvatars.length > 0) {
+        // Sort descending by activity count.
+        activeAvatars.sort((a, b) => {
+          const activityA = this.avatarActivityCount.get(a.id) || 0;
+          const activityB = this.avatarActivityCount.get(b.id) || 0;
+          return activityB - activityA;
+        });
+        selectedAvatar = activeAvatars[0];
+      } else {
+        // If none are marked active, fallback to highest activity overall.
+        avatarsInChannel.sort((a, b) => {
+          const activityA = this.avatarActivityCount.get(a.id) || 0;
+          const activityB = this.avatarActivityCount.get(b.id) || 0;
+          return activityB - activityA;
+        });
+        selectedAvatar = avatarsInChannel[0];
+      }
 
-      const selectedAvatar = sortedAvatars[0];
       if (selectedAvatar) {
-        this.incrementAvatarActivity(selectedAvatar._id);
+        this.incrementAvatarActivity(selectedAvatar.id);
         this.lastChannelUpdate.set(channelId, Date.now());
-        
-        // Trigger a response from this avatar
-        const channel = await global.client.channels.fetch(channelId);
+        const channel = await this.client.channels.fetch(channelId);
         if (channel) {
-          await global.chatService.respondAsAvatar(channel, selectedAvatar, true);
+          // Trigger the avatar response via chatService.
+          await this.chatService.respondAsAvatar(channel, selectedAvatar, true);
         }
       }
     } catch (error) {
       console.error(`Error updating channel ${channelId}:`, error);
     }
   }
+}
