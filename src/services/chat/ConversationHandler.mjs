@@ -336,7 +336,7 @@ Based on all of the above context, share an updated personality that reflects yo
 
     try {
       // Fetch recent channel messages
-      const messages = await channel.messages.fetch({ limit: 18 });
+      const messages = await channel.messages.fetch({ limit: 50 });
       const messageHistory = messages
         .reverse()
         .map(msg => ({
