@@ -292,7 +292,7 @@ async function handleBreedCommand(message, args, commandLine) {
       `;
 
     // Return the created avatar from handleSummonCommand (passing breed: true)
-    return await handleSummmonCommand(message, [prompt], true, {
+    return await handleSummonCommand(message, [prompt], true, {
       summoner: `${message.author.username}@${message.author.id}`,
       parents: [avatar1._id, avatar2._id],
     });
@@ -366,7 +366,7 @@ async function trackSummon(userId) {
   });
 }
 
-async function handleSummmonCommand(message, args, breed = false, attributes = {}) {
+async function handleSummonCommand(message, args, breed = false, attributes = {}) {
   let prompt = args.join(' ');
   let existingAvatar = null;
 
@@ -544,9 +544,9 @@ async function handleCommands(message, args, commandLine) {
       return;
     }
 
-    const summonArgs = message.content.slice(8).trim().split(' ');
+    const summonArgsß = message.content.slice(8).trim().split(' ');
     await reactToMessage(client, message.channel.id, message.id, '🔮');
-    await handleSummmonCommand(message, summonArgs);
+    await handleSummonCommand(message, summonArgs);
   }
 
   // Attack command
