@@ -160,7 +160,7 @@ function sanitizeInput(input) {
  */
 async function handleBreedCommand(message, args, commandLine) {
   // find an avatar for each argument
-  const avatars = await avatarService.getAllAvatars();
+  const avatars = await avatarService.getAvatarsInChannel();
   const mentionedAvatars = Array.from(extractMentionedAvatars(commandLine, avatars))
     .sort(() => Math.random() - 0.5)
     .slice(-2);
@@ -363,6 +363,14 @@ async function handleSummmonCommand(message, args, breed = false, attributes = {
     } else if (!prompt) {
       prompt = 'create a new avatar, use your imagination!';
     }
+
+    // Get recent messages from the channel
+    const recentMessages = await chatService.getRecentMessagesFromDatabase(message.channel.id);
+    // Format the prompt with the recent messages
+    const messageString = recentMessages.reduce(
+      (acc, m) => `${acc}\n${m.author.username}: ${m.content}`,
+      ''
+    );
 
     const avatarData = {
       prompt: sanitizeInput(prompt),
@@ -631,7 +639,11 @@ async function main() {
     });
 
     // 4. Initialize MessageHandler
-    messageHandler = new MessageHandler(chatService, avatarService, logger);
+    messageHandler = new MessageHandler(
+      chatService,
+      avatarService,
+      logger
+    );
 
     // 5. Login to Discord
     await client.login(DISCORD_BOT_TOKEN);
