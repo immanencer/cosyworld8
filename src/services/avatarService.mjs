@@ -54,6 +54,71 @@ export class AvatarGenerationService {
       return [];
     }
   }
+  /**
+   * Extracts avatars mentioned in the message content.
+   * @param {string} content - The message content.
+   * @param {Array} avatars - Array of all avatars.
+   * @returns {Set} Set of mentioned avatars.
+   */
+  extractMentionedAvatars(content, avatars) {
+    const mentionedAvatars = new Set();
+    if (!content || !Array.isArray(avatars)) {
+      logger.warn('Invalid input to extractMentionedAvatars', {
+        content,
+        avatarsLength: avatars?.length,
+      });
+      return mentionedAvatars;
+    }
+
+    for (const avatar of avatars) {
+      try {
+        // Validate avatar object
+        if (!avatar || typeof avatar !== 'object') {
+          logger.error('Invalid avatar object:', avatar);
+          continue;
+        }
+
+        // Ensure required fields exist
+        if (!avatar._id || !avatar.name) {
+          logger.error('Avatar missing required fields:', {
+            _id: avatar._id,
+            name: avatar.name,
+            objectKeys: Object.keys(avatar),
+          });
+          continue;
+        }
+
+        // Check for mentions by name or by emoji
+        const nameMatch = avatar.name && content.toLowerCase().includes(avatar.name.toLowerCase());
+        const emojiMatch = avatar.emoji && content.includes(avatar.emoji);
+
+        if (nameMatch || emojiMatch) {
+          logger.debug(`Found mention of avatar: ${avatar.name} (${avatar._id})`);
+          mentionedAvatars.add(avatar);
+        }
+      } catch (error) {
+        logger.error(`Error processing avatar in extractMentionedAvatars:`, {
+          error: error.message,
+          avatar: JSON.stringify(avatar, null, 2),
+        });
+      }
+    }
+
+    return mentionedAvatars;
+  }
+
+
+  async getActiveAvatars() {
+    try {
+      const avatars = await this.avatarsCollection.find({
+        active: true
+      }).toArray();
+      return avatars;
+    } catch (error) {
+      this.logger.error(`Failed to fetch active avatars: ${error.message}`);
+      return [];
+    }
+  }
 
   /**
  * Get the last breeding date for an avatar

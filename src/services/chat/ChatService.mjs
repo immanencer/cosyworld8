@@ -123,7 +123,7 @@ export class ChatService {
 
   // Core service methods
   async checkMessages() {
-    const avatars = await this.messageProcessor.getActiveAvatars();
+    const avatars = await this.avatarService.getActiveAvatars();
     const validAvatars = avatars.filter(avatar => avatar._id && avatar.name);
 
     if (validAvatars.length !== avatars.length) {
@@ -309,7 +309,7 @@ export class ChatService {
       }
 
       // Force a random reflection on startup
-      const avatars = await this.messageProcessor.getActiveAvatars();
+      const avatars = await this.avatarService.getAllAvatars();
       if (avatars.length > 0) {
         const randomAvatar = avatars[Math.floor(Math.random() * avatars.length)];
         this.logger.info(`🎯 Forcing startup reflection for ${randomAvatar.name}`);
@@ -358,7 +358,7 @@ export class ChatService {
 
   setupReflectionInterval() {
     setInterval(async () => {
-      const avatars = await this.messageProcessor.getActiveAvatars();
+      const avatars = await this.avatarService.getActiveAvatars();
       avatars.sort(() => Math.random() - 0.5);
       for (const avatar of avatars) {
         await this.conversationHandler.generateNarrative(avatar, SERVER_NAME);

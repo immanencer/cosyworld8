@@ -12,7 +12,7 @@ async function retryLeaderboardLoad(page) {
 
 const state = {
   wallet: null,
-  activeTab: "owned",
+  activeTab: "squad", // updated
   loading: false,
   socialSort: "new",
 };
@@ -196,8 +196,8 @@ async function loadContent() {
 
   try {
     switch (state.activeTab) {
-      case "owned":
-        await loadOwnedAvatars();
+      case "squad": // updated from "owned"
+        await loadSquad(); // renamed from loadOwnedAvatars
         break;
       case "actions":
         await loadActionLog();
@@ -266,11 +266,11 @@ async function claimAvatar(avatarId) {
 //
 // LOADERS PER TAB
 //
-async function loadOwnedAvatars() {
+async function loadSquad() { // renamed function
   if (!state.wallet) {
     content.innerHTML = `
       <div class="text-center py-12">
-        <p class="mb-4">Connect your wallet to view owned avatars</p>
+        <p class="mb-4">Connect your wallet to view your Squad</p> <!-- updated text -->
         <button
           class="px-4 py-2 bg-blue-600 rounded"
           onclick="connectWallet()"
@@ -295,7 +295,7 @@ async function loadOwnedAvatars() {
     ) {
       content.innerHTML = `
         <div class="text-center py-12">
-          No avatars found
+          No Squad members found <!-- updated text -->
         </div>
       `;
       return;
@@ -307,10 +307,10 @@ async function loadOwnedAvatars() {
       </div>
     `;
   } catch (error) {
-    console.error("Error loading owned avatars:", error);
+    console.error("Error loading Squad:", error);
     content.innerHTML = `
       <div class="text-center py-12 text-red-500">
-        Failed to load avatars: ${error.message}
+        Failed to load Squad: ${error.message}
       </div>
     `;
   }
