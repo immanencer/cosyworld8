@@ -21,7 +21,7 @@
     "cloudinary": "^2.5.1",
     "concurrently": "^9.1.2",
     "cors": "^2.8.5",
-    "discord.js": "^14.16.3",
+    "discord.js": "^14.14.1",
     "dotenv": "^16.4.5",
     "express": "^4.21.1",
     "fuse.js": "^7.0.0",
@@ -39,6 +39,7 @@
     "string-similarity": "^4.0.4",
     "tailwindcss": "^3.4.17",
     "twitter-api-v2": "^1.18.2",
+    "undici": "^7.3.0",
     "winston": "^3.15.0"
   },
   "devDependencies": {

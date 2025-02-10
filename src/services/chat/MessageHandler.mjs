@@ -1,5 +1,3 @@
-import { sendAsWebhook } from '../discordService.mjs';
-
 export class MessageHandler {
   constructor(chatService, avatarService, logger) {
     this.chatService = chatService;

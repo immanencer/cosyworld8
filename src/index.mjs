@@ -2,6 +2,7 @@
 import dotenv from 'dotenv';
 import winston from 'winston';
 import { MongoClient } from 'mongodb';
+import { SpamControlService } from './services/chat/SpamControlService.mjs';
 //
 // import { OllamaService as AIService } from './services/ollamaService.mjs';
 import { OpenRouterService as AIService } from './services/openrouterService.mjs';
@@ -82,9 +83,10 @@ let messagesCollection; // Will be set once DB connected
 let avatarService = null;
 const aiService = new AIService();
 
-// We will instantiate ChatService and MessageHandler after DB is connected
+// We will instantiate ChatService, SpamControlService and MessageHandler after DB is connected
 let chatService;
 let messageHandler;
+let spamControlService;
 
 /**
  * Saves a Discord message to the database.
@@ -537,14 +539,14 @@ async function handleCommands(message, args, commandLine) {
  */
 client.on('messageCreate', async (message) => {
   try {
-    if (!messageHandler) {
-      logger.error('MessageHandler not initialized');
+    // Use the Spam Control Service to check if the message should be processed.
+    if (!(await spamControlService.shouldProcessMessage(message))) {
+      // If the message is from a spammy user, silently ignore it.
       return;
     }
 
-    // Split the message content into lines
+    // Process commands if any
     const lines = message.content.split('\n');
-    // Handle up to 2 command lines if they start with !
     let counter = 2;
     for (const line of lines) {
       if (line.startsWith('!')) {
@@ -554,19 +556,15 @@ client.on('messageCreate', async (message) => {
       if (counter === 0) break;
     }
 
-    // Save message to DB
+    // Save message to database and process channel messages as before
     await saveMessageToDatabase(message);
-
-    // Ignore messages from bots for further processing
     if (message.author.bot) return;
-
-    // Process the channel (non-command messages)
     await messageHandler.processChannel(message.channel.id);
+
   } catch (error) {
     logger.error(`Error processing message: ${error.stack}`);
   }
 });
-
 /**
  * Gracefully shuts down the application on termination signals.
  * @param {string} signal - The signal received (e.g., SIGINT, SIGTERM).
@@ -623,6 +621,8 @@ async function main() {
     const db = mongoClient.db(MONGO_DB_NAME);
     messagesCollection = db.collection('messages');
     avatarService = new AvatarGenerationService(db);
+    // Initialize the Spam Control Service
+    spamControlService = new SpamControlService(db, logger);
 
     logger.info('✅ Connected to MongoDB successfully');
 
