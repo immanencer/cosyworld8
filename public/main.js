@@ -12,7 +12,7 @@ async function retryLeaderboardLoad(page) {
 
 const state = {
   wallet: null,
-  activeTab: "owned",
+  activeTab: "squad", // updated
   loading: false,
   socialSort: "new",
 };
@@ -196,8 +196,8 @@ async function loadContent() {
 
   try {
     switch (state.activeTab) {
-      case "owned":
-        await loadOwnedAvatars();
+      case "squad": // updated from "owned"
+        await loadSquad(); // renamed from loadOwnedAvatars
         break;
       case "actions":
         await loadActionLog();
@@ -266,11 +266,11 @@ async function claimAvatar(avatarId) {
 //
 // LOADERS PER TAB
 //
-async function loadOwnedAvatars() {
+async function loadSquad() { // renamed function
   if (!state.wallet) {
     content.innerHTML = `
       <div class="text-center py-12">
-        <p class="mb-4">Connect your wallet to view owned avatars</p>
+        <p class="mb-4">Connect your wallet to view your Squad</p> <!-- updated text -->
         <button
           class="px-4 py-2 bg-blue-600 rounded"
           onclick="connectWallet()"
@@ -295,7 +295,7 @@ async function loadOwnedAvatars() {
     ) {
       content.innerHTML = `
         <div class="text-center py-12">
-          No avatars found
+          No Squad members found <!-- updated text -->
         </div>
       `;
       return;
@@ -307,10 +307,10 @@ async function loadOwnedAvatars() {
       </div>
     `;
   } catch (error) {
-    console.error("Error loading owned avatars:", error);
+    console.error("Error loading Squad:", error);
     content.innerHTML = `
       <div class="text-center py-12 text-red-500">
-        Failed to load avatars: ${error.message}
+        Failed to load Squad: ${error.message}
       </div>
     `;
   }
@@ -573,7 +573,12 @@ async function loadLeaderboard() {
           throw new Error("Invalid response format");
         }
 
-        scrollState.hasMore = scrollState.page < data.totalPages;
+        // Use totalPages from response if available, otherwise fallback to checking avatars length
+        if (data.totalPages) {
+          scrollState.hasMore = scrollState.page < data.totalPages;
+        } else {
+          scrollState.hasMore = data.avatars.length === 12;
+        }
 
         data.avatars.forEach((avatar) => {
           const div = document.createElement("div");
@@ -605,15 +610,11 @@ async function loadLeaderboard() {
           leaderboardItems.appendChild(div);
         });
 
-        scrollState.hasMore = data.avatars.length === 12;
         scrollState.page++;
       } catch (error) {
         console.error("Failed to load more leaderboard items:", error);
-
         const existingError = leaderboardItems.querySelector(".error-message");
-        if (existingError) {
-          existingError.remove();
-        }
+        if (existingError) existingError.remove();
 
         const errorDiv = document.createElement("div");
         errorDiv.className =
@@ -628,11 +629,13 @@ async function loadLeaderboard() {
           </button>
         `;
         leaderboardItems.appendChild(errorDiv);
-
         scrollState.hasMore = true;
       } finally {
         scrollState.loading = false;
-        loader.classList.add("hidden");
+        // Keep loader visible when more items are expected
+        if (!scrollState.hasMore) {
+          loader.classList.add("hidden");
+        }
       }
     }
 
@@ -653,11 +656,6 @@ async function loadLeaderboard() {
       { threshold: 0.1, rootMargin: "100px" },
     );
     observer.observe(loader);
-
-    if (!scrollState.initialized) {
-      scrollState.initialized = true;
-      await loadMore();
-    }
   } catch (error) {
     console.error("Failed to load leaderboard:", error);
     content.innerHTML = `

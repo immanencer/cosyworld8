@@ -28,6 +28,16 @@ async function initializeApp() {
     const client = new MongoClient(mongoUri);
     await client.connect();
     const db = client.db(mongoDbName);
+    
+    db.avatars = db.collection('avatars');
+    db.messages = db.collection('messages');
+    db.narratives = db.collection('narratives');
+    db.memories = db.collection('memories');
+    db.dungeon_stats = db.collection('dungeon_stats');
+    db.dungeon_log = db.collection('dungeon_log');
+    db.token_transactions = db.collection('token_transactions');
+    db.minted_nfts = db.collection('minted_nfts');
+
     console.log(`Connected to MongoDB database: ${mongoDbName}`);
 
     // Initialize indexes
@@ -73,41 +83,49 @@ async function initializeApp() {
 async function initializeIndexes(db) {
   try {
     await Promise.all([
-      db.collection('avatars').createIndexes([
-        { key: { name: 1 }, background: true },
-        { key: { emoji: 1 }, background: true },
-        { key: { parents: 1 }, background: true },
-        { key: { model: 1 }, background: true },
-        { key: { createdAt: -1 }, background: true },
-        { key: { name: 'text', description: 'text' }, background: true },
-      ]),
-      db.collection('messages').createIndexes([
+      // Consolidated messages indexes
+      db.messages.createIndexes([
         { key: { authorUsername: 1 }, background: true },
         { key: { timestamp: -1 }, background: true },
         { key: { avatarId: 1 }, background: true },
       ]),
-      db.collection('narratives').createIndex(
-        { avatarId: 1, timestamp: -1 },
-        { background: true }
-      ),
-      db.collection('memories').createIndex(
-        { avatarId: 1, timestamp: -1 },
-        { background: true }
-      ),
-      db.collection('dungeon_stats').createIndex(
+      // Consolidated avatars indexes
+      db.avatars.createIndexes([
+        { key: { name: 1, createdAt: -1 }, background: true },
+        { key: { model: 1 }, background: true },
+        { key: { emoji: 1 }, background: true },
+        { key: { parents: 1 }, background: true },
+        { key: { createdAt: -1 }, background: true },
+        { key: { name: 'text', description: 'text' }, background: true },
+      ]),
+      // Dungeon stats index
+      db.dungeon_stats.createIndex(
         { avatarId: 1 },
         { unique: true, background: true }
       ),
-      db.collection('dungeon_log').createIndexes([
+      // Narratives index
+      db.narratives.createIndex(
+        { avatarId: 1, timestamp: -1 },
+        { background: true }
+      ),
+      // Memories index
+      db.memories.createIndex(
+        { avatarId: 1, timestamp: -1 },
+        { background: true }
+      ),
+      // Dungeon log indexes
+      db.dungeon_log.createIndexes([
         { key: { timestamp: -1 }, background: true },
         { key: { actor: 1 }, background: true },
         { key: { target: 1 }, background: true },
       ]),
-      db.collection('token_transactions').createIndexes([
+      // Token transactions indexes
+      db.token_transactions.createIndexes([
         { key: { walletAddress: 1, timestamp: -1 }, background: true },
         { key: { transactionSignature: 1 }, unique: true, background: true },
       ]),
-      db.collection('minted_nfts').createIndexes([
+      // Minted nfts indexes
+      db.minted_nfts.createIndexes([
         { key: { walletAddress: 1 }, background: true },
         { key: { avatarId: 1 }, background: true },
       ])

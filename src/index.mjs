@@ -126,58 +126,6 @@ async function saveMessageToDatabase(message) {
   }
 }
 
-/**
- * Extracts avatars mentioned in the message content.
- * @param {string} content - The message content.
- * @param {Array} avatars - Array of all avatars.
- * @returns {Set} Set of mentioned avatars.
- */
-function extractMentionedAvatars(content, avatars) {
-  const mentionedAvatars = new Set();
-  if (!content || !Array.isArray(avatars)) {
-    logger.warn('Invalid input to extractMentionedAvatars', {
-      content,
-      avatarsLength: avatars?.length,
-    });
-    return mentionedAvatars;
-  }
-
-  for (const avatar of avatars) {
-    try {
-      // Validate avatar object
-      if (!avatar || typeof avatar !== 'object') {
-        logger.error('Invalid avatar object:', avatar);
-        continue;
-      }
-
-      // Ensure required fields exist
-      if (!avatar._id || !avatar.name) {
-        logger.error('Avatar missing required fields:', {
-          _id: avatar._id,
-          name: avatar.name,
-          objectKeys: Object.keys(avatar),
-        });
-        continue;
-      }
-
-      // Check for mentions by name or by emoji
-      const nameMatch = avatar.name && content.toLowerCase().includes(avatar.name.toLowerCase());
-      const emojiMatch = avatar.emoji && content.includes(avatar.emoji);
-
-      if (nameMatch || emojiMatch) {
-        logger.debug(`Found mention of avatar: ${avatar.name} (${avatar._id})`);
-        mentionedAvatars.add(avatar);
-      }
-    } catch (error) {
-      logger.error(`Error processing avatar in extractMentionedAvatars:`, {
-        error: error.message,
-        avatar: JSON.stringify(avatar, null, 2),
-      });
-    }
-  }
-
-  return mentionedAvatars;
-}
 
 /**
  * Tries to find an avatar by name in a list of avatars.
@@ -212,7 +160,7 @@ function sanitizeInput(input) {
  */
 async function handleBreedCommand(message, args, commandLine) {
   // find an avatar for each argument
-  const avatars = await avatarService.getAllAvatars();
+  const avatars = await avatarService.getAvatarsInChannel();
   const mentionedAvatars = Array.from(extractMentionedAvatars(commandLine, avatars))
     .sort(() => Math.random() - 0.5)
     .slice(-2);
@@ -415,6 +363,14 @@ async function handleSummonCommand(message, args, breed = false, attributes = {}
     } else if (!prompt) {
       prompt = 'create a new avatar, use your imagination!';
     }
+
+    // Get recent messages from the channel
+    const recentMessages = await chatService.getRecentMessagesFromDatabase(message.channel.id);
+    // Format the prompt with the recent messages
+    const messageString = recentMessages.reduce(
+      (acc, m) => `${acc}\n${m.author.username}: ${m.content}`,
+      ''
+    );
 
     const avatarData = {
       prompt: sanitizeInput(prompt),
@@ -683,7 +639,11 @@ async function main() {
     });
 
     // 4. Initialize MessageHandler
-    messageHandler = new MessageHandler(chatService, avatarService, logger);
+    messageHandler = new MessageHandler(
+      chatService,
+      avatarService,
+      logger
+    );
 
     // 5. Login to Discord
     await client.login(DISCORD_BOT_TOKEN);
