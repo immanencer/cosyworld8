@@ -63,12 +63,17 @@ export async function uploadImage(filePath) {
         res.on('data', (chunk) => (data += chunk));
         res.on('end', () => {
           if (res.statusCode === 200) {
-            const response = JSON.parse(data);
-            console.log('Upload Successful!');
-            const result = JSON.parse(response.body);
-            console.log(`Message: ${result.message}`);
-            console.log(`Image URL: ${result.url}`);
-            resolve(result.url);
+            try {
+              const result = JSON.parse(data);
+              console.log('Upload Successful!');
+              console.log(`Message: ${result.message}`);
+              console.log(`Image URL: ${result.url}`);
+              resolve(result.url);
+            } catch (error) {
+              console.error('Failed to parse response:', error);
+              console.error('Raw response:', data);
+              reject(new Error('Invalid response format'));
+            }
           } else {
             console.error(`Unexpected response status: ${res.statusCode}`);
             console.error(data);
