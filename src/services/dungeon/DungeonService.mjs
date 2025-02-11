@@ -8,6 +8,7 @@ import { MoveTool } from './tools/MoveTool.mjs';
 import { RememberTool } from './tools/RememberTool.mjs';
 import { CreationTool } from './tools/CreationTool.mjs';
 import { XPostTool } from './tools/XPostTool.mjs';
+import { ItemTool } from './tools/ItemTool.mjs';
 
 
 export class DungeonService {
@@ -152,6 +153,7 @@ export class DungeonService {
     this.tools.set('move', new MoveTool(this));
     this.tools.set('remember', new RememberTool(this));
     this.tools.set('xpost', new XPostTool(this));
+    this.tools.set('item', new ItemTool(this));
   }
 
   async getLocationDescription(locationId, locationName) {
