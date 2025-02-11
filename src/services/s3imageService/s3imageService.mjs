@@ -68,7 +68,10 @@ export async function uploadImage(filePath) {
               console.log('Raw S3 response:', data);
               
               const result = JSON.parse(data);
-              if (!result || !result.url) {
+              // Parse the nested body if it exists
+              const responseData = result.body ? JSON.parse(result.body) : result;
+              
+              if (!responseData || !responseData.url) {
                 console.error('Invalid S3 response format - missing URL');
                 console.error('Response data:', result);
                 reject(new Error('Invalid S3 response - missing URL'));
@@ -76,8 +79,8 @@ export async function uploadImage(filePath) {
               }
               
               console.log('Upload Successful!');
-              console.log(`Image URL: ${result.url}`);
-              resolve(result.url);
+              console.log(`Image URL: ${responseData.url}`);
+              resolve(responseData.url);
             } catch (error) {
               console.error('Failed to parse S3 response:', error);
               console.error('Raw response data:', data);
