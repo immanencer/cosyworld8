@@ -30,23 +30,23 @@ export class RememberTool extends BaseTool {
     const context = await this.getChannelContext(message.channel);
     const prompt = params.join(' ');
     const memory = await this.generateMemory(context, prompt);
+    const formattedMemory = memory.trim();
 
     const memoryService = new MemoryService(this.logger);
-    await memoryService.addMemory(avatar._id, memory);
+    await memoryService.addMemory(avatar._id, formattedMemory);
 
     // Post the memory to the avatar narrative channel
     if (avatar.innerMonologueChannel) {
       // Post dynamic personality to the inner monologue channel
       sendAsWebhook(
         avatar.innerMonologueChannel,
-        `🧠 Memory Generated: ${avatar.dynamicPersonality || ''}`,
+        `🧠 Memory Generated: ${formattedMemory}`,
         `${avatar.name} ${avatar.emoji}`,
         avatar.imageUrl
       );
     }
-    const formattedMemory = memory.trim();
     this.logger?.debug(`Generated memory: ${formattedMemory}`);
-    return `[🧠 Memory generated: "${formattedMemory}"]`;
+    return `[🧠 Memory Generated ]`;
   }
 
   getDescription() {
