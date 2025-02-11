@@ -7,6 +7,7 @@ import { SpamControlService } from './services/chat/SpamControlService.mjs';
 // import { OllamaService as AIService } from './services/ollamaService.mjs';
 import { OpenRouterService as AIService } from './services/openrouterService.mjs';
 import { AvatarGenerationService } from './services/avatarService.mjs';
+import { extractMentionedAvatars } from './services/avatarService.mjs';
 import {
   client,
   reactToMessage,
