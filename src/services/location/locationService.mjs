@@ -2,7 +2,7 @@ import Fuse from 'fuse.js';
 import { OpenRouterService } from '../openrouterService.mjs';
 import { uploadImage } from '../s3imageService/s3imageService.mjs';
 import { sendAsWebhook } from '../discordService.mjs';
-import { MongoClient, ObjectId } from 'mongodb';
+import { ObjectId } from 'mongodb';
 import Replicate from 'replicate';
 import fs from 'fs/promises';
 
@@ -14,7 +14,7 @@ export class LocationService {
    * @param {Object} discordClient - The Discord client (required).
    * @param {Object} [aiService=null] - Optional AI service (defaults to OpenRouterService if not provided).
    */
-  constructor(discordClient, aiService = null) {
+  constructor(discordClient, aiService = null, db) {
     if (!discordClient) {
       throw new Error('Discord client is required for LocationService');
     }
@@ -40,33 +40,7 @@ export class LocationService {
 
     // DB Setup
     /** @type {import('mongodb').Db|null} */
-    this.db = null;
-    this.initDatabase().catch((err) =>
-      console.error('LocationService DB init failed:', err)
-    );
-  }
-
-  /**
-   * Connect to MongoDB and store the DB instance.
-   */
-  async initDatabase() {
-    try {
-      const mongoUri = process.env.MONGO_URI;
-      const mongoDbName = process.env.MONGO_DB_NAME;
-      if (!mongoUri || !mongoDbName) {
-        throw new Error('MONGO_URI and MONGO_DB_NAME must be set in environment');
-      }
-
-      const client = await MongoClient.connect(mongoUri, {
-        // Connection options can go here, e.g.:
-        // useNewUrlParser: true,
-        // useUnifiedTopology: true
-      });
-      this.db = client.db(mongoDbName);
-      console.log(`LocationService connected to MongoDB: ${mongoDbName}`);
-    } catch (error) {
-      console.error('Failed to connect to MongoDB:', error);
-    }
+    this.db = db;
   }
 
   /**

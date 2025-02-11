@@ -97,4 +97,24 @@ export class OpenRouterService {
       return null;
     }
   }
+
+    /**
+     * Generates a spoken response as the item within the current channel context.
+     *
+     * @param {Object} item - The item object (must include at least "name" and "description").
+     * @param {string} channelId - The channel ID providing context for the response.
+     * @returns {Promise<string>} - The spoken text as the item.
+     */
+    async speakAsItem(item, channelId) {
+      const prompt = `
+  You are a mystical item called "${item.name}" located in a dungeon channel (ID: ${channelId}).
+  Your description is: ${item.description}.
+  Respond with only your speech as if you are the item coming to life in this channel.
+      `;
+      const completion = await this.generateCompletion(prompt);
+      if (!completion) {
+        return `The ${item.name} remains silent.`;
+      }
+      return completion;
+    }
 }

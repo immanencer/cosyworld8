@@ -31,7 +31,7 @@ export class ChatService {
 
     // Initialize core services with logger
     this.dungeonService = new DungeonService(
-      client, this.logger, this.avatarService
+      client, this.logger, this.avatarService, this.db
     ); // Added initialization
     this.conversationHandler = new ConversationHandler(
       client,
@@ -286,9 +286,7 @@ export class ChatService {
 
       if (decision) {
         this.logger.info(`${avatar.name} decided to respond in ${channel.id}`);
-        await this.conversationHandler.sendResponse(channel, avatar);
-        // Track the response in DecisionMaker
-        this.decisionMaker.trackResponse(channel.id, avatar._id);
+        this.conversationHandler.sendResponse(channel, avatar);
       }
 
     } catch (error) {

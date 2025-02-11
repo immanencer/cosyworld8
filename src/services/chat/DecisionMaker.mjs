@@ -20,11 +20,12 @@ export class DecisionMaker {
     this.PER_AVATAR_COOLDOWN = 2 * 60 * 1000; // e.g., 2 minutes
     this.MINIMUM_ATTENTION_THRESHOLD = 15;    // increased threshold for ambient responses
     this.ATTENTION_DECAY_INTERVAL = 45 * 1000; // faster decay for regular avatars
-    this.RECENT_SUMMON_WINDOW = 10 * 60 * 1000; // 10 minute window for recent summons
-    this.RECENT_SUMMON_COOLDOWN = 30 * 1000; // 30 second cooldown for recent summons
+    this.ATTENTION_DECAY_RATE = 0.95;          // decay rate per minute
+    this.RECENT_SUMMON_WINDOW = 10 * 60 * 1000;  // 10 minute window for recent summons
+    this.RECENT_SUMMON_COOLDOWN = 30 * 1000;     // 30 second cooldown for recent summons
 
-    // Store attention state in a Map => avatarId -> { level, lastResponseTime, lastMentionTime, lastCheckTime }
-    this.avatarAttentionMap = new Map();
+    // Store attention state in a Map => avatarId -> { level, lastResponse, lastMention, cooldown }
+    this.attentionStates = new Map();
   }
 
   // Unified state management
@@ -61,7 +62,6 @@ export class DecisionMaker {
         lastActive: Date.now()
       });
     }
-
     const conversation = this.conversationState.get(channelId);
     conversation.participants.add(avatarId);
     conversation.lastActive = Date.now();
@@ -79,17 +79,17 @@ export class DecisionMaker {
       this.PER_AVATAR_COOLDOWN;
 
     // Decay attention first
-    this._decayAttention(avatar._id);
+    this._decayAttention(avatar.id);
 
-    // Check avatar cooldown
-    const { lastResponseTime } = this._getAttentionState(avatar._id);
-    if (Date.now() - lastResponseTime < effectiveCooldown) {
+    // Check avatar cooldown using the stored lastResponse timestamp
+    const { lastResponse } = this._getState(avatar.id);
+    if (Date.now() - lastResponse < effectiveCooldown) {
       return false;
     }
 
-    // Boost recently summoned avatars
+    // Boost attention for recently summoned avatars
     if (isRecentlySummoned) {
-      this._adjustAttention(avatar._id, +20);
+      this._updateAttention(avatar.id, +20);
     }
 
     const messages = await channel.messages.fetch({ limit: 8 });
@@ -98,7 +98,7 @@ export class DecisionMaker {
     const lastMessage = messages.first();
     const isBotMessage = lastMessage.author.bot;
 
-    // Direct mention handling (bot or human)
+    // Direct mention handling (either bot or human mention)
     const mentioned = lastMessage.content.toLowerCase().includes(avatar.name.toLowerCase()) ||
       (avatar.emoji && lastMessage.content.includes(avatar.emoji));
 
@@ -119,9 +119,10 @@ export class DecisionMaker {
     }
 
     // Attention threshold check
-    if (state.level < this.MIN_ATTENTION) return false;
+    const state = this._getState(avatar.id);
+    if (state.level < this.MINIMUM_ATTENTION_THRESHOLD) return false;
 
-    // AI decision making
+    // AI decision making: further evaluate based on contextual conversation
     return this._evaluateContextualResponse(avatar, messages, isBotMessage);
   }
 
@@ -140,8 +141,7 @@ export class DecisionMaker {
         ...context,
         {
           role: 'user',
-          content: `As ${avatar.name}, ` +
-            `should you respond? Consider:\n` +
+          content: `As ${avatar.name}, should you respond? Consider:\n` +
             `- Conversation flow\n- Relevance to your role\n- Recent activity\n` +
             `Answer ONLY with YES or NO:`
         }
@@ -159,6 +159,7 @@ export class DecisionMaker {
         const state = this._getState(avatar.id);
         state.lastResponse = Date.now();
         state.cooldown = isBotInteraction ? 45000 : 60000;
+        // Reduce attention after responding
         this._updateAttention(avatar.id, -10);
       }
 

@@ -373,22 +373,24 @@ Based on all of the above context, share an updated personality that reflects yo
       const systemPrompt = await this.buildSystemPrompt(avatar);
       const dungeonPrompt = await this.buildDungeonPrompt(avatar);
 
+      const prompt = `
+        Channel: #${context.channelName} in ${context.guildName}
+
+        ${dungeonPrompt}
+
+        Recent messages:
+        ${context.recentMessages.map(m => `${m.author}: ${m.content}`).join('\n')}
+
+        Reply in character as ${avatar.name} with a single short, casual message, suitable for this discord channel.
+                  `.trim();
+
       // Generate response via AI service
       let response = await this.aiService.chat([
         { role: 'system', content: systemPrompt },
         { role: 'assistant', content: lastNarrative?.content || 'No previous reflection' },
         {
           role: 'user',
-          content: `
-Channel: #${context.channelName} in ${context.guildName}
-
-${dungeonPrompt}
-
-Recent messages:
-${context.recentMessages.map(m => `${m.author}: ${m.content}`).join('\n')}
-
-Reply in character as ${avatar.name} with a single short, casual message, suitable for this discord channel.
-          `.trim()
+          content: prompt
         }
       ], { model: avatar.model });
 
@@ -477,6 +479,7 @@ Reply in character as ${avatar.name} with a single short, casual message, suitab
   async buildDungeonPrompt(avatar) {
     const commandsDescription = this.dungeonService.getCommandsDescription(avatar) || '';
     const location = await this.dungeonService.getLocationDescription(avatar.channelId, avatar.channelName);
+    const items = await this.dungeonService.getItemsDescription(avatar);
     const locationText = location
       ? `You are currently in ${location.name}. ${location.description}`
       : `You are in ${avatar.channelName || 'a chat channel'}.`;
@@ -489,6 +492,10 @@ These commands are available in this location:
 ${commandsDescription}
 
 ${locationText}
+
+You can also use these items in your inventory:  
+
+${items}
     `.trim();
   }
 

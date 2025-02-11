@@ -12,7 +12,7 @@ export class MoveTool extends BaseTool {
     if (!dungeonService.client) {
       throw new Error('Discord client is required for MoveTool');
     }
-    this.locationService = new LocationService(dungeonService.client, dungeonService.aiService);
+    this.locationService = dungeonService.locationService;
   }
 
   /**
