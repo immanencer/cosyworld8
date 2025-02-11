@@ -64,15 +64,24 @@ export async function uploadImage(filePath) {
         res.on('end', () => {
           if (res.statusCode === 200) {
             try {
+              // Log raw response for debugging
+              console.log('Raw S3 response:', data);
+              
               const result = JSON.parse(data);
+              if (!result || !result.url) {
+                console.error('Invalid S3 response format - missing URL');
+                console.error('Response data:', result);
+                reject(new Error('Invalid S3 response - missing URL'));
+                return;
+              }
+              
               console.log('Upload Successful!');
-              console.log(`Message: ${result.message}`);
               console.log(`Image URL: ${result.url}`);
               resolve(result.url);
             } catch (error) {
-              console.error('Failed to parse response:', error);
-              console.error('Raw response:', data);
-              reject(new Error('Invalid response format'));
+              console.error('Failed to parse S3 response:', error);
+              console.error('Raw response data:', data);
+              reject(new Error(`Failed to parse S3 response: ${error.message}`));
             }
           } else {
             console.error(`Unexpected response status: ${res.statusCode}`);
