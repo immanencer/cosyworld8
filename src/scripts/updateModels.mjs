@@ -24,12 +24,30 @@ async function fetchModels() {
   return response.json();
 }
 
-function determineRarity(pricing) {
+// Import existing models config to preserve rarities
+import existingModels from '../models.config.mjs';
+
+function determineRarity(modelId, pricing) {
+  // Check if model exists in current config and preserve its rarity
+  const existingModel = existingModels.find(m => m.model === modelId);
+  if (existingModel) {
+    return existingModel.rarity;
+  }
+
+  // For new models, maintain similar distribution as existing config
+  const rarityDistribution = {
+    legendary: existingModels.filter(m => m.rarity === 'legendary').length / existingModels.length,
+    rare: existingModels.filter(m => m.rarity === 'rare').length / existingModels.length,
+    uncommon: existingModels.filter(m => m.rarity === 'uncommon').length / existingModels.length
+  };
+
   const avgCost = (pricing.prompt + pricing.completion) / 2;
+  const rand = Math.random();
   
-  if (avgCost >= RARITY_THRESHOLDS.legendary) return 'legendary';
-  if (avgCost >= RARITY_THRESHOLDS.rare) return 'rare';
-  if (avgCost >= RARITY_THRESHOLDS.uncommon) return 'uncommon';
+  // Assign new models based on existing distribution
+  if (rand < rarityDistribution.legendary) return 'legendary';
+  if (rand < rarityDistribution.legendary + rarityDistribution.rare) return 'rare';
+  if (rand < rarityDistribution.legendary + rarityDistribution.rare + rarityDistribution.uncommon) return 'uncommon';
   return 'common';
 }
 
@@ -38,10 +56,10 @@ async function updateModelsConfig() {
     // Fetch latest models from OpenRouter
     const { data: models } = await fetchModels();
     
-    // Transform the data into our config format
+    // Transform the data into our config format while preserving existing rarities
     const configModels = models.map(model => ({
       model: model.id,
-      rarity: determineRarity(model.pricing)
+      rarity: determineRarity(model.id, model.pricing)
     }));
     
     // Sort by rarity (legendary first, then rare, etc.)
