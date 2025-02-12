@@ -48,10 +48,15 @@ async function updateModelsConfig() {
     const { data: models } = await fetchModels();
     
     // Calculate average cost for each model and preserve existing rarities
+    // Calculate average costs across all models with pricing
+    const modelsWithPricing = models.filter(m => m.pricing);
+    const avgPromptCost = modelsWithPricing.reduce((sum, m) => sum + m.pricing.prompt, 0) / modelsWithPricing.length;
+    const avgCompletionCost = modelsWithPricing.reduce((sum, m) => sum + m.pricing.completion, 0) / modelsWithPricing.length;
+
     const configModels = models.map(model => {
       const avgCost = model.pricing 
         ? (model.pricing.prompt + model.pricing.completion) / 2 
-        : 0;
+        : (avgPromptCost + avgCompletionCost) / 2; // Use average cost for models without pricing
       
       const existingModel = existingModels.find(m => m.model === model.id);
       return {
