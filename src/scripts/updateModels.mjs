@@ -2,12 +2,8 @@
 import fs from 'fs/promises';
 import path from 'path';
 
-const RARITY_THRESHOLDS = {
-  legendary: 0.008, // More expensive models
-  rare: 0.005,
-  uncommon: 0.002,
-  common: 0          // Cheapest models
-};
+// Import existing models config to preserve rarities
+import existingModels from '../models.config.mjs';
 
 async function fetchModels() {
   const response = await fetch('https://openrouter.ai/api/v1/models', {
@@ -24,31 +20,26 @@ async function fetchModels() {
   return response.json();
 }
 
-// Import existing models config to preserve rarities
-import existingModels from '../models.config.mjs';
-
-function determineRarity(modelId, pricing) {
-  // Check if model exists in current config and preserve its rarity
-  const existingModel = existingModels.find(m => m.model === modelId);
-  if (existingModel) {
-    return existingModel.rarity;
-  }
-
-  // For new models, maintain similar distribution as existing config
-  const rarityDistribution = {
-    legendary: existingModels.filter(m => m.rarity === 'legendary').length / existingModels.length,
-    rare: existingModels.filter(m => m.rarity === 'rare').length / existingModels.length,
-    uncommon: existingModels.filter(m => m.rarity === 'uncommon').length / existingModels.length
-  };
-
-  const avgCost = (pricing.prompt + pricing.completion) / 2;
-  const rand = Math.random();
+function calculateStats(costs) {
+  const mean = costs.reduce((a, b) => a + b, 0) / costs.length;
+  const sortedCosts = [...costs].sort((a, b) => a - b);
+  const median = costs.length % 2 === 0 
+    ? (sortedCosts[costs.length/2 - 1] + sortedCosts[costs.length/2]) / 2
+    : sortedCosts[Math.floor(costs.length/2)];
   
-  // Assign new models based on existing distribution
-  if (rand < rarityDistribution.legendary) return 'legendary';
-  if (rand < rarityDistribution.legendary + rarityDistribution.rare) return 'rare';
-  if (rand < rarityDistribution.legendary + rarityDistribution.rare + rarityDistribution.uncommon) return 'uncommon';
-  return 'common';
+  // Calculate standard deviation
+  const variance = costs.reduce((acc, val) => acc + Math.pow(val - mean, 2), 0) / costs.length;
+  const stdDev = Math.sqrt(variance);
+  
+  return { mean, median, stdDev };
+}
+
+function findOutliers(models, stats) {
+  const outlierThreshold = 2; // Number of standard deviations for outlier detection
+  return models.filter(model => {
+    const cost = model.cost || 0;
+    return Math.abs(cost - stats.mean) > (outlierThreshold * stats.stdDev);
+  });
 }
 
 async function updateModelsConfig() {
@@ -56,18 +47,61 @@ async function updateModelsConfig() {
     // Fetch latest models from OpenRouter
     const { data: models } = await fetchModels();
     
-    // Transform the data into our config format while preserving existing rarities
-    const configModels = models.map(model => ({
-      model: model.id,
-      rarity: determineRarity(model.id, model.pricing)
-    }));
-    
-    // Sort by rarity (legendary first, then rare, etc.)
+    // Calculate average cost for each model and preserve existing rarities
+    const configModels = models.map(model => {
+      const avgCost = model.pricing 
+        ? (model.pricing.prompt + model.pricing.completion) / 2 
+        : 0;
+      
+      const existingModel = existingModels.find(m => m.model === model.id);
+      return {
+        model: model.id,
+        rarity: existingModel?.rarity || 'common',
+        cost: avgCost
+      };
+    });
+
+    // Group models by rarity
+    const rarityGroups = {
+      legendary: configModels.filter(m => m.rarity === 'legendary'),
+      rare: configModels.filter(m => m.rarity === 'rare'),
+      uncommon: configModels.filter(m => m.rarity === 'uncommon'),
+      common: configModels.filter(m => m.rarity === 'common')
+    };
+
+    // Analyze cost distribution for each rarity
+    console.log('\nCost Distribution Analysis:');
+    for (const [rarity, models] of Object.entries(rarityGroups)) {
+      const costs = models.map(m => m.cost);
+      const stats = calculateStats(costs);
+      const outliers = findOutliers(models, stats);
+      
+      console.log(`\n${rarity.toUpperCase()}:`);
+      console.log(`Total models: ${models.length}`);
+      console.log(`Average cost: $${stats.mean.toFixed(4)}`);
+      console.log(`Median cost: $${stats.median.toFixed(4)}`);
+      console.log(`Standard deviation: $${stats.stdDev.toFixed(4)}`);
+      
+      if (outliers.length > 0) {
+        console.log('\nOutliers:');
+        outliers.forEach(model => {
+          console.log(`- ${model.model}: $${model.cost.toFixed(4)}`);
+        });
+      }
+    }
+
+    // Sort by rarity and cost within each rarity
     const rarityOrder = { legendary: 0, rare: 1, uncommon: 2, common: 3 };
-    configModels.sort((a, b) => rarityOrder[a.rarity] - rarityOrder[b.rarity]);
+    configModels.sort((a, b) => {
+      const rarityDiff = rarityOrder[a.rarity] - rarityOrder[b.rarity];
+      return rarityDiff !== 0 ? rarityDiff : b.cost - a.cost;
+    });
+    
+    // Remove cost property before saving
+    const finalConfig = configModels.map(({ model, rarity }) => ({ model, rarity }));
     
     // Generate the new config file content
-    const configContent = `export default ${JSON.stringify(configModels, null, 2)};\n`;
+    const configContent = `export default ${JSON.stringify(finalConfig, null, 2)};\n`;
     
     // Write to models.config.mjs
     await fs.writeFile(
@@ -75,19 +109,7 @@ async function updateModelsConfig() {
       configContent
     );
     
-    console.log('Models config updated successfully!');
-    console.log(`Total models: ${configModels.length}`);
-    
-    // Print statistics
-    const stats = configModels.reduce((acc, model) => {
-      acc[model.rarity] = (acc[model.rarity] || 0) + 1;
-      return acc;
-    }, {});
-    
-    console.log('\nModel distribution:');
-    Object.entries(stats).forEach(([rarity, count]) => {
-      console.log(`${rarity}: ${count} models`);
-    });
+    console.log('\nModels config updated successfully!');
     
   } catch (error) {
     console.error('Failed to update models config:', error);
