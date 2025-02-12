@@ -7,7 +7,6 @@ import { SpamControlService } from './services/chat/SpamControlService.mjs';
 // import { OllamaService as AIService } from './services/ollamaService.mjs';
 import { OpenRouterService as AIService } from './services/openrouterService.mjs';
 import { AvatarGenerationService } from './services/avatarService.mjs';
-import { extractMentionedAvatars } from './services/avatarService.mjs';
 import {
   client,
   reactToMessage,
@@ -163,8 +162,8 @@ function sanitizeInput(input) {
  */
 async function handleBreedCommand(message, args, commandLine) {
   // find an avatar for each argument
-  const avatars = await avatarService.getAvatarsInChannel();
-  const mentionedAvatars = Array.from(extractMentionedAvatars(commandLine, avatars))
+  const avatars = await avatarService.getAvatarsInChannel(message.channel.id);
+  const mentionedAvatars = Array.from(avatarService.extractMentionedAvatars(commandLine, avatars))
     .sort(() => Math.random() - 0.5)
     .slice(-2);
 
