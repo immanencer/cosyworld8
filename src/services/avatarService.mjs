@@ -93,11 +93,11 @@ export class AvatarGenerationService {
         const emojiMatch = avatar.emoji && content.includes(avatar.emoji);
 
         if (nameMatch || emojiMatch) {
-          logger.debug(`Found mention of avatar: ${avatar.name} (${avatar._id})`);
+          this.logger.debug(`Found mention of avatar: ${avatar.name} (${avatar._id})`);
           mentionedAvatars.add(avatar);
         }
       } catch (error) {
-        logger.error(`Error processing avatar in extractMentionedAvatars:`, {
+        this.logger.error(`Error processing avatar in extractMentionedAvatars:`, {
           error: error.message,
           avatar: JSON.stringify(avatar, null, 2),
         });
