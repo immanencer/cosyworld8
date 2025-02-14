@@ -99,21 +99,23 @@ async function saveMessageToDatabase(message) {
   }
 
   try {
-    const username = message.author?.username || 'UnknownUser';
-  const messageData = {
+    // Handle case where message.author might be undefined
+    const author = message.author || {};
+    const username = author.username || 'UnknownUser';
+    const messageData = {
       messageId: message.id,
-      channelId: message.channel.id,
-      authorId: message.author?.id,
+      channelId: message.channel?.id,
+      authorId: author.id,
       authorUsername: username,
       author: {
-        id: message.author?.id,
-        bot: message.author?.bot || false,
+        id: author.id,
+        bot: author.bot || false,
         username: username,
-        discriminator: message.author?.discriminator,
-        avatar: message.author?.avatar,
+        discriminator: author.discriminator || '0000',
+        avatar: author.avatar,
       },
-      content: message.content,
-      timestamp: message.createdTimestamp,
+      content: message.content || '',
+      timestamp: message.createdTimestamp || Date.now(),
     };
 
     // Validate required fields
