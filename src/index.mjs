@@ -99,17 +99,18 @@ async function saveMessageToDatabase(message) {
   }
 
   try {
-    const messageData = {
+    const username = message.author?.username || 'UnknownUser';
+  const messageData = {
       messageId: message.id,
       channelId: message.channel.id,
-      authorId: message.author.id,
-      authorUsername: message.author.username,
+      authorId: message.author?.id,
+      authorUsername: username,
       author: {
-        id: message.author.id,
-        bot: message.author.bot,
-        username: message.author.username,
-        discriminator: message.author.discriminator,
-        avatar: message.author.avatar,
+        id: message.author?.id,
+        bot: message.author?.bot || false,
+        username: username,
+        discriminator: message.author?.discriminator,
+        avatar: message.author?.avatar,
       },
       content: message.content,
       timestamp: message.createdTimestamp,
