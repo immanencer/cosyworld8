@@ -414,11 +414,6 @@ async function handleSummonCommand(message, args, breed = false, attributes = {}
 
       // Prompt the new avatar to respond
       await chatService.respondAsAvatar(message.channel, createdAvatar, true);
-
-      // Track summon if not breeding
-      if (!breed) {
-        await trackSummon(message.author.id);
-      }
     } else {
       await reactToMessage(client, message.channel.id, message.id, '❌');
       throw new Error(
