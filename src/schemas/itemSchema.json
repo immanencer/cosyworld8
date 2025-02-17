@@ -1,0 +1,91 @@
+
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Item",
+  "type": "object",
+  "properties": {
+    "key": {
+      "type": "string",
+      "description": "Unique identifier for the item"
+    },
+    "name": {
+      "type": "string",
+      "description": "Display name of the item"
+    },
+    "description": {
+      "type": "string",
+      "description": "Narrative description of the item"
+    },
+    "type": {
+      "type": "string",
+      "enum": ["weapon", "armor", "consumable", "quest", "key", "artifact"],
+      "description": "Category of item"
+    },
+    "rarity": {
+      "type": "string",
+      "enum": ["common", "uncommon", "rare", "legendary", "mythic"],
+      "description": "Item rarity level"
+    },
+    "properties": {
+      "type": "object",
+      "properties": {
+        "durability": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 100
+        },
+        "charges": {
+          "type": "number",
+          "minimum": 0
+        },
+        "effects": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": ["buff", "debuff", "damage", "heal", "utility"]
+              },
+              "value": {
+                "type": "number"
+              },
+              "duration": {
+                "type": "number"
+              }
+            }
+          }
+        }
+      }
+    },
+    "imageUrl": {
+      "type": "string",
+      "format": "uri"
+    },
+    "creator": {
+      "type": "string",
+      "description": "ID of the avatar or entity that created the item"
+    },
+    "locationId": {
+      "type": ["string", "null"],
+      "description": "Current location of the item if not owned"
+    },
+    "owner": {
+      "type": ["string", "null"],
+      "description": "Current owner's ID if owned"
+    },
+    "createdAt": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "updatedAt": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "version": {
+      "type": "string",
+      "description": "Schema version for compatibility"
+    }
+  },
+  "required": ["key", "name", "description", "type", "rarity", "createdAt", "updatedAt", "version"]
+}

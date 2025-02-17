@@ -3,6 +3,7 @@
 import fs from 'fs/promises';
 import Replicate from 'replicate';
 import { uploadImage } from '../s3imageService/s3imageService.mjs';
+import { SchemaValidator } from '../utils/schemaValidator.mjs';
 
 export class ItemService {
   /**
@@ -26,6 +27,8 @@ export class ItemService {
     this.replicate = new Replicate({
       auth: process.env.REPLICATE_API_TOKEN
     });
+    this.schemaValidator = new SchemaValidator();
+    this.CURRENT_SCHEMA_VERSION = '1.0.0';
   }
 
   /**
@@ -122,6 +125,60 @@ export class ItemService {
   }
 
   /**
+   * Determines the item type based on its name and description.
+   * @param {string} itemName - The name of the item.
+   * @param {string} description - The description of the item.
+   * @returns {Promise<string>} The determined item type.
+   */
+  async determineItemType(itemName, description) {
+    // Implement logic to determine item type using itemName and description.  This could involve AI or rule-based logic.
+    const typePrompt = `Determine the type of item based on its name and description: Name: "${itemName}", Description: "${description}". Return only the item type (e.g., "weapon", "armor", "potion").`;
+    const type = await this.aiService.chat([
+      { role: 'system', content: 'You are an expert in classifying fantasy items.' },
+      { role: 'user', content: typePrompt }
+    ]);
+    return type.trim();
+  }
+
+  /**
+   * Determines the item rarity based on its name and description.
+   * @param {string} itemName - The name of the item.
+   * @param {string} description - The description of the item.
+   * @returns {Promise<string>} The determined item rarity.
+   */
+  async determineItemRarity(itemName, description) {
+    // Implement logic to determine item rarity using itemName and description.  This could involve AI or rule-based logic.
+    const rarityPrompt = `Determine the rarity of an item based on its name and description: Name: "${itemName}", Description: "${description}". Return only the item rarity (e.g., "common", "uncommon", "rare", "epic", "legendary").`;
+    const rarity = await this.aiService.chat([
+      { role: 'system', content: 'You are an expert in evaluating the rarity of fantasy items.' },
+      { role: 'user', content: rarityPrompt }
+    ]);
+    return rarity.trim();
+  }
+
+    /**
+   * Generates item properties based on its name and description.
+   * @param {string} itemName - The name of the item.
+   * @param {string} description - The description of the item.
+   * @returns {Promise<Object>} An object containing the item properties.
+   */
+  async generateItemProperties(itemName, description) {
+    // Implement logic to generate item properties using itemName and description. This could involve AI or rule-based logic.
+    const propertiesPrompt = `Generate properties for an item based on its name and description: Name: "${itemName}", Description: "${description}". Return properties as a JSON object.  Example: {"attack": 10, "defense": 5, "effect": "healing"}`;
+    const properties = await this.aiService.chat([
+      { role: 'system', content: 'You are a master in crafting detailed descriptions of fantasy items.' },
+      { role: 'user', content: propertiesPrompt }
+    ]);
+    try {
+      return JSON.parse(properties.trim());
+    } catch (error) {
+      console.error('Error parsing item properties JSON:', error);
+      return {}; // Return an empty object if parsing fails.
+    }
+  }
+
+
+  /**
    * Finds an existing item by name or creates a new one if not found.
    * Creation is limited to a configurable number of new items per day globally.
    * This method now uses the LLM (via aiService) to refine the item name and generate a descriptive, evocative description.
@@ -196,12 +253,22 @@ export class ItemService {
       key: refinedItemName.toLowerCase(),
       name: refinedItemName,
       description,
+      type: await this.determineItemType(refinedItemName, description),
+      rarity: await this.determineItemRarity(refinedItemName, description),
+      properties: await this.generateItemProperties(refinedItemName, description),
       imageUrl,
+      creator: null,
+      owner: null,
+      locationId,
       createdAt: now,
       updatedAt: now,
-      owner: null,          // Not yet assigned to any avatar.
-      locationId: locationId // Initially, the item is at the given location.
+      version: this.CURRENT_SCHEMA_VERSION
     };
+
+    const validation = this.validateItem(newItem);
+    if (!validation.valid) {
+      throw new Error(`Invalid item schema: ${JSON.stringify(validation.errors)}`);
+    }
 
     const result = await itemsCollection.insertOne(newItem);
     if (result.insertedId) {
@@ -305,5 +372,9 @@ export class ItemService {
       })
       .toArray();
     return items;
+  }
+
+  validateItem(item) {
+    return this.schemaValidator.validateItem(item);
   }
 }
