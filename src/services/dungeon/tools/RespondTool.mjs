@@ -11,6 +11,10 @@ export class RespondTool extends BaseTool {
     this.aiService = new OpenRouterService();
   }
 
+  getDescription() {
+    return 'Generates an in-character response based on the provided context';
+  }
+
   getSyntax() {
     return '!respond <message or context to respond to>';
   }
