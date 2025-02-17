@@ -1,7 +1,7 @@
 import { ConversationHandler } from './ConversationHandler.mjs';
 import { DecisionMaker } from './DecisionMaker.mjs';
 import { MessageProcessor } from './MessageProcessor.mjs';
-import { getDb } from '../../../server/services/dbConnection.mjs';
+import { DatabaseService } from '../databaseService.mjs';
 
 import {
   sendAsWebhook
@@ -14,7 +14,8 @@ const SERVER_NAME = "Moonstone Sanctum";
 
 export class ChatService {
   constructor(client, db, options = {}) {
-    this.db = db || getDb();
+    const dbService = new DatabaseService(this.logger);
+    this.db = db || dbService.getDatabase();
     this.avatarService = options.avatarService;
     if (!client) {
       throw new Error('Discord client is required');
