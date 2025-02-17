@@ -99,23 +99,20 @@ async function saveMessageToDatabase(message) {
   }
 
   try {
-    // Handle case where message.author might be undefined
-    const author = message.author || {};
-    const username = author.username || 'UnknownUser';
     const messageData = {
       messageId: message.id,
-      channelId: message.channel?.id,
-      authorId: author.id,
-      authorUsername: username,
+      channelId: message.channel.id,
+      authorId: message.author.id,
+      authorUsername: message.author.username,
       author: {
-        id: author.id,
-        bot: author.bot || false,
-        username: username,
-        discriminator: author.discriminator || '0000',
-        avatar: author.avatar,
+        id: message.author.id,
+        bot: message.author.bot,
+        username: message.author.username,
+        discriminator: message.author.discriminator,
+        avatar: message.author.avatar,
       },
-      content: message.content || '',
-      timestamp: message.createdTimestamp || Date.now(),
+      content: message.content,
+      timestamp: message.createdTimestamp,
     };
 
     // Validate required fields
@@ -164,17 +161,11 @@ function sanitizeInput(input) {
  * Handles the !breed command to breed two avatars and create a new one.
  */
 async function handleBreedCommand(message, args, commandLine) {
-  try {
-    // find an avatar for each argument
-    const avatars = await avatarService.getAvatarsInChannel(message.channel.id);
-    if (!avatars || avatars.length < 2) {
-      await replyToMessage(message.channel.id, message.id, 'Not enough avatars in channel for breeding.');
-      return;
-    }
-    
-    const mentionedAvatars = Array.from(avatarService.extractMentionedAvatars(commandLine, avatars))
-      .sort(() => Math.random() - 0.5)
-      .slice(-2);
+  // find an avatar for each argument
+  const avatars = await avatarService.getAvatarsInChannel(message.channel.id);
+  const mentionedAvatars = Array.from(avatarService.extractMentionedAvatars(commandLine, avatars))
+    .sort(() => Math.random() - 0.5)
+    .slice(-2);
 
   // if there are two avatars mentioned, breed them
   if (mentionedAvatars.length === 2) {
@@ -239,21 +230,10 @@ async function handleBreedCommand(message, args, commandLine) {
 
     // combine the prompt, dynamicPersonality, and description of the two avatars into a message for createAvatar
     const prompt = `Breed the following avatars, and create a new avatar:
-      AVATAR 1: ${avatar1.name} - ${avatar1.prompt || ''}
+      AVATAR 1: ${avatar1.name} - ${avatar1.prompt}
       ${avatar1.description}
       ${avatar1.personality}
       ${narrative1}
-
-      AVATAR 2: ${avatar2.name} - ${avatar2.prompt || ''}
-      ${avatar2.description}
-      ${avatar2.personality}
-      ${narrative2}`;
-
-    // Return the created avatar from handleSummonCommand (passing breed: true)
-    return await handleSummonCommand(message, [prompt], true, {
-      parents: [avatar1._id, avatar2._id],
-      channelId: message.channel.id
-    });e1}
 
       AVATAR 2: ${avatar2.name} - ${avatar2.prompt}
       ${avatar2.description}
@@ -385,14 +365,6 @@ async function handleSummonCommand(message, args, breed = false, attributes = {}
     } else if (!prompt) {
       prompt = 'create a new avatar, use your imagination!';
     }
-
-    // Get recent messages from the channel
-    const recentMessages = await chatService.getRecentMessagesFromDatabase(message.channel.id);
-    // Format the prompt with the recent messages
-    const messageString = recentMessages.reduce(
-      (acc, m) => `${acc}\n${m.author.username}: ${m.content}`,
-      ''
-    );
 
     const avatarData = {
       prompt: sanitizeInput(prompt),

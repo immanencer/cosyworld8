@@ -1,6 +1,9 @@
 const DECISION_MODEL = 'meta-llama/llama-3.2-3b-instruct';
 const BASE_RESPONSE_CHANCE = 0.25;
 
+const DAILY_RESPONSE_LIMIT = 100 // Max immediate responses per human per day
+const DAILY_RESET_INTERVAL = 24 * 60 * 60 * 1000; // 24 hours in ms
+
 export class DecisionMaker {
   constructor(aiService, logger) {
     this.aiService = aiService;
@@ -26,8 +29,22 @@ export class DecisionMaker {
 
     // Store attention state in a Map => avatarId -> { level, lastResponse, lastMention, cooldown }
     this.attentionStates = new Map();
+    // Track how many times each human user has been responded to
+    this.dailyHumanResponseCount = new Map(); // userId -> { count, lastReset }
   }
 
+  _getHumanResponseCount(userId) {
+    const now = Date.now();
+    let record = this.dailyHumanResponseCount.get(userId);
+
+    if (!record || now - record.lastReset > DAILY_RESET_INTERVAL) {
+      record = { count: 0, lastReset: now };
+      this.dailyHumanResponseCount.set(userId, record);
+    }
+    return record;
+  }
+
+  
   // Unified state management
   _getState(avatarId) {
     if (!this.attentionStates.has(avatarId)) {
@@ -89,7 +106,7 @@ export class DecisionMaker {
 
     // Boost attention for recently summoned avatars
     if (isRecentlySummoned) {
-      this._updateAttention(avatar.id, +20);
+      this._updateAttention(avatar.id, + 50);
     }
 
     const messages = await channel.messages.fetch({ limit: 8 });
@@ -97,6 +114,7 @@ export class DecisionMaker {
 
     const lastMessage = messages.first();
     const isBotMessage = lastMessage.author.bot;
+    const isHuman = !lastMessage.author.bot;
 
     // Direct mention handling (either bot or human mention)
     const mentioned = lastMessage.content.toLowerCase().includes(avatar.name.toLowerCase()) ||
@@ -118,12 +136,28 @@ export class DecisionMaker {
       if (Math.random() > responseChance) return false;
     }
 
+    // Enforce daily limit for human responses
+    if (isHuman) {
+      const record = this._getHumanResponseCount(authorId);
+      if (record.count >= DAILY_RESPONSE_LIMIT) {
+        return false; // Skip response if limit is reached
+      }
+    }
+
     // Attention threshold check
     const state = this._getState(avatar.id);
     if (state.level < this.MINIMUM_ATTENTION_THRESHOLD) return false;
 
     // AI decision making: further evaluate based on contextual conversation
-    return this._evaluateContextualResponse(avatar, messages, isBotMessage);
+    const shouldReply = await this._evaluateContextualResponse(avatar, messages, lastMessage.author.bot);
+
+    if (shouldReply && isHuman) {
+      const record = this._getHumanResponseCount(authorId);
+      record.count += 1;
+      this.dailyHumanResponseCount.set(authorId, record);
+    }
+
+    return shouldReply;
   }
 
   async _evaluateContextualResponse(avatar, messages, isBotInteraction) {
