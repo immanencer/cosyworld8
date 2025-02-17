@@ -4,6 +4,34 @@ import { MongoClient, ObjectId } from 'mongodb';
 import Fuse from 'fuse.js';
 import { thumbnailService } from '../services/thumbnailService.mjs';
 
+async function getLocationDetails(db, locationId) {
+  const [avatars, items] = await Promise.all([
+    // Get avatars at this location
+    db.collection('avatars').find(
+      { locationId },
+      { projection: { name: 1, imageUrl: 1, thumbnailUrl: 1 } }
+    ).toArray(),
+    // Get items at this location
+    db.collection('items').find(
+      { locationId, owner: null },
+      { projection: { name: 1, imageUrl: 1, description: 1 } }
+    ).toArray()
+  ]);
+
+  // Generate thumbnails for avatars if needed
+  const avatarsWithThumbs = await Promise.all(avatars.map(async (avatar) => {
+    if (!avatar.thumbnailUrl && avatar.imageUrl) {
+      avatar.thumbnailUrl = await thumbnailService.generateThumbnail(avatar.imageUrl);
+    }
+    return avatar;
+  }));
+
+  return {
+    avatars: avatarsWithThumbs,
+    items
+  };
+}
+
 function escapeRegExp(string) {
   if (!string) return '';
   return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -11,6 +39,28 @@ function escapeRegExp(string) {
 
 export default function dungeonRoutes(db) {
   const router = Router();
+
+  router.get('/locations', async (req, res) => {
+    try {
+      const locations = await db.collection('locations').find({}).toArray();
+      
+      // Fetch avatars and items for each location
+      const enrichedLocations = await Promise.all(
+        locations.map(async (location) => {
+          const details = await getLocationDetails(db, location.channelId);
+          return {
+            ...location,
+            ...details
+          };
+        })
+      );
+
+      res.json(enrichedLocations);
+    } catch (error) {
+      console.error('Error fetching locations:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
 
   router.get('/log', async (req, res) => {
     try {
