@@ -1,8 +1,9 @@
+
 import { MongoClient } from 'mongodb';
 
 export class DatabaseService {
   static instance = null;
-
+  
   constructor(logger) {
     if (DatabaseService.instance) {
       return DatabaseService.instance;
@@ -12,23 +13,15 @@ export class DatabaseService {
     this.dbClient = null;
     this.db = null;
     this.connected = false;
-    this.reconnectDelay = 5000; // 5 seconds
-
-    this._connectToDatabase();
-
-    // Graceful shutdown handling
-    process.on('SIGINT', () => this._closeConnection());
-    process.on('SIGTERM', () => this._closeConnection());
+    this.reconnectDelay = 5000;
+    this.dbName = process.env.MONGO_DB_NAME;
 
     DatabaseService.instance = this;
   }
 
-  /**
-   * Initializes the MongoDB connection and retries if it fails.
-   */
-  async _connectToDatabase() {
-    if (!process.env.MONGO_URI || !process.env.MONGO_DB_NAME) {
-      this.logger.error('MongoDB URI or Database Name not provided in environment variables.');
+  async connect() {
+    if (!process.env.MONGO_URI) {
+      this.logger.error('MongoDB URI not provided in environment variables.');
       return;
     }
 
@@ -36,53 +29,76 @@ export class DatabaseService {
       this.logger.info('Connecting to MongoDB...');
       this.dbClient = new MongoClient(process.env.MONGO_URI);
       await this.dbClient.connect();
-      this.db = this.dbClient.db(process.env.MONGO_DB_NAME);
+      this.db = this.dbClient.db(this.dbName);
       this.connected = true;
-      this.logger.info(`Connected to MongoDB: ${process.env.MONGO_DB_NAME}`);
+      this.logger.info(`Connected to MongoDB: ${this.dbName}`);
+      return this.db;
     } catch (error) {
       this.connected = false;
       this.logger.error(`MongoDB connection failed: ${error.message}`);
-      setTimeout(() => this._connectToDatabase(), this.reconnectDelay);
+      setTimeout(() => this.connect(), this.reconnectDelay);
+      return null;
     }
   }
 
-  /**
-   * Returns the database instance if connected.
-   */
   getDatabase() {
     if (!this.connected || !this.db) {
       this.logger.warn('Database is not connected. Retrying connection...');
-      this._connectToDatabase();
+      this.connect();
       return null;
     }
     return this.db;
   }
 
-  /**
-   * Executes a MongoDB operation safely.
-   * @param {Function} operation - A function that takes the database instance and performs an operation.
-   */
-  async execute(operation) {
+  async createIndexes() {
+    const db = this.getDatabase();
+    if (!db) return;
+
     try {
-      const db = this.getDatabase();
-      if (!db) throw new Error('Database is not connected.');
-      return await operation(db);
+      await Promise.all([
+        db.collection('messages').createIndexes([
+          { key: { authorUsername: 1 }, background: true },
+          { key: { timestamp: -1 }, background: true },
+          { key: { avatarId: 1 }, background: true },
+        ]),
+        db.collection('avatars').createIndexes([
+          { key: { name: 1, createdAt: -1 }, background: true },
+          { key: { model: 1 }, background: true },
+          { key: { emoji: 1 }, background: true },
+          { key: { parents: 1 }, background: true },
+          { key: { createdAt: -1 }, background: true },
+          { key: { name: 'text', description: 'text' }, background: true },
+        ]),
+        db.collection('dungeon_stats').createIndex(
+          { avatarId: 1 },
+          { unique: true, background: true }
+        ),
+        db.collection('narratives').createIndex(
+          { avatarId: 1, timestamp: -1 },
+          { background: true }
+        ),
+        db.collection('memories').createIndex(
+          { avatarId: 1, timestamp: -1 },
+          { background: true }
+        ),
+        db.collection('dungeon_log').createIndexes([
+          { key: { timestamp: -1 }, background: true },
+          { key: { actor: 1 }, background: true },
+          { key: { target: 1 }, background: true },
+        ])
+      ]);
+      this.logger.info('Database indexes created successfully');
     } catch (error) {
-      this.logger.error(`Database operation failed: ${error.message}`);
-      return null;
+      this.logger.error(`Error creating indexes: ${error.message}`);
     }
   }
 
-  /**
-   * Closes the MongoDB connection gracefully.
-   */
-  async _closeConnection() {
+  async close() {
     if (this.dbClient) {
-      this.logger.info('Closing MongoDB connection...');
       await this.dbClient.close();
       this.connected = false;
-      this.logger.info('MongoDB connection closed.');
+      this.db = null;
+      this.logger.info('MongoDB connection closed');
     }
-    process.exit(0);
   }
 }

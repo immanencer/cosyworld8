@@ -25,23 +25,15 @@ const mongoDbName = process.env.MONGO_DB_NAME || 'cosyworld';
 
 async function initializeApp() {
   try {
-    const client = new MongoClient(mongoUri);
-    await client.connect();
-    const db = client.db(mongoDbName);
+    // Use the centralized DatabaseService
+    const dbService = new DatabaseService(console);
+    const db = await dbService.connect();
+    if (!db) {
+      throw new Error('Failed to connect to database');
+    }
     
-    db.avatars = db.collection('avatars');
-    db.messages = db.collection('messages');
-    db.narratives = db.collection('narratives');
-    db.memories = db.collection('memories');
-    db.dungeon_stats = db.collection('dungeon_stats');
-    db.dungeon_log = db.collection('dungeon_log');
-    db.token_transactions = db.collection('token_transactions');
-    db.minted_nfts = db.collection('minted_nfts');
-
-    console.log(`Connected to MongoDB database: ${mongoDbName}`);
-
     // Initialize indexes
-    await initializeIndexes(db);
+    await dbService.createIndexes();
 
     // Mount routes with database connection
     app.use('/api/leaderboard', leaderboardRoutes(db));

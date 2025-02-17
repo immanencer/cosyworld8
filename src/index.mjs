@@ -75,13 +75,14 @@ if (!DISCORD_CLIENT_ID) {
   logger.warn('DISCORD_CLIENT_ID is not defined. Slash commands registration might fail.');
 }
 
-// Create a MongoDB client instance
-const mongoClient = new MongoClient(MONGO_URI);
-let messagesCollection; // Will be set once DB connected
+// Initialize database service
+const dbService = new DatabaseService(logger);
+await dbService.connect();
+await dbService.createIndexes();
 
-// Instantiate services (some require DB connection first)
-let avatarService = null;
+// Instantiate other services
 const aiService = new AIService();
+const avatarService = new AvatarGenerationService(dbService.getDatabase());
 
 // We will instantiate ChatService, SpamControlService and MessageHandler after DB is connected
 let chatService;
