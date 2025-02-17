@@ -28,6 +28,7 @@ router.post('/wallet', async (req, res) => {
 });
 
 export default function tokenRoutes(db) {
+  const router = express.Router();
   const connection = new Connection(process.env.SOLANA_RPC_URL);
   const tokenService = new TokenService(connection);
 
