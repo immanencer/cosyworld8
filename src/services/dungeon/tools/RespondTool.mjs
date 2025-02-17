@@ -11,6 +11,10 @@ export class RespondTool extends BaseTool {
     this.aiService = new OpenRouterService();
   }
 
+  getSyntax() {
+    return '!respond <message or context to respond to>';
+  }
+
   async execute(message, params, avatar) {
     try {
       const response = await this.aiService.chat([
