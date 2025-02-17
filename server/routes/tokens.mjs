@@ -1,6 +1,6 @@
 
 import express from 'express';
-import { TokenService } from '../services/tokenService.mjs';
+import { TokenService } from '../../src/services/tokenService.mjs';
 import { Connection } from '@solana/web3.js';
 
 const router = express.Router();
