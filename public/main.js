@@ -375,12 +375,16 @@ async function loadSquad() {
   if (!state.wallet) {
     content.innerHTML = `
       <div class="text-center py-12">
-        <p class="mb-4">Connect your wallet to view your Squad</p> 
+        <h2 class="text-2xl font-bold mb-4">Your Squad</h2>
+        <p class="mb-6 text-gray-400">Connect your Phantom wallet to view and manage your claimed avatars</p>
         <button
-          class="px-4 py-2 bg-blue-600 rounded"
+          class="px-6 py-3 bg-blue-600 hover:bg-blue-700 rounded-lg font-semibold transition-colors flex items-center gap-2 mx-auto"
           onclick="connectWallet()"
         >
-          Connect Wallet
+          <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+            <path d="M4 4a2 2 0 00-2 2v8a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-1.5l-1.5-1.5h-7L5.5 4H4z"/>
+          </svg>
+          Connect Phantom Wallet
         </button>
       </div>
     `;
