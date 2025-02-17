@@ -5,6 +5,28 @@ import { Connection } from '@solana/web3.js';
 
 const router = express.Router();
 
+// Create new wallet for user
+router.post('/wallet', async (req, res) => {
+  try {
+    const { userId } = req.body;
+    
+    if (!userId) {
+      return res.status(400).json({ error: 'userId is required' });
+    }
+
+    // Check if user already has a wallet
+    const existingWallet = await db.collection('user_wallets').findOne({ userId });
+    if (existingWallet) {
+      return res.status(400).json({ error: 'User already has a wallet' });
+    }
+
+    const wallet = await tokenService.createUserWallet(userId, db);
+    res.json(wallet);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 export default function tokenRoutes(db) {
   const connection = new Connection(process.env.SOLANA_RPC_URL);
   const tokenService = new TokenService(connection);

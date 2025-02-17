@@ -5,6 +5,40 @@ import bs58 from 'bs58';
 export class TokenService {
   constructor(connection) {
     this.connection = connection;
+    this.apiBaseUrl = 'https://pumpportal.fun/api';
+  }
+
+  async createWallet() {
+    try {
+      const response = await fetch(`${this.apiBaseUrl}/create-wallet`, {
+        method: 'GET'
+      });
+      
+      if (!response.ok) {
+        throw new Error(`Failed to create wallet: ${response.statusText}`);
+      }
+
+      return await response.json();
+    } catch (error) {
+      throw new Error(`Wallet creation failed: ${error.message}`);
+    }
+  }
+
+  async createUserWallet(userId, db) {
+    try {
+      const wallet = await this.createWallet();
+      
+      // Store wallet info in database
+      await db.collection('user_wallets').insertOne({
+        userId,
+        walletData: wallet,
+        createdAt: new Date()
+      });
+
+      return wallet;
+    } catch (error) {
+      throw new Error(`User wallet creation failed: ${error.message}`);
+    }
   }
 
   async createToken(metadata, walletAddress, devBuyAmount = 1) {
