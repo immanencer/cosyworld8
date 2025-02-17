@@ -7,7 +7,8 @@
     "start": "concurrently \"node src/index.mjs\" \"node server/app.mjs\"",
     "dev": "node src/index.mjs",
     "wiki": "npm run build:wiki",
-    "serve": "node server/app.mjs"
+    "serve": "node server/app.mjs",
+    "build:css": "tailwindcss -i ./src/tailwind.css -o ./public/css/tailwind.css --minify"
   },
   "keywords": [],
   "author": "",
