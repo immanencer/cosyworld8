@@ -42,20 +42,83 @@ export default function dungeonRoutes(db) {
 
   router.get('/locations', async (req, res) => {
     try {
-      const locations = await db.collection('locations').find({}).toArray();
-      
-      // Fetch avatars and items for each location
-      const enrichedLocations = await Promise.all(
-        locations.map(async (location) => {
-          const details = await getLocationDetails(db, location.channelId);
-          return {
-            ...location,
-            ...details
-          };
-        })
-      );
+      const page = parseInt(req.query.page) || 1;
+      const limit = Math.min(parseInt(req.query.limit) || 10, 50);
+      const skip = (page - 1) * limit;
 
-      res.json(enrichedLocations);
+      const aggregationPipeline = [
+        {
+          $facet: {
+            metadata: [
+              { $count: "total" },
+              { 
+                $addFields: { 
+                  totalPages: { 
+                    $ceil: { $divide: ["$total", limit] } 
+                  }
+                }
+              }
+            ],
+            locations: [
+              { $skip: skip },
+              { $limit: limit },
+              {
+                $lookup: {
+                  from: 'avatars',
+                  localField: 'channelId',
+                  foreignField: 'locationId',
+                  pipeline: [
+                    { 
+                      $project: { 
+                        name: 1, 
+                        imageUrl: 1, 
+                        thumbnailUrl: 1 
+                      } 
+                    },
+                    { $limit: 10 }
+                  ],
+                  as: 'avatars'
+                }
+              },
+              {
+                $lookup: {
+                  from: 'items',
+                  localField: 'channelId',
+                  foreignField: 'locationId',
+                  pipeline: [
+                    { 
+                      $match: { 
+                        owner: null 
+                      } 
+                    },
+                    { 
+                      $project: { 
+                        name: 1, 
+                        imageUrl: 1, 
+                        description: 1 
+                      } 
+                    },
+                    { $limit: 12 }
+                  ],
+                  as: 'items'
+                }
+              }
+            ]
+          }
+        }
+      ];
+
+      const result = await db.collection('locations').aggregate(aggregationPipeline).toArray();
+      const metadata = result[0].metadata[0] || { total: 0, totalPages: 0 };
+      const locations = result[0].locations;
+
+      res.json({
+        locations,
+        page,
+        totalPages: metadata.totalPages,
+        total: metadata.total,
+        hasMore: page < metadata.totalPages
+      });
     } catch (error) {
       console.error('Error fetching locations:', error);
       res.status(500).json({ error: error.message });
