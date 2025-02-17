@@ -1,8 +1,10 @@
 
 import { SchemaValidator } from '../utils/schemaValidator.mjs';
+import { QuestGeneratorService } from './questGeneratorService.mjs';
 
 export class QuestService {
   constructor(db, itemService) {
+    this.questGenerator = new QuestGeneratorService(db, itemService);
     this.db = db;
     this.itemService = itemService;
     this.schemaValidator = new SchemaValidator();
@@ -80,5 +82,9 @@ export class QuestService {
         ]
       })
       .toArray();
+  }
+
+  async generateDailyQuest(avatarId) {
+    return await this.questGenerator.generateDailyQuest(avatarId);
   }
 }
