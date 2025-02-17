@@ -1,7 +1,7 @@
-
 import express from 'express';
 import { TokenService } from '../../src/services/tokenService.mjs';
 import { Connection } from '@solana/web3.js';
+import { ObjectId } from 'mongodb';
 
 const router = express.Router();
 
@@ -9,7 +9,7 @@ const router = express.Router();
 router.post('/wallet', async (req, res) => {
   try {
     const { userId } = req.body;
-    
+
     if (!userId) {
       return res.status(400).json({ error: 'userId is required' });
     }
@@ -41,7 +41,7 @@ export default function tokenRoutes(db) {
         _id: new ObjectId(avatarId),
         claimed: true
       });
-      
+
       if (!avatar) {
         return res.status(404).json({ error: 'Avatar not found or not claimed' });
       }
@@ -64,7 +64,7 @@ export default function tokenRoutes(db) {
       res.status(500).json({ error: error.message });
     }
   });
-  const tokenService = new TokenService(connection);
+
 
   // Create new token for avatar
   router.post('/create/:avatarId', async (req, res) => {
