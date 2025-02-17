@@ -8,6 +8,7 @@ import leaderboardRoutes from './routes/leaderboard.mjs';
 import dungeonRoutes from './routes/dungeon.mjs';
 import healthRoutes from './routes/health.mjs';
 import avatarRoutes from './routes/avatars.mjs';
+import tokenRoutes from './routes/tokens.mjs';
 import tribeRoutes from './routes/tribes.mjs';
 import xauthRoutes from './routes/xauth.mjs';
 import wikiRoutes from './routes/wiki.mjs';
@@ -38,6 +39,7 @@ async function initializeApp() {
     app.use('/api/dungeon', dungeonRoutes(db));
     app.use('/api/health', healthRoutes(db));
     app.use('/api/avatars', avatarRoutes(db));
+app.use('/api/tokens', tokenRoutes(db));
     app.use('/api/tribes', tribeRoutes(db));
     app.use('/auth/x', xauthRoutes(db));
     app.use('/api/wiki', wikiRoutes(db));
