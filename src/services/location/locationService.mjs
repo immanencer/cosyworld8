@@ -333,18 +333,30 @@ If already suitable, return as is. If it needs editing, revise it while preservi
       // Post the evocative description as a webhook
       await sendAsWebhook(thread.id, evocativeDescription, cleanLocationName, locationImage);
 
+      // Create location document
+      const locationDocument = {
+        name: cleanLocationName,
+        description: evocativeDescription,
+        imageUrl: locationImage,
+        channelId: thread.id,
+        type: 'thread',
+        parentId: parentChannel.id,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        version: '1.0.0'
+      };
+
+      // Validate location schema
+      const schemaValidator = new SchemaValidator();
+      const validation = schemaValidator.validateLocation(locationDocument);
+      if (!validation.valid) {
+        throw new Error(`Invalid location schema: ${JSON.stringify(validation.errors)}`);
+      }
+
       // Save to DB
       await this.db.collection('locations').updateOne(
         { channelId: thread.id },
-        {
-          $set: {
-            name: cleanLocationName,
-            description: evocativeDescription,
-            imageUrl: locationImage,
-            createdAt: new Date(),
-            updatedAt: new Date()
-          }
-        },
+        { $set: locationDocument },
         { upsert: true }
       );
 
