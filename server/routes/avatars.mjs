@@ -371,17 +371,18 @@ export default function avatarRoutes(db) {
         return res.status(400).json({ error: 'Avatar already claimed' });
       }
 
-      // Mark as claimed and create x_auth entry
+      // Create claim record and mark avatar as claimed
       await Promise.all([
-        db.collection('avatars').updateOne(
-          { _id: new ObjectId(avatarId) },
-          { $set: { claimed: true, claimedBy: walletAddress } }
-        ),
-        db.collection('x_auth').insertOne({
+        db.collection('avatar_claims').insertOne({
           avatarId: new ObjectId(avatarId),
           walletAddress: walletAddress,
-          createdAt: new Date()
-        })
+          createdAt: new Date(),
+          xAuths: []
+        }),
+        db.collection('avatars').updateOne(
+          { _id: new ObjectId(avatarId) },
+          { $set: { claimed: true } }
+        )
       ]);
 
       res.json({ success: true });

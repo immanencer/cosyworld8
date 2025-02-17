@@ -314,22 +314,56 @@ function renderAvatar(avatar) {
       <h3 class="text-lg font-bold mb-2">${avatar.name}</h3>
       <p class="mb-2">${avatar.description || ''}</p>
       ${avatar.claimed ? 
-        `<button 
-          onclick="createToken('${avatar._id}')"
-          class="w-full px-4 py-2 bg-purple-600 hover:bg-purple-700 rounded"
-        >
-          Create Token
-        </button>` 
+        `<div class="flex flex-col gap-2">
+          <div class="text-green-400 text-center py-2 bg-green-400/10 rounded">Avatar Claimed</div>
+          <button 
+            onclick="createToken('${avatar._id}')"
+            class="w-full px-4 py-2 bg-purple-600 hover:bg-purple-700 rounded"
+          >
+            Create SPL Token
+          </button>
+          <button
+            onclick="linkXAccount('${avatar._id}')"
+            class="w-full px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded"
+          >
+            Link X Account
+          </button>
+        </div>` 
         : 
         `<button 
           onclick="claimAvatar('${avatar._id}')"
           class="w-full px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded"
         >
-          Claim
+          Claim with Wallet
         </button>`
       }
     </div>
   `;
+}
+
+async function linkXAccount(avatarId) {
+  if (!state.wallet) {
+    alert("Please connect your wallet first");
+    return;
+  }
+
+  try {
+    const response = await fetch(`/api/xauth/auth-url?avatarId=${avatarId}&walletAddress=${state.wallet.publicKey}`);
+    const { url } = await response.json();
+    
+    const popup = window.open(url, 'Link X Account', 'width=600,height=600');
+    
+    window.addEventListener('message', async (event) => {
+      if (event.data.type === 'X_AUTH_SUCCESS') {
+        popup.close();
+        await loadContent();
+        alert('X Account linked successfully!');
+      }
+    });
+  } catch (error) {
+    console.error("Error linking X account:", error);
+    alert(error.message);
+  }
 }
 
 //
