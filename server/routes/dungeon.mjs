@@ -141,8 +141,17 @@ export default function dungeonRoutes(db) {
       ];
 
       const result = await db.collection('locations').aggregate(aggregationPipeline).toArray();
+      if (!result || !result[0]) {
+        return res.json({
+          locations: [],
+          page,
+          totalPages: 0,
+          total: 0,
+          hasMore: false
+        });
+      }
       const metadata = result[0].metadata[0] || { total: 0, totalPages: 0 };
-      const locations = result[0].locations;
+      const locations = result[0].locations || [];
 
       res.json({
         locations,
