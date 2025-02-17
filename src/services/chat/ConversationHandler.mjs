@@ -303,6 +303,34 @@ Based on all of the above context, share an updated personality that reflects yo
    * @param {*} avatar 
    * @returns {string | null} The response from the AI, if any.
    */
+  async generateHaiku(messages) {
+    return await this.aiService.chat([
+      { 
+        role: 'system', 
+        content: 'You are a haiku poet. Summarize the following chat context in a single haiku.'
+      },
+      {
+        role: 'user',
+        content: messages.map(m => `${m.author}: ${m.content}`).join('\n')
+      }
+    ]);
+  }
+
+  async selectTools(haiku, channelContext) {
+    const toolSelection = await this.aiService.chat([
+      {
+        role: 'system',
+        content: 'You are a strategic AI assistant. Select appropriate tools from: attack, defend, move, remember, xpost, item, respond. Always include respond as the last tool if multiple are selected.'
+      },
+      {
+        role: 'user',
+        content: `Based on this haiku and context, which tools should be used?\nHaiku: ${haiku}\nContext: ${channelContext}\n\nRespond with only the tool names in order, separated by commas.`
+      }
+    ]);
+
+    return toolSelection.split(',').map(t => t.trim().toLowerCase());
+  }
+
   async sendResponse(channel, avatar) {
     if (!await this.checkChannelPermissions(channel)) {
       this.logger.error(`Cannot send response - missing permissions in channel ${channel.id}`);
@@ -413,13 +441,31 @@ Based on all of the above context, share an updated personality that reflects yo
           : response.substring(0, 1500);
       }
 
-      // Extract and process dungeon tool commands
-      const { commands, cleanText } = this.dungeonService.extractToolCommands(response);
-      let sentMessage = null;
+      // Generate haiku summary
+      const messages = await channel.messages.fetch({ limit: 10 });
+      const haiku = await this.generateHaiku(messages);
+      
+      // Select tools based on haiku and context
+      const channelContext = `Channel: ${channel.name}, Recent activity: ${messages.size} messages`;
+      const selectedTools = await this.selectTools(haiku, channelContext);
+      
       let commandResults = [];
+      let sentMessage = null;
 
-      // If there are commands, process them first
-      if (commands.length > 0) {
+      // Process all selected tools
+      for (const toolName of selectedTools) {
+        const tool = this.dungeonService.tools.get(toolName);
+        if (tool) {
+          const result = await tool.execute(
+            { channel, author: { id: avatar._id, username: avatar.name }, content: haiku },
+            [haiku],
+            avatar
+          );
+          if (result) {
+            commandResults.push(result);
+          }
+        }
+      }
         this.logger.info(`Processing ${commands.length} command(s) for ${avatar.name}`);
         commandResults = await Promise.all(
           commands.map(cmd =>

@@ -223,6 +223,7 @@ export class DungeonService {
     this.tools.set('remember', new RememberTool(this));
     this.tools.set('xpost', new XPostTool(this));
     this.tools.set('item', new ItemTool(this));
+    this.tools.set('respond', new RespondTool(this));
   }
 
   /**
