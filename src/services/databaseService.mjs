@@ -27,7 +27,12 @@ export class DatabaseService {
 
     try {
       this.logger.info('Connecting to MongoDB...');
-      this.dbClient = new MongoClient(process.env.MONGO_URI);
+      this.dbClient = new MongoClient(process.env.MONGO_URI, {
+        useNewUrlParser: true,
+        useUnifiedTopology: true,
+        serverSelectionTimeoutMS: 5000,
+        connectTimeoutMS: 10000,
+      });
       await this.dbClient.connect();
       this.db = this.dbClient.db(this.dbName);
       this.connected = true;
@@ -36,6 +41,9 @@ export class DatabaseService {
     } catch (error) {
       this.connected = false;
       this.logger.error(`MongoDB connection failed: ${error.message}`);
+      if (this.dbClient) {
+        await this.dbClient.close();
+      }
       setTimeout(() => this.connect(), this.reconnectDelay);
       return null;
     }
