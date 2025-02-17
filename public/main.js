@@ -259,8 +259,18 @@ async function claimAvatar(avatarId) {
       throw new Error(error.error || "Failed to claim avatar");
     }
 
-    closeAvatarModal();
-    await loadContent();
+    // Refresh both the current view and squad data
+    await Promise.all([
+      loadContent(),
+      state.activeTab === "squad" ? loadSquad() : Promise.resolve()
+    ]);
+    
+    // Only close modal if we're viewing avatar details
+    if (document.getElementById('avatar-modal')?.classList.contains('hidden') === false) {
+      closeAvatarModal();
+    }
+
+    alert("Avatar claimed successfully!");
   } catch (error) {
     console.error("Error claiming avatar:", error);
     alert(error.message);
