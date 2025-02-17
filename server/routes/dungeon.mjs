@@ -45,6 +45,12 @@ export default function dungeonRoutes(db) {
       const page = parseInt(req.query.page) || 1;
       const limit = Math.min(parseInt(req.query.limit) || 10, 50);
       const skip = (page - 1) * limit;
+      const minAvatars = parseInt(req.query.minAvatars) || 0;
+      const maxAvatars = parseInt(req.query.maxAvatars) || Number.MAX_SAFE_INTEGER;
+      const minItems = parseInt(req.query.minItems) || 0;
+      const maxItems = parseInt(req.query.maxItems) || Number.MAX_SAFE_INTEGER;
+      const sortBy = req.query.sortBy || 'avatarCount';
+      const sortOrder = req.query.sortOrder === 'asc' ? 1 : -1;
 
       const aggregationPipeline = [
         {
@@ -112,6 +118,24 @@ export default function dungeonRoutes(db) {
                 }
               }
             ]
+          }
+        },
+        {
+          $addFields: {
+            avatarCount: { $size: "$avatars" },
+            itemCount: { $size: "$items" }
+          }
+        },
+        {
+          $match: {
+            avatarCount: { $gte: minAvatars, $lte: maxAvatars },
+            itemCount: { $gte: minItems, $lte: maxItems }
+          }
+        },
+        {
+          $sort: {
+            [sortBy]: sortOrder,
+            _id: 1
           }
         }
       ];
