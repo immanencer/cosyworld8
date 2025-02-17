@@ -553,29 +553,7 @@ async function saveMessageToDatabase(message) {
   }
 }
 
-client.on('messageCreate', async (message) => {
-  try {
-    if (!(await spamControlService.shouldProcessMessage(message))) {
-      return;
-    }
-
-    const lines = message.content.split('\n');
-    let counter = 2;
-    for (const line of lines) {
-      if (line.startsWith('!')) {
-        await handleCommands(message, line.split(' '), line.toLowerCase());
-        counter--;
-      }
-      if (counter === 0) break;
-    }
-
-    await saveMessageToDatabase(message);
-    if (message.author.bot) return;
-    await messageHandler.processChannel(message.channel.id);
-  } catch (error) {
-    logger.error(`Error processing message: ${error.stack}`);
-  }
-});
+// Message handler moved to single implementation above
 
 async function shutdown(signal) {
   logger.info(`Received ${signal}. Shutting down gracefully...`);
