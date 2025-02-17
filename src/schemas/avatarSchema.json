@@ -1,0 +1,64 @@
+
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Avatar",
+  "type": "object",
+  "properties": {
+    "_id": {
+      "type": ["string", "object"],
+      "description": "The unique identifier for the avatar"
+    },
+    "name": {
+      "type": "string",
+      "description": "The name of the avatar"
+    },
+    "emoji": {
+      "type": "string",
+      "description": "Emoji representation of the avatar"
+    },
+    "description": {
+      "type": "string",
+      "description": "Physical description of the avatar"
+    },
+    "personality": {
+      "type": "string",
+      "description": "Personality traits and characteristics"
+    },
+    "imageUrl": {
+      "type": "string",
+      "format": "uri",
+      "description": "URL to avatar's image"
+    },
+    "status": {
+      "type": "string",
+      "enum": ["alive", "dead", "inactive"],
+      "default": "alive"
+    },
+    "model": {
+      "type": ["string", "null"],
+      "description": "AI model associated with the avatar"
+    },
+    "lives": {
+      "type": "number",
+      "minimum": 0,
+      "default": 3
+    },
+    "channelId": {
+      "type": ["string", "null"],
+      "description": "Discord channel ID where avatar was created"
+    },
+    "createdAt": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "updatedAt": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "version": {
+      "type": "string",
+      "description": "Schema version for compatibility"
+    }
+  },
+  "required": ["name", "description", "personality", "imageUrl", "status", "createdAt", "updatedAt", "version"]
+}

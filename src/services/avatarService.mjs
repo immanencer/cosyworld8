@@ -645,10 +645,18 @@ export class AvatarGenerationService {
         description: avatar.description,
         imageUrl: s3url,
         channelId: data.channelId,
-        createdAt: new Date(),
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
         lives: 3,
         status: 'alive',
+        version: this.CURRENT_SCHEMA_VERSION
       };
+
+      const schemaValidator = new SchemaValidator();
+      const validation = schemaValidator.validateAvatar(avatarDocument);
+      if (!validation.valid) {
+        throw new Error(`Invalid avatar schema: ${JSON.stringify(validation.errors)}`);
+      }
 
       // Check for Arweave prompt before generating
       if (data.arweave_prompt) {
