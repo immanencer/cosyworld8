@@ -138,7 +138,7 @@ export class DecisionMaker {
 
     // Enforce daily limit for human responses
     if (isHuman) {
-      const record = this._getHumanResponseCount(authorId);
+      const record = this._getHumanResponseCount(lastMessage.author.id);
       if (record.count >= DAILY_RESPONSE_LIMIT) {
         return false; // Skip response if limit is reached
       }
@@ -152,9 +152,9 @@ export class DecisionMaker {
     const shouldReply = await this._evaluateContextualResponse(avatar, messages, lastMessage.author.bot);
 
     if (shouldReply && isHuman) {
-      const record = this._getHumanResponseCount(authorId);
+      const record = this._getHumanResponseCount(lastMessage.author.id);
       record.count += 1;
-      this.dailyHumanResponseCount.set(authorId, record);
+      this.dailyHumanResponseCount.set(lastMessage.author.id, record);
     }
 
     return shouldReply;
