@@ -650,7 +650,7 @@ export class AvatarGenerationService {
         updatedAt: new Date().toISOString(),
         lives: 3,
         status: 'alive',
-        version: this.CURRENT_SCHEMA_VERSION
+        version: '1.0'
       };
 
       const schemaValidator = new SchemaValidator();
