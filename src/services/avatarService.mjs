@@ -656,7 +656,23 @@ export class AvatarGenerationService {
       const schemaValidator = new SchemaValidator();
       const validation = schemaValidator.validateAvatar(avatarDocument);
       if (!validation.valid) {
-        throw new Error(`Invalid avatar schema: ${JSON.stringify(validation.errors)}`);
+        this.logger.error('Avatar schema validation failed:', {
+          errors: validation.errors,
+          document: avatarDocument
+        });
+        throw new Error(`Avatar schema validation failed: ${JSON.stringify(validation.errors)}`);
+      }
+      
+      // Ensure required fields are present and have correct types
+      const requiredFields = ['name', 'description', 'personality', 'imageUrl'];
+      for (const field of requiredFields) {
+        if (!avatarDocument[field] || typeof avatarDocument[field] !== 'string') {
+          this.logger.error(`Missing or invalid required field: ${field}`, {
+            field,
+            value: avatarDocument[field]
+          });
+          throw new Error(`Missing or invalid required field: ${field}`);
+        }
       }
 
       // Check for Arweave prompt before generating
