@@ -4,6 +4,7 @@ import addFormats from 'ajv-formats';
 import itemSchema from '../../schemas/itemSchema.json' assert { type: "json" };
 import avatarSchema from '../../schemas/avatarSchema.json' assert { type: "json" };
 import locationSchema from '../../schemas/locationSchema.json' assert { type: "json" };
+import questSchema from '../../schemas/questSchema.json' assert { type: "json" };
 
 export class SchemaValidator {
   constructor() {
@@ -12,6 +13,7 @@ export class SchemaValidator {
     this.itemValidator = this.ajv.compile(itemSchema);
     this.avatarValidator = this.ajv.compile(avatarSchema);
     this.locationValidator = this.ajv.compile(locationSchema);
+    this.questValidator = this.ajv.compile(questSchema);
   }
 
   validateItem(item) {
@@ -35,6 +37,14 @@ export class SchemaValidator {
     return {
       valid: isValid,
       errors: this.locationValidator.errors || []
+    };
+  }
+
+  validateQuest(quest) {
+    const isValid = this.questValidator(quest);
+    return {
+      valid: isValid,
+      errors: this.questValidator.errors || []
     };
   }
 }
