@@ -15,12 +15,6 @@ var state = {
   activeTab: "squad",
   loading: false,
   socialSort: "new",
-  sortBy: "avatarCount", // Add sorting options to state
-  sortOrder: "desc",
-  minAvatars: 0,
-  maxAvatars: 100,
-  minItems: 0,
-  maxItems: 100,
 };
 
 //
@@ -384,7 +378,7 @@ async function loadActionLog() {
                               ? "🚶‍♂️ moved to"
                               : action.action === "remember"
                                 ? "💭 remembered"
-                              : action.action === "xpost"
+                                : action.action === "xpost"
                                   ? "🐦 posted"
                                   : `used ${action.action}`
                       }
@@ -1180,22 +1174,10 @@ document.addEventListener("DOMContentLoaded", () => {
   loadContent();
 });
 
-function updateWorldFilter(filter, value) {
-  state[filter] = value;
-  loadWorldContent();
-}
-
 function loadWorldContent() {
   try {
     var page = window.worldState ? window.worldState.page || 1 : 1;
-    var url = '/api/dungeon/locations?page=' + page + '&limit=12';
-    url += '&sortBy=' + state.sortBy;
-    url += '&sortOrder=' + state.sortOrder;
-    url += '&minAvatars=' + state.minAvatars;
-    url += '&maxAvatars=' + state.maxAvatars;
-    url += '&minItems=' + state.minItems;
-    url += '&maxItems=' + state.maxItems;
-    fetch(url)
+    fetch('/api/dungeon/locations?page=' + page + '&limit=12')
       .then(function(response) { return response.json(); })
       .then(function(response) {
         var locations = response.locations;
@@ -1204,42 +1186,6 @@ function loadWorldContent() {
 
         if (page === 1) {
           content.innerHTML = '<div class="max-w-7xl mx-auto px-4">' +
-            '<div class="bg-gray-800 p-4 rounded-lg mb-6">' +
-              '<div class="flex flex-wrap gap-4 items-center justify-between">' +
-                '<div class="flex gap-4">' +
-                  '<select id="sort-by" class="bg-gray-700 text-white rounded px-3 py-2" onchange="updateWorldFilter(\'sortBy\', this.value)">' +
-                    '<option value="avatarCount" ' + (state.sortBy === 'avatarCount' ? 'selected' : '') + '>Sort by Avatars</option>' +
-                    '<option value="itemCount" ' + (state.sortBy === 'itemCount' ? 'selected' : '') + '>Sort by Items</option>' +
-                  '</select>' +
-                  '<select id="sort-order" class="bg-gray-700 text-white rounded px-3 py-2" onchange="updateWorldFilter(\'sortOrder\', this.value)">' +
-                    '<option value="desc" ' + (state.sortOrder === 'desc' ? 'selected' : '') + '>Descending</option>' +
-                    '<option value="asc" ' + (state.sortOrder === 'asc' ? 'selected' : '') + '>Ascending</option>' +
-                  '</select>' +
-                '</div>' +
-                '<div class="flex gap-4">' +
-                  '<div class="flex items-center gap-2">' +
-                    '<label class="text-white">Avatars:</label>' +
-                    '<input type="number" min="0" max="100" value="' + state.minAvatars + '" ' +
-                      'class="bg-gray-700 text-white rounded w-20 px-2 py-1" ' +
-                      'onchange="updateWorldFilter(\'minAvatars\', this.value)">' +
-                    '<span class="text-white">to</span>' +
-                    '<input type="number" min="0" max="100" value="' + state.maxAvatars + '" ' +
-                      'class="bg-gray-700 text-white rounded w-20 px-2 py-1" ' +
-                      'onchange="updateWorldFilter(\'maxAvatars\', this.value)">' +
-                  '</div>' +
-                  '<div class="flex items-center gap-2">' +
-                    '<label class="text-white">Items:</label>' +
-                    '<input type="number" min="0" max="100" value="' + state.minItems + '" ' +
-                      'class="bg-gray-700 text-white rounded w-20 px-2 py-1" ' +
-                      'onchange="updateWorldFilter(\'minItems\', this.value)">' +
-                    '<span class="text-white">to</span>' +
-                    '<input type="number" min="0" max="100" value="' + state.maxItems + '" ' +
-                      'class="bg-gray-700 text-white rounded w-20 px-2 py-1" ' +
-                      'onchange="updateWorldFilter(\'maxItems\', this.value)">' +
-                  '</div>' +
-                '</div>' +
-              '</div>' +
-            '</div>' +
             '<div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6" id="locations-grid"></div>' +
             '<div id="world-loader" class="text-center py-8 hidden">Loading more locations...</div>' +
             '</div>';
