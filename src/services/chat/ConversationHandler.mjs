@@ -456,6 +456,7 @@ Based on all of the above context, share an updated personality that reflects yo
       for (const toolName of selectedTools) {
         const tool = this.dungeonService.tools.get(toolName);
         if (tool) {
+          this.logger.info(`Processing tool ${toolName} for ${avatar.name}`);
           const result = await tool.execute(
             { channel, author: { id: avatar._id, username: avatar.name }, content: haiku },
             [haiku],
@@ -466,17 +467,6 @@ Based on all of the above context, share an updated personality that reflects yo
           }
         }
       }
-        this.logger.info(`Processing ${commands.length} command(s) for ${avatar.name}`);
-        commandResults = await Promise.all(
-          commands.map(cmd =>
-            this.dungeonService.processAction(
-              { channel, author: { id: avatar._id, username: avatar.name }, content: response },
-              cmd.command,
-              cmd.params,
-              avatar
-            )
-          )
-        );
 
         if (commandResults.length) {
           sentMessage = await sendAsWebhook(
