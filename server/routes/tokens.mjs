@@ -31,6 +31,41 @@ export default function tokenRoutes(db) {
   const connection = new Connection(process.env.SOLANA_RPC_URL);
   const tokenService = new TokenService(connection);
 
+  // Create token for avatar
+  router.post('/create/:avatarId', async (req, res) => {
+    try {
+      const { avatarId } = req.params;
+      const { walletAddress, devBuyAmount } = req.body;
+
+      const avatar = await db.collection('avatars').findOne({ 
+        _id: new ObjectId(avatarId),
+        claimed: true
+      });
+      
+      if (!avatar) {
+        return res.status(404).json({ error: 'Avatar not found or not claimed' });
+      }
+
+      const result = await tokenService.createToken({
+        name: avatar.name,
+        symbol: avatar.name.substring(0, 4).toUpperCase(),
+        description: `Token for ${avatar.name} from Moonstone Sanctum`,
+        imageUrl: avatar.imageUrl
+      }, walletAddress, devBuyAmount);
+
+      await db.collection('avatar_tokens').insertOne({
+        avatarId: new ObjectId(avatarId),
+        tokenMint: result.mint,
+        createdAt: new Date()
+      });
+
+      res.json(result);
+    } catch (error) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+  const tokenService = new TokenService(connection);
+
   // Create new token for avatar
   router.post('/create/:avatarId', async (req, res) => {
     try {

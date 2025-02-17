@@ -267,6 +267,61 @@ async function claimAvatar(avatarId) {
   }
 }
 
+async function createToken(avatarId) {
+  if (!state.wallet) {
+    alert('Please connect your wallet first');
+    return;
+  }
+  
+  try {
+    const response = await fetch(`/api/tokens/create/${avatarId}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        walletAddress: state.wallet.publicKey.toString(),
+        devBuyAmount: 1
+      })
+    });
+    
+    if (!response.ok) {
+      throw new Error(await response.text());
+    }
+    
+    const result = await response.json();
+    alert(`Token created successfully! Mint: ${result.mint}`);
+  } catch (error) {
+    console.error("Error creating token:", error);
+    alert(error.message);
+  }
+}
+
+function renderAvatar(avatar) {
+  return `
+    <div class="p-4 bg-gray-800 rounded-lg">
+      <img src="${avatar.imageUrl}" class="w-full rounded-lg mb-2">
+      <h3 class="text-lg font-bold mb-2">${avatar.name}</h3>
+      <p class="mb-2">${avatar.description || ''}</p>
+      ${avatar.claimed ? 
+        `<button 
+          onclick="createToken('${avatar._id}')"
+          class="w-full px-4 py-2 bg-purple-600 hover:bg-purple-700 rounded"
+        >
+          Create Token
+        </button>` 
+        : 
+        `<button 
+          onclick="claimAvatar('${avatar._id}')"
+          class="w-full px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded"
+        >
+          Claim
+        </button>`
+      }
+    </div>
+  `;
+}
+
 //
 // LOADERS PER TAB
 //
