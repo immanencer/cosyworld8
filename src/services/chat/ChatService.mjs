@@ -3,9 +3,7 @@ import { DecisionMaker } from './DecisionMaker.mjs';
 import { MessageProcessor } from './MessageProcessor.mjs';
 import { DatabaseService } from '../databaseService.mjs';
 
-import {
-  sendAsWebhook
-} from '../discordService.mjs'
+import { sendAsWebhook } from '../discordService.mjs'
 
 import { DungeonService } from '../dungeon/DungeonService.mjs'; // Added import
 

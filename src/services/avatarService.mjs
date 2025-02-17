@@ -531,6 +531,14 @@ export class AvatarGenerationService {
       if (updateResult.modifiedCount === 1) {
         this.avatarCache = [];
         this.logger.info(`Avatar ID ${avatar._id} updated successfully.`);
+        this.logger.info(JSON.stringify({
+          name: avatar.name,
+          description: avatar.description,
+          personality: avatar.personality,
+          emoji: avatar.emoji,
+          _id: avatar._id,
+          keys: Object.keys(avatar),
+        }));
         // Fetch the updated document correctly using ObjectId
         const updatedAvatar = await this.db.collection(this.AVATARS_COLLECTION).findOne({ _id: avatar._id });
         return updatedAvatar;

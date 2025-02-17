@@ -1,9 +1,7 @@
-import { MongoClient } from 'mongodb';
-import { sendAsWebhook } from '../discordService.mjs';
 import { MemoryService } from '../memoryService.mjs';
 import { DatabaseService } from '../databaseService.mjs';
 
-const GUILD_NAME = process.env.GUILD_NAME || 'The Guild';
+import { sendAsWebhook } from '../discordService.mjs';
 
 export class ConversationHandler {
   constructor(client, aiService, logger, avatarService, dungeonService) {
@@ -59,77 +57,6 @@ export class ConversationHandler {
     }
   }
 
-  async generateNarrative(avatar) {
-    try {
-      if (!this.db) throw new Error('Database not initialized.');
-
-      if (Date.now() - this.lastGlobalNarrativeTime < this.GLOBAL_NARRATIVE_COOLDOWN) {
-        this.logger.info('Global narrative cooldown active.');
-        return null;
-      }
-
-      if (!avatar.model) {
-        avatar.model = await this.aiService.selectRandomModel();
-        await this.avatarService.updateAvatar(avatar);
-      }
-
-      const [memoryRecords, recentActions] = await Promise.all([
-        this.memoryService.getMemories(avatar._id),
-        this.dungeonService.dungeonLog.getRecentActions(avatar.channelId)
-      ]);
-
-      const memories = (memoryRecords || []).map(m => m.memory).join('\n');
-      const actions = (recentActions || [])
-        .filter(action => action.actorId === avatar._id.toString())
-        .map(a => a.description || a.action)
-        .join('\n');
-
-      const prompt = this.buildNarrativePrompt(avatar, memories, actions);
-      const narrative = await this.aiService.chat([{ role: 'user', content: prompt }], { model: avatar.model });
-
-      if (!narrative) throw new Error(`No narrative generated for ${avatar.name}.`);
-
-      await this.storeNarrative(avatar._id, narrative);
-      this.updateNarrativeHistory(avatar, narrative);
-
-      avatar.dynamicPrompt = narrative;
-      await this.avatarService.updateAvatar(avatar);
-
-      this.lastGlobalNarrativeTime = Date.now();
-      return narrative;
-    } catch (error) {
-      this.logger.error(`Error generating narrative for ${avatar.name}: ${error.message}`);
-      return null;
-    }
-  }
-
-  async generateHaiku(messages) {
-    try {
-      return await this.aiService.chat([
-        { role: 'system', content: 'You are a haiku poet. Summarize the following chat context in a single haiku.' },
-        { role: 'user', content: messages.map(m => `${m.author}: ${m.content}`).join('\n') }
-      ]);
-    } catch (error) {
-      this.logger.error(`Error generating haiku: ${error.message}`);
-      return null;
-    }
-  }
-
-
-  async fetchRecentMessages(channel) {
-    try {
-      const messages = await channel.messages.fetch({ limit: 50 });
-      return messages.reverse().map(msg => ({
-        author: msg.author.username,
-        content: msg.content,
-        timestamp: msg.createdTimestamp
-      }));
-    } catch (error) {
-      this.logger.error(`Error fetching messages from ${channel.id}: ${error.message}`);
-      return [];
-    }
-  }
-
   async sendResponse(channel, avatar) {
     if (!await this.checkChannelPermissions(channel)) return null;
 
@@ -168,26 +95,158 @@ export class ConversationHandler {
     }
   }
 
-  async buildDungeonPrompt(avatar) {
-    const location = await this.dungeonService.getLocationDescription(avatar.channelId, avatar.channelName);
-    const locationText = location ? `You are currently in ${location.name}. ${location.description}` : `You are in ${avatar.channelName || 'a chat channel'}.`;
-
-    return `
-Commands:
-!summon <entity> - (Handled by ToolService)
-!breed <avatar1> <avatar2> - (Handled by ToolService)
-${this.dungeonService.getCommandsDescription(avatar)}
-
-${locationText}
-    `.trim();
+  async generateHaiku(messages) {
+    try {
+      return await this.aiService.chat([
+        { role: 'system', content: 'You are a haiku poet. Summarize the following chat context in a single haiku.' },
+        { role: 'user', content: messages.map(m => `${m.author}: ${m.content}`).join('\n') }
+      ]);
+    } catch (error) {
+      this.logger.error(`Error generating haiku: ${error.message}`);
+      return null;
+    }
   }
 
-  async buildSystemPrompt(avatar) {
-    const lastNarrative = await this.getLastNarrative(avatar._id);
-    return `
-You are ${avatar.name}.
-${avatar.personality}
-${lastNarrative ? lastNarrative.content : ''}
+
+  /**
+   * Selects tools for a given context
+   */
+  async selectTools(haiku, context) {
+    try {
+      const response = await this.aiService.chat([
+        { role: 'system', content: 'Analyze the given haiku and context, then suggest which tools should be used in this conversation.' },
+        { role: 'user', content: `Haiku: ${haiku}\nContext: ${context}` }
+      ]);
+
+      return response ? response.split('\n') : [];
+    } catch (error) {
+      this.logger.error(`Error selecting tools: ${error.message}`);
+      return [];
+    }
+  }
+
+  /**
+   * Stores the generated narrative in the database.
+   */
+  async storeNarrative(avatarId, narrative) {
+    try {
+      const narrativesCollection = this.db.collection('narratives');
+      await narrativesCollection.insertOne({ avatarId, narrative, timestamp: new Date() });
+      this.logger.info(`Narrative stored for avatar ${avatarId}`);
+    } catch (error) {
+      this.logger.error(`Error storing narrative: ${error.message}`);
+    }
+  }
+
+  /**
+   * Retrieves the last narrative from the database.
+   */
+  async getLastNarrative(avatarId) {
+    try {
+      const narrativesCollection = this.db.collection('narratives');
+      return await narrativesCollection.findOne({ avatarId }, { sort: { timestamp: -1 } });
+    } catch (error) {
+      this.logger.error(`Error fetching last narrative: ${error.message}`);
+      return null;
+    }
+  }
+
+  /**
+   * Updates the narrative history for an avatar.
+   */
+  async updateNarrativeHistory(avatar, narrative) {
+    try {
+      const memoriesCollection = this.db.collection('memories');
+      await memoriesCollection.insertOne({
+        avatarId: avatar._id,
+        memory: narrative,
+        timestamp: new Date()
+      });
+
+      this.logger.info(`Narrative history updated for ${avatar.name}`);
+    } catch (error) {
+      this.logger.error(`Error updating narrative history: ${error.message}`);
+    }
+  }
+
+  /**
+   * Generates a narrative for an avatar.
+   */
+  async generateNarrative(avatar) {
+    try {
+      if (!this.db) throw new Error('Database not initialized.');
+
+      if (Date.now() - this.lastGlobalNarrativeTime < this.GLOBAL_NARRATIVE_COOLDOWN) {
+        this.logger.info('Global narrative cooldown active.');
+        return null;
+      }
+
+      if (!avatar.model) {
+        avatar.model = await this.aiService.selectRandomModel();
+        await this.avatarService.updateAvatar(avatar);
+      }
+
+      const [memoryRecords, recentActions] = await Promise.all([
+        this.memoryService.getMemories(avatar._id),
+        this.dungeonService.dungeonLog.getRecentActions(avatar.channelId)
+      ]);
+
+      const memories = (memoryRecords || []);
+      const actions = (recentActions || [])
+        .filter(action => action.actorId === avatar._id.toString())
+        .map(a => a.description || a.action);
+
+      const prompt = this.buildNarrativePrompt(avatar, memories, actions);
+      const narrative = await this.aiService.chat([{ role: 'user', content: prompt }], { model: avatar.model });
+
+      if (!narrative) throw new Error(`No narrative generated for ${avatar.name}.`);
+
+      await this.storeNarrative(avatar._id, narrative);
+      this.updateNarrativeHistory(avatar, narrative);
+
+      avatar.dynamicPrompt = narrative;
+      await this.avatarService.updateAvatar(avatar);
+
+      this.lastGlobalNarrativeTime = Date.now();
+      return narrative;
+    } catch (error) {
+      this.logger.error(`Error generating narrative for ${avatar.name}: ${error.message}`);
+      return null;
+    }
+  }
+
+  /**
+   * Builds a narrative prompt for an avatar.
+   */
+  buildNarrativePrompt(avatar, memories = [], actions = '') {
+    const { name, personality, description } = avatar;
+    const memorySection = memories.length > 0 ? `\nMemories:\n- ${memories.map(m => m.memory).join('\n- ')}` : '';
+    const actionSection = actions ? `\nRecent Actions:\n${actions.join("\n")}` : '';
+
+    const prompt = `
+    You are ${name}, ${personality}.
+    Description: ${description}.
+    ${memorySection}
+    ${actionSection}
+
+    Reflect on your purpose, your encounters, and how you can evolve.
+    Craft your next action or response with intent, considering your history and current situation.
     `.trim();
+
+    return prompt;
+  }
+
+  async fetchRecentMessages(channel) {
+    try {
+      const messages = await channel.messages.fetch({ limit: 50 });
+      return messages.reverse().map(msg => ({
+        author: msg.author.username,
+        content: msg.content,
+        timestamp: msg.createdTimestamp
+      }));
+    } catch (error) {
+      this.logger.error(`Error fetching messages from ${channel.id}: ${error.message}`);
+      return [];
+    }
   }
 }
