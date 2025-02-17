@@ -372,16 +372,19 @@ async function linkXAccount(avatarId) {
 // LOADERS PER TAB
 //
 async function loadSquad() {
+  console.log("Loading squad for wallet:", state.wallet?.publicKey);
   if (!state.wallet) {
     content.innerHTML = `
       <div class="text-center py-12">
         <h2 class="text-2xl font-bold mb-4">Your Squad</h2>
         <p class="mb-6 text-gray-400">Connect your Phantom wallet to view and manage your claimed avatars</p>
         <button
-          class="px-6 py-3 bg-blue-600 hover:bg-blue-700 rounded-lg font-semibold transition-colors flex items-center gap-2 mx-auto"
+          class="px-8 py-4 bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 
+                 rounded-xl font-bold text-lg shadow-lg transform transition-all duration-200 hover:scale-105 
+                 flex items-center gap-3 mx-auto group"
           onclick="connectWallet()"
         >
-          <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+          <svg class="w-6 h-6 group-hover:animate-pulse" fill="currentColor" viewBox="0 0 20 20">
             <path d="M4 4a2 2 0 00-2 2v8a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-1.5l-1.5-1.5h-7L5.5 4H4z"/>
           </svg>
           Connect Phantom Wallet
@@ -393,9 +396,13 @@ async function loadSquad() {
 
   try {
     const { publicKey } = state.wallet;
+    console.log("Fetching owned avatars for:", publicKey);
     const data = await fetchJSON(
-      `/api/avatars?view=owned&walletAddress=${publicKey}&page=1&limit=12`,
+      `/api/avatars?view=owned&walletAddress=${publicKey}&page=1&limit=12`
     );
+    
+    // Log the response for debugging
+    console.log("Squad data received:", data);
 
     if (
       !data.avatars ||
