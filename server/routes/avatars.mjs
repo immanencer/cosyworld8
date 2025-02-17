@@ -123,13 +123,15 @@ export default function avatarRoutes(db) {
   });
 
   // ------------------------------------
-  // 10) GET /:avatarId
+  // GET /:avatarId
+  // Returns the avatar details along with its inventory
   // ------------------------------------
   router.get('/:avatarId', async (req, res) => {
     try {
       const { avatarId } = req.params;
       let query;
 
+      // Allow lookup by ObjectId or name
       try {
         query = { 
           $or: [
@@ -154,9 +156,27 @@ export default function avatarRoutes(db) {
         return res.status(404).json({ error: 'Avatar not found' });
       }
 
-      // Generate thumbnail if needed
+      // Generate thumbnail for the avatar image if needed
       const thumbnailUrl = await thumbnailService.generateThumbnail(avatar.imageUrl);
       avatar.thumbnailUrl = thumbnailUrl;
+
+      // Fetch inventory items for this avatar (items where "owner" matches the avatar's _id)
+      const items = await db.collection('items').find({
+        owner: new ObjectId(avatar._id)
+      }).toArray();
+
+      // Generate thumbnails for each inventory item if needed
+      const itemsWithThumbs = await Promise.all(
+        items.map(async (item) => {
+          if (!item.thumbnailUrl && item.imageUrl) {
+            item.thumbnailUrl = await thumbnailService.generateThumbnail(item.imageUrl);
+          }
+          return item;
+        })
+      );
+
+      // Attach the inventory to the avatar object
+      avatar.inventory = itemsWithThumbs;
 
       res.json(avatar);
     } catch (error) {
@@ -167,6 +187,7 @@ export default function avatarRoutes(db) {
       });
     }
   });
+
   // -----------------------------
   // 1) GET / (paginated avatars)
   // -----------------------------
@@ -551,6 +572,37 @@ export default function avatarRoutes(db) {
       res.status(500).json({ error: error.message });
     }
   });
+
+  // ------------------------------------
+  // GET /:avatarId/inventory
+  // Returns the inventory items for the specified avatar.
+  // ------------------------------------
+  router.get('/:avatarId/inventory', async (req, res) => {
+    try {
+      const { avatarId } = req.params;
+      // Query the items collection for items owned by the avatar.
+      // Adjust the query if your schema stores the owner as a string or differently.
+      const items = await db.collection('items').find({
+        owner: new ObjectId(avatarId)
+      }).toArray();
+
+      // Generate thumbnails for each item if needed.
+      const itemsWithThumbs = await Promise.all(
+        items.map(async (item) => {
+          if (!item.thumbnailUrl && item.imageUrl) {
+            item.thumbnailUrl = await thumbnailService.generateThumbnail(item.imageUrl);
+          }
+          return item;
+        })
+      );
+
+      res.json({ items: itemsWithThumbs });
+    } catch (error) {
+      console.error('Error fetching inventory for avatar:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
 
 
   return router;

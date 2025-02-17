@@ -26,8 +26,8 @@ var tabButtons = document.querySelectorAll("[data-tab]");
 //
 // HELPER FUNCTIONS
 //
-var fetchJSON = function(url) {
-  return fetch(url).then(function(response) {
+var fetchJSON = function (url) {
+  return fetch(url).then(function (response) {
     if (!response.ok) {
       throw new Error("HTTP error! status: " + response.status);
     }
@@ -35,7 +35,7 @@ var fetchJSON = function(url) {
   });
 };
 
-var getModifier = function(score) {
+var getModifier = function (score) {
   if (typeof score !== "number") return 0;
   return Math.floor((score - 10) / 2);
 };
@@ -692,6 +692,7 @@ async function showAvatarDetails(avatarId) {
       fetchJSON(`/api/avatars/${avatarId}/stats`),
     ]);
 
+    // Attach extra data to the avatarResponse
     avatarResponse.stats = statsResponse;
     avatarResponse.narratives = narrativesResponse?.narratives || [];
     avatarResponse.actions = actionsResponse?.actions || [];
@@ -724,28 +725,22 @@ async function showAvatarDetails(avatarId) {
           <div class="flex-shrink-0">
             ${
               !state.wallet
-                ? `
-                  <button
-                    onclick="connectWallet()"
-                    class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-lg transition-colors text-sm"
-                  >
-                    Connect Wallet
-                  </button>
-                `
+                ? `<button
+                     onclick="connectWallet()"
+                     class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-lg transition-colors text-sm"
+                   >
+                     Connect Wallet
+                   </button>`
                 : !claimed
-                  ? `
-                  <button
-                    onclick="claimAvatar('${avatarId}')"
-                    class="px-4 py-2 bg-green-600 hover:bg-green-700 text-white font-bold rounded-lg transition-colors text-sm"
-                  >
-                    Claim Avatar
-                  </button>
-                `
-                  : `
-                  <div class="px-4 py-2 bg-green-600/20 text-green-400 rounded-lg text-sm">
-                    Avatar Claimed
-                  </div>
-                `
+                  ? `<button
+                       onclick="claimAvatar('${avatarId}')"
+                       class="px-4 py-2 bg-green-600 hover:bg-green-700 text-white font-bold rounded-lg transition-colors text-sm"
+                     >
+                       Claim Avatar
+                     </button>`
+                  : `<div class="px-4 py-2 bg-green-600/20 text-green-400 rounded-lg text-sm">
+                       Avatar Claimed
+                     </div>`
             }
           </div>
         </div>
@@ -771,9 +766,7 @@ async function showAvatarDetails(avatarId) {
             <p class="text-sm text-gray-600 mb-3">XP: 0 / 1000</p>
             <div class="grid grid-cols-3 gap-2">
               <div class="text-center">
-                <div class="text-red-500 font-bold">❤️ ${
-                  avatarResponse.stats?.hp || 0
-                }</div>
+                <div class="text-red-500 font-bold">❤️ ${avatarResponse.stats?.hp || 0}</div>
                 <div class="text-xs text-gray-600">HP</div>
               </div>
               <div class="text-center">
@@ -797,39 +790,27 @@ async function showAvatarDetails(avatarId) {
             <div class="grid grid-cols-2 gap-2 text-sm">
               <div class="flex items-center gap-2">
                 <span>💪</span>
-                <span class="text-gray-700">STR: ${
-                  avatarResponse.stats?.strength || 10
-                }</span>
+                <span class="text-gray-700">STR: ${avatarResponse.stats?.strength || 10}</span>
               </div>
               <div class="flex items-center gap-2">
                 <span>🎯</span>
-                <span class="text-gray-700">DEX: ${
-                  avatarResponse.stats?.dexterity || 10
-                }</span>
+                <span class="text-gray-700">DEX: ${avatarResponse.stats?.dexterity || 10}</span>
               </div>
               <div class="flex items-center gap-2">
                 <span>🏋️</span>
-                <span class="text-gray-700">CON: ${
-                  avatarResponse.stats?.constitution || 10
-                }</span>
+                <span class="text-gray-700">CON: ${avatarResponse.stats?.constitution || 10}</span>
               </div>
               <div class="flex items-center gap-2">
                 <span>🧠</span>
-                <span class="text-gray-700">INT: ${
-                  avatarResponse.stats?.intelligence || 10
-                }</span>
+                <span class="text-gray-700">INT: ${avatarResponse.stats?.intelligence || 10}</span>
               </div>
               <div class="flex items-center gap-2">
                 <span>👁️</span>
-                <span class="text-gray-700">WIS: ${
-                  avatarResponse.stats?.wisdom || 10
-                }</span>
+                <span class="text-gray-700">WIS: ${avatarResponse.stats?.wisdom || 10}</span>
               </div>
               <div class="flex items-center gap-2">
                 <span>👑</span>
-                <span class="text-gray-700">CHA: ${
-                  avatarResponse.stats?.charisma || 10
-                }</span>
+                <span class="text-gray-700">CHA: ${avatarResponse.stats?.charisma || 10}</span>
               </div>
             </div>
           </div>
@@ -845,7 +826,22 @@ async function showAvatarDetails(avatarId) {
           <!-- Inventory -->
           <div class="bg-gray-100 p-4 rounded-lg text-gray-900">
             <h3 class="text-lg font-bold mb-2">📦 Inventory</h3>
-            <p class="text-gray-700">No items yet</p>
+            ${
+              avatarResponse.inventory && avatarResponse.inventory.length
+                ? `<div class="grid grid-cols-3 gap-2">
+                     ${avatarResponse.inventory
+                       .map(
+                         (item) => `
+                           <div class="flex flex-col items-center">
+                             <img src="${item.thumbnailUrl || item.imageUrl}" alt="${item.name}" class="w-16 h-16 object-cover rounded">
+                             <span class="text-xs mt-1">${item.name}</span>
+                           </div>
+                         `,
+                       )
+                       .join("")}
+                   </div>`
+                : `<p class="text-gray-700">No items yet</p>`
+            }
           </div>
         </div>
 
@@ -868,10 +864,7 @@ async function showAvatarDetails(avatarId) {
           <div class="bg-white/10 p-4 rounded-lg">
             <h3 class="font-bold text-lg mb-2">Recent Narrative</h3>
             <p class="text-gray-300">
-              ${
-                avatarResponse.narratives?.[0]?.content ||
-                "No recent narratives."
-              }
+              ${avatarResponse.narratives?.[0]?.content || "No recent narratives."}
             </p>
           </div>
 
@@ -879,7 +872,7 @@ async function showAvatarDetails(avatarId) {
             <h3 class="font-bold text-lg mb-2">Recent Actions</h3>
             <div class="space-y-2">
               ${
-                avatarResponse.actions?.length
+                avatarResponse.actions && avatarResponse.actions.length
                   ? avatarResponse.actions
                       .slice(0, 3)
                       .map(
@@ -901,8 +894,8 @@ async function showAvatarDetails(avatarId) {
                         `,
                       )
                       .join("")
-                  : '<div class="text-gray-500 text-sm">No recent actions recorded.</div>'
-                            }
+                  : `<div class="text-gray-500 text-sm">No recent actions recorded.</div>`
+              }
             </div>
           </div>
         </div>
@@ -912,19 +905,10 @@ async function showAvatarDetails(avatarId) {
         onclick="closeAvatarModal()"
         class="absolute top-4 right-4 text-gray-400 hover:text-white"
       >
-        <svg
-          xmlns="http://www.w3.org/2000/svg"
-          class="h-6 w-6"
-          fill="none"
-          viewBox="0 0 24 24"
-          stroke="currentColor"
-        >
-          <path
-            stroke-linecap="round"
-            stroke-linejoin="round"
-            stroke-width="2"
-            d="M6 18L18 6M6 6l12 12"
-          />
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none"
+             viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M6 18L18 6M6 6l12 12"/>
         </svg>
       </button>
     `;
@@ -933,9 +917,7 @@ async function showAvatarDetails(avatarId) {
     modalContent.innerHTML = `
       <div class="text-center py-8">
         <div class="text-red-500 font-semibold mb-4">
-          Error loading avatar details: ${
-            error.message || "Unknown error occurred"
-          }
+          Error loading avatar details: ${error.message || "Unknown error occurred"}
         </div>
         <button 
           onclick="closeAvatarModal()" 
@@ -1177,99 +1159,146 @@ document.addEventListener("DOMContentLoaded", () => {
 function loadWorldContent() {
   try {
     var page = window.worldState ? window.worldState.page || 1 : 1;
-    fetch('/api/dungeon/locations?page=' + page + '&limit=12')
-      .then(function(response) { return response.json(); })
-      .then(function(response) {
+    fetch("/api/dungeon/locations?page=" + page + "&limit=12")
+      .then(function (response) {
+        return response.json();
+      })
+      .then(function (response) {
         var locations = response.locations;
         var totalPages = response.totalPages;
         var hasMore = response.hasMore;
 
         if (page === 1) {
-          content.innerHTML = '<div class="max-w-7xl mx-auto px-4">' +
+          content.innerHTML =
+            '<div class="max-w-7xl mx-auto px-4">' +
             '<div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6" id="locations-grid"></div>' +
             '<div id="world-loader" class="text-center py-8 hidden">Loading more locations...</div>' +
-            '</div>';
+            "</div>";
         }
 
-        var locationsGrid = document.getElementById('locations-grid');
-        var loader = document.getElementById('world-loader');
+        var locationsGrid = document.getElementById("locations-grid");
+        var loader = document.getElementById("world-loader");
 
-        locations.forEach(function(location) {
-          var locationCard = document.createElement('div');
-          locationCard.className = 'bg-gray-800 rounded-lg overflow-hidden shadow-lg';
+        locations.forEach(function (location) {
+          var locationCard = document.createElement("div");
+          locationCard.className =
+            "bg-gray-800 rounded-lg overflow-hidden shadow-lg";
 
-          var imageHtml = location.imageUrl ? 
-            '<img src="' + location.imageUrl + '" alt="' + location.name + '" class="w-full h-48 object-cover">' :
-            '<div class="w-full h-48 bg-gray-700 flex items-center justify-center"><span class="text-4xl">🗺️</span></div>';
+          var imageHtml = location.imageUrl
+            ? '<img src="' +
+              location.imageUrl +
+              '" alt="' +
+              location.name +
+              '" class="w-full h-48 object-cover">'
+            : '<div class="w-full h-48 bg-gray-700 flex items-center justify-center"><span class="text-4xl">🗺️</span></div>';
 
-          var avatarsHtml = location.avatars && location.avatars.length ? 
-            location.avatars.map(function(avatar) {
-              return '<div class="relative group">' +
-                '<img src="' + (avatar.thumbnailUrl || avatar.imageUrl) + '" alt="' + avatar.name + '" ' +
-                'class="w-10 h-10 rounded-full border-2 border-gray-700 hover:border-blue-500 transition-colors">' +
-                '<div class="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 bg-gray-900 text-white ' +
-                'text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">' +
-                avatar.name + '</div></div>';
-            }).join('') : 
-            '<span class="text-gray-500 text-sm">No avatars present</span>';
+          var avatarsHtml =
+            location.avatars && location.avatars.length
+              ? location.avatars
+                  .map(function (avatar) {
+                    return (
+                      '<div class="relative group">' +
+                      '<img src="' +
+                      (avatar.thumbnailUrl || avatar.imageUrl) +
+                      '" alt="' +
+                      avatar.name +
+                      '" ' +
+                      'class="w-10 h-10 rounded-full border-2 border-gray-700 hover:border-blue-500 transition-colors">' +
+                      '<div class="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 bg-gray-900 text-white ' +
+                      'text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">' +
+                      avatar.name +
+                      "</div></div>"
+                    );
+                  })
+                  .join("")
+              : '<span class="text-gray-500 text-sm">No avatars present</span>';
 
-          var itemsHtml = location.items && location.items.length ?
-            location.items.map(function(item) {
-              return '<div class="relative group">' +
-                '<img src="' + item.imageUrl + '" alt="' + item.name + '" ' +
-                'class="w-12 h-12 rounded-lg border-2 border-gray-700 hover:border-blue-500 transition-colors object-cover">' +
-                '<div class="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 bg-gray-900 text-white ' +
-                'text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">' +
-                item.name + '</div></div>';
-            }).join('') :
-            '<span class="text-gray-500 text-sm">No items present</span>';
+          var itemsHtml =
+            location.items && location.items.length
+              ? location.items
+                  .map(function (item) {
+                    return (
+                      '<div class="relative group">' +
+                      '<img src="' +
+                      item.imageUrl +
+                      '" alt="' +
+                      item.name +
+                      '" ' +
+                      'class="w-12 h-12 rounded-lg border-2 border-gray-700 hover:border-blue-500 transition-colors object-cover">' +
+                      '<div class="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 bg-gray-900 text-white ' +
+                      'text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">' +
+                      item.name +
+                      "</div></div>"
+                    );
+                  })
+                  .join("")
+              : '<span class="text-gray-500 text-sm">No items present</span>';
 
-          locationCard.innerHTML = '<div class="relative">' + imageHtml +
+          locationCard.innerHTML =
+            '<div class="relative">' +
+            imageHtml +
             '<div class="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 p-4">' +
-            '<h3 class="text-xl font-bold text-white">' + location.name + '</h3></div></div>' +
-            '<div class="p-4"><p class="text-gray-300 mb-4">' + (location.description || 'No description available.') + '</p>' +
+            '<h3 class="text-xl font-bold text-white">' +
+            location.name +
+            "</h3></div></div>" +
+            '<div class="p-4"><p class="text-gray-300 mb-4">' +
+            (location.description || "No description available.") +
+            "</p>" +
             '<div class="mb-4"><h4 class="text-sm font-semibold text-gray-400 uppercase mb-2">Avatars Present</h4>' +
-            '<div class="flex flex-wrap gap-2">' + avatarsHtml + '</div></div>' +
+            '<div class="flex flex-wrap gap-2">' +
+            avatarsHtml +
+            "</div></div>" +
             '<div><h4 class="text-sm font-semibold text-gray-400 uppercase mb-2">Items</h4>' +
-            '<div class="grid grid-cols-4 gap-2">' + itemsHtml + '</div></div></div>';
+            '<div class="grid grid-cols-4 gap-2">' +
+            itemsHtml +
+            "</div></div></div>";
 
           locationsGrid.appendChild(locationCard);
         });
 
         if (hasMore) {
-          var observer = new IntersectionObserver(function(entries) {
-            if (entries[0].isIntersecting && !window.worldState?.loading) {
-              window.worldState = {
-                page: page + 1,
-                loading: true
-              };
-              loadWorldContent();
-            }
-          }, { threshold: 0.1 });
+          var observer = new IntersectionObserver(
+            function (entries) {
+              if (entries[0].isIntersecting && !window.worldState?.loading) {
+                window.worldState = {
+                  page: page + 1,
+                  loading: true,
+                };
+                loadWorldContent();
+              }
+            },
+            { threshold: 0.1 },
+          );
 
           if (loader) {
-            loader.classList.remove('hidden');
+            loader.classList.remove("hidden");
             observer.observe(loader);
           }
         } else if (loader) {
-          loader.classList.add('hidden');
+          loader.classList.add("hidden");
         }
 
         window.worldState = {
           page: page,
-          loading: false
+          loading: false,
         };
       })
-      .catch(function(error) {
-        console.error('Error loading world content:', error);
+      .catch(function (error) {
+        console.error("Error loading world content:", error);
         if (page === 1) {
-          content.innerHTML = '<div class="text-center py-12 text-red-500">' +
-            'Failed to load world content: ' + error.message + '</div>';
+          content.innerHTML =
+            '<div class="text-center py-12 text-red-500">' +
+            "Failed to load world content: " +
+            error.message +
+            "</div>";
         }
       });
   } catch (error) {
-    console.error('Error in loadWorldContent:', error);
-    content.innerHTML = '<div class="text-center py-12 text-red-500">' +
-      'Failed to load world content: ' + error.message + '</div>';
+    console.error("Error in loadWorldContent:", error);
+    content.innerHTML =
+      '<div class="text-center py-12 text-red-500">' +
+      "Failed to load world content: " +
+      error.message +
+      "</div>";
   }
 }
