@@ -254,23 +254,25 @@ async function claimAvatar(avatarId) {
       body: JSON.stringify({ walletAddress: state.wallet.publicKey }),
     });
 
+    const result = await response.json();
+    
     if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.error || "Failed to claim avatar");
+      throw new Error(result.error || "Failed to claim avatar");
     }
 
-    // Refresh both the current view and squad data
+    // Don't show success message if already owned
+    if (!result.alreadyOwned) {
+      alert("Avatar claimed successfully!");
+    }
+
+    // Refresh all relevant UI components
     await Promise.all([
       loadContent(),
-      state.activeTab === "squad" ? loadSquad() : Promise.resolve()
+      state.activeTab === "squad" ? loadSquad() : Promise.resolve(),
+      document.getElementById('avatar-modal')?.classList.contains('hidden') === false ? 
+        showAvatarDetails(avatarId) : Promise.resolve()
     ]);
-    
-    // Only close modal if we're viewing avatar details
-    if (document.getElementById('avatar-modal')?.classList.contains('hidden') === false) {
-      closeAvatarModal();
-    }
 
-    alert("Avatar claimed successfully!");
   } catch (error) {
     console.error("Error claiming avatar:", error);
     alert(error.message);

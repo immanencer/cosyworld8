@@ -366,12 +366,19 @@ export default function avatarRoutes(db) {
         return res.status(404).json({ error: 'Avatar not found' });
       }
 
-      // Check if avatar is already claimed (optional logic)
-      if (avatar.claimed) {
-        return res.status(400).json({ error: 'Avatar already claimed' });
+      // Check existing claim
+      const existingClaim = await db.collection('avatar_claims').findOne({
+        avatarId: new ObjectId(avatarId)
+      });
+
+      if (existingClaim) {
+        if (existingClaim.walletAddress === walletAddress) {
+          return res.json({ success: true, alreadyOwned: true });
+        }
+        return res.status(400).json({ error: 'Avatar already claimed by another wallet' });
       }
 
-      // Create claim record and mark avatar as claimed
+      // Create new claim record and mark avatar as claimed
       await Promise.all([
         db.collection('avatar_claims').insertOne({
           avatarId: new ObjectId(avatarId),
@@ -381,7 +388,7 @@ export default function avatarRoutes(db) {
         }),
         db.collection('avatars').updateOne(
           { _id: new ObjectId(avatarId) },
-          { $set: { claimed: true } }
+          { $set: { claimed: true, claimedBy: walletAddress } }
         )
       ]);
 
