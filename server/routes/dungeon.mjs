@@ -65,9 +65,13 @@ export default function dungeonRoutes(db) {
               {
                 $lookup: {
                   from: 'avatars',
-                  localField: 'channelId',
-                  foreignField: 'locationId',
+                  let: { locationChannelId: '$channelId' },
                   pipeline: [
+                    {
+                      $match: {
+                        $expr: { $eq: ['$channelId', '$$locationChannelId'] }
+                      }
+                    },
                     { 
                       $project: { 
                         name: 1, 
