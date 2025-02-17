@@ -5,7 +5,7 @@
   "type": "object",
   "properties": {
     "_id": {
-      "type": ["string", "object"],
+      "type": "object",
       "description": "The unique identifier for the location"
     },
     "name": {

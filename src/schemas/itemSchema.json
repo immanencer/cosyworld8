@@ -1,4 +1,3 @@
-
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "Item",
@@ -87,5 +86,14 @@
       "description": "Schema version for compatibility"
     }
   },
-  "required": ["key", "name", "description", "type", "rarity", "createdAt", "updatedAt", "version"]
+  "required": [
+    "key",
+    "name",
+    "description",
+    "type",
+    "rarity",
+    "createdAt",
+    "updatedAt",
+    "version"
+  ]
 }

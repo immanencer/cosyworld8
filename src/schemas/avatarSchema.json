@@ -1,11 +1,10 @@
-
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "Avatar",
   "type": "object",
   "properties": {
     "_id": {
-      "type": ["string", "object"],
+      "type": ["object"],
       "description": "The unique identifier for the avatar"
     },
     "name": {
@@ -60,5 +59,14 @@
       "description": "Schema version for compatibility"
     }
   },
-  "required": ["name", "description", "personality", "imageUrl", "status", "createdAt", "updatedAt", "version"]
+  "required": [
+    "name",
+    "description",
+    "personality",
+    "imageUrl",
+    "status",
+    "createdAt",
+    "updatedAt",
+    "version"
+  ]
 }

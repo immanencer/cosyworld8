@@ -3,7 +3,7 @@ import { MongoClient } from 'mongodb';
 
 export class DatabaseService {
   static instance = null;
-  
+
   constructor(logger) {
     if (DatabaseService.instance) {
       return DatabaseService.instance;
@@ -28,8 +28,6 @@ export class DatabaseService {
     try {
       this.logger.info('Connecting to MongoDB...');
       this.dbClient = new MongoClient(process.env.MONGO_URI, {
-        useNewUrlParser: true,
-        useUnifiedTopology: true,
         serverSelectionTimeoutMS: 5000,
         connectTimeoutMS: 10000,
       });

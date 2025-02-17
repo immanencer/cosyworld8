@@ -1,11 +1,10 @@
-
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "Quest",
   "type": "object",
   "properties": {
     "_id": {
-      "type": ["string", "object"],
+      "type": "object",
       "description": "Quest unique identifier"
     },
     "title": {
@@ -61,5 +60,13 @@
       "description": "Schema version"
     }
   },
-  "required": ["title", "description", "conditions", "status", "createdAt", "updatedAt", "version"]
+  "required": [
+    "title",
+    "description",
+    "conditions",
+    "status",
+    "createdAt",
+    "updatedAt",
+    "version"
+  ]
 }
