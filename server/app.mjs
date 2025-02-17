@@ -1,6 +1,7 @@
 import express from 'express';
 import cors from 'cors';
-import { MongoClient } from 'mongodb';
+
+import { DatabaseService } from '../src/services/databaseService.mjs';
 
 // External route modules
 import leaderboardRoutes from './routes/leaderboard.mjs';
@@ -19,9 +20,6 @@ app.use(cors());
 app.use(express.json());
 app.use(express.static('public'));
 
-// MongoDB Setup
-const mongoUri = process.env.MONGO_URI || 'mongodb://localhost:27017';
-const mongoDbName = process.env.MONGO_DB_NAME || 'cosyworld';
 
 async function initializeApp() {
   try {
@@ -31,7 +29,7 @@ async function initializeApp() {
     if (!db) {
       throw new Error('Failed to connect to database');
     }
-    
+
     // Initialize indexes
     await dbService.createIndexes();
 

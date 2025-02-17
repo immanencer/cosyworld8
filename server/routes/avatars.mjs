@@ -10,9 +10,7 @@ import Fuse from 'fuse.js';
 
 // Example imports, adjust paths as needed
 import { thumbnailService } from '../services/thumbnailService.mjs';
-import { NFTMintingService } from '../../src/services/nftMintService.mjs';
 import { StatGenerationService } from '../../src/services/statGenerationService.mjs';
-import models from '../../src/models.config.mjs';
 
 const router = express.Router();
 
