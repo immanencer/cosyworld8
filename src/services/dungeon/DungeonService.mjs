@@ -9,6 +9,7 @@ import { RememberTool } from './tools/RememberTool.mjs';
 import { CreationTool } from './tools/CreationTool.mjs';
 import { XPostTool } from './tools/XPostTool.mjs';
 import { ItemTool } from './tools/ItemTool.mjs';
+import { RespondTool } from './tools/RespondTool.mjs';
 
 import { LocationService } from '../location/locationService.mjs';
 import { ItemService } from '../item/itemService.mjs';
