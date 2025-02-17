@@ -1,13 +1,17 @@
+
 import express from 'express';
 import { TokenService } from '../../src/services/tokenService.mjs';
 import { Connection } from '@solana/web3.js';
 import { ObjectId } from 'mongodb';
+import { DatabaseService } from '../../src/services/databaseService.mjs';
 
 const router = express.Router();
 
-export default function tokenRoutes(db) {
+export default function tokenRoutes() {
   const connection = new Connection(process.env.SOLANA_RPC_URL);
   const tokenService = new TokenService(connection);
+  const dbService = new DatabaseService();
+  const db = dbService.getDatabase();
 
   // Create new wallet for user
   router.post('/wallet', async (req, res) => {
