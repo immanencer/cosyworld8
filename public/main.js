@@ -112,31 +112,6 @@ const renderStats = (stats = {}, title = "Details") => {
   `;
 };
 
-function renderAvatar(avatar) {
-  return `
-    <div class="bg-gray-800 rounded-lg p-4 hover:bg-gray-700 transition">
-      <img 
-        src="${avatar.thumbnailUrl || avatar.imageUrl}" 
-        alt="${avatar.name}"
-        class="w-full aspect-square object-cover rounded-lg mb-4"
-      >
-      <h3 class="text-lg font-semibold">${avatar.name}</h3>
-      ${
-        avatar.model
-          ? `<p class="text-sm text-gray-400">${avatar.model}</p>`
-          : ""
-      }
-      <div class="mt-2">
-        <span class="px-2 py-1 rounded text-xs font-bold ${getTierColor(
-          avatar.model,
-        )}">
-          Tier ${getTierFromModel(avatar.model)}
-        </span>
-      </div>
-    </div>
-  `;
-}
-
 //
 // TAB HANDLING
 //
@@ -255,24 +230,18 @@ async function claimAvatar(avatarId) {
     });
 
     const result = await response.json();
-    
+
     if (!response.ok) {
       throw new Error(result.error || "Failed to claim avatar");
     }
 
-    // Don't show success message if already owned
-    if (!result.alreadyOwned) {
-      alert("Avatar claimed successfully!");
+    // Refresh the avatar details modal without reloading the entire page
+    await showAvatarDetails(avatarId);
+
+    // If the user is in the "squad" tab, refresh the squad list
+    if (state.activeTab === "squad") {
+      await loadSquad();
     }
-
-    // Refresh all relevant UI components
-    await Promise.all([
-      loadContent(),
-      state.activeTab === "squad" ? loadSquad() : Promise.resolve(),
-      document.getElementById('avatar-modal')?.classList.contains('hidden') === false ? 
-        showAvatarDetails(avatarId) : Promise.resolve()
-    ]);
-
   } catch (error) {
     console.error("Error claiming avatar:", error);
     alert(error.message);
@@ -281,26 +250,26 @@ async function claimAvatar(avatarId) {
 
 async function createToken(avatarId) {
   if (!state.wallet) {
-    alert('Please connect your wallet first');
+    alert("Please connect your wallet first");
     return;
   }
-  
+
   try {
     const response = await fetch(`/api/tokens/create/${avatarId}`, {
-      method: 'POST',
+      method: "POST",
       headers: {
-        'Content-Type': 'application/json'
+        "Content-Type": "application/json",
       },
       body: JSON.stringify({
         walletAddress: state.wallet.publicKey.toString(),
-        devBuyAmount: 1
-      })
+        devBuyAmount: 1,
+      }),
     });
-    
+
     if (!response.ok) {
       throw new Error(await response.text());
     }
-    
+
     const result = await response.json();
     alert(`Token created successfully! Mint: ${result.mint}`);
   } catch (error) {
@@ -310,37 +279,49 @@ async function createToken(avatarId) {
 }
 
 function renderAvatar(avatar) {
-  return `
-    <div class="p-4 bg-gray-800 rounded-lg">
-      <img src="${avatar.imageUrl}" class="w-full rounded-lg mb-2">
-      <h3 class="text-lg font-bold mb-2">${avatar.name}</h3>
-      <p class="mb-2">${avatar.description || ''}</p>
-      ${avatar.claimed ? 
-        `<div class="flex flex-col gap-2">
-          <div class="text-green-400 text-center py-2 bg-green-400/10 rounded">Avatar Claimed</div>
+  if (avatar.claimed) {
+    return `
+      <div class="p-4 bg-gray-800 rounded-lg">
+        <img src="${avatar.imageUrl}" class="w-full rounded-lg mb-2" alt="${avatar.name}">
+        <h3 class="text-lg font-bold mb-2 text-white">${avatar.name}</h3>
+        <p class="mb-2 text-gray-300">${avatar.description || ""}</p>
+        <div class="flex flex-col gap-2">
+          <div class="text-green-400 text-center py-2 bg-green-400/10 rounded">
+            Avatar Claimed
+          </div>
           <button 
+            type="button"
             onclick="createToken('${avatar._id}')"
-            class="w-full px-4 py-2 bg-purple-600 hover:bg-purple-700 rounded"
+            class="w-full px-4 py-2 bg-purple-600 hover:bg-purple-700 rounded text-white"
           >
             Create SPL Token
           </button>
           <button
+            type="button"
             onclick="linkXAccount('${avatar._id}')"
-            class="w-full px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded"
+            class="w-full px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded text-white"
           >
             Link X Account
           </button>
-        </div>` 
-        : 
-        `<button 
-          onclick="claimAvatar('${avatar._id}')"
-          class="w-full px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded"
+        </div>
+      </div>
+    `;
+  } else {
+    return `
+      <div class="p-4 bg-gray-800 rounded-lg">
+        <img src="${avatar.imageUrl}" class="w-full rounded-lg mb-2" alt="${avatar.name}">
+        <h3 class="text-lg font-bold mb-2 text-white">${avatar.name}</h3>
+        <p class="mb-2 text-gray-300">${avatar.description || ""}</p>
+        <button 
+          type="button"
+          onclick="claimAvatar('${avatar._id}');"
+          class="w-full px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded text-white"
         >
           Claim with Wallet
-        </button>`
-      }
-    </div>
-  `;
+        </button>
+      </div>
+    `;
+  }
 }
 
 async function linkXAccount(avatarId) {
@@ -350,16 +331,18 @@ async function linkXAccount(avatarId) {
   }
 
   try {
-    const response = await fetch(`/api/xauth/auth-url?avatarId=${avatarId}&walletAddress=${state.wallet.publicKey}`);
+    const response = await fetch(
+      `/api/xauth/auth-url?avatarId=${avatarId}&walletAddress=${state.wallet.publicKey}`,
+    );
     const { url } = await response.json();
-    
-    const popup = window.open(url, 'Link X Account', 'width=600,height=600');
-    
-    window.addEventListener('message', async (event) => {
-      if (event.data.type === 'X_AUTH_SUCCESS') {
+
+    const popup = window.open(url, "Link X Account", "width=600,height=600");
+
+    window.addEventListener("message", async (event) => {
+      if (event.data.type === "X_AUTH_SUCCESS") {
         popup.close();
         await loadContent();
-        alert('X Account linked successfully!');
+        alert("X Account linked successfully!");
       }
     });
   } catch (error) {
@@ -371,65 +354,161 @@ async function linkXAccount(avatarId) {
 //
 // LOADERS PER TAB
 //
+// Helper to retry squad loading (similar to retryLeaderboardLoad)
+function retrySquadLoad(page) {
+  var squadItems = document.getElementById("squad-items");
+  var errorDiv = squadItems.querySelector(".error-message");
+  if (errorDiv) {
+    errorDiv.remove();
+  }
+  loadSquad();
+}
+
 async function loadSquad() {
-  console.log("Loading squad for wallet:", state.wallet?.publicKey);
+  // If wallet is not connected, show the Connect Wallet UI.
   if (!state.wallet) {
     content.innerHTML = `
       <div class="text-center py-12">
-        <h2 class="text-2xl font-bold mb-4">Your Squad</h2>
-        <p class="mb-6 text-gray-400">Connect your Phantom wallet to view and manage your claimed avatars</p>
-        <button
-          class="px-8 py-4 bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 
-                 rounded-xl font-bold text-lg shadow-lg transform transition-all duration-200 hover:scale-105 
-                 flex items-center gap-3 mx-auto group"
-          onclick="connectWallet()"
+        <h2 class="text-3xl font-bold mb-6 text-white">Your Squad</h2>
+        <p class="text-gray-400 mb-8">Connect your Phantom wallet to view your claimed avatars</p>
+        <button 
+          onclick="connectWallet()" 
+          class="mx-auto flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 rounded-full shadow-lg transition transform hover:scale-105"
         >
-          <svg class="w-6 h-6 group-hover:animate-pulse" fill="currentColor" viewBox="0 0 20 20">
-            <path d="M4 4a2 2 0 00-2 2v8a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-1.5l-1.5-1.5h-7L5.5 4H4z"/>
+          <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v16h16V4H4z"/>
           </svg>
-          Connect Phantom Wallet
+          <span class="text-white font-semibold text-lg">Connect Phantom Wallet</span>
         </button>
       </div>
     `;
     return;
   }
 
-  try {
-    const { publicKey } = state.wallet;
-    console.log("Fetching owned avatars for:", publicKey);
-    const data = await fetchJSON(
-      `/api/avatars?view=owned&walletAddress=${publicKey}&page=1&limit=12`
-    );
-    
-    // Log the response for debugging
-    console.log("Squad data received:", data);
+  // Initialize the scroll state for infinite scrolling
+  window.scrollState = {
+    page: 1,
+    loading: false,
+    hasMore: true,
+  };
+  const scrollState = window.scrollState;
 
-    if (
-      !data.avatars ||
-      !Array.isArray(data.avatars) ||
-      data.avatars.length === 0
-    ) {
-      content.innerHTML = `
-        <div class="text-center py-12">
-          No Squad members found 
+  // Use similar markup as leaderboard
+  content.innerHTML = `
+    <div class="max-w-7xl mx-auto px-4">
+      <div id="squad-items" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 3xl:grid-cols-5 gap-3"></div>
+      <div id="squad-loader" class="text-center py-8 hidden">Loading more...</div>
+      <!-- Modal for Avatars (shared with leaderboard) -->
+      <div
+        id="avatar-modal"
+        class="fixed inset-0 bg-black bg-opacity-75 hidden flex items-center justify-center p-4"
+      >
+        <div class="bg-parchment rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto shadow-2xl">
+          <div id="modal-content" class="p-6"></div>
         </div>
-      `;
-      return;
-    }
+      </div>
+    </div>
+  `;
 
-    content.innerHTML = `
-      <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-        ${data.avatars.map(renderAvatar).join("")}
-      </div>
-    `;
-  } catch (error) {
-    console.error("Error loading Squad:", error);
-    content.innerHTML = `
-      <div class="text-center py-12 text-red-500">
-        Failed to load Squad: ${error.message}
-      </div>
-    `;
+  const squadItems = document.getElementById("squad-items");
+  const loader = document.getElementById("squad-loader");
+
+  async function loadMore() {
+    if (scrollState.loading || !scrollState.hasMore) return;
+
+    scrollState.loading = true;
+    loader.classList.remove("hidden");
+
+    try {
+      // Fetch only owned avatars
+      const data = await fetchJSON(
+        `/api/avatars?view=owned&walletAddress=${state.wallet.publicKey}&page=${scrollState.page}&limit=12`,
+      );
+
+      if (!data || !data.avatars || !Array.isArray(data.avatars)) {
+        throw new Error("Invalid response format");
+      }
+
+      // Use totalPages if provided or check if we got a full page
+      if (data.totalPages) {
+        scrollState.hasMore = scrollState.page < data.totalPages;
+      } else {
+        scrollState.hasMore = data.avatars.length === 12;
+      }
+
+      // Append each avatar as a card (same style as leaderboard)
+      data.avatars.forEach((avatar) => {
+        const div = document.createElement("div");
+        div.className =
+          "bg-gray-800 p-3 rounded-lg hover:bg-gray-700 transition-colors shadow-lg";
+        div.innerHTML = `
+          <button
+            onclick="showAvatarDetails('${avatar._id}')"
+            class="w-full text-left flex gap-3 items-center"
+          >
+            <img
+              src="${avatar.thumbnailUrl || avatar.imageUrl}"
+              alt="${avatar.name}"
+              class="w-16 h-16 object-cover rounded-lg flex-shrink-0"
+            >
+            <div class="min-w-0 flex-1">
+              <h3 class="text-sm font-semibold truncate text-white">${avatar.name}</h3>
+              <p class="text-xs text-gray-400">Score: ${avatar.score || 0}</p>
+              <div class="flex items-center gap-2 mt-1">
+                <span class="px-1.5 py-0.5 rounded text-xs font-bold ${getTierColor(avatar.model)}">
+                  Tier ${getTierFromModel(avatar.model)}
+                </span>
+              </div>
+            </div>
+          </button>
+        `;
+        squadItems.appendChild(div);
+      });
+
+      scrollState.page++;
+    } catch (error) {
+      console.error("Failed to load more squad items:", error);
+      const existingError = squadItems.querySelector(".error-message");
+      if (existingError) existingError.remove();
+      const errorDiv = document.createElement("div");
+      errorDiv.className =
+        "text-red-500 text-center py-4 error-message col-span-full";
+      errorDiv.innerHTML = `
+        ${error.message || "Failed to load more items"}
+        <button
+          class="ml-4 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+          onclick="retrySquadLoad(${scrollState.page})"
+        >
+          Retry
+        </button>
+      `;
+      squadItems.appendChild(errorDiv);
+      scrollState.hasMore = true;
+    } finally {
+      scrollState.loading = false;
+      if (!scrollState.hasMore) {
+        loader.classList.add("hidden");
+      }
+    }
   }
+
+  // Initial load
+  await loadMore();
+
+  // Set up infinite scroll observer
+  const observer = new IntersectionObserver(
+    (entries) => {
+      if (
+        entries[0].isIntersecting &&
+        !scrollState.loading &&
+        scrollState.hasMore
+      ) {
+        loadMore();
+      }
+    },
+    { threshold: 0.1, rootMargin: "100px" },
+  );
+  observer.observe(loader);
 }
 
 async function loadActionLog() {
@@ -781,7 +860,6 @@ async function loadLeaderboard() {
     `;
   }
 }
-
 async function showAvatarDetails(avatarId) {
   const modal = document.getElementById("avatar-modal");
   const modalContent = document.getElementById("modal-content");
@@ -790,26 +868,23 @@ async function showAvatarDetails(avatarId) {
   modalContent.innerHTML = "Loading...";
 
   try {
-    const [
-      avatarResponse,
-      xAuthStatusResponse,
-      narrativesResponse,
-      actionsResponse,
-      statsResponse,
-    ] = await Promise.all([
-      fetchJSON(`/api/avatars/${avatarId}`),
-      fetchJSON(`/auth/x/status/${avatarId}`),
-      fetchJSON(`/api/avatars/${avatarId}/narratives`),
-      fetchJSON(`/api/avatars/${avatarId}/dungeon-actions`),
-      fetchJSON(`/api/avatars/${avatarId}/stats`),
-    ]);
+    const [avatarResponse, narrativesResponse, actionsResponse, statsResponse] =
+      await Promise.all([
+        fetchJSON(
+          `/api/avatars/${avatarId}?walletAddress=${state.wallet ? state.wallet.publicKey : ""}`,
+        ),
+        fetchJSON(`/api/avatars/${avatarId}/narratives`),
+        fetchJSON(`/api/avatars/${avatarId}/dungeon-actions`),
+        fetchJSON(`/api/avatars/${avatarId}/stats`),
+      ]);
 
-    // Attach extra data to the avatarResponse
+    // Attach extra data
     avatarResponse.stats = statsResponse;
     avatarResponse.narratives = narrativesResponse?.narratives || [];
     avatarResponse.actions = actionsResponse?.actions || [];
 
-    const claimed = xAuthStatusResponse?.authorized;
+    // Use the claimed property from the avatarResponse
+    const claimed = avatarResponse.claimed;
 
     modalContent.innerHTML = `
       <div class="flex flex-col items-center relative bg-parchment text-gray-900">
@@ -825,9 +900,7 @@ async function showAvatarDetails(avatarId) {
               <h1 class="text-3xl font-bold mb-1">${avatarResponse.name}</h1>
               <div class="flex items-center gap-2">
                 <span
-                  class="px-2 py-1 rounded text-xs font-bold ${getTierColor(
-                    avatarResponse.model,
-                  )}"
+                  class="px-2 py-1 rounded text-xs font-bold ${getTierColor(avatarResponse.model)}"
                 >
                   Tier ${getTierFromModel(avatarResponse.model)}
                 </span>
@@ -839,6 +912,7 @@ async function showAvatarDetails(avatarId) {
               !state.wallet
                 ? `<button
                      onclick="connectWallet()"
+                     type="button"
                      class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-lg transition-colors text-sm"
                    >
                      Connect Wallet
@@ -846,12 +920,26 @@ async function showAvatarDetails(avatarId) {
                 : !claimed
                   ? `<button
                        onclick="claimAvatar('${avatarId}')"
+                       type="button"
                        class="px-4 py-2 bg-green-600 hover:bg-green-700 text-white font-bold rounded-lg transition-colors text-sm"
                      >
                        Claim Avatar
                      </button>`
-                  : `<div class="px-4 py-2 bg-green-600/20 text-green-400 rounded-lg text-sm">
-                       Avatar Claimed
+                  : `<div class="flex flex-col gap-2">
+                       <button
+                         onclick="createToken('${avatarId}')"
+                         type="button"
+                         class="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white font-bold rounded-lg transition-colors text-sm"
+                       >
+                         Create SPL Token
+                       </button>
+                       <button
+                         onclick="linkXAccount('${avatarId}')"
+                         type="button"
+                         class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-lg transition-colors text-sm"
+                       >
+                         Link X Account
+                       </button>
                      </div>`
             }
           </div>
@@ -859,9 +947,7 @@ async function showAvatarDetails(avatarId) {
 
         <!-- TIER BADGE (top-right) -->
         <div
-          class="absolute top-2 right-2 px-2 py-1 rounded text-xs font-bold ${getTierColor(
-            avatarResponse.model,
-          )}"
+          class="absolute top-2 right-2 px-2 py-1 rounded text-xs font-bold ${getTierColor(avatarResponse.model)}"
         >
           Tier ${getTierFromModel(avatarResponse.model)}
         </div>

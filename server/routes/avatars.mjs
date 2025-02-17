@@ -6,11 +6,11 @@
 
 import express from 'express';
 import { ObjectId } from 'mongodb';
-import Fuse from 'fuse.js';
 
-// Example imports, adjust paths as needed
+
 import { thumbnailService } from '../services/thumbnailService.mjs';
 import { StatGenerationService } from '../../src/services/statGenerationService.mjs';
+import { NFTMintingService } from '../../src/services/nftMintService.mjs';
 
 const router = express.Router();
 
@@ -21,44 +21,10 @@ function escapeRegExp(str) {
   return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
-// Map rarities to a "tier" label (used in advanced leaderboard example)
-const rarityToTier = {
-  legendary: 'S',
-  rare: 'A',
-  uncommon: 'B',
-  common: 'C',
-};
-
-/**
- * Returns the ancestry (parent chain) of an avatar by iterating up the family tree.
- * Example usage in an advanced leaderboard scenario.
- */
-async function getAvatarAncestry(db, avatarId) {
-  const ancestry = [];
-  let currentAvatar = await db.collection('avatars').findOne(
-    { _id: new ObjectId(avatarId) },
-    { projection: { parents: 1 } }
-  );
-
-  while (currentAvatar?.parents?.length) {
-    const parentId = currentAvatar.parents[0];
-    const parent = await db.collection('avatars').findOne(
-      { _id: new ObjectId(parentId) },
-      { projection: { _id: 1, name: 1, imageUrl: 1, emoji: 1, parents: 1 } }
-    );
-    if (!parent) break;
-    ancestry.push(parent);
-    currentAvatar = parent;
-  }
-
-  return ancestry;
-}
-
 /**
  * Main export function that returns the configured router.
  */
 export default function avatarRoutes(db) {
-  // API routes implementations...
   router.get('/', async (req, res) => {
     try {
       const page = Math.max(1, parseInt(req.query.page, 10) || 1);
@@ -70,15 +36,31 @@ export default function avatarRoutes(db) {
       let sort = { createdAt: -1 };
 
       if (view === 'owned' && req.query.walletAddress) {
-        const xAuths = await db.collection('x_auth')
-          .find({ walletAddress: req.query.walletAddress })
-          .toArray();
+        const walletAddress = req.query.walletAddress;
 
-        const authorizedAvatarIds = xAuths.map((auth) => {
-          return typeof auth.avatarId === 'string'
+        // Fetch avatar IDs from both x_auth and avatar_claims
+        const [xAuths, avatarClaims] = await Promise.all([
+          db.collection('x_auth').find({ walletAddress }).toArray(),
+          db.collection('avatar_claims').find({ walletAddress }).toArray()
+        ]);
+
+        // Map to ObjectIds (if needed)
+        const xAuthAvatarIds = xAuths.map(auth =>
+          typeof auth.avatarId === 'string'
             ? new ObjectId(auth.avatarId)
-            : auth.avatarId;
-        });
+            : auth.avatarId
+        );
+        const claimAvatarIds = avatarClaims.map(claim =>
+          typeof claim.avatarId === 'string'
+            ? new ObjectId(claim.avatarId)
+            : claim.avatarId
+        );
+
+        // Combine both lists and remove duplicates.
+        // We convert ObjectIds to strings to deduplicate, then convert back.
+        const authorizedAvatarIds = [...new Set(
+          [...xAuthAvatarIds, ...claimAvatarIds].map(id => id.toString())
+        )].map(id => new ObjectId(id));
 
         query._id = { $in: authorizedAvatarIds };
       }
@@ -122,6 +104,7 @@ export default function avatarRoutes(db) {
     }
   });
 
+
   // ------------------------------------
   // GET /:avatarId
   // Returns the avatar details along with its inventory
@@ -133,7 +116,7 @@ export default function avatarRoutes(db) {
 
       // Allow lookup by ObjectId or name
       try {
-        query = { 
+        query = {
           $or: [
             { _id: new ObjectId(avatarId) },
             { _id: avatarId },
@@ -141,7 +124,7 @@ export default function avatarRoutes(db) {
           ]
         };
       } catch (err) {
-        query = { 
+        query = {
           $or: [
             { _id: avatarId },
             { name: avatarId }
@@ -181,7 +164,7 @@ export default function avatarRoutes(db) {
       res.json(avatar);
     } catch (error) {
       console.error('Error fetching avatar details:', error);
-      res.status(500).json({ 
+      res.status(500).json({
         error: 'Failed to fetch avatar details',
         details: process.env.NODE_ENV === 'development' ? error.message : undefined
       });
@@ -316,39 +299,8 @@ export default function avatarRoutes(db) {
     }
   });
 
-  // -------------------------------------------------
-  // 4) POST /claim (claim a random unminted avatar)
-  // -------------------------------------------------
-  router.post('/claim', async (req, res) => {
-    try {
-      const { walletAddress } = req.body;
-      if (!walletAddress) {
-        return res.status(400).json({ error: 'Wallet address required' });
-      }
 
-      // Example avatar service not shown in your snippet; you can adapt:
-      // e.g., const avatarService = new AvatarGenerationService(db);
-      // const randomAvatar = await avatarService.getRandomUnmintedAvatar();
-      // We'll assume you have such a function or direct query:
-      const randomAvatar = await db.collection('avatars').findOne({ claimed: { $ne: true } });
-      if (!randomAvatar) {
-        return res.status(404).json({ error: 'No available avatars to claim' });
-      }
-
-      // Mark as claimed + mint
-      const nftMintService = new NFTMintingService(db);
-      await nftMintService.mintAvatarToWallet(randomAvatar._id, walletAddress);
-
-      res.json({ success: true, avatar: randomAvatar });
-    } catch (error) {
-      console.error('Error claiming avatar (random):', error);
-      res.status(500).json({ error: error.message });
-    }
-  });
-
-  // ---------------------------------------------------------
   // 5) POST /:avatarId/claim (claim a *specific* avatar)
-  // ---------------------------------------------------------
   router.post('/:avatarId/claim', async (req, res) => {
     try {
       const { avatarId } = req.params;
@@ -366,7 +318,7 @@ export default function avatarRoutes(db) {
         return res.status(404).json({ error: 'Avatar not found' });
       }
 
-      // Check existing claim
+      // Check if the avatar is already claimed
       const existingClaim = await db.collection('avatar_claims').findOne({
         avatarId: new ObjectId(avatarId)
       });
@@ -378,19 +330,9 @@ export default function avatarRoutes(db) {
         return res.status(400).json({ error: 'Avatar already claimed by another wallet' });
       }
 
-      // Create new claim record and mark avatar as claimed
-      await Promise.all([
-        db.collection('avatar_claims').insertOne({
-          avatarId: new ObjectId(avatarId),
-          walletAddress: walletAddress,
-          createdAt: new Date(),
-          xAuths: []
-        }),
-        db.collection('avatars').updateOne(
-          { _id: new ObjectId(avatarId) },
-          { $set: { claimed: true, claimedBy: walletAddress } }
-        )
-      ]);
+      // Use NFTMintingService to mark the avatar as ready to mint for this wallet
+      const nftMintService = new NFTMintingService(db);
+      await nftMintService.markAvatarForMint(avatarId, walletAddress);
 
       res.json({ success: true });
     } catch (error) {
@@ -521,8 +463,8 @@ export default function avatarRoutes(db) {
   router.get('/:avatarId/stats', async (req, res) => {
     try {
       const { avatarId } = req.params;
-      const avatar = await db.collection('avatars').findOne({ 
-        _id: new ObjectId(avatarId) 
+      const avatar = await db.collection('avatars').findOne({
+        _id: new ObjectId(avatarId)
       });
 
       if (!avatar) {
@@ -530,9 +472,9 @@ export default function avatarRoutes(db) {
       }
 
       const statService = new StatGenerationService();
-      
+
       // Try to get existing stats first
-      let stats = await db.collection('dungeon_stats').findOne({ 
+      let stats = await db.collection('dungeon_stats').findOne({
         avatarId: new ObjectId(avatarId)
       });
 
