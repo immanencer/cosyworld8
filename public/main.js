@@ -1,18 +1,18 @@
 //
 // GLOBAL STATE
 //
-async function retryLeaderboardLoad(page) {
-  const leaderboardItems = document.getElementById("leaderboard-items");
-  const errorDiv = leaderboardItems.querySelector(".text-red-500");
+function retryLeaderboardLoad(page) {
+  var leaderboardItems = document.getElementById("leaderboard-items");
+  var errorDiv = leaderboardItems.querySelector(".text-red-500");
   if (errorDiv) {
     errorDiv.remove();
   }
-  await loadLeaderboard();
+  loadLeaderboard();
 }
 
-const state = {
+var state = {
   wallet: null,
-  activeTab: "squad", // updated
+  activeTab: "squad",
   loading: false,
   socialSort: "new",
 };
@@ -20,27 +20,28 @@ const state = {
 //
 // DOM REFERENCES
 //
-const content = document.getElementById("content");
-const tabButtons = document.querySelectorAll("[data-tab]");
+var content = document.getElementById("content");
+var tabButtons = document.querySelectorAll("[data-tab]");
 
 //
 // HELPER FUNCTIONS
 //
-const fetchJSON = async (url) => {
-  const response = await fetch(url);
-  if (!response.ok) {
-    throw new Error(`HTTP error! status: ${response.status}`);
-  }
-  return response.json();
+var fetchJSON = function(url) {
+  return fetch(url).then(function(response) {
+    if (!response.ok) {
+      throw new Error("HTTP error! status: " + response.status);
+    }
+    return response.json();
+  });
 };
 
-const getModifier = (score) => {
+var getModifier = function(score) {
   if (typeof score !== "number") return 0;
   return Math.floor((score - 10) / 2);
 };
 
 function getTierFromModel(model) {
-  if (!model) return "U"; // Unknown
+  if (!model) return "U";
   if (model.includes("gpt-4")) return "S";
   if (model.includes("gpt-3.5")) return "A";
   if (model.includes("claude")) return "B";
@@ -48,8 +49,8 @@ function getTierFromModel(model) {
 }
 
 function getTierColor(model) {
-  const tier = getTierFromModel(model);
-  const colors = {
+  var tier = getTierFromModel(model);
+  var colors = {
     S: "bg-purple-600",
     A: "bg-blue-600",
     B: "bg-green-600",
@@ -196,8 +197,8 @@ async function loadContent() {
 
   try {
     switch (state.activeTab) {
-      case "squad": // updated from "owned"
-        await loadSquad(); // renamed from loadOwnedAvatars
+      case "squad": 
+        await loadSquad(); 
         break;
       case "actions":
         await loadActionLog();
@@ -269,11 +270,11 @@ async function claimAvatar(avatarId) {
 //
 // LOADERS PER TAB
 //
-async function loadSquad() { // renamed function
+async function loadSquad() { 
   if (!state.wallet) {
     content.innerHTML = `
       <div class="text-center py-12">
-        <p class="mb-4">Connect your wallet to view your Squad</p> <!-- updated text -->
+        <p class="mb-4">Connect your wallet to view your Squad</p> 
         <button
           class="px-4 py-2 bg-blue-600 rounded"
           onclick="connectWallet()"
@@ -298,7 +299,7 @@ async function loadSquad() { // renamed function
     ) {
       content.innerHTML = `
         <div class="text-center py-12">
-          No Squad members found <!-- updated text -->
+          No Squad members found 
         </div>
       `;
       return;
@@ -882,93 +883,6 @@ async function showAvatarDetails(avatarId) {
                   ? avatarResponse.actions
                       .slice(0, 3)
                       .map(
-
-async function loadWorldContent() {
-  try {
-    // Fetch locations, including their avatars and items
-    const locations = await fetchJSON('/api/dungeon/locations');
-
-    content.innerHTML = `
-      <div class="max-w-7xl mx-auto px-4">
-        <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-          ${locations.map(location => `
-            <div class="bg-gray-800 rounded-lg overflow-hidden shadow-lg">
-              <!-- Location Header -->
-              <div class="relative">
-                ${location.imageUrl ? 
-                  `<img src="${location.imageUrl}" alt="${location.name}" class="w-full h-48 object-cover">` :
-                  `<div class="w-full h-48 bg-gray-700 flex items-center justify-center">
-                    <span class="text-4xl">🗺️</span>
-                   </div>`
-                }
-                <div class="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 p-4">
-                  <h3 class="text-xl font-bold text-white">${location.name}</h3>
-                </div>
-              </div>
-
-              <!-- Location Content -->
-              <div class="p-4">
-                <p class="text-gray-300 mb-4">${location.description || 'No description available.'}</p>
-
-                <!-- Avatars Section -->
-                <div class="mb-4">
-                  <h4 class="text-sm font-semibold text-gray-400 uppercase mb-2">Avatars Present</h4>
-                  <div class="flex flex-wrap gap-2">
-                    ${location.avatars?.length ? 
-                      location.avatars.map(avatar => `
-                        <div class="relative group">
-                          <img 
-                            src="${avatar.thumbnailUrl || avatar.imageUrl}" 
-                            alt="${avatar.name}"
-                            class="w-10 h-10 rounded-full border-2 border-gray-700 hover:border-blue-500 transition-colors"
-                          >
-                          <div class="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 bg-gray-900 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">
-                            ${avatar.name}
-                          </div>
-                        </div>
-                      `).join('') : 
-                      '<span class="text-gray-500 text-sm">No avatars present</span>'
-                    }
-                  </div>
-                </div>
-
-                <!-- Items Section -->
-                <div>
-                  <h4 class="text-sm font-semibold text-gray-400 uppercase mb-2">Items</h4>
-                  <div class="grid grid-cols-4 gap-2">
-                    ${location.items?.length ? 
-                      location.items.map(item => `
-                        <div class="relative group">
-                          <img 
-                            src="${item.imageUrl}" 
-                            alt="${item.name}"
-                            class="w-12 h-12 rounded-lg border-2 border-gray-700 hover:border-blue-500 transition-colors object-cover"
-                          >
-                          <div class="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 bg-gray-900 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">
-                            ${item.name}
-                          </div>
-                        </div>
-                      `).join('') : 
-                      '<span class="text-gray-500 text-sm">No items present</span>'
-                    }
-                  </div>
-                </div>
-              </div>
-            </div>
-          `).join('')}
-        </div>
-      </div>
-    `;
-  } catch (error) {
-    console.error('Error loading world content:', error);
-    content.innerHTML = `
-      <div class="text-center py-12 text-red-500">
-        Failed to load world content: ${error.message}
-      </div>
-    `;
-  }
-}
-
                         (action) => `
                           <div class="text-sm text-gray-300">
                             ${
@@ -1004,7 +918,7 @@ async function loadWorldContent() {
           fill="none"
           viewBox="0 0 24 24"
           stroke="currentColor"
-        >>
+        >
           <path
             stroke-linecap="round"
             stroke-linejoin="round"
@@ -1259,3 +1173,89 @@ async function repostPost(postId) {
 document.addEventListener("DOMContentLoaded", () => {
   loadContent();
 });
+
+async function loadWorldContent() {
+  try {
+    // Fetch locations, including their avatars and items
+    const locations = await fetchJSON('/api/dungeon/locations');
+
+    content.innerHTML = `
+      <div class="max-w-7xl mx-auto px-4">
+        <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+          ${locations.map(location => `
+            <div class="bg-gray-800 rounded-lg overflow-hidden shadow-lg">
+              <!-- Location Header -->
+              <div class="relative">
+                ${location.imageUrl ? 
+                  `<img src="${location.imageUrl}" alt="${location.name}" class="w-full h-48 object-cover">` :
+                  `<div class="w-full h-48 bg-gray-700 flex items-center justify-center">
+                    <span class="text-4xl">🗺️</span>
+                   </div>`
+                }
+                <div class="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 p-4">
+                  <h3 class="text-xl font-bold text-white">${location.name}</h3>
+                </div>
+              </div>
+
+              <!-- Location Content -->
+              <div class="p-4">
+                <p class="text-gray-300 mb-4">${location.description || 'No description available.'}</p>
+
+                <!-- Avatars Section -->
+                <div class="mb-4">
+                  <h4 class="text-sm font-semibold text-gray-400 uppercase mb-2">Avatars Present</h4>
+                  <div class="flex flex-wrap gap-2">
+                    ${location.avatars?.length ? 
+                      location.avatars.map(avatar => `
+                        <div class="relative group">
+                          <img 
+                            src="${avatar.thumbnailUrl || avatar.imageUrl}" 
+                            alt="${avatar.name}"
+                            class="w-10 h-10 rounded-full border-2 border-gray-700 hover:border-blue-500 transition-colors"
+                          >
+                          <div class="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 bg-gray-900 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">
+                            ${avatar.name}
+                          </div>
+                        </div>
+                      `).join('') : 
+                      '<span class="text-gray-500 text-sm">No avatars present</span>'
+                    }
+                  </div>
+                </div>
+
+                <!-- Items Section -->
+                <div>
+                  <h4 class="text-sm font-semibold text-gray-400 uppercase mb-2">Items</h4>
+                  <div class="grid grid-cols-4 gap-2">
+                    ${location.items?.length ? 
+                      location.items.map(item => `
+                        <div class="relative group">
+                          <img 
+                            src="${item.imageUrl}" 
+                            alt="${item.name}"
+                            class="w-12 h-12 rounded-lg border-2 border-gray-700 hover:border-blue-500 transition-colors object-cover"
+                          >
+                          <div class="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 bg-gray-900 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">
+                            ${item.name}
+                          </div>
+                        </div>
+                      `).join('') : 
+                      '<span class="text-gray-500 text-sm">No items present</span>'
+                    }
+                  </div>
+                </div>
+              </div>
+            </div>
+          `).join('')}
+        </div>
+      </div>
+    `;
+  } catch (error) {
+    console.error('Error loading world content:', error);
+    content.innerHTML = `
+      <div class="text-center py-12 text-red-500">
+        Failed to load world content: ${error.message}
+      </div>
+    `;
+  }
+}
