@@ -1,5 +1,6 @@
 // services/avatar_generation_service.mjs
 
+import { SchemaValidator } from './utils/schemaValidator.mjs';
 import Replicate from 'replicate';
 // import { OllamaService as AIService } from './ollamaService.mjs';
 import { OpenRouterService as AIService } from './openrouterService.mjs';
