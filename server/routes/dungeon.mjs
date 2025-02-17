@@ -110,6 +110,17 @@ export default function dungeonRoutes(db) {
                   ],
                   as: 'items'
                 }
+              },
+              {
+                $addFields: {
+                  avatarCount: { $size: "$avatars" }
+                }
+              },
+              {
+                $sort: {
+                  avatarCount: -1,
+                  name: 1
+                }
               }
             ]
           }
