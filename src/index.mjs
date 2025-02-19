@@ -184,7 +184,7 @@ async function handleBreedCommand(message, args, commandLine) {
       `;
 
     // Return the created avatar from handleSummonCommand (passing breed: true)
-    return await handleSummonCommand(message, [prompt], true, {
+    return await handleSummonCommand(message, prompt, true, {
       summoner: `${message.author.username}@${message.author.id}`,
       parents: [avatar1._id, avatar2._id],
     });
@@ -219,8 +219,7 @@ async function trackSummon(userId) {
   });
 }
 
-async function handleSummonCommand(message, args, breed = false, attributes = {}) {
-  let prompt = args.join(' ').trim();
+async function handleSummonCommand(message, prompt, breed = false, attributes = {}) {
   let existingAvatar = await avatarService.getAvatarByName(prompt);
 
   try {
@@ -267,12 +266,12 @@ async function handleSummonCommand(message, args, breed = false, attributes = {}
 
     await sendAsWebhook(message.channel.id, intro, createdAvatar.name, createdAvatar.imageUrl);
     await chatService.dungeonService.initializeAvatar(createdAvatar._id, message.channel.id);
-    await reactToMessage(client, message, createdAvatar.emoji || '🎉');
+    await reactToMessage(message, createdAvatar.emoji || '🎉');
     if (!breed) await trackSummon(message.author.id);
     await chatService.respondAsAvatar(message.channel, createdAvatar, true);
   } catch (error) {
     logger.error(`Summon error: ${error.message}`);
-    await reactToMessage(client, message, '❌');
+    await reactToMessage(message, '❌');
   }
 }
 
@@ -289,7 +288,7 @@ async function handleAttackCommand(message, args) {
     return;
   }
   const attackResult = await chatService.dungeonService.tools.get('attack').execute(message, [targetAvatar.name], targetAvatar);
-  await reactToMessage(client, message, '⚔️');
+  await reactToMessage(message, '⚔️');
   await replyToMessage(message, `🔥 **${attackResult}**`);
 }
 
@@ -318,22 +317,22 @@ async function handleCommands(message, content) {
       return;
     }
 
-    const summonArgs = message.content.slice(8).trim().split(' ');
-    await reactToMessage(client, message.channel, '🔮');
+    const summonArgs = message.content;
+    await reactToMessage(message, '🔮');
     await handleSummonCommand(message, summonArgs);
   }
 
   // Attack command
-  if (commandLine.startsWith('⚔️')) {
+  if (message.content.startsWith('⚔️')) {
     // For demonstration, let's block usage unless it's a bot
     if (!message.author.bot) {
       await replyToMessage(message, '❌ Sword of violence not found.');
       return;
     }
     const attackArgs = message.content.slice(8).trim().split(' ');
-    await reactToMessage(client, message, '⚔️');
+    await reactToMessage(message, '⚔️');
     await handleAttackCommand(message, attackArgs);
-    await reactToMessage(client, message, '✅');
+    await reactToMessage(message, '✅');
   }
 
   // Breed command
@@ -344,9 +343,9 @@ async function handleCommands(message, content) {
     //   return;
     // }
     const breedArgs = message.content.slice(6).trim().split(' ');
-    await reactToMessage(client, message, '🏹');
+    await reactToMessage(message, '🏹');
     await handleBreedCommand(message, breedArgs, commandLine);
-    await reactToMessage(client, message, '✅');
+    await reactToMessage(message, '✅');
   }
 }
 

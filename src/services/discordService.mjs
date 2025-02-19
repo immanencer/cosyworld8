@@ -64,13 +64,13 @@ const webhookCache = new Map();
  * @param {string} emoji - The emoji to react with.
  */
 export async function reactToMessage(message, emoji) {
-try {
+  try {
 
-  await message.react(emoji);
-  logger.info(`Reacted to message ${messageId} in channel ${channelId} with ${emoji}`);
-} catch (error) {
-  logger.error(`Failed to react to message ${messageId} in channel ${channelId}`);
-}
+    await message.react(emoji);
+    logger.info(`Reacted to message ${message.id} in channel ${message.channel.id} with ${emoji}`);
+  } catch (error) {
+    logger.error(`Failed to react to message: ` + error.message);
+  }
 
 }
 
