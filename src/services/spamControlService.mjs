@@ -1,3 +1,5 @@
+import configService from './configService.mjs';
+
 // ./services/spamControlService.mjs
 export class SpamControlService {
   /**
@@ -17,6 +19,10 @@ export class SpamControlService {
     this.spamTracker = new Map();
     // MongoDB collection for persistent penalty records
     this.spamPenaltyCollection = db.collection('user_spam_penalties');
+
+    this.logger.info(
+      `SpamControlService initialized with spamThreshold=${this.spamThreshold}, spamTimeWindow=${this.spamTimeWindow}ms, basePenalty=${this.basePenalty}ms.`
+    );
   }
 
   /**
@@ -25,12 +31,25 @@ export class SpamControlService {
    * @returns {Promise<Object|null>}
    */
   async getUserPenalty(userId) {
-    return await this.spamPenaltyCollection.findOne({ userId });
+    try {
+      this.logger.debug(`Fetching penalty record for user ${userId}.`);
+      const record = await this.spamPenaltyCollection.findOne({ userId });
+      if (record) {
+        this.logger.debug(`Penalty record for user ${userId} found: ${JSON.stringify(record)}.`);
+      } else {
+        this.logger.debug(`No penalty record found for user ${userId}.`);
+      }
+      return record;
+    } catch (error) {
+      this.logger.error(`Error fetching penalty record for user ${userId}: ${error.message}`);
+      throw error;
+    }
   }
 
   /**
    * Records a spam strike for the user, exponentially increasing the penalty.
    * @param {string} userId
+   * @param {string} serverId
    * @returns {Promise<void>}
    */
   async recordSpamStrike(userId, serverId) {
@@ -39,25 +58,35 @@ export class SpamControlService {
     const newStrike = record ? record.strikeCount + 1 : 1;
     const server = serverId || 'DM';
 
+    this.logger.info(
+      `Recording spam strike for user ${userId} in server ${server}. Current strike count: ${record ? record.strikeCount : 0}, new strike count: ${newStrike}.`
+    );
+
     // Check if user should be permanently blacklisted
     if (newStrike >= 3) {
-      await this.spamPenaltyCollection.updateOne(
-        { userId },
-        {
-          $set: {
-            strikeCount: newStrike,
-            permanentlyBlacklisted: true,
-            blacklistedAt: now,
-            server: server,
-            penaltyExpires: new Date(8640000000000000) // Max date
-          }
-        },
-        { upsert: true }
-      );
-
       this.logger.warn(
-        `User ${userId} has been permanently blacklisted after ${newStrike} strikes in server ${server}.`
+        `User ${userId} reached strike count ${newStrike}. Permanently blacklisting user in server ${server}.`
       );
+      try {
+        await this.spamPenaltyCollection.updateOne(
+          { userId },
+          {
+            $set: {
+              strikeCount: newStrike,
+              permanentlyBlacklisted: true,
+              blacklistedAt: now,
+              server: server,
+              penaltyExpires: new Date(8640000000000000) // Max date
+            }
+          },
+          { upsert: true }
+        );
+        this.logger.warn(
+          `User ${userId} has been permanently blacklisted after ${newStrike} strikes in server ${server}.`
+        );
+      } catch (error) {
+        this.logger.error(`Error permanently blacklisting user ${userId}: ${error.message}`);
+      }
       return;
     }
 
@@ -65,15 +94,18 @@ export class SpamControlService {
     const penaltyDuration = this.basePenalty * Math.pow(2, newStrike - 1);
     const penaltyExpires = new Date(now + penaltyDuration);
 
-    await this.spamPenaltyCollection.updateOne(
-      { userId },
-      { $set: { strikeCount: newStrike, penaltyExpires } },
-      { upsert: true }
-    );
-
-    this.logger.warn(
-      `User ${userId} recorded spam strike #${newStrike}. Penalty until ${penaltyExpires}.`
-    );
+    try {
+      await this.spamPenaltyCollection.updateOne(
+        { userId },
+        { $set: { strikeCount: newStrike, penaltyExpires } },
+        { upsert: true }
+      );
+      this.logger.warn(
+        `User ${userId} recorded spam strike #${newStrike}. Applied penalty: ${penaltyDuration}ms, expires at ${penaltyExpires.toISOString()}.`
+      );
+    } catch (error) {
+      this.logger.error(`Error recording spam strike for user ${userId}: ${error.message}`);
+    }
   }
 
   /**
@@ -84,10 +116,18 @@ export class SpamControlService {
   updateUserTimestamps(userId) {
     const now = Date.now();
     let timestamps = this.spamTracker.get(userId) || [];
+    const originalCount = timestamps.length;
     // Remove timestamps older than the allowed time window
     timestamps = timestamps.filter(ts => now - ts < this.spamTimeWindow);
+    const prunedCount = originalCount - timestamps.length;
+    if (prunedCount > 0) {
+      this.logger.debug(`Pruned ${prunedCount} outdated timestamp(s) for user ${userId}.`);
+    }
     timestamps.push(now);
     this.spamTracker.set(userId, timestamps);
+    this.logger.debug(
+      `User ${userId} now has ${timestamps.length} message(s) within the time window (${this.spamTimeWindow}ms).`
+    );
     return timestamps.length;
   }
 
@@ -99,27 +139,44 @@ export class SpamControlService {
    * @returns {Promise<boolean>} True if the message is allowed; false if it should be ignored.
    */
   async shouldProcessMessage(message) {
+    const userId = message.author.id;
+    const serverId = message.guild?.id || 'DM';
+    this.logger.debug(`Evaluating message from user ${message.author.username} (${userId}) in server ${serverId}.`);
+
     // Always process bot messages normally and verify guild
     if (message.author.bot || !message.guild) {
+      this.logger.debug(`Bypassing spam check for bot or non-guild message from user ${userId}.`);
       return true;
     }
 
     // Check if guild is whitelisted
-    const config = await configService.get('whitelistedGuilds');
+    let config;
+    try {
+      config = await configService.get('whitelistedGuilds');
+    } catch (error) {
+      this.logger.error(`Error fetching whitelistedGuilds config: ${error.message}`);
+      // In case of error fetching config, default to ignoring the message for safety.
+      return false;
+    }
     const whitelistedGuilds = Array.isArray(config) ? config : [];
     if (!whitelistedGuilds.includes(message.guild.id)) {
+      this.logger.warn(`Guild ${message.guild.name}(${message.guild.id}) is not whitelisted. Ignoring message from user ${userId} - ${message.author.username}.`);
       return false;
     }
 
-    const userId = message.author.id;
-    const serverId = message.guild?.id || 'DM';
     const now = Date.now();
 
     // 1. Check if the user is permanently blacklisted
-    const penaltyRecord = await this.getUserPenalty(userId);
+    let penaltyRecord;
+    try {
+      penaltyRecord = await this.getUserPenalty(userId);
+    } catch (error) {
+      this.logger.error(`Error retrieving penalty record for user ${userId}: ${error.message}`);
+      return false;
+    }
     if (penaltyRecord?.permanentlyBlacklisted) {
       this.logger.warn(
-        `Permanently blacklisted user ${message.author.username} (${userId}) attempted to send a message in guild ${serverId}.`
+        `Permanently blacklisted user ${message.author.username} (${userId}) attempted to send a message in server ${serverId}.`
       );
       return false;
     }
@@ -127,18 +184,24 @@ export class SpamControlService {
     // 2. Check if the user is under an active penalty
     if (penaltyRecord && new Date(penaltyRecord.penaltyExpires) > now) {
       this.logger.warn(
-        `User ${message.author.username} (${userId}) is under penalty until ${penaltyRecord.penaltyExpires}. Ignoring message. Attempted to send a message in guild ${serverId}.`
+        `User ${message.author.username} (${userId}) is under penalty until ${new Date(
+          penaltyRecord.penaltyExpires
+        ).toISOString()}. Ignoring message in server ${serverId}.`
       );
       return false;
     }
 
-    // 2. Update in-memory timestamps and check if the user is spamming
+    // 3. Update in-memory timestamps and check if the user is spamming
     const count = this.updateUserTimestamps(userId);
     if (count > this.spamThreshold) {
-      await this.recordSpamStrike(userId);
+      this.logger.warn(
+        `User ${message.author.username} (${userId}) exceeded spam threshold with ${count} messages in ${this.spamTimeWindow}ms in server ${serverId}.`
+      );
+      await this.recordSpamStrike(userId, serverId);
       return false;
     }
 
+    this.logger.debug(`Message from user ${message.author.username} (${userId}) in server ${serverId} passed spam check.`);
     return true;
   }
 }

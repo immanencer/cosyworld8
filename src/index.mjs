@@ -356,7 +356,7 @@ async function handleCommands(message, content) {
 client.on('messageCreate', async (message) => {
   try {
     // Use the Spam Control Service to check if the message should be processed.
-    if (!(await spamControlService(message))) {
+    if (!(await spamControlService.shouldProcessMessage((message)))) {
       // If the message is from a spammy user, silently ignore it.
       return;
     }

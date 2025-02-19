@@ -1,5 +1,8 @@
 {
-  "whitelistedGuilds": [],
+  "whitelistedGuilds": [
+    "1309314312204193912",
+    "1219837842058907728"
+  ],
   "adminRoles": [
     "Admin"
   ],
@@ -7,6 +10,12 @@
     "breeding": true,
     "combat": true,
     "itemCreation": true
+  },
+  "toolEmojis": {
+    "🔮": "summon",
+    "🏹": "breed",
+    "⚔️": "attack",
+    "🛡️": "defend"
   },
   "rateLimit": {
     "messages": 5,
