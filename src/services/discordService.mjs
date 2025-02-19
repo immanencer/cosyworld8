@@ -384,3 +384,35 @@ export async function getRecentMessages(client, channelId, limit = 10) {
     return [];
   }
 }
+
+// Assuming spamControlService is defined elsewhere and handles spam detection.
+import spamControlService from './spamControlService.mjs';
+
+client.on('messageCreate', async (message) => {
+  try {
+    // Ignore DMs and messages without a guild
+    if (!message.guild) return;
+
+    // Load config and check whitelist
+    const config = await configService.get('whitelistedGuilds');
+    const whitelistedGuilds = Array.isArray(config) ? config : [];
+
+    // Only process messages from whitelisted guilds
+    if (!whitelistedGuilds.includes(message.guild.id)) {
+      return;
+    }
+
+    // Use the Spam Control Service to check if the message should be processed.
+    if (!(await spamControlService.shouldProcessMessage(message))) {
+      // If the message is from a spammy user, silently ignore it.
+      return;
+    }
+
+    //Rest of message handling logic...
+
+  } catch (error) {
+    logger.error(`Error processing message: ${error.message}`);
+  }
+});
+
+client.login(discordConfig.botToken);

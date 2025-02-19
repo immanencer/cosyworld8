@@ -99,9 +99,16 @@ export class SpamControlService {
    * @returns {Promise<boolean>} True if the message is allowed; false if it should be ignored.
    */
   async shouldProcessMessage(message) {
-    // Always process bot messages normally
-    if (message.author.bot) {
+    // Always process bot messages normally and verify guild
+    if (message.author.bot || !message.guild) {
       return true;
+    }
+
+    // Check if guild is whitelisted
+    const config = await configService.get('whitelistedGuilds');
+    const whitelistedGuilds = Array.isArray(config) ? config : [];
+    if (!whitelistedGuilds.includes(message.guild.id)) {
+      return false;
     }
 
     const userId = message.author.id;
