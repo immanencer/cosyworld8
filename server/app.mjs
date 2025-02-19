@@ -13,6 +13,7 @@ import tribeRoutes from './routes/tribes.mjs';
 import xauthRoutes from './routes/xauth.mjs';
 import wikiRoutes from './routes/wiki.mjs';
 import socialRoutes from './routes/social.mjs';
+import adminRoutes from './routes/admin.mjs';
 
 const app = express();
 const PORT = process.env.PORT || 3080;
@@ -44,6 +45,7 @@ app.use('/api/tokens', tokenRoutes(db));
     app.use('/auth/x', xauthRoutes(db));
     app.use('/api/wiki', wikiRoutes(db));
     app.use('/api/social', socialRoutes(db));
+    app.use('/api/admin', adminRoutes(db));
 
     // Models route
     const modelsRouter = await import('./routes/models.mjs');

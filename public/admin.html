@@ -1,0 +1,61 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Panel</title>
+    <link href="/css/tailwind.css" rel="stylesheet">
+</head>
+<body class="bg-gray-900 text-white">
+    <div class="container mx-auto px-4 py-8">
+        <h1 class="text-3xl font-bold mb-8">Admin Panel</h1>
+        
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div class="bg-gray-800 p-6 rounded-lg">
+                <h2 class="text-xl font-semibold mb-4">Guild Whitelist</h2>
+                <div class="space-y-4">
+                    <input type="text" id="guildId" placeholder="Enter Guild ID" 
+                           class="w-full p-2 bg-gray-700 rounded">
+                    <button onclick="whitelistGuild()" 
+                            class="w-full bg-purple-600 hover:bg-purple-700 px-4 py-2 rounded">
+                        Add Guild
+                    </button>
+                </div>
+                <div id="whitelistedGuilds" class="mt-4 space-y-2"></div>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        async function loadConfig() {
+            const response = await fetch('/api/admin/config');
+            const config = await response.json();
+            displayWhitelistedGuilds(config.whitelistedGuilds);
+        }
+
+        async function whitelistGuild() {
+            const guildId = document.getElementById('guildId').value;
+            const response = await fetch('/api/admin/whitelist/guild', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ guildId })
+            });
+            const result = await response.json();
+            if (result.success) {
+                displayWhitelistedGuilds(result.whitelistedGuilds);
+                document.getElementById('guildId').value = '';
+            }
+        }
+
+        function displayWhitelistedGuilds(guilds) {
+            const container = document.getElementById('whitelistedGuilds');
+            container.innerHTML = guilds.map(guild => 
+                `<div class="bg-gray-700 p-2 rounded">${guild}</div>`
+            ).join('');
+        }
+
+        loadConfig();
+    </script>
+</body>
+</html>
