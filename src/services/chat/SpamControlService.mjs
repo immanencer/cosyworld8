@@ -38,13 +38,13 @@ export class SpamControlService {
     let record = await this.getUserPenalty(userId);
     const newStrike = record ? record.strikeCount + 1 : 1;
     const server = serverId || 'DM';
-    
+
     // Check if user should be permanently blacklisted
     if (newStrike >= 3) {
       await this.spamPenaltyCollection.updateOne(
         { userId },
-        { 
-          $set: { 
+        {
+          $set: {
             strikeCount: newStrike,
             permanentlyBlacklisted: true,
             blacklistedAt: now,
@@ -54,7 +54,7 @@ export class SpamControlService {
         },
         { upsert: true }
       );
-      
+
       this.logger.warn(
         `User ${userId} has been permanently blacklisted after ${newStrike} strikes in server ${server}.`
       );
@@ -112,7 +112,7 @@ export class SpamControlService {
     const penaltyRecord = await this.getUserPenalty(userId);
     if (penaltyRecord?.permanentlyBlacklisted) {
       this.logger.warn(
-        `Permanently blacklisted user ${message.author.username} (${userId}) attempted to send a message.`
+        `Permanently blacklisted user ${message.author.username} (${userId}) attempted to send a message in guild ${serverId}.`
       );
       return false;
     }
@@ -120,7 +120,7 @@ export class SpamControlService {
     // 2. Check if the user is under an active penalty
     if (penaltyRecord && new Date(penaltyRecord.penaltyExpires) > now) {
       this.logger.warn(
-        `User ${message.author.username} (${userId}) is under penalty until ${penaltyRecord.penaltyExpires}. Ignoring message.`
+        `User ${message.author.username} (${userId}) is under penalty until ${penaltyRecord.penaltyExpires}. Ignoring message. Attempted to send a message in guild ${serverId}.`
       );
       return false;
     }
