@@ -73,6 +73,25 @@ export default function adminRoutes(db) {
     }
   });
 
+  // Unban a user
+  router.post('/unban', async (req, res) => {
+    try {
+      const { userId } = req.body;
+      await db.collection('user_spam_penalties').updateOne(
+        { userId },
+        { 
+          $set: { 
+            strikeCount: 0,
+            permanentlyBlacklisted: false,
+            penaltyExpires: new Date()
+          }
+        }
+      );
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ error: error.message });
+    }
+  });
 
   return router;
 }

@@ -98,10 +98,35 @@
                     <div class="text-sm text-gray-400">
                         Strikes: ${user.strikeCount}
                         <br>
-                        Penalty Until: ${new Date(user.penaltyExpires).toLocaleString()}
+                        ${user.permanentlyBlacklisted 
+                            ? '<span class="text-red-500">Permanently Blacklisted</span>'
+                            : `Penalty Until: ${new Date(user.penaltyExpires).toLocaleString()}`
+                        }
                     </div>
+                    <button onclick="unbanUser('${user.userId}')" 
+                            class="mt-2 bg-green-600 hover:bg-green-700 px-2 py-1 rounded">
+                        Unban User
+                    </button>
                 </div>
             `).join('');
+
+            async function unbanUser(userId) {
+                try {
+                    const response = await fetch('/api/admin/unban', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ userId })
+                    });
+                    if (response.ok) {
+                        loadStats(); // Refresh the display
+                    } else {
+                        throw new Error('Failed to unban user');
+                    }
+                } catch (error) {
+                    console.error('Error unbanning user:', error);
+                    alert('Failed to unban user');
+                }
+            }
         }
 
         loadStats();
