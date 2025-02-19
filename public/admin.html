@@ -82,13 +82,13 @@
                     <td class="py-2">
                         ${user.permanentlyBlacklisted 
                             ? '<span class="text-red-500">Banned</span>'
-                            : user.penaltyExpires > new Date().toISOString() 
+                            : new Date(user.penaltyExpires) > new Date() 
                                 ? `<span class="text-yellow-500">Penalty until ${new Date(user.penaltyExpires).toLocaleString()}</span>`
                                 : '<span class="text-green-500">Active</span>'
                         }
                     </td>
                     <td class="py-2">
-                        ${user.permanentlyBlacklisted
+                        ${user.permanentlyBlacklisted || new Date(user.penaltyExpires) > new Date()
                             ? `<button onclick="unbanUser('${user.userId}')" class="bg-green-600 hover:bg-green-700 px-2 py-1 rounded">Unban</button>`
                             : `<button onclick="banUser('${user.userId}')" class="bg-red-600 hover:bg-red-700 px-2 py-1 rounded">Ban</button>`
                         }
