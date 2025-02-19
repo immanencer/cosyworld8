@@ -1,3 +1,11 @@
+
+import fs from 'fs/promises';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const CONFIG_DIR = path.join(__dirname, '..', 'config');
+
 class ConfigService {
   constructor() {
     this.config = {
@@ -48,6 +56,67 @@ class ConfigService {
         clientSecret: process.env.X_CLIENT_SECRET
       }
     };
+    this.loadConfig();
+  }
+
+  async loadConfig() {
+    try {
+      const defaultConfig = JSON.parse(
+        await fs.readFile(path.join(CONFIG_DIR, 'default.config.json'), 'utf8')
+      );
+      let userConfig = {};
+      
+      try {
+        userConfig = JSON.parse(
+          await fs.readFile(path.join(CONFIG_DIR, 'user.config.json'), 'utf8')
+        );
+      } catch (error) {
+        // If user config doesn't exist, create it with default values
+        await fs.writeFile(
+          path.join(CONFIG_DIR, 'user.config.json'),
+          JSON.stringify(defaultConfig, null, 2)
+        );
+        userConfig = defaultConfig;
+      }
+
+      // Merge configs with user config taking precedence
+      this.config = {
+        ...this.config,
+        ...defaultConfig,
+        ...userConfig
+      };
+    } catch (error) {
+      console.error('Error loading config:', error);
+    }
+  }
+
+  async saveUserConfig(updates) {
+    try {
+      const userConfigPath = path.join(CONFIG_DIR, 'user.config.json');
+      const currentConfig = await this.getUserConfig();
+      const updatedConfig = { ...currentConfig, ...updates };
+      
+      await fs.writeFile(
+        userConfigPath,
+        JSON.stringify(updatedConfig, null, 2)
+      );
+      
+      await this.loadConfig(); // Reload configs
+      return true;
+    } catch (error) {
+      console.error('Error saving user config:', error);
+      return false;
+    }
+  }
+
+  async getUserConfig() {
+    try {
+      return JSON.parse(
+        await fs.readFile(path.join(CONFIG_DIR, 'user.config.json'), 'utf8')
+      );
+    } catch (error) {
+      return {};
+    }
   }
 
   get(path) {
@@ -81,7 +150,7 @@ class ConfigService {
   validate() {
     const required = [
       'DISCORD_CLIENT_ID',
-      'DISCORD_BOT_TOKEN',
+      'DISCORD_BOT_TOKEN', 
       'MONGO_URI',
       'OPENROUTER_API_TOKEN'
     ];
