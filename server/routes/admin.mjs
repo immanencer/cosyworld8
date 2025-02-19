@@ -45,13 +45,29 @@ export default function adminRoutes(db) {
     }
   });
 
-  // Endpoint to retrieve users permanently blacklisted by SpamControlService
-  router.get('/blacklist', async (req, res) => {
+  // Get admin stats including blacklist and whitelist
+  router.get('/stats', async (req, res) => {
     try {
-      // **REPLACE THIS WITH ACTUAL DATABASE QUERY**
-      // This is a placeholder;  replace with your database interaction to fetch blacklisted users.
-      const blacklistedUsers = await db.collection('users').find({ 'spamControl.permanentlyBlacklisted': true }).toArray();
-      res.json(blacklistedUsers);
+      const config = await loadConfig();
+      const blacklistedUsers = await db.collection('user_spam_penalties')
+        .find({ 
+          $or: [
+            { permanentlyBlacklisted: true },
+            { penaltyExpires: { $gt: new Date() } }
+          ]
+        })
+        .project({
+          userId: 1,
+          strikeCount: 1,
+          penaltyExpires: 1,
+          permanentlyBlacklisted: 1
+        })
+        .toArray();
+
+      res.json({
+        whitelistedGuilds: config.whitelistedGuilds || [],
+        blacklistedUsers: blacklistedUsers
+      });
     } catch (error) {
       res.status(500).json({ error: error.message });
     }

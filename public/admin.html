@@ -36,10 +36,21 @@
     
     <script>
         async function loadStats() {
-            const response = await fetch('/api/admin/stats');
-            const stats = await response.json();
-            displayWhitelistedGuilds(stats.whitelistedGuilds);
-            displayBlacklistedUsers(stats.blacklistedUsers);
+            try {
+                const response = await fetch('/api/admin/stats');
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                const stats = await response.json();
+                displayWhitelistedGuilds(stats.whitelistedGuilds || []);
+                displayBlacklistedUsers(stats.blacklistedUsers || []);
+            } catch (error) {
+                console.error('Failed to load stats:', error);
+                document.getElementById('whitelistedGuilds').innerHTML = 
+                    '<div class="bg-red-600 p-2 rounded">Failed to load data</div>';
+                document.getElementById('blacklistedUsers').innerHTML = 
+                    '<div class="bg-red-600 p-2 rounded">Failed to load data</div>';
+            }
         }
 
         async function whitelistGuild() {
