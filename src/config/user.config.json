@@ -1,5 +1,18 @@
-
 {
-  "whitelistedGuilds": [],
-  "adminRoles": ["Admin"]
+  "whitelistedGuilds": [
+    "1219837842058907728",
+    "1309314312204193912"
+  ],
+  "adminRoles": [
+    "Admin"
+  ],
+  "features": {
+    "breeding": true,
+    "combat": true,
+    "itemCreation": true
+  },
+  "rateLimit": {
+    "messages": 5,
+    "interval": 60000
+  }
 }
