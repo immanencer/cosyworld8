@@ -46,6 +46,19 @@ export default function adminRoutes(db) {
   });
 
   // Get admin stats including blacklist and whitelist
+  // Delete guild from whitelist
+  router.delete('/whitelist/guild/:guildId', async (req, res) => {
+    try {
+      const { guildId } = req.params;
+      const config = await loadConfig();
+      config.whitelistedGuilds = config.whitelistedGuilds.filter(id => id !== guildId);
+      await saveUserConfig(config);
+      res.json({ success: true, whitelistedGuilds: config.whitelistedGuilds });
+    } catch (error) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
   router.get('/stats', async (req, res) => {
     try {
       const config = await loadConfig();

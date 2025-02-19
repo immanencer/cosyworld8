@@ -68,12 +68,18 @@
         }
 
         async function removeGuild(guildId) {
-            const response = await fetch(`/api/admin/whitelist/guild/${guildId}`, {
-                method: 'DELETE'
-            });
-            const result = await response.json();
-            if (result.success) {
-                displayWhitelistedGuilds(result.whitelistedGuilds);
+            try {
+                const response = await fetch(`/api/admin/whitelist/guild/${guildId}`, {
+                    method: 'DELETE'
+                });
+                if (!response.ok) throw new Error('Failed to remove guild');
+                const result = await response.json();
+                if (result.success) {
+                    displayWhitelistedGuilds(result.whitelistedGuilds);
+                }
+            } catch (error) {
+                console.error('Error removing guild:', error);
+                alert('Failed to remove guild');
             }
         }
 
