@@ -63,23 +63,15 @@ const webhookCache = new Map();
  * @param {string} messageId - The ID of the message to react to.
  * @param {string} emoji - The emoji to react with.
  */
-export async function reactToMessage(client, channelId, messageId, emoji) {
-  try {
-    const channel = await client.channels.fetch(channelId);
-    if (!channel) {
-      throw new Error(`Channel with ID ${channelId} not found.`);
-    }
+export async function reactToMessage(message, emoji) {
+try {
 
-    const message = await channel.messages.fetch(messageId);
-    if (!message) {
-      throw new Error(`Message with ID ${messageId} not found.`);
-    }
+  await message.react(emoji);
+  logger.info(`Reacted to message ${messageId} in channel ${channelId} with ${emoji}`);
+} catch (error) {
+  logger.error(`Failed to react to message ${messageId} in channel ${channelId}`);
+}
 
-    await message.react(emoji);
-    logger.info(`Reacted to message ${messageId} in channel ${channelId} with ${emoji}`);
-  } catch (error) {
-    logger.error(`Failed to react to message ${messageId} in channel ${channelId}: ${error.message}`);
-  }
 }
 
 /**
@@ -89,18 +81,8 @@ export async function reactToMessage(client, channelId, messageId, emoji) {
  * @param {string} messageId - The ID of the message to reply to.
  * @param {string} replyContent - The content of the reply.
  */
-export async function replyToMessage(channelId, messageId, replyContent) {
+export async function replyToMessage(message, replyContent) {
   try {
-    const channel = await client.channels.fetch(channelId);
-    if (!channel) {
-      throw new Error(`Channel with ID ${channelId} not found.`);
-    }
-
-    const message = await channel.messages.fetch(messageId);
-    if (!message) {
-      throw new Error(`Message with ID ${messageId} not found.`);
-    }
-
     await message.reply(replyContent);
     logger.info(`Replied to message ${messageId} in channel ${channelId} with: ${replyContent}`);
   } catch (error) {
@@ -385,9 +367,6 @@ export async function getRecentMessages(client, channelId, limit = 10) {
   }
 }
 
-// Assuming spamControlService is defined elsewhere and handles spam detection.
-import spamControlService from './spamControlService.mjs';
-
 client.on('messageCreate', async (message) => {
   try {
     // Ignore DMs and messages without a guild
@@ -401,14 +380,6 @@ client.on('messageCreate', async (message) => {
     if (!whitelistedGuilds.includes(message.guild.id)) {
       return;
     }
-
-    // Use the Spam Control Service to check if the message should be processed.
-    if (!(await spamControlService.shouldProcessMessage(message))) {
-      // If the message is from a spammy user, silently ignore it.
-      return;
-    }
-
-    //Rest of message handling logic...
 
   } catch (error) {
     logger.error(`Error processing message: ${error.message}`);
