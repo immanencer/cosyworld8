@@ -161,4 +161,19 @@ export class MessageHandler {
 
     return mentionCounts;
   }
+
+  async ensureUserAvatar(message) {
+    const userId = message.author.id;
+    const existingAvatar = await this.avatarService.getAvatarByUserId(userId);
+    if (!existingAvatar) {
+      const newAvatar = await this.avatarService.createAvatar(userId, message.author.username);
+      this.logger.info(`Created avatar for user ${userId}: ${JSON.stringify(newAvatar)}`);
+    }
+  }
+
+  async processMessage(message) {
+    // Create avatar for user if they don't have one
+    await this.ensureUserAvatar(message);
+    //rest of the message processing logic
+  }
 }
