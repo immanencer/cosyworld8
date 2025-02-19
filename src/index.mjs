@@ -17,8 +17,6 @@ import {
 import { ChatService } from './services/chat/ChatService.mjs';
 import { MessageHandler } from './services/chat/MessageHandler.mjs';
 
-// Load environment variables from .env file
-dotenv.config();
 /**
  * ----------------------
  * Logging Configuration
