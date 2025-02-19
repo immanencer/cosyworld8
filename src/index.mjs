@@ -215,39 +215,6 @@ async function handleBreedCommand(message, args, commandLine) {
 }
 
 /**
- * Handles the !attack command to attack another avatar.
- */
-async function handleAttackCommand(message, args) {
-  if (args.length < 1) {
-    await replyToMessage(
-      message.channel.id,
-      message.id,
-      'Please mention an avatar to attack.'
-    );
-    return;
-  }
-
-  const targetName = args.join(' ');
-  const avatars = await avatarService.getAllAvatars();
-  const targetAvatar = await findAvatarByName(targetName, avatars);
-
-  if (!targetAvatar) {
-    await replyToMessage(
-      message.channel.id,
-      message.id,
-      `Could not find an avatar named "${targetName.substring(0, 32)}".`
-    );
-    return;
-  }
-
-  const attackResult = await chatService.dungeonService.tools
-    .get('attack')
-    .execute(message, [targetAvatar.name], targetAvatar);
-
-  await replyToMessage(message.channel.id, message.id, `🔥 **${attackResult}**`);
-}
-
-/**
  * Handles the !summon command to create or retrieve an existing avatar.
  * @param {Message} message - The Discord message object.
  * @param {Array} args - The arguments provided with the command.
@@ -274,171 +241,89 @@ async function trackSummon(userId) {
 }
 
 async function handleSummonCommand(message, args, breed = false, attributes = {}) {
-  let prompt = args.join(' ');
-  let existingAvatar = null;
+  let prompt = args.join(' ').trim();
+  let existingAvatar = await avatarService.getAvatarByName(prompt);
 
   try {
-    // 1. Check if we're summoning an existing avatar by exact name
-    existingAvatar = await avatarService.getAvatarByName(prompt.trim());
     if (existingAvatar) {
-      // React with the avatar's default emoji or '🔮'
       await reactToMessage(client, message.channel.id, message.id, existingAvatar.emoji || '🔮');
-
-      // Update the channel ID and position
-      await chatService.dungeonService.updateAvatarPosition(
-        existingAvatar._id,
-        message.channel.id
-      );
+      await chatService.dungeonService.updateAvatarPosition(existingAvatar._id, message.channel.id);
       existingAvatar.channelId = message.channel.id;
       await avatarService.updateAvatar(existingAvatar);
-
-      // Retrieve stats and send the avatar's profile embed
-      existingAvatar.stats = await chatService.dungeonService.getAvatarStats(
-        existingAvatar._id
-      );
+      existingAvatar.stats = await chatService.dungeonService.getAvatarStats(existingAvatar._id);
       await sendAvatarProfileEmbedFromObject(existingAvatar);
-
-      // Prompt the avatar to respond
       await chatService.respondAsAvatar(message.channel, existingAvatar, true);
-
-      // Confirm the command
-      await reactToMessage(client, message.channel.id, message.id, '✅');
       return;
     }
-
-    // 2. If no existing avatar found, either breed or create a new one
-    //    Optional: Restrict non-breed summons by role or user condition
-
 
     const canSummon = message.author.id === '1175877613017895032' || (await checkDailySummonLimit(message.author.id));
     if (!canSummon) {
-      await message.reply(`You have reached your daily limit of ${DAILY_SUMMON_LIMIT} summons. Try again tomorrow!`);
+      await message.reply(`Daily summon limit of ${DAILY_SUMMON_LIMIT} reached. Try again tomorrow!`);
       return;
     }
 
-    // If no prompt is provided, use a default from .env or a fallback
-    if (!prompt && process.env.DEFAULT_AVATAR_PROMPT) {
-      prompt = process.env.DEFAULT_AVATAR_PROMPT;
-    } else if (!prompt) {
-      prompt = 'create a new avatar, use your imagination!';
-    }
-
-    // Get recent messages from the channel
+    prompt = prompt || process.env.DEFAULT_AVATAR_PROMPT || 'Create a new avatar using your imagination!';
     const recentMessages = await chatService.getRecentMessagesFromDatabase(message.channel.id);
-    // Format the prompt with the recent messages
-    const messageString = recentMessages.reduce(
-      (acc, m) => `${acc}\n${m.author.username}: ${m.content}`,
-      ''
-    );
-
-    const avatarData = {
-      prompt: sanitizeInput(prompt),
-      channelId: message.channel.id,
-    };
-
-    // Check if prompt is an Arweave URL
-    if (prompt.match(/^(https:\/\/.*\.arweave\.net\/|ar:\/\/)/)) {
-      avatarData.arweave_prompt = prompt;
-    }
+    const messageString = recentMessages.map((m) => `${m.author.username}: ${m.content}`).join('\n');
+    const avatarData = { prompt: sanitizeInput(messageString + prompt), channelId: message.channel.id };
+    if (prompt.match(/^(https:\/\/.*\.arweave\.net\/|ar:\/\/)/)) avatarData.arweave_prompt = prompt;
 
     const createdAvatar = await avatarService.createAvatar(avatarData);
+    if (!createdAvatar || !createdAvatar.name) throw new Error(`Avatar creation failed: ${JSON.stringify(createdAvatar)}`);
 
-    if (createdAvatar && createdAvatar.name) {
-      // Select a random model if none provided
-      if (!createdAvatar.model) {
-        createdAvatar.model = await aiService.selectRandomModel();
-      }
+    createdAvatar.model = createdAvatar.model || (await aiService.selectRandomModel());
+    createdAvatar.stats = await chatService.dungeonService.getAvatarStats(createdAvatar._id);
+    await sendAvatarProfileEmbedFromObject(createdAvatar);
+    await avatarService.updateAvatar(createdAvatar);
 
-      // Retrieve stats
-      createdAvatar.stats = await chatService.dungeonService.getAvatarStats(
-        createdAvatar._id
-      );
+    let intro = await aiService.chat([
+      { role: 'system', content: `You are ${createdAvatar.name}. ${createdAvatar.description} ${createdAvatar.personality}` },
+      { role: 'user', content: `You've just arrived. Introduce yourself.` },
+    ], { model: createdAvatar.model });
 
-      // Send the avatar's profile embed
-      await sendAvatarProfileEmbedFromObject(createdAvatar);
+    createdAvatar.dynamicPersonality = intro;
+    createdAvatar.channelId = message.channel.id;
+    createdAvatar.attributes = attributes;
+    await avatarService.updateAvatar(createdAvatar);
 
-      // Update the avatar with the prompt
-      await avatarService.updateAvatar(createdAvatar);
-
-      // Generate an introductory message for the new avatar
-      let intro = await aiService.chat(
-        [
-          {
-            role: 'system',
-            content: `
-              You are the avatar ${createdAvatar.name}.
-              ${createdAvatar.description}
-              ${createdAvatar.personality}
-            `,
-          },
-          {
-            role: 'user',
-            content: `You've just arrived. This is your one chance to introduce yourself. Impress me, and save yourself from elimination.`,
-          },
-        ],
-        { model: createdAvatar.model }
-      );
-
-      // Store the introduction and any attributes (like breed parents)
-      createdAvatar.dynamicPersonality = intro;
-      createdAvatar.channelId = message.channel.id; // fix a minor typo if needed
-      createdAvatar.attributes = attributes;
-      await avatarService.updateAvatar(createdAvatar);
-
-      // Send the avatar's introduction as a webhook-style message
-      await sendAsWebhook(
-        message.channel.id,
-        intro,
-        createdAvatar.name,
-        createdAvatar.imageUrl
-      );
-
-      // Initialize dungeon position in the current channel
-      await chatService.dungeonService.initializeAvatar(
-        createdAvatar._id,
-        message.channel.id
-      );
-
-      // React to the original message
-      await reactToMessage(
-        client,
-        message.channel.id,
-        message.id,
-        createdAvatar.emoji || '🎉'
-      );
-
-      // Track summon if not breeding
-      if (!breed) {
-        await trackSummon(message.author.id);
-      }
-
-      // Prompt the new avatar to respond
-      await chatService.respondAsAvatar(message.channel, createdAvatar, true);
-    } else {
-      await reactToMessage(client, message.channel.id, message.id, '❌');
-      throw new Error(
-        `Avatar missing required fields after creation: ${JSON.stringify(
-          createdAvatar,
-          null,
-          2
-        )}`
-      );
-    }
+    await sendAsWebhook(message.channel.id, intro, createdAvatar.name, createdAvatar.imageUrl);
+    await chatService.dungeonService.initializeAvatar(createdAvatar._id, message.channel.id);
+    await reactToMessage(client, message.channel.id, message.id, createdAvatar.emoji || '🎉');
+    if (!breed) await trackSummon(message.author.id);
+    await chatService.respondAsAvatar(message.channel, createdAvatar, true);
   } catch (error) {
-    logger.error(`Error in summon command: ${error.message}`);
-    if (existingAvatar) {
-      logger.debug('Avatar data:', JSON.stringify(existingAvatar, null, 2));
-    }
+    logger.error(`Summon error: ${error.message}`);
     await reactToMessage(client, message.channel.id, message.id, '❌');
   }
 }
+
+async function handleAttackCommand(message, args) {
+  if (!args.length) {
+    await replyToMessage(message.channel.id, message.id, 'Mention an avatar to attack.');
+    return;
+  }
+  const targetName = args.join(' ');
+  const avatars = await avatarService.getAllAvatars();
+  const targetAvatar = await findAvatarByName(targetName, avatars);
+  if (!targetAvatar) {
+    await replyToMessage(message.channel.id, message.id, `Avatar "${targetName}" not found.`);
+    return;
+  }
+  const attackResult = await chatService.dungeonService.tools.get('attack').execute(message, [targetAvatar.name], targetAvatar);
+  await reactToMessage(client, message.channel.id, message.id, '⚔️');
+  await replyToMessage(message.channel.id, message.id, `🔥 **${attackResult}**`);
+}
+
 
 /**
  * Handles commands that start with '!' (e.g., !summon, !attack, !breed).
  */
 async function handleCommands(message, args, commandLine) {
+  if (commandLine.startsWith('!summon')) {
+    await message.reply('Command Deprecated. Use the 🔮 instead.');
+  }
   // Summon command
-  if (commandLine.startsWith('!summon ')) {
+  if (commandLine.startsWith('🔮')) {
     const member = message.guild?.members?.cache?.get(message.author.id);
     const requiredRole = process.env.SUMMONER_ROLE || '🔮';
 
@@ -460,7 +345,7 @@ async function handleCommands(message, args, commandLine) {
   }
 
   // Attack command
-  if (commandLine.startsWith('!attack ')) {
+  if (commandLine.startsWith('⚔️')) {
     // For demonstration, let's block usage unless it's a bot
     if (!message.author.bot) {
       await replyToMessage(message.channel.id, message.id, '❌ Sword of violence not found.');

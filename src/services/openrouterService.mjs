@@ -89,7 +89,9 @@ export class OpenRouterService {
       return response.choices[0].message.content.trim() || '...';
     } catch (error) {
       console.error('Error while chatting with OpenRouter:', error);
-      if (retries > 0) {
+
+      // Retry if the error is a rate limit error
+      if (error.response && error.response.status === 429 && retries > 0) {
         console.error('Retrying chat with OpenRouter in 5 seconds...');
         await new Promise(resolve => setTimeout(resolve, 5000));
         return this.chat(messages, options, retries - 1);
@@ -98,23 +100,23 @@ export class OpenRouterService {
     }
   }
 
-    /**
-     * Generates a spoken response as the item within the current channel context.
-     *
-     * @param {Object} item - The item object (must include at least "name" and "description").
-     * @param {string} channelId - The channel ID providing context for the response.
-     * @returns {Promise<string>} - The spoken text as the item.
-     */
-    async speakAsItem(item, channelId) {
-      const prompt = `
+  /**
+   * Generates a spoken response as the item within the current channel context.
+   *
+   * @param {Object} item - The item object (must include at least "name" and "description").
+   * @param {string} channelId - The channel ID providing context for the response.
+   * @returns {Promise<string>} - The spoken text as the item.
+   */
+  async speakAsItem(item, channelId) {
+    const prompt = `
   You are a mystical item called "${item.name}" located in a dungeon channel (ID: ${channelId}).
   Your description is: ${item.description}.
   Respond with only your speech as if you are the item coming to life in this channel.
       `;
-      const completion = await this.generateCompletion(prompt);
-      if (!completion) {
-        return `The ${item.name} remains silent.`;
-      }
-      return completion;
+    const completion = await this.generateCompletion(prompt);
+    if (!completion) {
+      return `The ${item.name} remains silent.`;
     }
+    return completion;
+  }
 }

@@ -4,9 +4,9 @@ import {
   Client,
   GatewayIntentBits,
   Partials,
-  WebhookClient,
-  EmbedBuilder
+  WebhookClient
 } from 'discord.js';
+import { EmbedBuilder, ButtonBuilder, ButtonStyle, ActionRowBuilder } from 'discord.js';
 import winston from 'winston';
 
 import { chunkMessage } from './utils/messageChunker.mjs';
@@ -146,11 +146,7 @@ function generateProgressBar(value, increment, emoji) {
   return emoji.repeat(Math.floor(value / increment));
 }
 
-/**
- * Sends an avatar profile as an embed via webhook with a custom username and avatar.
- * Includes dungeon stats such as Attack, Defense, and HP.
- * @param {Object} avatar - The avatar object containing profile information.
- */
+
 export async function sendAvatarProfileEmbedFromObject(avatar) {
   if (!avatar || typeof avatar !== 'object') {
     throw new Error('Invalid avatar object provided.');
@@ -276,12 +272,22 @@ export async function sendAvatarProfileEmbedFromObject(avatar) {
       avatarEmbed.addFields(
         { name: '⚔️ Attack', value: 'N/A', inline: true },
         { name: '🛡️ Defense', value: 'N/A', inline: true },
-        { name: '❤️ HP', value: 'N/A', inline: true },
+        { name: '❤️ HP', value: 'N/A', inline: true }
       );
     }
 
+    // Create a "Claim" button
+    const claimButton = new ButtonBuilder()
+      .setLabel('Claim')
+      .setStyle(ButtonStyle.Primary)
+      .setCustomId(`claim_avatar_${_id}`); // Append the avatar ID to identify which avatar to claim
+
+    // Create an action row and add the claim button
+    const actionRow = new ActionRowBuilder().addComponents(claimButton);
+
     await webhookClient.send({
       embeds: [avatarEmbed],
+      components: [actionRow],
       threadId: channel.isThread() ? channelId : undefined,
       username: `🔮 ${name.slice(0, 80)}`,
       avatarURL: imageUrl,
@@ -292,6 +298,7 @@ export async function sendAvatarProfileEmbedFromObject(avatar) {
     logger.error(`Failed to send avatar profile to channel ${channelId}: ${error.message}`);
   }
 }
+
 
 /**
  * Sends a message via webhook with a custom username and avatar.
