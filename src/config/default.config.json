@@ -7,6 +7,12 @@
     "combat": true,
     "itemCreation": true
   },
+  "toolEmojis": {
+    "🔮": "summon",
+    "🏹": "breed",
+    "⚔️": "attack",
+    "🛡️": "defend"
+  },
   "rateLimit": {
     "messages": 5,
     "interval": 60000

@@ -10,6 +10,9 @@ import { CreationTool } from './tools/CreationTool.mjs';
 import { XPostTool } from './tools/XPostTool.mjs';
 import { ItemTool } from './tools/ItemTool.mjs';
 import { RespondTool } from './tools/RespondTool.mjs';
+import { SummonTool } from './tools/SummonTool.mjs';
+import { BreedTool } from './tools/BreedTool.mjs';
+import configService from '../configService.mjs';
 
 import { LocationService } from '../location/locationService.mjs';
 import { ItemService } from '../item/itemService.mjs';
@@ -30,6 +33,37 @@ export class DungeonService {
     // Tools & Logging
     this.dungeonLog = new DungeonLog(logger);
     this.tools = new Map();
+    this.toolEmojis = new Map();
+    
+    // Initialize tools
+    const toolClasses = {
+      summon: SummonTool,
+      breed: BreedTool,
+      attack: AttackTool,
+      defend: DefendTool,
+      move: MoveTool,
+      remember: RememberTool,
+      create: CreationTool,
+      xpost: XPostTool,
+      item: ItemTool,
+      respond: RespondTool
+    };
+
+    // Set up tools and emoji mappings
+    Object.entries(toolClasses).forEach(([name, ToolClass]) => {
+      const tool = new ToolClass(this);
+      this.tools.set(name, tool);
+      if (tool.emoji) {
+        this.toolEmojis.set(tool.emoji, name);
+      }
+    });
+
+    // Add emoji mappings from config
+    const configEmojis = configService.get('toolEmojis') || {};
+    Object.entries(configEmojis).forEach(([emoji, toolName]) => {
+      this.toolEmojis.set(emoji, toolName);
+    });
+
     this.creationTool = new CreationTool(this);
     this.defaultStats = { hp: 100, attack: 10, defense: 5 };
 
