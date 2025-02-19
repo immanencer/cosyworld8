@@ -1,7 +1,6 @@
 // index.mjs
-import dotenv from 'dotenv';
 import winston from 'winston';
-
+import configService from './services/configService.mjs';
 import { DatabaseService } from './services/databaseService.mjs';
 import { SpamControlService } from './services/chat/SpamControlService.mjs';
 //
