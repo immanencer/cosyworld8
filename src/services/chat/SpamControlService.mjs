@@ -37,6 +37,28 @@ export class SpamControlService {
     const now = Date.now();
     let record = await this.getUserPenalty(userId);
     const newStrike = record ? record.strikeCount + 1 : 1;
+    
+    // Check if user should be permanently blacklisted
+    if (newStrike >= 3) {
+      await this.spamPenaltyCollection.updateOne(
+        { userId },
+        { 
+          $set: { 
+            strikeCount: newStrike,
+            permanentlyBlacklisted: true,
+            blacklistedAt: now,
+            penaltyExpires: new Date(8640000000000000) // Max date
+          }
+        },
+        { upsert: true }
+      );
+      
+      this.logger.warn(
+        `User ${userId} has been permanently blacklisted after ${newStrike} strikes.`
+      );
+      return;
+    }
+
     // Calculate penalty duration exponentially
     const penaltyDuration = this.basePenalty * Math.pow(2, newStrike - 1);
     const penaltyExpires = new Date(now + penaltyDuration);
@@ -83,8 +105,16 @@ export class SpamControlService {
     const userId = message.author.id;
     const now = Date.now();
 
-    // 1. Check if the user is under an active penalty
+    // 1. Check if the user is permanently blacklisted
     const penaltyRecord = await this.getUserPenalty(userId);
+    if (penaltyRecord?.permanentlyBlacklisted) {
+      this.logger.warn(
+        `Permanently blacklisted user ${message.author.username} (${userId}) attempted to send a message.`
+      );
+      return false;
+    }
+
+    // 2. Check if the user is under an active penalty
     if (penaltyRecord && new Date(penaltyRecord.penaltyExpires) > now) {
       this.logger.warn(
         `User ${message.author.username} (${userId}) is under penalty until ${penaltyRecord.penaltyExpires}. Ignoring message.`
