@@ -163,17 +163,25 @@ export class ItemService {
    * @returns {Promise<Object>} An object containing the item properties.
    */
   async generateItemProperties(itemName, description) {
-    // Implement logic to generate item properties using itemName and description. This could involve AI or rule-based logic.
-    const propertiesPrompt = `Generate properties for an item based on its name and description: Name: "${itemName}", Description: "${description}". Return properties as a JSON object.  Example: {"attack": 10, "defense": 5, "effect": "healing"}`;
-    const properties = await this.aiService.chat([
-      { role: 'system', content: 'You are a master in crafting detailed descriptions of fantasy items.' },
-      { role: 'user', content: propertiesPrompt }
-    ]);
     try {
-      return JSON.parse(properties.trim());
+      const propertiesPrompt = `Generate properties for an item based on its name and description: Name: "${itemName}", Description: "${description}". Return ONLY a valid JSON object like this example: {"attack": 10, "defense": 5, "effect": "healing"}. Do not include any explanatory text.`;
+      const properties = await this.aiService.chat([
+        { role: 'system', content: 'You are a master craftsman. Only respond with valid JSON objects containing item properties.' },
+        { role: 'user', content: propertiesPrompt }
+      ]);
+
+      // Try to extract JSON if the AI included extra text
+      const jsonMatch = properties.match(/\{[^]*\}/);
+      if (!jsonMatch) {
+        console.warn(`Invalid JSON response for ${itemName}:`, properties);
+        return { attack: 5, defense: 5 }; // Fallback default properties
+      }
+
+      const parsed = JSON.parse(jsonMatch[0]);
+      return parsed;
     } catch (error) {
-      console.error('Error parsing item properties JSON:', error);
-      return {}; // Return an empty object if parsing fails.
+      console.error(`Failed to generate properties for ${itemName}:`, error);
+      return { attack: 5, defense: 5 }; // Fallback default properties
     }
   }
 
@@ -267,7 +275,26 @@ export class ItemService {
 
     const validation = this.validateItem(newItem);
     if (!validation.valid) {
-      throw new Error(`Invalid item schema: ${JSON.stringify(validation.errors)}`);
+      console.error('Item validation failed:', {
+        itemName: refinedItemName,
+        errors: validation.errors
+      });
+      // Try to fix common validation issues
+      if (!newItem.type || !['weapon', 'armor', 'consumable', 'quest', 'key', 'artifact'].includes(newItem.type)) {
+        newItem.type = 'artifact';
+      }
+      if (!newItem.rarity || !['common', 'uncommon', 'rare', 'legendary', 'mythic'].includes(newItem.rarity)) {
+        newItem.rarity = 'common';
+      }
+      // Fix date format issues
+      newItem.createdAt = newItem.createdAt.toISOString();
+      newItem.updatedAt = newItem.updatedAt.toISOString();
+      
+      // Revalidate after fixes
+      const revalidation = this.validateItem(newItem);
+      if (!revalidation.valid) {
+        throw new Error('Failed to create item: Invalid properties');
+      }
     }
 
     const result = await itemsCollection.insertOne(newItem);
