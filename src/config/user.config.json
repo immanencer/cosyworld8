@@ -1,9 +1,5 @@
 {
-  "whitelistedGuilds": [
-    "1219837842058907728",
-    "1309314312204193912",
-    "1311519040425955368"
-  ],
+  "whitelistedGuilds": [],
   "adminRoles": [
     "Admin"
   ],
