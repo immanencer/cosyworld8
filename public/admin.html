@@ -96,6 +96,24 @@
             `).join('');
         }
 
+        async function unbanUser(userId) {
+            try {
+                const response = await fetch('/api/admin/unban', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ userId })
+                });
+                if (response.ok) {
+                    loadStats(); // Refresh the display
+                } else {
+                    throw new Error('Failed to unban user');
+                }
+            } catch (error) {
+                console.error('Error unbanning user:', error);
+                alert('Failed to unban user');
+            }
+        }
+
         function displayBlacklistedUsers(users) {
             const container = document.getElementById('blacklistedUsers');
             container.innerHTML = users.map(user => `
@@ -115,24 +133,6 @@
                     </button>
                 </div>
             `).join('');
-
-            async function unbanUser(userId) {
-                try {
-                    const response = await fetch('/api/admin/unban', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ userId })
-                    });
-                    if (response.ok) {
-                        loadStats(); // Refresh the display
-                    } else {
-                        throw new Error('Failed to unban user');
-                    }
-                } catch (error) {
-                    console.error('Error unbanning user:', error);
-                    alert('Failed to unban user');
-                }
-            }
         }
 
         loadStats();
