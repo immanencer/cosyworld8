@@ -584,6 +584,7 @@ export class AvatarGenerationService {
    */
   async createAvatar(data) {
     let prompt = data.prompt;
+    let summoner = data.summoner;
     let systemPrompt;
 
     try {
