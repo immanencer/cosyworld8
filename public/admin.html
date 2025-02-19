@@ -5,13 +5,14 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Admin Panel</title>
-    <link href="/css/tailwind.css" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
 </head>
 <body class="bg-gray-900 text-white">
     <div class="container mx-auto px-4 py-8">
         <h1 class="text-3xl font-bold mb-8">Admin Panel</h1>
         
         <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <!-- Guild Whitelist Section -->
             <div class="bg-gray-800 p-6 rounded-lg">
                 <h2 class="text-xl font-semibold mb-4">Guild Whitelist</h2>
                 <div class="space-y-4">
@@ -21,17 +22,24 @@
                             class="w-full bg-purple-600 hover:bg-purple-700 px-4 py-2 rounded">
                         Add Guild
                     </button>
+                    <div id="whitelistedGuilds" class="mt-4 space-y-2"></div>
                 </div>
-                <div id="whitelistedGuilds" class="mt-4 space-y-2"></div>
+            </div>
+
+            <!-- Spam Blacklist Section -->
+            <div class="bg-gray-800 p-6 rounded-lg">
+                <h2 class="text-xl font-semibold mb-4">Spam Blacklist</h2>
+                <div id="blacklistedUsers" class="space-y-2"></div>
             </div>
         </div>
     </div>
     
     <script>
-        async function loadConfig() {
-            const response = await fetch('/api/admin/config');
-            const config = await response.json();
-            displayWhitelistedGuilds(config.whitelistedGuilds);
+        async function loadStats() {
+            const response = await fetch('/api/admin/stats');
+            const stats = await response.json();
+            displayWhitelistedGuilds(stats.whitelistedGuilds);
+            displayBlacklistedUsers(stats.blacklistedUsers);
         }
 
         async function whitelistGuild() {
@@ -48,14 +56,44 @@
             }
         }
 
-        function displayWhitelistedGuilds(guilds) {
-            const container = document.getElementById('whitelistedGuilds');
-            container.innerHTML = guilds.map(guild => 
-                `<div class="bg-gray-700 p-2 rounded">${guild}</div>`
-            ).join('');
+        async function removeGuild(guildId) {
+            const response = await fetch(`/api/admin/whitelist/guild/${guildId}`, {
+                method: 'DELETE'
+            });
+            const result = await response.json();
+            if (result.success) {
+                displayWhitelistedGuilds(result.whitelistedGuilds);
+            }
         }
 
-        loadConfig();
+        function displayWhitelistedGuilds(guilds) {
+            const container = document.getElementById('whitelistedGuilds');
+            container.innerHTML = guilds.map(guild => `
+                <div class="flex justify-between items-center bg-gray-700 p-2 rounded">
+                    <span>${guild}</span>
+                    <button onclick="removeGuild('${guild}')" 
+                            class="bg-red-600 hover:bg-red-700 px-2 py-1 rounded">
+                        Remove
+                    </button>
+                </div>
+            `).join('');
+        }
+
+        function displayBlacklistedUsers(users) {
+            const container = document.getElementById('blacklistedUsers');
+            container.innerHTML = users.map(user => `
+                <div class="bg-gray-700 p-2 rounded">
+                    <div class="font-semibold">User ID: ${user.userId}</div>
+                    <div class="text-sm text-gray-400">
+                        Strikes: ${user.strikeCount}
+                        <br>
+                        Penalty Until: ${new Date(user.penaltyExpires).toLocaleString()}
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        loadStats();
     </script>
 </body>
 </html>
