@@ -63,17 +63,14 @@ export default function adminRoutes(db) {
     try {
       const config = await loadConfig();
       const blacklistedUsers = await db.collection('user_spam_penalties')
-        .find({ 
-          $or: [
-            { permanentlyBlacklisted: true },
-            { penaltyExpires: { $gt: new Date() } }
-          ]
-        })
+        .find({})
+        .sort({ strikeCount: -1 })
         .project({
           userId: 1,
           strikeCount: 1,
           penaltyExpires: 1,
-          permanentlyBlacklisted: 1
+          permanentlyBlacklisted: 1,
+          server: 1
         })
         .toArray();
 
@@ -108,3 +105,23 @@ export default function adminRoutes(db) {
 
   return router;
 }
+  router.post('/ban', async (req, res) => {
+    try {
+      const { userId } = req.body;
+      await db.collection('user_spam_penalties').updateOne(
+        { userId },
+        {
+          $set: {
+            permanentlyBlacklisted: true,
+            blacklistedAt: new Date(),
+            penaltyExpires: new Date(8640000000000000) // Max date
+          },
+          $inc: { strikeCount: 1 }
+        },
+        { upsert: true }
+      );
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ error: error.message });
+    }
+  });

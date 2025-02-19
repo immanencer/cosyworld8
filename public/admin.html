@@ -29,12 +29,73 @@
             <!-- Spam Blacklist Section -->
             <div class="bg-gray-800 p-6 rounded-lg">
                 <h2 class="text-xl font-semibold mb-4">Spam Blacklist</h2>
-                <div id="blacklistedUsers" class="space-y-2"></div>
+                <div id="blacklistedUsers" class="space-y-2">
+                    <table class="w-full text-left">
+                        <thead>
+                            <tr class="border-b border-gray-700">
+                                <th class="py-2">User ID</th>
+                                <th class="py-2">Strikes</th>
+                                <th class="py-2">Status</th>
+                                <th class="py-2">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="blacklistTable"></tbody>
+                    </table>
+                </div>
             </div>
         </div>
     </div>
     
     <script>
+        async function banUser(userId) {
+            try {
+                await fetch('/api/admin/ban', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ userId })
+                });
+                await loadStats();
+            } catch (error) {
+                console.error('Failed to ban user:', error);
+            }
+        }
+
+        async function unbanUser(userId) {
+            try {
+                await fetch('/api/admin/unban', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ userId })
+                });
+                await loadStats();
+            } catch (error) {
+                console.error('Failed to unban user:', error);
+            }
+        }
+
+        function displayBlacklistedUsers(users) {
+            const tbody = document.getElementById('blacklistTable');
+            tbody.innerHTML = users.map(user => `
+                <tr class="border-b border-gray-700">
+                    <td class="py-2">${user.userId}</td>
+                    <td class="py-2">${user.strikeCount}</td>
+                    <td class="py-2">
+                        ${user.permanentlyBlacklisted 
+                            ? '<span class="text-red-500">Banned</span>'
+                            : user.penaltyExpires > new Date().toISOString() 
+                                ? `<span class="text-yellow-500">Penalty until ${new Date(user.penaltyExpires).toLocaleString()}</span>`
+                                : '<span class="text-green-500">Active</span>'
+                        }
+                    </td>
+                    <td class="py-2">
+                        ${user.permanentlyBlacklisted
+                            ? `<button onclick="unbanUser('${user.userId}')" class="bg-green-600 hover:bg-green-700 px-2 py-1 rounded">Unban</button>`
+                            : `<button onclick="banUser('${user.userId}')" class="bg-red-600 hover:bg-red-700 px-2 py-1 rounded">Ban</button>`
+                        }
+                    </td>
+                </tr>
+            `).join('');
+        }
         async function loadStats() {
             try {
                 const response = await fetch('/api/admin/stats');
