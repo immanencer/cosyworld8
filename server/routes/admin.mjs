@@ -1,7 +1,8 @@
+
 import express from 'express';
 import fs from 'fs/promises';
 import path from 'path';
-import { ObjectId } from 'mongodb'; // Added for MongoDB interaction
+import { ObjectId } from 'mongodb';
 
 export default function adminRoutes(db) {
   const router = express.Router();
@@ -45,8 +46,6 @@ export default function adminRoutes(db) {
     }
   });
 
-  // Get admin stats including blacklist and whitelist
-  // Delete guild from whitelist
   router.delete('/whitelist/guild/:guildId', async (req, res) => {
     try {
       const { guildId } = req.params;
@@ -83,7 +82,27 @@ export default function adminRoutes(db) {
     }
   });
 
-  // Unban a user
+  router.post('/ban', async (req, res) => {
+    try {
+      const { userId } = req.body;
+      await db.collection('user_spam_penalties').updateOne(
+        { userId },
+        {
+          $set: {
+            permanentlyBlacklisted: true,
+            blacklistedAt: new Date(),
+            penaltyExpires: new Date(8640000000000000) // Max date
+          },
+          $inc: { strikeCount: 1 }
+        },
+        { upsert: true }
+      );
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
   router.post('/unban', async (req, res) => {
     try {
       const { userId } = req.body;
@@ -105,23 +124,3 @@ export default function adminRoutes(db) {
 
   return router;
 }
-  router.post('/ban', async (req, res) => {
-    try {
-      const { userId } = req.body;
-      await db.collection('user_spam_penalties').updateOne(
-        { userId },
-        {
-          $set: {
-            permanentlyBlacklisted: true,
-            blacklistedAt: new Date(),
-            penaltyExpires: new Date(8640000000000000) // Max date
-          },
-          $inc: { strikeCount: 1 }
-        },
-        { upsert: true }
-      );
-      res.json({ success: true });
-    } catch (error) {
-      res.status(500).json({ error: error.message });
-    }
-  });
