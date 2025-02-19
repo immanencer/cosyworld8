@@ -6,6 +6,7 @@ import {
   Partials,
   WebhookClient
 } from 'discord.js';
+import configService from './configService.mjs';
 import { EmbedBuilder, ButtonBuilder, ButtonStyle, ActionRowBuilder } from 'discord.js';
 import winston from 'winston';
 
@@ -14,7 +15,7 @@ import { processMessageLinks } from './utils/linkProcessor.mjs';
 
 // Initialize Logger
 const logger = winston.createLogger({
-  level: 'info',
+  level: configService.get('logging.level') || 'info',
   format: winston.format.combine(
     winston.format.timestamp(),
     winston.format.printf(
@@ -27,6 +28,9 @@ const logger = winston.createLogger({
   ],
 });
 
+// Get Discord configuration
+const discordConfig = configService.getDiscordConfig();
+
 // Instantiate the Discord client with necessary permissions
 export const client = new Client({
   intents: [
@@ -36,7 +40,18 @@ export const client = new Client({
     GatewayIntentBits.GuildMessageReactions,
   ],
   partials: [Partials.Message, Partials.Channel, Partials.Reaction],
+  token: discordConfig.botToken
 });
+
+// Validate required configuration
+if (!discordConfig.botToken) {
+  logger.error('Discord bot token not configured');
+  throw new Error('Discord bot token is required');
+}
+
+if (!discordConfig.clientId) {
+  logger.warn('Discord client ID not configured - some features may be limited');
+}
 
 // Webhook management cache
 const webhookCache = new Map();
@@ -100,6 +115,10 @@ export async function replyToMessage(channelId, messageId, replyContent) {
  */
 async function getOrCreateWebhook(channel) {
   try {
+    if (!discordConfig.botToken) {
+      throw new Error('Discord bot token not configured');
+    }
+
     // If the channel is a thread, fetch its parent channel
     if (channel.isThread()) {
       channel = await channel.parent.fetch();
