@@ -33,10 +33,11 @@ export class SpamControlService {
    * @param {string} userId
    * @returns {Promise<void>}
    */
-  async recordSpamStrike(userId) {
+  async recordSpamStrike(userId, serverId) {
     const now = Date.now();
     let record = await this.getUserPenalty(userId);
     const newStrike = record ? record.strikeCount + 1 : 1;
+    const server = serverId || 'DM';
     
     // Check if user should be permanently blacklisted
     if (newStrike >= 3) {
@@ -47,6 +48,7 @@ export class SpamControlService {
             strikeCount: newStrike,
             permanentlyBlacklisted: true,
             blacklistedAt: now,
+            server: server,
             penaltyExpires: new Date(8640000000000000) // Max date
           }
         },
@@ -54,7 +56,7 @@ export class SpamControlService {
       );
       
       this.logger.warn(
-        `User ${userId} has been permanently blacklisted after ${newStrike} strikes.`
+        `User ${userId} has been permanently blacklisted after ${newStrike} strikes in server ${server}.`
       );
       return;
     }
@@ -103,6 +105,7 @@ export class SpamControlService {
     }
 
     const userId = message.author.id;
+    const serverId = message.guild?.id || 'DM';
     const now = Date.now();
 
     // 1. Check if the user is permanently blacklisted
