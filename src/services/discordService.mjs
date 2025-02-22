@@ -282,8 +282,8 @@ export async function sendAvatarProfileEmbedFromObject(avatar) {
     if (templateId) {
       const collectButton = new ButtonBuilder()
         .setLabel('Collect')
-        .setStyle(ButtonStyle.Primary)
-        .setCustomId(`claim_avatar_${_id}`);
+        .setStyle(ButtonStyle.Link)
+        .setURL(`${process.env.PUBLIC_URL}/checkout.html?templateId=${templateId}&collectionId=${collectionId}`);
       const actionRow = new ActionRowBuilder().addComponents(collectButton);
       components.push(actionRow);
     }

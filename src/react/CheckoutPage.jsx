@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useEffect, useState } from 'react';
@@ -12,26 +11,30 @@ export default function CheckoutPage() {
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
-    const avatarId = params.get('templateId');
-    
-    if (!avatarId) {
-      setError('No template ID provided');
+    const templateId = params.get('templateId');
+    const collectionId = params.get('collectionId');
+
+    if (!templateId || !collectionId) {
+      setError('No template ID or collection ID provided');
       setLoading(false);
       return;
     }
 
-    // Fetch avatar details to get collectionId
-    fetch(`/api/avatars/${avatarId}`)
-      .then(res => res.json())
-      .then(data => {
-        setTemplateId(avatarId);
-        setCollectionId(data.collectionId || process.env.CROSSMINT_COLLECTION_ID);
-        setLoading(false);
-      })
-      .catch(err => {
-        setError(err.message);
-        setLoading(false);
-      });
+    // Fetch avatar details (This fetch call might be redundant now that collectionId is passed directly)
+    // fetch(`/api/avatars/${templateId}`)
+    //   .then(res => res.json())
+    //   .then(data => {
+    //     setTemplateId(templateId);
+    //     setCollectionId(data.collectionId || process.env.CROSSMINT_COLLECTION_ID);
+    //     setLoading(false);
+    //   })
+    //   .catch(err => {
+    //     setError(err.message);
+    //     setLoading(false);
+    //   });
+    setTemplateId(templateId);
+    setCollectionId(collectionId);
+    setLoading(false);
   }, []);
 
   if (loading) return <div>Loading...</div>;
