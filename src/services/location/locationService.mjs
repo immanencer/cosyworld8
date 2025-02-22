@@ -330,8 +330,6 @@ If already suitable, return as is. If it needs editing, revise it while preservi
         locationImage
       );
 
-      // Post the evocative description as a webhook
-      await sendAsWebhook(thread.id, evocativeDescription, cleanLocationName, locationImage);
 
       // Create location document
       const locationDocument = {
@@ -345,6 +343,9 @@ If already suitable, return as is. If it needs editing, revise it while preservi
         updatedAt: new Date().toISOString(),
         version: '1.0.0'
       };
+      
+      // Post the evocative description as a webhook
+      await sendAsWebhook(thread.id, evocativeDescription, locationDocument);
 
       // Validate location schema
       const schemaValidator = new SchemaValidator();
@@ -512,7 +513,7 @@ ${messagesText}`;
       ]);
 
       // Send the summary as the location
-      await sendAsWebhook(location.id, summary, location.name, location.imageUrl);
+      await sendAsWebhook(location.id, summary, location);
     } catch (error) {
       console.error('Error generating location summary:', error);
     }

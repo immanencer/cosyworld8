@@ -237,6 +237,7 @@ async function handleSummonCommand(message, breed = false, attributes = {}) {
   const lines = afterOrb.split('\n');
   let existingAvatar = await avatarService.getAvatarByName(lines[0].trim());
 
+
   try {
     if (existingAvatar) {
       await reactToMessage(message, existingAvatar.emoji || '🔮');
@@ -274,7 +275,7 @@ async function handleSummonCommand(message, breed = false, attributes = {}) {
 
     let intro = await aiService.chat([
       { role: 'system', content: `You are ${createdAvatar.name}. ${createdAvatar.description} ${createdAvatar.personality}` },
-      { role: 'user', content: `You've just arrived. Introduce yourself.` },
+      { role: 'user', content: configService.config.prompt.introduction || `You've just arrived. Introduce yourself.` },
     ], { model: createdAvatar.model });
 
     createdAvatar.dynamicPersonality = intro;
@@ -282,7 +283,7 @@ async function handleSummonCommand(message, breed = false, attributes = {}) {
     createdAvatar.attributes = attributes;
     await avatarService.updateAvatar(createdAvatar);
 
-    await sendAsWebhook(message.channel.id, intro, createdAvatar.name, createdAvatar.imageUrl);
+    await sendAsWebhook(message.channel.id, intro, createdAvatar);
     await chatService.dungeonService.initializeAvatar(createdAvatar._id, message.channel.id);
     await reactToMessage(message, createdAvatar.emoji || '🎉');
     if (!breed) await trackSummon(message.author.id);

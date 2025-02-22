@@ -41,8 +41,7 @@ export class RememberTool extends BaseTool {
       sendAsWebhook(
         avatar.innerMonologueChannel,
         `🧠 Memory Generated: ${formattedMemory}`,
-        `${avatar.name} ${avatar.emoji}`,
-        avatar.imageUrl
+        avatar
       );
     }
     this.logger?.debug(`Generated memory: ${formattedMemory}`);

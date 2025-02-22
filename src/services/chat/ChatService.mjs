@@ -246,32 +246,32 @@ export class ChatService {
               });
               avatar.innerMonologueChannel = newThread.id;
 
-              // Post the avatar's image to the inner monologue channel 📷✨
+              // Post the avatar's image to the inner monologue channel
               sendAsWebhook(
                 avatar.innerMonologueChannel,
                 avatar.imageUrl,
-                `${avatar.name} ${avatar.emoji}`, avatar.imageUrl
+                avatar
               );
 
-              // Post the avatar's description to the inner monologue channel 📝💭
+              // Post the avatar's description to the inner monologue channel
               sendAsWebhook(
                 avatar.innerMonologueChannel,
                 `📖 Description: ${avatar.description}`,
-                `${avatar.name} ${avatar.emoji}`, avatar.imageUrl
+                avatar
               );
 
-              // Post the avatar's personality to the inner monologue channel 🎭🔮
+              // Post the avatar's personality to the inner monologue channel
               sendAsWebhook(
                 avatar.innerMonologueChannel,
                 `🎭 Personality: ${avatar.personality}`,
-                `${avatar.name} ${avatar.emoji}`, avatar.imageUrl
+                avatar
               );
 
-              // Post the avatar's dynamic personality to the inner monologue channel 🌪️⚡
+              // Post the avatar's dynamic personality to the inner monologue channel
               sendAsWebhook(
                 avatar.innerMonologueChannel,
                 `🌪️ Dynamic Personality: ${avatar.dynamicPersonality}`,
-                `${avatar.name} ${avatar.emoji}`, avatar.imageUrl
+                avatar
               );
 
             }

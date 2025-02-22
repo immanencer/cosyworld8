@@ -86,15 +86,13 @@ export class ItemTool extends BaseTool {
     await sendAsWebhook(
       channelId,
       item.imageUrl,
-      item.name,
-      item.imageUrl
+      item
     );
     // Then post the description and name.
     await sendAsWebhook(
       channelId,
       `**${item.name}**\n\n${item.description}`,
-      item.name,
-      item.imageUrl
+      item
     );
   }
 

@@ -83,8 +83,7 @@ export class MoveTool extends BaseTool {
         await sendAsWebhook(
           newLocation.channel.id,
           arrivalMessage,
-          avatar.name,
-          avatar.imageUrl
+          avatar
         );
 
         // 9. Update the avatar object in the database

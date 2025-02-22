@@ -10,6 +10,7 @@ class ConfigService {
   constructor() {
     this.config = {
       prompt: {
+        introduction: 'You have been summoned to this realm. This is your one chance to impress me, and save yourself from Elimination. Good luck, and DONT fuck it up.',
         summon: 'Create a unique avatar with a special ability.',
       },
       discord: {
@@ -154,6 +155,10 @@ class ConfigService {
 
   getSolanaConfig() {
     return this.config.solana;
+  }
+
+  getPromptConfig() {
+    return this.config.prompts;
   }
 
   validate() {

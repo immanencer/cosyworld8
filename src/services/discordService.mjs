@@ -330,7 +330,9 @@ export async function sendAvatarProfileEmbedFromObject(avatar) {
  * @param {string} username - The username to display for the webhook message.
  * @param {string} avatarUrl - The URL of the avatar to display for the webhook message.
  */
-export async function sendAsWebhook(channelId, content, username, avatarUrl) {
+export async function sendAsWebhook(channelId, content, avatar) {
+  const username = `${avatar.name.slice(0, 78)}` + (avatar.emoji ? ` ${avatar.emoji}` : '');
+  const avatarUrl = avatar.imageUrl;
   if (!channelId || typeof channelId !== 'string') {
     throw new Error(`Invalid channel ID: ${channelId}`);
   }
