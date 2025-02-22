@@ -223,9 +223,8 @@ async function trackSummon(userId) {
 
 async function handleSummonCommand(message, breed = false, attributes = {}) {
   const content = message.content.trim();
-  // find the orb and trim
-  const orbIndex = content.split('🔮');
-  const afterOrb = orbIndex.length > 1 ? orbIndex[1].trim() : content;
+  // Remove the orb from the beginning and trim
+  const afterOrb = content.substring(2).trim();
 
   // split the content by newlines
   const lines = afterOrb.split('\n');
@@ -315,7 +314,7 @@ async function handleCommands(message) {
     await message.reply('Command Deprecated. Use the 🔮 instead.');
   }
   // Summon command
-  if (content.indexOf('🔮') !== -1) {
+  if (content.startsWith('🔮')) {
     const member = message.guild?.members?.cache?.get(message.author.id);
     const requiredRole = process.env.SUMMONER_ROLE || '🔮';
 
