@@ -280,6 +280,11 @@ export async function sendAvatarProfileEmbedFromObject(avatar) {
 
     const components = [];
     if (templateId) {
+      // Fetch collectionId from crossmint_dev collection
+      const db = this.client.db;
+      const crossmintData = await db.collection('crossmint_dev').findOne({ avatarId: _id });
+      const collectionId = crossmintData?.collectionId || process.env.CROSSMINT_COLLECTION_ID;
+
       const collectButton = new ButtonBuilder()
         .setLabel('Collect')
         .setStyle(ButtonStyle.Link)
