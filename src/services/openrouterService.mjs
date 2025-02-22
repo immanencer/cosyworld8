@@ -107,9 +107,6 @@ export class OpenRouterService {
       mergedOptions.model = this.model;
     }
 
-    // Log the full options for debugging
-    console.debug('OpenRouter chat options:', JSON.stringify(mergedOptions, null, 2));
-
     try {
       const response = await this.openai.chat.completions.create(mergedOptions);
       if (!response || !response.choices || response.choices.length === 0) {
