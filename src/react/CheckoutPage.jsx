@@ -13,15 +13,37 @@ function CheckoutPage() {
   const [nftData, setNftData] = useState(null);
 
   useEffect(() => {
-    // Fetch NFT metadata if needed
-    if (templateId && collectionId) {
-      // For now using a placeholder image
-      setNftData({
-        name: "RATi Avatar",
-        image: "/images/avatar_1737921879644_466.png",
-      });
-    }
-  }, [templateId, collectionId]);
+    const fetchTemplate = async () => {
+      if (templateId && collectionId && clientId) {
+        try {
+          const response = await fetch(
+            `https://staging.crossmint.com/api/2022-06-09/collections/${collectionId}/templates/${templateId}`,
+            {
+              headers: {
+                'X-API-KEY': clientId
+              }
+            }
+          );
+
+          if (!response.ok) {
+            throw new Error('Failed to fetch template');
+          }
+
+          const template = await response.json();
+          setNftData({
+            name: template.metadata.name,
+            image: template.metadata.image,
+            description: template.metadata.description,
+            attributes: template.metadata.attributes
+          });
+        } catch (error) {
+          console.error('Error fetching template:', error);
+        }
+      }
+    };
+
+    fetchTemplate();
+  }, [templateId, collectionId, clientId]);
 
   return (
     <div className="min-h-screen py-6 flex flex-col justify-center sm:py-12">
@@ -45,6 +67,16 @@ function CheckoutPage() {
                     <h3 className="text-xl mt-4 font-semibold text-purple-400">
                       {nftData.name}
                     </h3>
+                    <p className="text-gray-200">{nftData.description}</p>
+                    {nftData.attributes && (
+                      <ul>
+                        {nftData.attributes.map((attribute, index) => (
+                          <li key={index} className="text-gray-200">
+                            {attribute.trait_type}: {attribute.value}
+                          </li>
+                        ))}
+                      </ul>
+                    )}
                   </div>
                 )}
 
