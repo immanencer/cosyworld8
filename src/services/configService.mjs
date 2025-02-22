@@ -36,7 +36,8 @@ class ConfigService {
         },
         openrouter: {
           apiToken: process.env.OPENROUTER_API_TOKEN,
-          model: process.env.OPENROUTER_MODEL
+          model: process.env.OPENROUTER_MODEL,
+          metaModel: process.env.META_PROMPT_MODEL || 'anthropic/claude-3-haiku'
         },
         ollama: {
           model: process.env.OLLAMA_MODEL

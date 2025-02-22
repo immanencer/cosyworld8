@@ -17,8 +17,6 @@ import { ObjectId } from 'mongodb';
 import fs from 'fs/promises';
 import fetch from 'node-fetch';
 
-import { CONFIG } 
-
 export class AvatarGenerationService {
   constructor(db) {
     this.aiService = new AIService();
@@ -339,7 +337,7 @@ export class AvatarGenerationService {
             { role: 'system', content: 'You are a creative and unsettling character designer.' },
             { role: 'user', content: prompt },
           ], { 
-            model: META_PROMPT_MODEL,
+            model: this.config.getAIConfig().openrouter.metaModel,
             format: "json" });
           if (!response) {
             throw new Error('Failed to generate avatar details.');
