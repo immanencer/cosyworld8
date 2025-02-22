@@ -57,6 +57,10 @@
     "version": {
       "type": "string",
       "description": "Schema version for compatibility"
+    },
+    "collectionId": {
+      "type": ["string", "null"],
+      "description": "Crossmint collection ID for NFT minting"
     }
   },
   "required": [
