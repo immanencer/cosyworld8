@@ -1,5 +1,5 @@
 
-import React, { useEffect, useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { createRoot } from 'react-dom/client';
 import { CrossmintPayButton } from "@crossmint/client-sdk-react-ui";
 
@@ -69,6 +69,7 @@ function CheckoutPage() {
   );
 }
 
+// Mount using createRoot
 const container = document.getElementById('root');
 const root = createRoot(container);
 root.render(<CheckoutPage />);
