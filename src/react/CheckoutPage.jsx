@@ -1,75 +1,48 @@
-
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { createRoot } from 'react-dom/client';
 import { CrossmintPayButton } from "@crossmint/client-sdk-react-ui";
 
 function CheckoutPage() {
-  const [avatar, setAvatar] = useState(null);
+  // Get query parameters
   const params = new URLSearchParams(window.location.search);
   const templateId = params.get('templateId');
   const collectionId = params.get('collectionId');
 
-  useEffect(() => {
-    const fetchAvatar = async () => {
-      try {
-        const response = await fetch(`/api/avatars/${templateId}`);
-        const data = await response.json();
-        setAvatar(data);
-      } catch (error) {
-        console.error('Error fetching avatar:', error);
-      }
-    };
-
-    if (templateId) {
-      fetchAvatar();
-    }
-  }, [templateId]);
-
-  if (!templateId || !collectionId) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-gray-900">
-        <div className="text-white text-xl">No template or collection ID provided</div>
-      </div>
-    );
-  }
+  const clientId = window.CROSSMINT_CLIENT_API_KEY;
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gray-900">
-      <div className="max-w-[450px] w-full p-6 bg-gray-800 rounded-xl">
-        {avatar && (
-          <>
-            <img src={avatar.imageUrl} alt={avatar.name} className="w-full h-64 object-cover rounded-lg mb-4"/>
-            <h1 className="text-2xl font-bold text-white mb-2">{avatar.name}</h1>
-            <p className="text-gray-300 mb-4">{avatar.description}</p>
-            <div className="space-y-2 mb-6">
-              <div className="text-gray-400">
-                <span className="font-semibold text-white">Personality:</span> {avatar.personality}
+    <div className="min-h-screen bg-gray-100 py-6 flex flex-col justify-center sm:py-12">
+      <div className="relative py-3 sm:max-w-xl sm:mx-auto">
+        <div className="absolute inset-0 bg-gradient-to-r from-cyan-400 to-light-blue-500 shadow-lg transform -skew-y-6 sm:skew-y-0 sm:-rotate-6 sm:rounded-3xl"></div>
+        <div className="relative px-4 py-10 bg-white shadow-lg sm:rounded-3xl sm:p-20">
+          <div className="max-w-md mx-auto">
+            <div className="divide-y divide-gray-200">
+              <div className="py-8 text-base leading-6 space-y-4 text-gray-700 sm:text-lg sm:leading-7">
+                <h2 className="text-2xl font-bold mb-8">Complete Your Purchase</h2>
+                {clientId && templateId && collectionId ? (
+                  <CrossmintPayButton
+                    clientId={clientId}
+                    environment="staging"
+                    mintConfig={{
+                      type: "erc-721",
+                      totalPrice: "0.0001",
+                      quantity: "1",
+                      templateId: templateId,
+                      collectionId: collectionId
+                    }}
+                  />
+                ) : (
+                  <p>Missing required parameters</p>
+                )}
               </div>
-              {avatar.traits && (
-                <div className="text-gray-400">
-                  <span className="font-semibold text-white">Traits:</span> {avatar.traits}
-                </div>
-              )}
             </div>
-          </>
-        )}
-        <CrossmintPayButton
-          clientId={process.env.CROSSMINT_CLIENT_API_KEY}
-          mintConfig={{
-            type: "erc-721",
-            totalPrice: "0.001",
-            quantity: "1",
-            collectionLocator: `crossmint:${collectionId}:${templateId}`
-          }}
-          environment="staging"
-          className="w-full"
-        />
+          </div>
+        </div>
       </div>
     </div>
   );
 }
 
-// Mount using createRoot
 const container = document.getElementById('root');
 const root = createRoot(container);
 root.render(<CheckoutPage />);
