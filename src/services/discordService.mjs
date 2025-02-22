@@ -277,14 +277,14 @@ export async function sendAvatarProfileEmbedFromObject(avatar) {
       );
     }
 
-    // Create a "Claim" button
-    const claimButton = new ButtonBuilder()
-      .setLabel('Claim')
+    // Create a "Collect" button
+    const collectButton = new ButtonBuilder()
+      .setLabel('Collect')
       .setStyle(ButtonStyle.Primary)
       .setCustomId(`claim_avatar_${_id}`); // Append the avatar ID to identify which avatar to claim
 
     // Create an action row and add the claim button
-    const actionRow = new ActionRowBuilder().addComponents(claimButton);
+    const actionRow = new ActionRowBuilder().addComponents(collectButton);
 
     await webhookClient.send({
       embeds: [avatarEmbed],

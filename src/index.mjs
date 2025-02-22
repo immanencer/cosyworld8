@@ -2,7 +2,9 @@
 import winston from 'winston';
 import { DatabaseService } from './services/databaseService.mjs';
 import { SpamControlService } from './services/spamControlService.mjs';
-//
+
+
+import configService from './services/configService.mjs';
 // import { OllamaService as AIService } from './services/ollamaService.mjs';
 import { OpenRouterService as AIService } from './services/openrouterService.mjs';
 import { AvatarGenerationService } from './services/avatarService.mjs';
@@ -184,7 +186,7 @@ async function handleBreedCommand(message, args, commandLine) {
       `;
 
     // Return the created avatar from handleSummonCommand (passing breed: true)
-    return await handleSummonCommand(message, prompt, true, {
+    return await handleSummonCommand(message, true, {
       summoner: `${message.author.username}@${message.author.id}`,
       parents: [avatar1._id, avatar2._id],
     });
@@ -219,8 +221,15 @@ async function trackSummon(userId) {
   });
 }
 
-async function handleSummonCommand(message, prompt, breed = false, attributes = {}) {
-  let existingAvatar = await avatarService.getAvatarByName(prompt);
+async function handleSummonCommand(message, breed = false, attributes = {}) {
+  const content = message.content.trim();
+  // find the orb and trim
+  const orbIndex = content.split('🔮');
+  const afterOrb = orbIndex.length > 1 ? orbIndex[1].trim() : content;
+
+  // split the content by newlines
+  const lines = afterOrb.split('\n');
+  let existingAvatar = await avatarService.getAvatarByName(lines[0].trim());
 
   try {
     if (existingAvatar) {
@@ -240,15 +249,18 @@ async function handleSummonCommand(message, prompt, breed = false, attributes = 
       return;
     }
 
-    prompt = prompt || process.env.DEFAULT_AVATAR_PROMPT || 'Create a new avatar using your imagination!';
+    const prompt = configService.config.prompt.summon || 'Create a twisted avatar, a servant of darkness.';
     const recentMessages = await chatService.getRecentMessagesFromDatabase(message.channel.id);
-    const messageString = recentMessages.map((m) => `${m.author.username}: ${m.content}`).join('\n');
-    const avatarData = { prompt: sanitizeInput(messageString + prompt), channelId: message.channel.id };
+    recentMessages.reverse();
+    const messageString = recentMessages.map((m) => `${m.author?.username || 'Whisper'}: ${m.content}`).join('\n');
+    const avatarData = { prompt: sanitizeInput(prompt + "\n\n Summon an avatar with the following concept or idea:\n\n" + content), channelId: message.channel.id };
     if (prompt.match(/^(https:\/\/.*\.arweave\.net\/|ar:\/\/)/)) avatarData.arweave_prompt = prompt;
 
+    console.log('avatarData', avatarData);
     const createdAvatar = await avatarService.createAvatar(avatarData);
     if (!createdAvatar || !createdAvatar.name) throw new Error(`Avatar creation failed: ${JSON.stringify(createdAvatar)}`);
 
+    createdAvatar.summoner = `${message.author.username}@${message.author.id}`;
     createdAvatar.model = createdAvatar.model || (await aiService.selectRandomModel());
     createdAvatar.stats = await chatService.dungeonService.getAvatarStats(createdAvatar._id);
     await sendAvatarProfileEmbedFromObject(createdAvatar);
@@ -271,6 +283,7 @@ async function handleSummonCommand(message, prompt, breed = false, attributes = 
     await chatService.respondAsAvatar(message.channel, createdAvatar, true);
   } catch (error) {
     logger.error(`Summon error: ${error.message}`);
+    throw error;
     await reactToMessage(message, '❌');
   }
 }
@@ -296,12 +309,13 @@ async function handleAttackCommand(message, args) {
 /**
  * Handles commands that start with '!' (e.g., !summon, !attack, !breed).
  */
-async function handleCommands(message, content) {
+async function handleCommands(message) {
+  const content = message.content;
   if (content.startsWith('!summon')) {
     await message.reply('Command Deprecated. Use the 🔮 instead.');
   }
   // Summon command
-  if (content.startsWith('🔮')) {
+  if (content.indexOf('🔮') !== -1) {
     const member = message.guild?.members?.cache?.get(message.author.id);
     const requiredRole = process.env.SUMMONER_ROLE || '🔮';
 
@@ -317,9 +331,8 @@ async function handleCommands(message, content) {
       return;
     }
 
-    const summonArgs = message.content;
     await reactToMessage(message, '🔮');
-    await handleSummonCommand(message, summonArgs);
+    await handleSummonCommand(message, false, {});
   }
 
   // Attack command
@@ -364,9 +377,23 @@ client.on('messageCreate', async (message) => {
     // Save message to database and process channel messages as before
     await saveMessageToDatabase(message);
 
-    await handleCommands(message, message.content);
+    await handleCommands(message);
 
     if (message.author.bot) return;
+    await messageHandler.processChannel(message.channel.id);
+
+    const result = await avatarService.getOrCreateUniqueAvatarForUser(message.author.id,
+      `A unique avatar for ${message.author.username} (${message.author.displayName})`, message.channel.id);
+
+    if (result.new) {
+      // Show the avatar profile embed
+      result.avatar.model = result.avatar.model || (await aiService.selectRandomModel());
+      result.avatar.stats = await chatService.dungeonService.getAvatarStats(result.avatar._id);
+      await avatarService.updateAvatar(result.avatar);
+      await sendAvatarProfileEmbedFromObject(result.avatar);
+      await chatService.respondAsAvatar(message.channel, result.avatar, true);
+      // 
+    }
     await messageHandler.processChannel(message.channel.id);
 
   } catch (error) {

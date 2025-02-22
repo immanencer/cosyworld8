@@ -653,7 +653,7 @@ export default [
   },
   {
     "model": "qwen/qwq-32b-preview",
-    "rarity": "common"
+    "rarity": "legendary"
   },
   {
     "model": "liquid/lfm-40b",

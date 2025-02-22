@@ -9,6 +9,9 @@ const CONFIG_DIR = path.join(__dirname, '..', 'config');
 class ConfigService {
   constructor() {
     this.config = {
+      prompt: {
+        summon: 'Create a unique avatar with a special ability.',
+      },
       discord: {
         clientId: process.env.DISCORD_CLIENT_ID,
         botToken: process.env.DISCORD_BOT_TOKEN,
@@ -65,7 +68,7 @@ class ConfigService {
         await fs.readFile(path.join(CONFIG_DIR, 'default.config.json'), 'utf8')
       );
       let userConfig = {};
-      
+
       try {
         userConfig = JSON.parse(
           await fs.readFile(path.join(CONFIG_DIR, 'user.config.json'), 'utf8')
@@ -95,12 +98,12 @@ class ConfigService {
       const userConfigPath = path.join(CONFIG_DIR, 'user.config.json');
       const currentConfig = await this.getUserConfig();
       const updatedConfig = { ...currentConfig, ...updates };
-      
+
       await fs.writeFile(
         userConfigPath,
         JSON.stringify(updatedConfig, null, 2)
       );
-      
+
       await this.loadConfig(); // Reload configs
       return true;
     } catch (error) {
@@ -108,6 +111,7 @@ class ConfigService {
       return false;
     }
   }
+
 
   async getUserConfig() {
     try {
@@ -121,6 +125,10 @@ class ConfigService {
 
   get(path) {
     return path.split('.').reduce((obj, key) => obj?.[key], this.config);
+  }
+
+  getPromptConfig() {
+    return this.config.prompts;
   }
 
   getDiscordConfig() {
@@ -150,13 +158,13 @@ class ConfigService {
   validate() {
     const required = [
       'DISCORD_CLIENT_ID',
-      'DISCORD_BOT_TOKEN', 
+      'DISCORD_BOT_TOKEN',
       'MONGO_URI',
       'OPENROUTER_API_TOKEN'
     ];
 
     const missing = required.filter(key => !process.env[key]);
-    
+
     if (missing.length > 0) {
       throw new Error(`Missing required environment variables: ${missing.join(', ')}`);
     }
