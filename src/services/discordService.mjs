@@ -31,6 +31,9 @@ const logger = winston.createLogger({
 // Get Discord configuration
 const discordConfig = configService.getDiscordConfig();
 
+// Add MongoDB client
+const mongoClient = new MongoClient(process.env.MONGODB_URL);
+
 // Instantiate the Discord client with necessary permissions
 export const client = new Client({
   intents: [
@@ -41,6 +44,17 @@ export const client = new Client({
   ],
   partials: [Partials.Message, Partials.Channel, Partials.Reaction],
   token: discordConfig.botToken
+});
+
+// Connect to MongoDB when Discord client is ready
+client.once('ready', async () => {
+  try {
+    await mongoClient.connect();
+    client.db = mongoClient.db(process.env.MONGODB_NAME);
+    logger.info('Connected to MongoDB database');
+  } catch (error) {
+    logger.error('Failed to connect to MongoDB:', error);
+  }
 });
 
 // Validate required configuration
