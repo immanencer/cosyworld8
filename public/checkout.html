@@ -16,18 +16,26 @@
             font-family: system-ui, sans-serif;
             background: #13111c;
             color: #fff;
+            min-height: 100vh;
+            background: linear-gradient(to bottom right, #13111c, #1a1725);
         }
         .error {
             color: #ff4444;
             padding: 20px;
             text-align: center;
         }
+        .nft-preview {
+            border-radius: 16px;
+            overflow: hidden;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+            margin-bottom: 24px;
+        }
     </style>
 </head>
 <body>
     <div id="root"></div>
     <script data-api-key="ck_staging_21j2UbKYUM7wam4MbDspgk7E7XvnLGdf34YDrE67TFa5eMpBJNab8UCwLhPZFHjrUtUwy2N8x7uDCs6TKszdwHUAKoNzcKNk12drQQzCHuhQMniQdQPzReSat9sGr47Yk8mZnLy4bKe6tVmVP8khy2NdZpa2VUYPLRUHQ4KuLrNaj5VyGWyHSXdE4eGQ1LNpAXvsdfnn5u3dyTwBWuityYN">
-        window.CROSSMINT_CLIENT_API_KEY = document.currentScript.getAttribute('data-api-key');
+        window.CROSSMINT_CLIENT_API_KEY = "ck_staging_21j2UbKYUM7wam4MbDspgk7E7XvnLGdf34YDrE67TFa5eMpBJNab8UCwLhPZFHjrUtUwy2N8x7uDCs6TKszdwHUAKoNzcKNk12drQQzCHuhQMniQdQPzReSat9sGr47Yk8mZnLy4bKe6tVmVP8khy2NdZpa2VUYPLRUHQ4KuLrNaj5VyGWyHSXdE4eGQ1LNpAXvsdfnn5u3dyTwBWuityYN";
     </script>
     <script src="/js/checkout.js"></script>
 </body>
