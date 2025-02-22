@@ -1,12 +1,15 @@
-import React from 'react';
-import { createRoot } from 'react-dom/client';
-import { CrossmintProvider, CrossmintHostedCheckout } from "@crossmint/client-sdk-react-ui";
+import React from "react";
+import { createRoot } from "react-dom/client";
+import {
+  CrossmintProvider,
+  CrossmintHostedCheckout,
+} from "@crossmint/client-sdk-react-ui";
 
 function CheckoutPage() {
   // Get query parameters
   const params = new URLSearchParams(window.location.search);
-  const templateId = params.get('templateId');
-  const collectionId = params.get('collectionId');
+  const templateId = params.get("templateId");
+  const collectionId = params.get("collectionId");
 
   const clientId = window.CROSSMINT_CLIENT_API_KEY;
 
@@ -18,21 +21,22 @@ function CheckoutPage() {
           <div className="max-w-md mx-auto">
             <div className="divide-y divide-gray-200">
               <div className="py-8 text-base leading-6 space-y-4 text-gray-700 sm:text-lg sm:leading-7">
-                <h2 className="text-2xl font-bold mb-8">Complete Your Purchase</h2>
+                <h2 className="text-2xl font-bold mb-8">
+                  Complete Your Purchase
+                </h2>
                 {clientId && templateId && collectionId ? (
                   <CrossmintProvider apiKey={clientId}>
                     <CrossmintHostedCheckout
                       lineItems={{
-                        collectionLocator: `crossmint:${collectionId}`,
+                        collectionLocator: `crossmint:${collectionId}:${templateId}`,
                         callData: {
-                          totalPrice: "0.0001",
+                          totalPrice: "0.1",
                           quantity: 1,
-                          templateId: templateId
-                        }
+                        },
                       }}
                       payment={{
                         crypto: { enabled: true },
-                        fiat: { enabled: true }
+                        fiat: { enabled: true },
                       }}
                     />
                   </CrossmintProvider>
@@ -48,6 +52,6 @@ function CheckoutPage() {
   );
 }
 
-const container = document.getElementById('root');
+const container = document.getElementById("root");
 const root = createRoot(container);
 root.render(<CheckoutPage />);
