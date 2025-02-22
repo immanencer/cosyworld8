@@ -1,9 +1,9 @@
-"use client";
 
-import { useEffect } from 'react';
+import React from 'react';
+import { createRoot } from 'react-dom/client';
 
-export default function CheckoutPage() {
-  useEffect(() => {
+function CheckoutPage() {
+  React.useEffect(() => {
     window.location.href = 'https://staging.crossmint.com/collections/rati-moonstone-sanctum/drop';
   }, []);
 
@@ -13,3 +13,7 @@ export default function CheckoutPage() {
     </div>
   );
 }
+
+// Mount the component
+const root = createRoot(document.getElementById('root'));
+root.render(<CheckoutPage />);
