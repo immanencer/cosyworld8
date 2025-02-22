@@ -6,6 +6,7 @@ import {
   Partials,
   WebhookClient
 } from 'discord.js';
+import { DatabaseService } from './databaseService.mjs';
 import configService from './configService.mjs';
 import { EmbedBuilder, ButtonBuilder, ButtonStyle, ActionRowBuilder } from 'discord.js';
 import winston from 'winston';
@@ -31,8 +32,8 @@ const logger = winston.createLogger({
 // Get Discord configuration
 const discordConfig = configService.getDiscordConfig();
 
-// Add MongoDB client
-const mongoClient = new MongoClient(process.env.MONGODB_URL);
+// Initialize database service
+const databaseService = new DatabaseService(logger);
 
 // Instantiate the Discord client with necessary permissions
 export const client = new Client({
@@ -49,8 +50,8 @@ export const client = new Client({
 // Connect to MongoDB when Discord client is ready
 client.once('ready', async () => {
   try {
-    await mongoClient.connect();
-    client.db = mongoClient.db(process.env.MONGODB_NAME);
+    const db = await databaseService.connect();
+    client.db = db;
     logger.info('Connected to MongoDB database');
   } catch (error) {
     logger.error('Failed to connect to MongoDB:', error);
