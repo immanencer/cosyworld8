@@ -9,8 +9,11 @@ import configService from './services/configService.mjs';
 import { OpenRouterService as AIService } from './services/openrouterService.mjs';
 import { AvatarGenerationService } from './services/avatarService.mjs';
 
-// Ensure config is loaded
+// Initialize and load config
+import configService from './services/configService.mjs';
+configService.validate();
 const aiConfig = configService.getAIConfig();
+
 import {
   client,
   reactToMessage,
@@ -464,7 +467,7 @@ async function main() {
       throw new Error('Failed to connect to the database');
     }
 
-    avatarService = new AvatarGenerationService(db);
+    avatarService = new AvatarGenerationService(db, configService);
 
     logger.info('✅ Connected to MongoDB successfully');
 
