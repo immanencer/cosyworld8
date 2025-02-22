@@ -167,6 +167,7 @@ export async function sendAvatarProfileEmbedFromObject(avatar) {
     stats,
     traits,
     innerMonologueThreadId,
+    templateId,
   } = avatar;
 
   if (!channelId || typeof channelId !== 'string') {
@@ -277,18 +278,19 @@ export async function sendAvatarProfileEmbedFromObject(avatar) {
       );
     }
 
-    // Create a "Collect" button
-    const collectButton = new ButtonBuilder()
-      .setLabel('Collect')
-      .setStyle(ButtonStyle.Primary)
-      .setCustomId(`claim_avatar_${_id}`); // Append the avatar ID to identify which avatar to claim
-
-    // Create an action row and add the claim button
-    const actionRow = new ActionRowBuilder().addComponents(collectButton);
+    const components = [];
+    if (templateId) {
+      const collectButton = new ButtonBuilder()
+        .setLabel('Collect')
+        .setStyle(ButtonStyle.Primary)
+        .setCustomId(`claim_avatar_${_id}`);
+      const actionRow = new ActionRowBuilder().addComponents(collectButton);
+      components.push(actionRow);
+    }
 
     await webhookClient.send({
       embeds: [avatarEmbed],
-      components: [actionRow],
+      components,
       threadId: channel.isThread() ? channelId : undefined,
       username: `🔮 ${name.slice(0, 80)}`,
       avatarURL: imageUrl,

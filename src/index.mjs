@@ -4,9 +4,10 @@ import { DatabaseService } from './services/databaseService.mjs';
 import { SpamControlService } from './services/spamControlService.mjs';
 
 
-import configService from './services/configService.mjs';
+
 // import { OllamaService as AIService } from './services/ollamaService.mjs';
 import { OpenRouterService as AIService } from './services/openrouterService.mjs';
+
 import { AvatarGenerationService } from './services/avatarService.mjs';
 
 // Initialize and load config

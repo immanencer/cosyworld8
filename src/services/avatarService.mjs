@@ -329,6 +329,7 @@ export class AvatarGenerationService {
           Please respond in the following JSON format. ONLY provide valid JSON as a response.
           If the prompt contains any non-English words, fill out ALL fields in the non-English language.
           Creatively fill in any details without comment, keep all responses to no more than four sentences. 
+          ONLY respond with a well formed JSON object in the format shown below:
           {
             "name": "<name the character>",
             "emoji": "<insert an emoji 🤗, (be sure to use proper JSON notation), that best represents the character>",
@@ -344,6 +345,7 @@ export class AvatarGenerationService {
           if (!response) {
             throw new Error('Failed to generate avatar details.');
           }
+          console.log(response);
           const avatarDetails = JSON.parse(extractJSON(response.trim()));
           const { name, description, emoji, personality } = avatarDetails;
           if (!name || !description || !personality) {
