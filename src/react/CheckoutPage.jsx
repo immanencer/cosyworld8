@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { createRoot } from "react-dom/client";
 import {
@@ -19,7 +18,7 @@ function CheckoutPage() {
       // For now using a placeholder image
       setNftData({
         name: "RATi Avatar",
-        image: "/images/avatar_1737921879644_466.png"
+        image: "/images/avatar_1737921879644_466.png",
       });
     }
   }, [templateId, collectionId]);
@@ -35,11 +34,11 @@ function CheckoutPage() {
                 <h2 className="text-3xl font-bold mb-8 text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-400">
                   Complete Purchase
                 </h2>
-                
+
                 {nftData && (
                   <div className="nft-preview mb-8">
-                    <img 
-                      src={nftData.image} 
+                    <img
+                      src={nftData.image}
                       alt={nftData.name}
                       className="w-full h-64 object-cover rounded-xl shadow-2xl"
                     />
@@ -53,16 +52,16 @@ function CheckoutPage() {
                   <CrossmintProvider apiKey={clientId}>
                     <CrossmintEmbeddedCheckout
                       lineItems={{
-                        collectionLocator: `crossmint:${collectionId}:$`,
+                        collectionLocator: `crossmint:${collectionId}:${templateId}`,
                         callData: {
                           totalPrice: "0.1",
                           quantity: 1,
-                          templateId
-                        }
+                          templateId,
+                        },
                       }}
                       payment={{
                         crypto: { enabled: true },
-                        fiat: { enabled: true }
+                        fiat: { enabled: true },
                       }}
                     />
                   </CrossmintProvider>
