@@ -160,7 +160,7 @@ export class ConversationHandler {
           content: `Current personality: ${avatar.dynamicPersonality || 'None yet'}\n\nMemories: ${memories}\n\nRecent actions: ${actions}\n\nNarrative thoughts: ${narrativeContent}`
         },
         { role: 'user', content: prompt }
-      ], { model: avatar.model });
+      ], { model: avatar.model, max_tokens: 1024 });
 
       if (!narrative) {
         this.logger.error(`No narrative generated for ${avatar.name}.`);

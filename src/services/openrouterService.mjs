@@ -5,22 +5,41 @@ export class OpenRouterService {
   constructor(apiKey) {
     this.model = process.env.OPENROUTER_MODEL || 'meta-llama/llama-3.2-3b-instruct';
     this.openai = new OpenAI({
-      apiKey: (apiKey || process.env.OPENROUTER_API_TOKEN),
+      apiKey: apiKey || process.env.OPENROUTER_API_TOKEN,
       baseURL: 'https://openrouter.ai/api/v1',
       defaultHeaders: {
         'HTTP-Referer': 'https://ratimics.com', // Optional, for including your app on openrouter.ai rankings.
-        'X-Title': 'rativerse',      // Optional. Shows in rankings on openrouter.ai.
+        'X-Title': 'rativerse', // Optional. Shows in rankings on openrouter.ai.
       },
     });
     this.modelConfig = models;
+
+    // Default options that will be used if not overridden by the caller.
+    this.defaultCompletionOptions = {
+      temperature: 0.7,
+      max_tokens: 1000,
+      top_p: 1.0,
+      frequency_penalty: 0,
+      presence_penalty: 0,
+    };
+
+    // Note: Chat defaults differ from completions. They can be adjusted as needed.
+    this.defaultChatOptions = {
+      model: 'meta-llama/llama-3.2-1b-instruct',
+      temperature: 0.7,
+      max_tokens: 1000,
+      top_p: 1.0,
+      frequency_penalty: 0,
+      presence_penalty: 0,
+    };
   }
 
   async selectRandomModel() {
     const rarityRanges = [
       { rarity: 'common', min: 1, max: 12 },        // Common: 1-12 (60%)
-      { rarity: 'uncommon', min: 13, max: 17 },    // Uncommon: 13-17 (25%)
-      { rarity: 'rare', min: 18, max: 19 },        // Rare: 18-19 (10%)
-      { rarity: 'legendary', min: 20, max: 20 },   // Legendary: 20 (5%)
+      { rarity: 'uncommon', min: 13, max: 17 },       // Uncommon: 13-17 (25%)
+      { rarity: 'rare', min: 18, max: 19 },           // Rare: 18-19 (10%)
+      { rarity: 'legendary', min: 20, max: 20 },      // Legendary: 20 (5%)
     ];
 
     // Roll a d20
@@ -37,24 +56,24 @@ export class OpenRouterService {
       const randomIndex = Math.floor(Math.random() * availableModels.length);
       return availableModels[randomIndex].model;
     }
-
-    // Fallback to default if no models are found
     return this.model;
   }
-
 
   modelIsAvailable(model) {
     return this.modelConfig.some(m => m.model === model);
   }
 
-  // Method to generate a completion from OpenRouter
   async generateCompletion(prompt, options = {}) {
+    // Merge our defaults with caller-supplied options.
+    const mergedOptions = {
+      model: this.model,
+      prompt,
+      ...this.defaultCompletionOptions,
+      ...options,
+    };
+
     try {
-      const response = await this.openai.completions.create({
-        model: this.model,
-        prompt,
-        ...options,
-      });
+      const response = await this.openai.completions.create(mergedOptions);
       if (!response || !response.choices || response.choices.length === 0) {
         console.error('Invalid response from OpenRouter during completion generation.');
         return null;
@@ -66,22 +85,24 @@ export class OpenRouterService {
     }
   }
 
-  // Method to have a chat with OpenRouter
-  async chat(messages, options = { model: 'meta-llama/llama-3.2-1b-instruct' }, retries = 3) {
-    try {
-      // verify that the model is available
-      let model = options.model || this.model;
-      if (!this.modelIsAvailable(model)) {
-        console.error('Invalid model provided to chat:', model);
-        model = this.model;
-      }
+  async chat(messages, options = {}, retries = 3) {
+    // Merge our default chat options with any caller options.
+    const mergedOptions = {
+      ...this.defaultChatOptions,
+      ...options,
+    };
 
-      const response = await this.openai.chat
-        .completions.create({
-          model,
-          messages: messages.filter(T => T.content),
-          ...options,
-        });
+    // Ensure that only messages with content are passed.
+    mergedOptions.messages = messages.filter(m => m.content);
+
+    // Verify that the chosen model is available. If not, fall back.
+    if (!this.modelIsAvailable(mergedOptions.model)) {
+      console.error('Invalid model provided to chat:', mergedOptions.model);
+      mergedOptions.model = this.model;
+    }
+
+    try {
+      const response = await this.openai.chat.completions.create(mergedOptions);
       if (!response || !response.choices || response.choices.length === 0) {
         console.error('Invalid response from OpenRouter during chat.');
         return null;
@@ -89,7 +110,6 @@ export class OpenRouterService {
       return response.choices[0].message.content.trim() || '...';
     } catch (error) {
       console.error('Error while chatting with OpenRouter:', error);
-
       // Retry if the error is a rate limit error
       if (error.response && error.response.status === 429 && retries > 0) {
         console.error('Retrying chat with OpenRouter in 5 seconds...');
@@ -112,7 +132,7 @@ export class OpenRouterService {
   You are a mystical item called "${item.name}" located in a dungeon channel (ID: ${channelId}).
   Your description is: ${item.description}.
   Respond with only your speech as if you are the item coming to life in this channel.
-      `;
+    `;
     const completion = await this.generateCompletion(prompt);
     if (!completion) {
       return `The ${item.name} remains silent.`;
