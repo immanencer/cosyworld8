@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { createRoot } from 'react-dom/client';
+import ReactDOM from 'react-dom';
 
 function CheckoutPage() {
   React.useEffect(() => {
@@ -8,12 +8,12 @@ function CheckoutPage() {
   }, []);
 
   return (
-    <div className="flex min-h-screen items-center justify-center">
-      <div>Redirecting to checkout...</div>
+    <div className="flex min-h-screen items-center justify-center bg-gray-900">
+      <div className="text-white text-xl">Redirecting to checkout...</div>
     </div>
   );
 }
 
 // Mount the component
-const root = createRoot(document.getElementById('root'));
-root.render(<CheckoutPage />);
+const root = document.getElementById('root');
+ReactDOM.render(<CheckoutPage />, root);
