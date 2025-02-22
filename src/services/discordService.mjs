@@ -281,7 +281,7 @@ export async function sendAvatarProfileEmbedFromObject(avatar) {
     const components = [];
     if (templateId) {
       // Fetch collectionId from crossmint_dev collection
-      const db = this.client.db;
+      const db = client.db; //Corrected line:  Access the client directly.
       const crossmintData = await db.collection('crossmint_dev').findOne({ avatarId: _id });
       const collectionId = crossmintData?.collectionId || process.env.CROSSMINT_COLLECTION_ID;
 
