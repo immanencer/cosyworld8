@@ -1,6 +1,6 @@
 import React from 'react';
 import { createRoot } from 'react-dom/client';
-import { CrossmintPayButton } from "@crossmint/client-sdk-react-ui";
+import { CrossmintProvider, CrossmintHostedCheckout } from "@crossmint/client-sdk-react-ui";
 
 function CheckoutPage() {
   // Get query parameters
@@ -20,17 +20,22 @@ function CheckoutPage() {
               <div className="py-8 text-base leading-6 space-y-4 text-gray-700 sm:text-lg sm:leading-7">
                 <h2 className="text-2xl font-bold mb-8">Complete Your Purchase</h2>
                 {clientId && templateId && collectionId ? (
-                  <CrossmintPayButton
-                    clientId={clientId}
-                    environment="staging"
-                    mintConfig={{
-                      type: "erc-721",
-                      totalPrice: "0.0001",
-                      quantity: "1",
-                      templateId: templateId,
-                      collectionId: collectionId
-                    }}
-                  />
+                  <CrossmintProvider apiKey={clientId}>
+                    <CrossmintHostedCheckout
+                      lineItems={{
+                        collectionLocator: `crossmint:${collectionId}`,
+                        callData: {
+                          totalPrice: "0.0001",
+                          quantity: 1,
+                          templateId: templateId
+                        }
+                      }}
+                      payment={{
+                        crypto: { enabled: true },
+                        fiat: { enabled: true }
+                      }}
+                    />
+                  </CrossmintProvider>
                 ) : (
                   <p>Missing required parameters</p>
                 )}
