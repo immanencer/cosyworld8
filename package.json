@@ -18,6 +18,7 @@
     "@babel/cli": "^7.26.4",
     "@babel/core": "^7.26.0",
     "@babel/preset-env": "^7.26.0",
+    "@crossmint/client-sdk-react-ui": "^1.14.9",
     "@solana/web3.js": "^1.98.0",
     "ajv": "^8.17.1",
     "ajv-formats": "^3.0.1",
