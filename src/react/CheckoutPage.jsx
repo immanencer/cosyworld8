@@ -1,10 +1,9 @@
-
 import React from 'react';
-import ReactDOM from 'react-dom';
+import { createRoot } from 'react-dom/client';
 
 function CheckoutPage() {
   React.useEffect(() => {
-    window.location.href = 'https://staging.crossmint.com/collections/rati-moonstone-sanctum/drop';
+    window.location.href = "https://staging.crossmint.com/collections/rati-moonstone-sanctum/drop";
   }, []);
 
   return (
@@ -15,5 +14,6 @@ function CheckoutPage() {
 }
 
 // Mount the component
-const root = document.getElementById('root');
-ReactDOM.render(<CheckoutPage />, root);
+const container = document.getElementById('root');
+const root = createRoot(container);
+root.render(<CheckoutPage />);
