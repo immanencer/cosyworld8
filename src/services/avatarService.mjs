@@ -18,10 +18,11 @@ import fs from 'fs/promises';
 import fetch from 'node-fetch';
 
 export class AvatarGenerationService {
-  constructor(db) {
+  constructor(db, config) {
+    this.config = config;
     this.aiService = new AIService();
-    this.replicate = new Replicate({ auth: process.env.REPLICATE_API_TOKEN });
-    this.db = db; // Will be set when connecting to the database
+    this.replicate = new Replicate({ auth: this.config.getAIConfig().replicate.apiToken });
+    this.db = db;
 
     // Initialize Logger
     this.logger = winston.createLogger({
@@ -38,8 +39,9 @@ export class AvatarGenerationService {
       ],
     });
 
-    this.IMAGE_URL_COLLECTION = process.env.IMAGE_URL_COLLECTION || 'image_urls';
-    this.AVATARS_COLLECTION = process.env.AVATARS_COLLECTION || 'avatars';
+    const mongoConfig = this.config.getMongoConfig();
+    this.IMAGE_URL_COLLECTION = mongoConfig.collections.imageUrls;
+    this.AVATARS_COLLECTION = mongoConfig.collections.avatars;
 
     this.prompts = null;
   }
@@ -435,10 +437,9 @@ export class AvatarGenerationService {
    * @returns {string|null} - The local filename of the generated image.
    */
   async generateAvatarImage(prompt) {
-    const trigger = process.env.LORA_TRIGGER_WORD || '';
+    const trigger = this.config.getAIConfig().replicate.loraTriggerWord || '';
     const [output] = await this.replicate.run(
-      process.env.REPLICATE_MODEL ||
-      "immanencer/mirquo:dac6bb69d1a52b01a48302cb155aa9510866c734bfba94aa4c771c0afb49079f",
+      this.config.getAIConfig().replicate.model,
       {
         input: {
           prompt: `${trigger} ${prompt} ${trigger}`,
