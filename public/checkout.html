@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -6,6 +7,7 @@
     <title>NFT Checkout</title>
     <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@crossmint/client-sdk-react-ui/lib/index.global.js"></script>
     <link href="/css/tailwind.css" rel="stylesheet">
     <style>
         body {
@@ -21,12 +23,12 @@
             text-align: center;
         }
     </style>
-    <script>
-        window.CROSSMINT_CLIENT_API_KEY = "%CROSSMINT_CLIENT_API_KEY%";
-    </script>
 </head>
 <body>
     <div id="root"></div>
-    <script src="/js/checkout.js" type="module"></script>
+    <script>
+        window.CROSSMINT_CLIENT_API_KEY = document.currentScript.getAttribute('data-api-key');
+    </script>
+    <script src="/js/checkout.js"></script>
 </body>
 </html>
