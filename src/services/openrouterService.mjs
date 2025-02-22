@@ -86,10 +86,16 @@ export class OpenRouterService {
   }
 
   async chat(messages, options = {}, retries = 3) {
-    // Merge our default chat options with any caller options.
+    // Merge our default chat options with any caller options, preserving structure
     const mergedOptions = {
       ...this.defaultChatOptions,
       ...options,
+      // Preserve any special response format instructions
+      response_format: options.response_format || this.defaultChatOptions.response_format,
+      functions: options.functions,
+      function_call: options.function_call,
+      tools: options.tools,
+      tool_choice: options.tool_choice,
     };
 
     // Ensure that only messages with content are passed.
@@ -101,13 +107,28 @@ export class OpenRouterService {
       mergedOptions.model = this.model;
     }
 
+    // Log the full options for debugging
+    console.debug('OpenRouter chat options:', JSON.stringify(mergedOptions, null, 2));
+
     try {
       const response = await this.openai.chat.completions.create(mergedOptions);
       if (!response || !response.choices || response.choices.length === 0) {
         console.error('Invalid response from OpenRouter during chat.');
         return null;
       }
-      return response.choices[0].message.content.trim() || '...';
+      const result = response.choices[0].message;
+      
+      // If response is meant to be structured JSON, preserve it
+      if (mergedOptions.response_format?.type === 'json_object') {
+        return result.content;
+      }
+      
+      // Handle function/tool calls if present
+      if (result.function_call || result.tool_calls) {
+        return result;
+      }
+      
+      return result.content.trim() || '...';
     } catch (error) {
       console.error('Error while chatting with OpenRouter:', error);
       // Retry if the error is a rate limit error
