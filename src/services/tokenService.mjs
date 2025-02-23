@@ -19,7 +19,10 @@ export class TokenService {
 
   async createToken({ name, symbol, description, imageUrl }, walletAddress) {
     try {
+      console.log('Token creation request:', { name, symbol, description, imageUrl, walletAddress });
+      
       if (!name || !symbol || !description || !imageUrl || !walletAddress) {
+        console.error('Missing parameters:', { name, symbol, description, imageUrl, walletAddress });
         throw new Error('Missing required token parameters');
       }
 

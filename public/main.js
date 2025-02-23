@@ -233,7 +233,7 @@ async function claimAvatar(avatarId) {
 
     // Request wallet to sign transaction
     const signedTx = await window.phantom.solana.signTransaction(transaction);
-    
+
     // Send the transaction
     const connection = new solanaWeb3.Connection(
       process.env.SOLANA_RPC_URL || 'https://api.mainnet-beta.solana.com',
@@ -276,15 +276,19 @@ async function claimAvatar(avatarId) {
 }
 
 async function createToken(avatarId) {
-  if (!state.wallet) {
-    alert("Please connect your wallet first");
-    return;
-  }
+    console.log('Starting token creation for avatar:', avatarId);
 
-  // Get the button element
-  const button = document.querySelector(`button[onclick="createToken('${avatarId}')"]`);
-  const originalText = button.textContent;
-  
+    if (!state.wallet) {
+      console.error('Wallet not connected');
+      alert("Please connect your wallet first");
+      return;
+    }
+
+    // Get the button element
+    const button = document.querySelector(`button[onclick="createToken('${avatarId}')"]`);
+    const originalText = button.textContent;
+    console.log('Wallet address:', state.wallet.publicKey.toString());
+
   try {
     // Update button state
     button.disabled = true;
@@ -315,7 +319,7 @@ async function createToken(avatarId) {
 
       // Request wallet to sign transaction
       const signedTx = await phantomProvider.signTransaction(data.unsignedTx);
-      
+
       // Submit signed transaction
       const submitResponse = await fetch(`/api/tokens/${data.tokenId}/submit`, {
         method: "POST",
@@ -333,7 +337,7 @@ async function createToken(avatarId) {
       }
 
       const submitResult = await submitResponse.json();
-      
+
       // Show success message with modal
       const modal = document.createElement('div');
       modal.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4';
@@ -355,7 +359,7 @@ async function createToken(avatarId) {
     }
   } catch (error) {
     console.error("Error creating token:", error);
-    
+
     // Show error message with modal
     const modal = document.createElement('div');
     modal.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4';
@@ -371,12 +375,6 @@ async function createToken(avatarId) {
             <li>No token already exists for this avatar</li>
           </ul>
         </div>
-        <button onclick="this.closest('.fixed').remove()" 
-                class="w-full px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded text-white">
-          Close
-        </button>
-      </div>
-    `;
         <button onclick="this.closest('.fixed').remove()" 
                 class="w-full px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded text-white">
           Close

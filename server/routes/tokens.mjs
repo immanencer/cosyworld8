@@ -34,8 +34,15 @@ export default function tokenRoutes() {
     try {
       const { avatarId } = req.params;
       const { walletAddress } = req.body;
+      
+      console.log('Token creation request received:', {
+        avatarId,
+        walletAddress,
+        body: req.body
+      });
 
       if (!walletAddress) {
+        console.error('Missing wallet address in request');
         return res.status(400).json({ error: 'Wallet address is required' });
       }
 
