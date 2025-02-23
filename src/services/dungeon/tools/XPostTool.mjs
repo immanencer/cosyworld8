@@ -22,8 +22,8 @@ export class XPostTool extends BaseTool {
                 expiresIn
             } = await client.refreshOAuth2Token(auth.refreshToken);
 
-            // Calculate new expiration date
-            const expiresAt = new Date(Date.now() + expiresIn * 1000);
+            // Calculate new expiration date with 5 min buffer
+            const expiresAt = new Date(Date.now() + (expiresIn * 1000) - 300000);
 
             // Update the stored tokens
             await db.collection('x_auth').updateOne(
@@ -32,13 +32,19 @@ export class XPostTool extends BaseTool {
                     $set: {
                         accessToken,
                         refreshToken: newRefreshToken,
-                        expiresAt
+                        expiresAt,
+                        updatedAt: new Date()
                     }
                 }
             );
 
             return accessToken;
         } catch (error) {
+            // Handle specific error cases
+            if (error.code === 401 || error.message?.includes('invalid_grant')) {
+                await db.collection('x_auth').deleteOne({ avatarId: auth.avatarId });
+                throw new Error('X authorization expired. Please reconnect your account.');
+            }
             this.dungeonService.logger.error(`Error refreshing token: ${error.message}`);
             throw error;
         }
@@ -88,27 +94,37 @@ export class XPostTool extends BaseTool {
             let xStatus = false;
 
             try {
-                if (auth?.accessToken) {
-                    let accessToken = auth.accessToken;
+                if (!auth?.accessToken) {
+                    return '❌ X authorization not found. Please connect your account.';
+                }
 
-                    // If token is expired but we have a refresh token, try to refresh
-                    if (new Date() >= new Date(auth.expiresAt) && auth.refreshToken) {
-                        try {
-                            accessToken = await this.refreshAccessToken(db, auth);
-                        } catch (error) {
-                            return '❌ Failed to refresh X authorization. Please reconnect your account.';
-                        }
-                    } else if (new Date() >= new Date(auth.expiresAt)) {
+                let accessToken = auth.accessToken;
+                const now = new Date();
+                const expiry = new Date(auth.expiresAt);
+
+                // Check if token needs refresh
+                if (now >= expiry) {
+                    if (!auth.refreshToken) {
                         return '❌ X authorization expired. Please reconnect your account.';
                     }
+                    try {
+                        accessToken = await this.refreshAccessToken(db, auth);
+                    } catch (error) {
+                        return error.message || '❌ Failed to refresh X authorization. Please reconnect your account.';
+                    }
+                }
 
-                    // Initialize Twitter client with access token
-                    const twitterClient = new TwitterApi(accessToken);
-                    const v2Client = twitterClient.v2;
+                // Initialize Twitter client with access token
+                const twitterClient = new TwitterApi(accessToken);
+                const v2Client = twitterClient.v2;
 
-                    // Try posting to X
-                    await v2Client.tweet(message);
-                    xStatus = true;
+                // Try posting to X with character limit check
+                if (message.length > 280) {
+                    return '❌ Message exceeds X character limit of 280 characters';
+                }
+                
+                await v2Client.tweet(message);
+                xStatus = true;
                 }
 
                 // Always store the post
