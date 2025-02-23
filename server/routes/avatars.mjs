@@ -25,85 +25,6 @@ function escapeRegExp(str) {
  * Main export function that returns the configured router.
  */
 export default function avatarRoutes(db) {
-  router.get('/', async (req, res) => {
-    try {
-      const page = Math.max(1, parseInt(req.query.page, 10) || 1);
-      const limit = Math.min(100, Math.max(1, parseInt(req.query.limit, 10) || 50));
-      const skip = (page - 1) * limit;
-      const view = req.query.view || 'all';
-
-      let query = {};
-      let sort = { createdAt: -1 };
-
-      if (view === 'owned' && req.query.walletAddress) {
-        const walletAddress = req.query.walletAddress;
-
-        // Fetch avatar IDs from both x_auth and avatar_claims
-        const [xAuths, avatarClaims] = await Promise.all([
-          db.collection('x_auth').find({ walletAddress }).toArray(),
-          db.collection('avatar_claims').find({ walletAddress }).toArray()
-        ]);
-
-        // Map to ObjectIds (if needed)
-        const xAuthAvatarIds = xAuths.map(auth =>
-          typeof auth.avatarId === 'string'
-            ? new ObjectId(auth.avatarId)
-            : auth.avatarId
-        );
-        const claimAvatarIds = avatarClaims.map(claim =>
-          typeof claim.avatarId === 'string'
-            ? new ObjectId(claim.avatarId)
-            : claim.avatarId
-        );
-
-        // Combine both lists and remove duplicates.
-        // We convert ObjectIds to strings to deduplicate, then convert back.
-        const authorizedAvatarIds = [...new Set(
-          [...xAuthAvatarIds, ...claimAvatarIds].map(id => id.toString())
-        )].map(id => new ObjectId(id));
-
-        query._id = { $in: authorizedAvatarIds };
-      }
-
-      const [avatars, total] = await Promise.all([
-        db.collection('avatars')
-          .find(query)
-          .sort(sort)
-          .skip(skip)
-          .limit(limit)
-          .toArray(),
-        db.collection('avatars').countDocuments(query)
-      ]);
-
-      await thumbnailService.ensureThumbnailDir();
-      const avatarsWithThumbs = await Promise.all(
-        avatars.map(async (avatar) => {
-          try {
-            const thumbnailUrl = await thumbnailService.generateThumbnail(avatar.imageUrl);
-            return { ...avatar, thumbnailUrl };
-          } catch (err) {
-            console.error(`Thumbnail failed for avatar ${avatar._id}:`, err);
-            return { ...avatar, thumbnailUrl: avatar.imageUrl };
-          }
-        })
-      );
-
-      res.json({
-        avatars: avatarsWithThumbs,
-        total,
-        page,
-        totalPages: Math.ceil(total / limit),
-        limit
-      });
-    } catch (error) {
-      console.error('Avatar listing error:', error);
-      res.status(500).json({
-        error: 'Failed to fetch avatars',
-        details: process.env.NODE_ENV === 'development' ? error.message : undefined
-      });
-    }
-  });
-
 
   // ------------------------------------
   // GET /:avatarId
@@ -586,6 +507,38 @@ export default function avatarRoutes(db) {
     }
   });
 
+  // ------------------------------------
+  // GET /:avatarId/status
+  // Returns the account link status for the specified avatar.
+  // ------------------------------------
+  router.get('/:avatarId/status', async (req, res) => {
+    try {
+      const { avatarId } = req.params;
+      // Try to parse avatarId as an ObjectId
+      const id = new ObjectId(avatarId);
+
+      // Check if the avatar has been claimed
+      const claim = await db.collection('avatar_claims').findOne({ avatarId: id });
+
+      // Check if the X account is linked (from x_auth collection)
+      const xAuth = await db.collection('x_auth').findOne({ avatarId: id });
+
+      // Retrieve the avatar to check SPL token creation status.
+      const avatar = await db.collection('avatars').findOne({ _id: id });
+
+      res.json({
+        claimed: !!claim,
+        walletAddress: claim ? claim.walletAddress : null,
+        burnTxSignature: claim ? claim.burnTxSignature : null,
+        splTokenCreated: avatar?.splTokenCreated || false, // adjust if you store this elsewhere
+        xAccountLinked: !!xAuth,
+        xAccountData: xAuth || null,
+      });
+    } catch (error) {
+      console.error('Error fetching avatar status:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
 
 
   return router;

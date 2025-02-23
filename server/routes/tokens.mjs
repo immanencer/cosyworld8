@@ -1,31 +1,29 @@
-
-router.get('/check/:avatarId', async (req, res) => {
-  try {
-    const { avatarId } = req.params;
-    const existingToken = await db.collection('avatar_tokens').findOne({
-      avatarId: new ObjectId(avatarId)
-    });
-    
-    res.json({ exists: !!existingToken });
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-});
-
-
 import express from 'express';
 import { TokenService } from '../../src/services/tokenService.mjs';
 import { Connection } from '@solana/web3.js';
 import { ObjectId } from 'mongodb';
-import { DatabaseService } from '../../src/services/databaseService.mjs';
 
-const router = express.Router();
 
-export default function tokenRoutes() {
+
+
+export default function tokenRoutes(db) {
+  const router = express.Router();
   const connection = new Connection(process.env.SOLANA_RPC_URL);
   const tokenService = new TokenService(connection);
-  const dbService = new DatabaseService();
-  const db = dbService.getDatabase();
+  
+  router.get('/check/:avatarId', async (req, res) => {
+    try {
+      const { avatarId } = req.params;
+      const existingToken = await db.collection('avatar_tokens').findOne({
+        avatarId: new ObjectId(avatarId)
+      });
+
+      res.json({ exists: !!existingToken });
+    } catch (error) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
 
   // Create new wallet for user
   router.post('/wallet', async (req, res) => {
