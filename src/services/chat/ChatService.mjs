@@ -188,31 +188,62 @@ export class ChatService {
     const messages = await this.getRecentMessagesFromDatabase(null, 1000);
     const topAvatars = await this.getTopMentions(messages, avatars);
 
-    const replyAvatars = topAvatars
-      .sort(() => Math.random() - 0.6)
-      .slice(0, 6);
-    // respond as each of the top 6 avatars
-    for (const avatar of replyAvatars) {
-      const channel = await this.client.channels.cache.get(avatar.channelId);
-      if (!channel) {
-        this.logger.error(`${avatar.name}: channel ${avatar.channelId} not found`);
-        continue;
-      }
+    // Track last forced conversation time per channel
+if (!this.lastForcedConversation) {
+  this.lastForcedConversation = new Map();
+}
 
-      if (Math.random() > RESPONSE_RATE) {
-        continue;
-      }
+const TEN_MINUTES = 10 * 60 * 1000;
+const replyAvatars = topAvatars.sort(() => Math.random() - 0.6).slice(0, 6);
+
+// Group avatars by channel
+const channelAvatars = new Map();
+for (const avatar of replyAvatars) {
+  if (!channelAvatars.has(avatar.channelId)) {
+    channelAvatars.set(avatar.channelId, []);
+  }
+  channelAvatars.get(avatar.channelId).push(avatar);
+}
+
+// Process each channel
+for (const [channelId, avatars] of channelAvatars) {
+  const channel = await this.client.channels.cache.get(channelId);
+  if (!channel) {
+    this.logger.error(`Channel ${channelId} not found`);
+    continue;
+  }
+
+  const lastForced = this.lastForcedConversation.get(channelId) || 0;
+  const shouldForceConversation = Date.now() - lastForced > TEN_MINUTES;
+
+  if (shouldForceConversation && avatars.length >= 2) {
+    // Force a conversation between two random avatars
+    const [avatar1, avatar2] = avatars.sort(() => Math.random() - 0.5).slice(0, 2);
+    this.lastForcedConversation.set(channelId, Date.now());
+    
+    await this.respondAsAvatar(channel, avatar1, true);
+    setTimeout(async () => {
+      await this.respondAsAvatar(channel, avatar2, true);
+    }, 2000);
+    
+    continue;
+  }
+
+  // Regular ambient responses
+  for (const avatar of avatars) {
+    if (Math.random() > RESPONSE_RATE) {
+      continue;
+    }
 
       try {
-        await this.respondAsAvatar(
-          channel, avatar, false
-        );
+        await this.respondAsAvatar(channel, avatar, false);
       } catch (error) {
         this.logger.error(`Error responding as avatar ${avatar.name}: ${error.message}`);
       }
     }
+  }
 
-    // schedule the next update
+  // schedule the next update
     setTimeout(() => this.UpdateActiveAvatars(), this.AMBIENT_CHECK_INTERVAL);
   }
 
