@@ -165,6 +165,15 @@ export class DecisionMaker {
   }
 
   async _evaluateContextualResponse(avatar, messages, isBotInteraction) {
+    // Get last 5 messages
+    const lastFiveMessages = Array.from(messages).slice(0, 5);
+    
+    // Check if all last 5 messages are from bots
+    if (lastFiveMessages.length === 5 && lastFiveMessages.every(m => m.author.bot)) {
+      this.logger.debug('Last 5 messages were from bots - skipping response');
+      return false;
+    }
+
     if (isBotInteraction) {
       return true; // Always respond to bot interactions
     }
