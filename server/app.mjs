@@ -40,9 +40,9 @@ async function initializeApp() {
     app.use('/api/dungeon', dungeonRoutes(db));
     app.use('/api/health', healthRoutes(db));
     app.use('/api/avatars', avatarRoutes(db));
-app.use('/api/tokens', tokenRoutes(db));
+    app.use('/api/tokens', tokenRoutes(db));
     app.use('/api/tribes', tribeRoutes(db));
-    app.use('/auth/x', xauthRoutes(db));
+    app.use('/api/xauth', xauthRoutes(db));
     app.use('/api/wiki', wikiRoutes(db));
     app.use('/api/social', socialRoutes(db));
     app.use('/api/admin', adminRoutes(db));
