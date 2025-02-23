@@ -5,8 +5,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>NFT Checkout</title>
-    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
-    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
     <link href="/css/tailwind.css" rel="stylesheet">
     <style>
         body {
@@ -30,13 +30,13 @@
             margin-bottom: 24px;
         }
     </style>
-</head>
-<body>
-    <div id="root"></div>
     <script>
         window.CROSSMINT_CLIENT_API_KEY = "ck_staging_21j2UbKYUM7wam4MbDspgk7E7XvnLGdf34YDrE67TFa5eMpBJNab8UCwLhPZFHjrUtUwy2N8x7uDCs6TKszdwHUAKoNzcKNk12drQQzCHuhQMniQdQPzReSat9sGr47Yk8mZnLy4bKe6tVmVP8khy2NdZpa2VUYPLRUHQ4KuLrNaj5VyGWyHSXdE4eGQ1LNpAXvsdfnn5u3dyTwBWuityYN";
     </script>
-    <script src="https://unpkg.com/@crossmint/client-sdk-react-ui/dist/index.global.js"></script>
+</head>
+<body>
+    <div id="root"></div>
+    <script src="https://cdn.crossmint.com/client-sdk-react-ui.1.14.9.min.js"></script>
     <script src="/js/checkout.js"></script>
 </body>
 </html>
