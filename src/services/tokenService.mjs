@@ -44,7 +44,10 @@ export class TokenService {
           links: [{ url: 'https://moonstonesanctum.io', label: 'Website' }],
           banner: imageUrl,
           tokenAmount: '1000000000',
-          chainId: 'solanadevnet'
+          chainId: 'solanadevnet',
+          marketEnabled: true,
+          decimals: 9,
+          maxSupply: '1000000000000'
         });
 
         if (!prepMint || !prepMint.transaction) {
