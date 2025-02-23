@@ -19,8 +19,8 @@ export class OpenRouterService {
       temperature: 0.7,
       max_tokens: 1000,
       top_p: 1.0,
-      frequency_penalty: 0,
-      presence_penalty: 0,
+      frequency_penalty: 0.6,
+      presence_penalty: 0.6,
     };
 
     // Note: Chat defaults differ from completions. They can be adjusted as needed.
@@ -29,8 +29,8 @@ export class OpenRouterService {
       temperature: 0.7,
       max_tokens: 1000,
       top_p: 1.0,
-      frequency_penalty: 0,
-      presence_penalty: 0,
+      frequency_penalty: 0.6,
+      presence_penalty: 0.6,
     };
   }
 
@@ -114,17 +114,17 @@ export class OpenRouterService {
         return null;
       }
       const result = response.choices[0].message;
-      
+
       // If response is meant to be structured JSON, preserve it
       if (mergedOptions.response_format?.type === 'json_object') {
         return result.content;
       }
-      
+
       // Handle function/tool calls if present
       if (result.function_call || result.tool_calls) {
         return result;
       }
-      
+
       return result.content.trim() || '...';
     } catch (error) {
       console.error('Error while chatting with OpenRouter:', error);
