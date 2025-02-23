@@ -95,9 +95,10 @@ export default function dungeonRoutes(db) {
 
       const locationNames = [...new Set(
         combatLog
-          .filter((log) => log.action === 'move' || log.location)
+          .filter((log) => (log.action === 'move' || log.location) && log.target)
           .map((log) => log.target)
       )];
+
 
       const allLocations = await db.collection('locations')
         .find({}, { projection: { name: 1, description: 1, imageUrl: 1, updatedAt: 1 } })
@@ -106,9 +107,11 @@ export default function dungeonRoutes(db) {
       const fuse = new Fuse(allLocations, { keys: ['name'], threshold: 0.4 });
 
       const locationDetails = locationNames.reduce((acc, name) => {
-        const [result] = fuse.search(name);
-        if (result) {
-          acc[name] = result.item;
+        if (name) {
+          const [result] = fuse.search(name);
+          if (result) {
+            acc[name] = result.item;
+          }
         }
         return acc;
       }, {});
