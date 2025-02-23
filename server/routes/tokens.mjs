@@ -1,4 +1,18 @@
 
+router.get('/check/:avatarId', async (req, res) => {
+  try {
+    const { avatarId } = req.params;
+    const existingToken = await db.collection('avatar_tokens').findOne({
+      avatarId: new ObjectId(avatarId)
+    });
+    
+    res.json({ exists: !!existingToken });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+
 import express from 'express';
 import { TokenService } from '../../src/services/tokenService.mjs';
 import { Connection } from '@solana/web3.js';

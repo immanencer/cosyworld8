@@ -278,11 +278,33 @@ async function claimAvatar(avatarId) {
 async function createToken(avatarId) {
     console.log('Starting token creation for avatar:', avatarId);
 
+    // Validate wallet connection
     if (!state.wallet) {
       console.error('Wallet not connected');
       alert("Please connect your wallet first");
       return;
     }
+
+    // Validate avatar exists
+    try {
+      const avatarResponse = await fetch(`/api/avatars/${avatarId}`);
+      const avatar = await avatarResponse.json();
+      
+      if (!avatar) {
+        throw new Error('Avatar not found');
+      }
+      
+      if (!avatar.claimed) {
+        throw new Error('Avatar must be claimed before creating a token');
+      }
+
+      // Check if token already exists
+      const tokenResponse = await fetch(`/api/tokens/check/${avatarId}`);
+      const tokenData = await tokenResponse.json();
+      
+      if (tokenData.exists) {
+        throw new Error('Token already exists for this avatar');
+      }
 
     // Get the button element
     const button = document.querySelector(`button[onclick="createToken('${avatarId}')"]`);
