@@ -8,10 +8,6 @@ var Checkout = (() => {
   var __commonJS = (cb, mod) => function __require() {
     return mod || (0, cb[__getOwnPropNames(cb)[0]])((mod = { exports: {} }).exports, mod), mod.exports;
   };
-  var __export = (target, all) => {
-    for (var name in all)
-      __defProp(target, name, { get: all[name], enumerable: true });
-  };
   var __copyProps = (to, from, except, desc) => {
     if (from && typeof from === "object" || typeof from === "function") {
       for (let key of __getOwnPropNames(from))
@@ -28,7 +24,6 @@ var Checkout = (() => {
     isNodeMode || !mod || !mod.__esModule ? __defProp(target, "default", { value: mod, enumerable: true }) : target,
     mod
   ));
-  var __toCommonJS = (mod) => __copyProps(__defProp({}, "__esModule", { value: true }), mod);
 
   // node_modules/react/cjs/react.production.js
   var require_react_production = __commonJS({
@@ -481,61 +476,8 @@ var Checkout = (() => {
   });
 
   // src/react/CheckoutPage.jsx
-  var CheckoutPage_exports = {};
-  __export(CheckoutPage_exports, {
-    default: () => CheckoutPage
-  });
   var import_react = __toESM(require_react(), 1);
-  function CheckoutPage() {
-    const [nftData, setNftData] = (0, import_react.useState)(null);
-    const [error, setError] = (0, import_react.useState)(null);
-    (0, import_react.useEffect)(() => {
-      const params = new URLSearchParams(window.location.search);
-      const templateId = params.get("templateId");
-      const collectionId = params.get("collectionId");
-      const avatarId = params.get("avatarId");
-      if (!templateId || !collectionId || !avatarId) {
-        setError("Missing required parameters");
-        return;
-      }
-      const fetchData = async () => {
-        try {
-          const avatarResponse = await fetch(`/api/avatars/${avatarId}`);
-          if (!avatarResponse.ok) throw new Error("Failed to fetch avatar data");
-          const avatarData = await avatarResponse.json();
-          setNftData(avatarData);
-        } catch (err) {
-          setError(err.message);
-        }
-      };
-      fetchData();
-    }, []);
-    if (error) {
-      return /* @__PURE__ */ import_react.default.createElement("div", { className: "min-h-screen bg-gradient-to-br from-gray-900 to-black text-white p-8" }, /* @__PURE__ */ import_react.default.createElement("div", { className: "max-w-2xl mx-auto text-center" }, /* @__PURE__ */ import_react.default.createElement("h1", { className: "text-2xl text-red-500" }, "Error: ", error)));
-    }
-    if (!nftData) {
-      return /* @__PURE__ */ import_react.default.createElement("div", { className: "min-h-screen bg-gradient-to-br from-gray-900 to-black text-white p-8" }, /* @__PURE__ */ import_react.default.createElement("div", { className: "max-w-2xl mx-auto text-center" }, /* @__PURE__ */ import_react.default.createElement("h1", { className: "text-2xl" }, "Loading...")));
-    }
-    return /* @__PURE__ */ import_react.default.createElement("div", { className: "min-h-screen bg-gradient-to-br from-gray-900 to-black text-white p-8" }, /* @__PURE__ */ import_react.default.createElement("div", { className: "max-w-2xl mx-auto" }, /* @__PURE__ */ import_react.default.createElement("div", { className: "bg-gray-800 rounded-lg shadow-xl p-6 mb-8" }, /* @__PURE__ */ import_react.default.createElement("div", { className: "aspect-square w-64 h-64 mx-auto rounded-lg overflow-hidden mb-6" }, /* @__PURE__ */ import_react.default.createElement(
-      "img",
-      {
-        src: nftData.imageUrl,
-        alt: nftData.name,
-        className: "w-full h-full object-cover"
-      }
-    )), /* @__PURE__ */ import_react.default.createElement("h1", { className: "text-2xl font-bold mb-2 text-center" }, nftData.emoji, " ", nftData.name), /* @__PURE__ */ import_react.default.createElement("p", { className: "text-gray-300 mb-4 text-center" }, nftData.description || nftData.short_description), nftData.personality && /* @__PURE__ */ import_react.default.createElement("div", { className: "bg-gray-700 rounded p-4 mb-6" }, /* @__PURE__ */ import_react.default.createElement("h2", { className: "text-lg font-semibold mb-2" }, "Personality"), /* @__PURE__ */ import_react.default.createElement("p", { className: "text-gray-300" }, nftData.personality)), /* @__PURE__ */ import_react.default.createElement("div", { className: "mt-6" }, /* @__PURE__ */ import_react.default.createElement(
-      "button",
-      {
-        onClick: () => {
-          const crossmintId = new URLSearchParams(window.location.search).get("collectionId");
-          window.location.href = `https://staging.crossmint.com/collect/${crossmintId}`;
-        },
-        className: "w-full bg-indigo-600 text-white font-semibold py-3 px-6 rounded-lg hover:bg-indigo-700 transition-colors"
-      },
-      "Collect this Avatar"
-    )))));
-  }
-  return __toCommonJS(CheckoutPage_exports);
+  var { useState, useEffect } = import_react.default;
 })();
 /*! Bundled license information:
 
