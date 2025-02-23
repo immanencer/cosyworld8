@@ -7,6 +7,43 @@ const TEMP_AUTH_EXPIRY = 10 * 60 * 1000; // 10 minutes in milliseconds
 
 export default function xauthRoutes(db) {
     const router = express.Router();
+
+    router.get('/auth-url', async (req, res) => {
+        try {
+            const { avatarId, walletAddress } = req.query;
+            if (!avatarId || !walletAddress) {
+                return res.status(400).json({ error: 'Missing required parameters' });
+            }
+
+            const client = new TwitterApi({
+                clientId: process.env.X_CLIENT_ID,
+                clientSecret: process.env.X_CLIENT_SECRET
+            });
+
+            // Generate OAuth 2.0 URL
+            const { url, state, codeVerifier } = client.generateOAuth2AuthLink(
+                process.env.X_CALLBACK_URL,
+                { scope: ['tweet.read', 'tweet.write', 'users.read'] }
+            );
+
+            // Store temp auth data
+            await db.collection('x_auth_temp').insertOne({
+                state,
+                codeVerifier,
+                avatarId,
+                walletAddress,
+                createdAt: new Date()
+            });
+
+            // Clean up old temp auth entries
+            await cleanupTempAuth();
+
+            res.json({ url });
+        } catch (error) {
+            console.error('Auth URL generation error:', error);
+            res.status(500).json({ error: error.message });
+        }
+    });
     
     async function refreshAccessToken(auth) {
         const client = new TwitterApi({
