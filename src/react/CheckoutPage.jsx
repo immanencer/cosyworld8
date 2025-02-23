@@ -1,3 +1,4 @@
+
 import React from 'react';
 const { useState, useEffect } = React;
 
@@ -95,3 +96,7 @@ function CheckoutPage() {
     </div>
   );
 }
+
+// Initialize React
+const root = ReactDOM.createRoot(document.getElementById('root'));
+root.render(<CheckoutPage />);
