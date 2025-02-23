@@ -1,8 +1,10 @@
+
 import {
   CurveType,
   Environment,
   MigrationDex,
-  Moonshot
+  Moonshot,
+  SolanaSerializationService
 } from '@wen-moon-ser/moonshot-sdk';
 
 export class TokenService {
@@ -30,7 +32,6 @@ export class TokenService {
         symbol = symbol.substring(0, 4).toUpperCase();
       }
 
-      // Create unsigned transaction using Moonshot SDK 
       try {
         const prepMint = await this.moonshot.prepareMintTx({
           creator: walletAddress,
@@ -42,7 +43,8 @@ export class TokenService {
           description,
           links: [{ url: 'https://moonstonesanctum.io', label: 'Website' }],
           banner: imageUrl,
-          tokenAmount: '1000000000000' // 1 billion with 9 decimals
+          tokenAmount: '1000000000',
+          chainId: 'solanadevnet'
         });
 
         if (!prepMint || !prepMint.transaction) {
