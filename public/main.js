@@ -362,7 +362,21 @@ async function createToken(avatarId) {
     modal.innerHTML = `
       <div class="bg-gray-800 p-6 rounded-lg max-w-md w-full">
         <h3 class="text-xl font-bold mb-4 text-red-400">Token Creation Failed</h3>
-        <p class="mb-4 text-gray-300">${error.message}</p>
+        <p class="mb-4 text-gray-300">${error.message || 'Failed to create token. Please ensure all required information is provided.'}</p>
+        <div class="bg-gray-700 p-3 rounded mb-4">
+          <p class="text-sm text-gray-300">Please verify:</p>
+          <ul class="list-disc pl-4 text-sm text-gray-300">
+            <li>Your wallet is connected</li>
+            <li>The avatar exists and is claimed</li>
+            <li>No token already exists for this avatar</li>
+          </ul>
+        </div>
+        <button onclick="this.closest('.fixed').remove()" 
+                class="w-full px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded text-white">
+          Close
+        </button>
+      </div>
+    `;
         <button onclick="this.closest('.fixed').remove()" 
                 class="w-full px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded text-white">
           Close

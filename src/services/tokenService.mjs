@@ -19,7 +19,15 @@ export class TokenService {
 
   async createToken({ name, symbol, description, imageUrl }, walletAddress) {
     try {
-      // Create unsigned transaction using Moonshot SDK
+      if (!name || !symbol || !description || !imageUrl || !walletAddress) {
+        throw new Error('Missing required token parameters');
+      }
+
+      if (symbol.length > 4) {
+        symbol = symbol.substring(0, 4).toUpperCase();
+      }
+
+      // Create unsigned transaction using Moonshot SDK 
       const prepMint = await this.moonshot.prepareMintTx({
         creator: walletAddress,
         name,
