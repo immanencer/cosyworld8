@@ -13,8 +13,9 @@ window.addEventListener('DOMContentLoaded', () => {
 
   const container = document.getElementById('checkout-container');
   
-  // Initialize checkout directly without destructuring
-  window.Crossmint.CrossmintEmbeddedCheckout.render({
+  // Initialize checkout using vanilla SDK
+  const { CrossmintEmbeddedCheckout } = window.CrossmintClientSDK;
+  CrossmintEmbeddedCheckout.render({
     target: container,
     clientApiKey: process.env.CROSSMINT_CLIENT_API_KEY,
     props: {
