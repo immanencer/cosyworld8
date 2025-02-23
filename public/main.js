@@ -223,15 +223,42 @@ async function claimAvatar(avatarId) {
   }
 
   try {
-    const response = await fetch(`/api/avatars/${avatarId}/claim`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ walletAddress: state.wallet.publicKey }),
-    });
-
-    const result = await response.json();
+    // Get burn transaction
+    const response = await fetch(`/api/burn-tx?walletAddress=${state.wallet.publicKey}`);
+    const { transaction } = await response.json();
 
     if (!response.ok) {
+      throw new Error("Failed to create burn transaction");
+    }
+
+    // Request wallet to sign transaction
+    const signedTx = await window.phantom.solana.signTransaction(transaction);
+    
+    // Send the transaction
+    const connection = new solanaWeb3.Connection(
+      process.env.SOLANA_RPC_URL || 'https://api.mainnet-beta.solana.com',
+      'confirmed'
+    );
+    const burnTxSignature = await connection.sendRawTransaction(
+      signedTx.serialize()
+    );
+
+    // Wait for confirmation
+    await connection.confirmTransaction(burnTxSignature, 'confirmed');
+
+    // Claim the avatar with burn signature
+    const claimResponse = await fetch(`/api/avatars/${avatarId}/claim`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ 
+        walletAddress: state.wallet.publicKey,
+        burnTxSignature
+      }),
+    });
+
+    const result = await claimResponse.json();
+
+    if (!claimResponse.ok) {
       throw new Error(result.error || "Failed to claim avatar");
     }
 

@@ -304,10 +304,14 @@ export default function avatarRoutes(db) {
   router.post('/:avatarId/claim', async (req, res) => {
     try {
       const { avatarId } = req.params;
-      const { walletAddress } = req.body;
+      const { walletAddress, burnTxSignature } = req.body;
 
       if (!walletAddress) {
         return res.status(400).json({ error: 'Wallet address required' });
+      }
+
+      if (!burnTxSignature) {
+        return res.status(400).json({ error: 'Burn transaction signature required' });
       }
 
       const avatar = await db.collection('avatars').findOne({
@@ -330,9 +334,31 @@ export default function avatarRoutes(db) {
         return res.status(400).json({ error: 'Avatar already claimed by another wallet' });
       }
 
+      // Verify burn transaction
+      const connection = new Connection(process.env.SOLANA_RPC_URL || 'https://api.mainnet-beta.solana.com');
+      const burnService = new TokenBurnService(connection);
+      const burnVerified = await burnService.verifyBurnTransaction(burnTxSignature);
+
+      if (!burnVerified) {
+        return res.status(400).json({ error: 'Invalid or unconfirmed burn transaction' });
+      }
+
       // Use NFTMintingService to mark the avatar as ready to mint for this wallet
       const nftMintService = new NFTMintingService(db);
       await nftMintService.markAvatarForMint(avatarId, walletAddress);
+
+      // Record the burn transaction
+      await db.collection('avatar_claims').updateOne(
+        { avatarId: new ObjectId(avatarId) },
+        { 
+          $set: { 
+            walletAddress,
+            burnTxSignature,
+            claimedAt: new Date()
+          }
+        },
+        { upsert: true }
+      );
 
       res.json({ success: true });
     } catch (error) {
