@@ -574,8 +574,15 @@ export class AvatarGenerationService {
         return null;
       }
       if (!avatar.name) {
-        avatar.name = `Avatar_${new ObjectId().toHexString()}`;
+        this.logger.error('Avatar creation aborted: avatar name is missing.');
       }
+
+      // Check if the name matches an existing avatar
+      const existingAvatar = await this.db.collection(this.AVATARS_COLLECTION).findOne({ name });
+      if (existingAvatar) {
+        this.logger.warn('Avatar creation aborted: name already exists.');
+        return existingAvatar;
+    }
       const imageFile = await this.generateAvatarImage(avatar.description);
       const s3url = await uploadImage(imageFile);
       this.logger.info('S3 URL: ' + s3url);
