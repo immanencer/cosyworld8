@@ -168,14 +168,30 @@ export class DecisionMaker {
     // Get last 5 messages
     const lastFiveMessages = Array.from(messages).slice(0, 5);
     
-    // Check if all last 5 messages are from bots
-    if (lastFiveMessages.length === 5 && lastFiveMessages.every(m => m.author.bot)) {
-      this.logger.debug('Last 5 messages were from bots - skipping response');
+    // Get consecutive bot messages from the end
+    let consecutiveBotMessages = 0;
+    for (const msg of lastFiveMessages) {
+      if (msg.author.bot) {
+        consecutiveBotMessages++;
+      } else {
+        break;
+      }
+    }
+
+    // Skip if there are 2 or more consecutive bot messages
+    if (consecutiveBotMessages >= 2) {
+      this.logger.debug(`${consecutiveBotMessages} consecutive bot messages - skipping response`);
       return false;
     }
 
+    // Reduce base response chance for bot messages
+    if (lastFiveMessages.length > 0 && lastFiveMessages[0].author.bot) {
+      this.logger.debug('Last message was from bot - reducing response chance');
+      return Math.random() > 0.9; // Only 10% chance to respond to bot messages
+    }
+
     if (isBotInteraction) {
-      return true; // Always respond to bot interactions
+      return Math.random() > 0.5; // 50% chance to respond to direct bot interactions
     }
 
     try {
