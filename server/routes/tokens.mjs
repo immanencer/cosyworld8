@@ -33,7 +33,11 @@ export default function tokenRoutes() {
   router.post('/create/:avatarId', async (req, res) => {
     try {
       const { avatarId } = req.params;
-      const { walletAddress, devBuyAmount } = req.body;
+      const { walletAddress } = req.body;
+
+      if (!walletAddress) {
+        return res.status(400).json({ error: 'Wallet address is required' });
+      }
 
       const avatar = await db.collection('avatars').findOne({ 
         _id: new ObjectId(avatarId),
@@ -44,12 +48,22 @@ export default function tokenRoutes() {
         return res.status(404).json({ error: 'Avatar not found or not claimed' });
       }
 
+      // Validate if token already exists
+      const existingToken = await db.collection('avatar_tokens').findOne({
+        avatarId: new ObjectId(avatarId)
+      });
+
+      if (existingToken) {
+        return res.status(400).json({ error: 'Token already exists for this avatar' });
+      }
+
       const prepResult = await tokenService.createToken({
         name: avatar.name,
         symbol: avatar.name.substring(0, 4).toUpperCase(), 
         description: `Token for ${avatar.name} from Moonstone Sanctum`,
-        imageUrl: avatar.imageUrl
-      }, walletAddress);
+        imageUrl: avatar.imageUrl,
+        walletAddress
+      });
 
       // Client needs to sign the transaction and submit back
       res.json({
