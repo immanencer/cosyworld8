@@ -281,7 +281,15 @@ async function createToken(avatarId) {
     return;
   }
 
+  // Get the button element
+  const button = document.querySelector(`button[onclick="createToken('${avatarId}')"]`);
+  const originalText = button.textContent;
+  
   try {
+    // Update button state
+    button.disabled = true;
+    button.innerHTML = '<span class="animate-pulse">Creating token...</span>';
+
     const response = await fetch(`/api/tokens/create/${avatarId}`, {
       method: "POST",
       headers: {
@@ -289,19 +297,83 @@ async function createToken(avatarId) {
       },
       body: JSON.stringify({
         walletAddress: state.wallet.publicKey.toString(),
-        devBuyAmount: 1,
       }),
     });
 
+    const data = await response.json();
+
     if (!response.ok) {
-      throw new Error(await response.text());
+      throw new Error(data.error || 'Failed to create token');
     }
 
-    const result = await response.json();
-    alert(`Token created successfully! Mint: ${result.mint}`);
+    if (data.unsignedTx) {
+      // Handle Moonshot SDK flow
+      const phantomProvider = window?.phantom?.solana;
+      if (!phantomProvider) {
+        throw new Error("Phantom wallet not found");
+      }
+
+      // Request wallet to sign transaction
+      const signedTx = await phantomProvider.signTransaction(data.unsignedTx);
+      
+      // Submit signed transaction
+      const submitResponse = await fetch(`/api/tokens/${data.tokenId}/submit`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          signedTx: signedTx.serialize(),
+          walletAddress: state.wallet.publicKey.toString(),
+        }),
+      });
+
+      if (!submitResponse.ok) {
+        throw new Error('Failed to submit signed transaction');
+      }
+
+      const submitResult = await submitResponse.json();
+      
+      // Show success message with modal
+      const modal = document.createElement('div');
+      modal.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4';
+      modal.innerHTML = `
+        <div class="bg-gray-800 p-6 rounded-lg max-w-md w-full">
+          <h3 class="text-xl font-bold mb-4 text-green-400">Token Created Successfully!</h3>
+          <p class="mb-4 text-gray-300">Your token has been created and is now ready to use.</p>
+          <div class="bg-gray-700 p-3 rounded mb-4">
+            <p class="text-sm text-gray-300 mb-1">Token ID:</p>
+            <p class="font-mono text-sm text-white break-all">${submitResult.tokenId}</p>
+          </div>
+          <button onclick="this.closest('.fixed').remove()" 
+                  class="w-full px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded text-white">
+            Close
+          </button>
+        </div>
+      `;
+      document.body.appendChild(modal);
+    }
   } catch (error) {
     console.error("Error creating token:", error);
-    alert(error.message);
+    
+    // Show error message with modal
+    const modal = document.createElement('div');
+    modal.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4';
+    modal.innerHTML = `
+      <div class="bg-gray-800 p-6 rounded-lg max-w-md w-full">
+        <h3 class="text-xl font-bold mb-4 text-red-400">Token Creation Failed</h3>
+        <p class="mb-4 text-gray-300">${error.message}</p>
+        <button onclick="this.closest('.fixed').remove()" 
+                class="w-full px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded text-white">
+          Close
+        </button>
+      </div>
+    `;
+    document.body.appendChild(modal);
+  } finally {
+    // Reset button state
+    button.disabled = false;
+    button.textContent = originalText;
   }
 }
 
