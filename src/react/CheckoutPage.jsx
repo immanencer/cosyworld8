@@ -7,12 +7,15 @@ export default function CheckoutPage() {
     name: '',
     image: '',
     description: '',
+    emoji: '',
+    personality: '',
     attributes: []
   });
 
   const params = new URLSearchParams(window.location.search);
   const templateId = params.get('templateId');
   const collectionId = params.get('collectionId');
+  const avatarId = params.get('avatarId');
   const clientId = process.env.CROSSMINT_CLIENT_API_KEY;
 
   useEffect(() => {
@@ -34,18 +37,27 @@ export default function CheckoutPage() {
           }
 
           const template = await response.json();
+
+          // Fetch avatar metadata from your database
+          const metadataResponse = await fetch(`/api/avatars/${avatarId}`);
+          const metadata = await metadataResponse.json();
+
           setNftData({
-            name: template.metadata.name || 'Unnamed Avatar',
-            image: template.metadata.image,
-            description: template.metadata.description || '',
+            name: metadata.name || template.metadata.name || 'Unnamed Avatar',
+            image: metadata.imageUrl || template.metadata.image,
+            description: metadata.description || template.metadata.description || '',
+            emoji: metadata.emoji || '',
+            personality: metadata.personality || '',
             attributes: template.metadata.attributes || []
           });
         } catch (error) {
-          console.error('Error fetching template:', error);
+          console.error('Error fetching data:', error);
           setNftData({
             name: "Error Loading Avatar",
             image: "/images/placeholder.png",
             description: "Could not load avatar data. Please try again.",
+            emoji: "",
+            personality: "",
             attributes: []
           });
         }
@@ -53,7 +65,7 @@ export default function CheckoutPage() {
     };
 
     fetchTemplate();
-  }, [templateId, collectionId, clientId]);
+  }, [templateId, collectionId, clientId, avatarId]);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-900 to-black text-white p-8">
@@ -67,9 +79,18 @@ export default function CheckoutPage() {
             />
           </div>
           
-          <h1 className="text-2xl font-bold mb-2 text-center">{nftData.name}</h1>
+          <h1 className="text-2xl font-bold mb-2 text-center">
+            {nftData.emoji} {nftData.name}
+          </h1>
           <p className="text-gray-300 mb-4 text-center">{nftData.description}</p>
           
+          {nftData.personality && (
+            <div className="bg-gray-700 rounded p-4 mb-6">
+              <h2 className="text-lg font-semibold mb-2">Personality</h2>
+              <p className="text-gray-300">{nftData.personality}</p>
+            </div>
+          )}
+
           <div className="grid grid-cols-2 gap-4 mb-6">
             {nftData.attributes?.map((attr, index) => (
               <div key={index} className="bg-gray-700 rounded p-2">
