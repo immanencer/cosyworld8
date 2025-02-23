@@ -1,3 +1,4 @@
+
 const root = ReactDOM.createRoot(document.getElementById('root'));
 const urlParams = new URLSearchParams(window.location.search);
 const avatarId = urlParams.get("avatarId");
@@ -8,10 +9,10 @@ fetch(`/api/avatars/${avatarId}`)
   .then((res) => res.json())
   .then((avatar) => {
     function CheckoutPage() {
-      return React.createElement(CrossmintProvider, 
+      return React.createElement(CrossmintClientSDK.CrossmintProvider, 
         { apiKey: process.env.CROSSMINT_CLIENT_API_KEY },
-        React.createElement(CrossmintCheckoutProvider, null,
-          React.createElement(CrossmintHostedCheckout, {
+        React.createElement(CrossmintClientSDK.CrossmintCheckoutProvider, null,
+          React.createElement(CrossmintClientSDK.CrossmintHostedCheckout, {
             lineItems: {
               collectionLocator: `crossmint:${collectionId}:${templateId}`,
               callData: {
