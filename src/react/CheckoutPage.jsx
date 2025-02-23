@@ -1,8 +1,51 @@
+
 import React, { useEffect, useState } from "react";
 import {
   CrossmintProvider,
+  CrossmintCheckoutProvider,
   CrossmintHostedCheckout,
+  useCrossmintCheckout,
 } from "@crossmint/client-sdk-react-ui";
+
+function CheckoutComponent({ avatar, templateId, collectionId }) {
+  const { order } = useCrossmintCheckout();
+
+  useEffect(() => {
+    if (order && order.phase === "completed") {
+      console.log("Purchase completed for avatar:", avatar.name);
+    }
+  }, [order, avatar]);
+
+  return (
+    <CrossmintHostedCheckout
+      lineItems={{
+        collectionLocator: `crossmint:${collectionId}:${templateId}`,
+        callData: {
+          totalPrice: "0.001",
+          quantity: 1,
+          templateId: templateId,
+          avatarId: avatar._id,
+        },
+      }}
+      appearance={{
+        theme: {
+          button: "dark",
+          checkout: "dark",
+        },
+      }}
+      payment={{
+        crypto: {
+          enabled: true,
+          defaultChain: "polygon",
+        },
+        fiat: {
+          enabled: true,
+          defaultCurrency: "usd",
+        },
+      }}
+    />
+  );
+}
 
 function CheckoutPage() {
   const [avatar, setAvatar] = useState(null);
@@ -51,27 +94,13 @@ function CheckoutPage() {
 
           <div className="border-t border-gray-700 pt-6">
             <CrossmintProvider apiKey={process.env.CROSSMINT_CLIENT_API_KEY}>
-              <CrossmintHostedCheckout
-                lineItems={{
-                  collectionLocator: `crossmint:${collectionId}:${templateId}`,
-                  callData: {
-                    totalPrice: "0.001",
-                    quantity: 1,
-                    templateId: ,
-                    avatarId: avatarId,
-                  },
-                }}
-                payment={{
-                  crypto: { enabled: true },
-                  fiat: { enabled: true },
-                }}
-                appearance={{
-                  theme: {
-                    button: "dark",
-                    checkout: "dark",
-                  },
-                }}
-              />
+              <CrossmintCheckoutProvider>
+                <CheckoutComponent 
+                  avatar={avatar}
+                  templateId={templateId}
+                  collectionId={collectionId}
+                />
+              </CrossmintCheckoutProvider>
             </CrossmintProvider>
           </div>
         </div>
