@@ -102,20 +102,16 @@ export default function tokenRoutes(db) {
       });
 
       // Store token creation attempt
+      // Store token creation attempt
       await db.collection('avatar_tokens').insertOne({
         avatarId: new ObjectId(avatarId),
         tokenId: prepResult.tokenId,
         status: 'pending',
+        walletAddress,
         createdAt: new Date()
       });
 
-      await db.collection('avatar_tokens').insertOne({
-        avatarId: new ObjectId(avatarId),
-        tokenMint: result.mint,
-        createdAt: new Date()
-      });
-
-      res.json(result);
+      console.log('Token creation record stored:', prepResult);
     } catch (error) {
       res.status(500).json({ error: error.message });
     }

@@ -31,25 +31,35 @@ export class TokenService {
       }
 
       // Create unsigned transaction using Moonshot SDK 
-      const prepMint = await this.moonshot.prepareMintTx({
-        creator: walletAddress,
-        name,
-        symbol,
-        curveType: CurveType.CONSTANT_PRODUCT_V1,
-        migrationDex: MigrationDex.RAYDIUM,
-        icon: imageUrl,
-        description,
-        links: [{ url: 'https://moonstonesanctum.io', label: 'Website' }],
-        banner: imageUrl,
-        tokenAmount: '1000000000000' // 1 billion with 9 decimals
-      });
+      try {
+        const prepMint = await this.moonshot.prepareMintTx({
+          creator: walletAddress,
+          name,
+          symbol,
+          curveType: CurveType.CONSTANT_PRODUCT_V1,
+          migrationDex: MigrationDex.RAYDIUM,
+          icon: imageUrl,
+          description,
+          links: [{ url: 'https://moonstonesanctum.io', label: 'Website' }],
+          banner: imageUrl,
+          tokenAmount: '1000000000000' // 1 billion with 9 decimals
+        });
 
-      return {
-        success: true,
-        tokenId: prepMint.tokenId,
-        token: prepMint.token,
-        unsignedTx: prepMint.transaction
-      };
+        if (!prepMint || !prepMint.transaction) {
+          console.error('Invalid response from prepareMintTx:', prepMint);
+          throw new Error('Failed to prepare mint transaction');
+        }
+
+        return {
+          success: true,
+          tokenId: prepMint.tokenId || Date.now().toString(),
+          token: prepMint.token,
+          unsignedTx: prepMint.transaction
+        };
+      } catch (error) {
+        console.error('Error in prepareMintTx:', error);
+        throw new Error(`Failed to prepare mint transaction: ${error.message}`);
+      }
 
     } catch (error) {
       throw new Error(`Failed to create token: ${error.message}`);
