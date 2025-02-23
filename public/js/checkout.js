@@ -12,9 +12,9 @@ window.addEventListener('DOMContentLoaded', () => {
   }
 
   const container = document.getElementById('checkout-container');
-  const { CrossmintProvider, CrossmintEmbeddedCheckout } = window.Crossmint;
-
-  const checkout = CrossmintEmbeddedCheckout.render({
+  
+  // Initialize checkout directly without destructuring
+  window.Crossmint.CrossmintEmbeddedCheckout.render({
     target: container,
     clientApiKey: process.env.CROSSMINT_CLIENT_API_KEY,
     props: {
