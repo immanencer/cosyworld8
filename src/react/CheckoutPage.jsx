@@ -1,71 +1,55 @@
-
 import React, { useState, useEffect } from 'react';
-import { CrossmintProvider, CrossmintHostedCheckout } from "@crossmint/client-sdk-react-ui";
 
 export default function CheckoutPage() {
-  const [nftData, setNftData] = useState({
-    name: '',
-    image: '',
-    description: '',
-    emoji: '',
-    personality: '',
-    attributes: []
-  });
-
-  const params = new URLSearchParams(window.location.search);
-  const templateId = params.get('templateId');
-  const collectionId = params.get('collectionId');
-  const avatarId = params.get('avatarId');
-  const clientId = process.env.CROSSMINT_CLIENT_API_KEY;
+  const [nftData, setNftData] = useState(null);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
-    const fetchTemplate = async () => {
-      if (templateId && collectionId && clientId) {
-        try {
-          const response = await fetch(
-            `https://staging.crossmint.com/api/2022-06-09/collections/${collectionId}/templates/${templateId}`,
-            {
-              headers: {
-                'X-API-KEY': clientId,
-                'Accept': 'application/json'
-              }
-            }
-          );
+    const params = new URLSearchParams(window.location.search);
+    const templateId = params.get('templateId');
+    const collectionId = params.get('collectionId');
+    const avatarId = params.get('avatarId');
 
-          if (!response.ok) {
-            throw new Error(`Failed to fetch template: ${response.status}`);
-          }
+    if (!templateId || !collectionId || !avatarId) {
+      setError('Missing required parameters');
+      return;
+    }
 
-          const template = await response.json();
+    const fetchData = async () => {
+      try {
+        // Fetch avatar data first
+        const avatarResponse = await fetch(`/api/avatars/${avatarId}`);
+        if (!avatarResponse.ok) throw new Error('Failed to fetch avatar data');
+        const avatarData = await avatarResponse.json();
 
-          // Fetch avatar metadata from your database
-          const metadataResponse = await fetch(`/api/avatars/${avatarId}`);
-          const metadata = await metadataResponse.json();
-
-          setNftData({
-            name: metadata.name || template.metadata.name || 'Unnamed Avatar',
-            image: metadata.imageUrl || template.metadata.image,
-            description: metadata.description || template.metadata.description || '',
-            emoji: metadata.emoji || '',
-            personality: metadata.personality || '',
-            attributes: template.metadata.attributes || []
-          });
-        } catch (error) {
-          console.error('Error fetching data:', error);
-          setNftData({
-            name: "Error Loading Avatar",
-            image: "/images/placeholder.png",
-            description: "Could not load avatar data. Please try again.",
-            emoji: "",
-            personality: "",
-            attributes: []
-          });
-        }
+        setNftData(avatarData);
+      } catch (err) {
+        setError(err.message);
       }
     };
 
-    fetchTemplate();
-  }, [templateId, collectionId, clientId, avatarId]);
+    fetchData();
+  }, []);
+
+  if (error) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-gray-900 to-black text-white p-8">
+        <div className="max-w-2xl mx-auto text-center">
+          <h1 className="text-2xl text-red-500">Error: {error}</h1>
+        </div>
+      </div>
+    );
+  }
+
+  if (!nftData) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-gray-900 to-black text-white p-8">
+        <div className="max-w-2xl mx-auto text-center">
+          <h1 className="text-2xl">Loading...</h1>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-900 to-black text-white p-8">
@@ -73,17 +57,20 @@ export default function CheckoutPage() {
         <div className="bg-gray-800 rounded-lg shadow-xl p-6 mb-8">
           <div className="aspect-square w-64 h-64 mx-auto rounded-lg overflow-hidden mb-6">
             <img 
-              src={nftData.image} 
+              src={nftData.imageUrl} 
               alt={nftData.name}
               className="w-full h-full object-cover"
             />
           </div>
-          
+
           <h1 className="text-2xl font-bold mb-2 text-center">
             {nftData.emoji} {nftData.name}
           </h1>
-          <p className="text-gray-300 mb-4 text-center">{nftData.description}</p>
-          
+
+          <p className="text-gray-300 mb-4 text-center">
+            {nftData.description || nftData.short_description}
+          </p>
+
           {nftData.personality && (
             <div className="bg-gray-700 rounded p-4 mb-6">
               <h2 className="text-lg font-semibold mb-2">Personality</h2>
@@ -91,42 +78,16 @@ export default function CheckoutPage() {
             </div>
           )}
 
-          <div className="grid grid-cols-2 gap-4 mb-6">
-            {nftData.attributes?.map((attr, index) => (
-              <div key={index} className="bg-gray-700 rounded p-2">
-                <div className="text-gray-400 text-sm">{attr.trait_type}</div>
-                <div className="font-medium">{attr.value}</div>
-              </div>
-            ))}
-          </div>
-
           <div className="mt-6">
-            <CrossmintProvider apiKey={clientId}>
-              <CrossmintHostedCheckout
-                lineItems={{
-                  collectionLocator: `crossmint:${collectionId}`,
-                  callData: {
-                    totalPrice: "0.001",
-                    quantity: 1,
-                  },
-                }}
-                payment={{
-                  crypto: { enabled: true },
-                  fiat: { enabled: true }
-                }}
-                appearance={{
-                  theme: {
-                    button: "dark",
-                    checkout: "dark"
-                  },
-                  variables: {
-                    colors: {
-                      accent: "#4F46E5"
-                    }
-                  }
-                }}
-              />
-            </CrossmintProvider>
+            <button 
+              onClick={() => {
+                const crossmintId = new URLSearchParams(window.location.search).get('collectionId');
+                window.location.href = `https://staging.crossmint.com/collect/${crossmintId}`;
+              }}
+              className="w-full bg-indigo-600 text-white font-semibold py-3 px-6 rounded-lg hover:bg-indigo-700 transition-colors"
+            >
+              Collect this Avatar
+            </button>
           </div>
         </div>
       </div>

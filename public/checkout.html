@@ -4,24 +4,23 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>NFT Checkout</title>
+    <title>Avatar Checkout</title>
     <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
-    <script src="https://unpkg.com/@crossmint/client-sdk-react-ui@1.1.1/dist/index.global.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
     <style>
         body {
             margin: 0;
-            padding: 20px;
-            font-family: system-ui, sans-serif;
-            min-height: 100vh;
+            padding: 0;
+            font-family: system-ui, -apple-system, sans-serif;
             background: linear-gradient(to bottom right, #13111c, #1a1725);
-            color: #fff;
+            min-height: 100vh;
+            color: white;
         }
     </style>
 </head>
 <body>
     <div id="root"></div>
-    <script src="https://cdn.tailwindcss.com"></script>
     <script src="/js/checkout.js"></script>
     <script>
         const root = ReactDOM.createRoot(document.getElementById('root'));
