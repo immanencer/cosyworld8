@@ -1,6 +1,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { CrossmintProvider, CrossmintHostedCheckout } from "@crossmint/client-sdk-react-ui";
+import { ethers } from 'ethers';
 
 function CheckoutPage() {
   const [avatar, setAvatar] = useState(null);
