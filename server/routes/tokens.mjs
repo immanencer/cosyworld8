@@ -76,13 +76,22 @@ export default function tokenRoutes(db) {
         return res.status(400).json({ error: 'Token already exists for this avatar' });
       }
 
-      const prepResult = await tokenService.createToken({
+      // Ensure walletAddress is properly passed
+      if (!walletAddress) {
+        console.error('Wallet address missing in token creation request');
+        return res.status(400).json({ error: 'Wallet address is required' });
+      }
+
+      const tokenParams = {
         name: avatar.name,
         symbol: avatar.name.substring(0, 4).toUpperCase(), 
         description: `Token for ${avatar.name} from Moonstone Sanctum`,
         imageUrl: avatar.imageUrl,
-        walletAddress
-      });
+        walletAddress: walletAddress
+      };
+
+      console.log('Creating token with params:', tokenParams);
+      const prepResult = await tokenService.createToken(tokenParams);
 
       // Client needs to sign the transaction and submit back
       res.json({
