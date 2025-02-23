@@ -7,6 +7,7 @@
     <title>NFT Checkout</title>
     <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+    <script src="https://unpkg.com/@crossmint/client-sdk-react-ui@1.1.1/dist/index.global.js"></script>
     <style>
         body {
             margin: 0;
@@ -23,8 +24,8 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="/js/checkout.js"></script>
     <script>
-      const root = ReactDOM.createRoot(document.getElementById('root'));
-      root.render(React.createElement(Checkout.default));
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(React.createElement(Checkout.default));
     </script>
 </body>
 </html>
