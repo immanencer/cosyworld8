@@ -1,107 +1,52 @@
-
-import React, { useEffect, useState } from "react";
+import React from "react";
+import { createRoot } from "react-dom/client";
 import {
   CrossmintProvider,
-  CrossmintCheckoutProvider,
   CrossmintHostedCheckout,
-  useCrossmintCheckout,
 } from "@crossmint/client-sdk-react-ui";
 
-function CheckoutComponent({ avatar, templateId, collectionId }) {
-  const { order } = useCrossmintCheckout();
-
-  useEffect(() => {
-    if (order && order.phase === "completed") {
-      console.log("Purchase completed for avatar:", avatar.name);
-    }
-  }, [order, avatar]);
-
-  return (
-    <CrossmintHostedCheckout
-      lineItems={{
-        collectionLocator: `crossmint:${collectionId}:${templateId}`,
-        callData: {
-          totalPrice: "0.001",
-          quantity: 1,
-          templateId: templateId,
-          avatarId: avatar._id,
-        },
-      }}
-      appearance={{
-        theme: {
-          button: "dark",
-          checkout: "dark",
-        },
-      }}
-      payment={{
-        crypto: {
-          enabled: true,
-          defaultChain: "polygon",
-        },
-        fiat: {
-          enabled: true,
-          defaultCurrency: "usd",
-        },
-      }}
-    />
-  );
-}
-
 function CheckoutPage() {
-  const [avatar, setAvatar] = useState(null);
-  const urlParams = new URLSearchParams(window.location.search);
-  const avatarId = urlParams.get("avatarId");
-  const templateId = urlParams.get("templateId");
-  const collectionId = urlParams.get("collectionId");
+  // Get query parameters
+  const params = new URLSearchParams(window.location.search);
+  const templateId = params.get("templateId");
+  const collectionId = params.get("collectionId");
 
-  useEffect(() => {
-    if (avatarId) {
-      fetch(`/api/avatars/${avatarId}`)
-        .then((res) => res.json())
-        .then((data) => setAvatar(data))
-        .catch((err) => console.error("Error fetching avatar:", err));
-    }
-  }, [avatarId]);
-
-  if (!avatar) {
-    return <div className="p-8 text-center">Loading...</div>;
-  }
+  const clientId = window.CROSSMINT_CLIENT_API_KEY;
 
   return (
-    <div className="min-h-screen bg-gray-900 text-white p-8">
-      <div className="max-w-2xl mx-auto bg-gray-800 rounded-lg overflow-hidden shadow-xl">
-        <div className="p-8">
-          <h1 className="text-3xl font-bold mb-6 text-center">
-            Collect {avatar.name}
-          </h1>
-
-          <div className="flex flex-col md:flex-row gap-8 items-center mb-8">
-            <img
-              src={avatar.imageUrl}
-              alt={avatar.name}
-              className="w-64 h-64 object-cover rounded-lg shadow-lg"
-            />
-
-            <div className="flex-1">
-              <h2 className="text-xl font-semibold mb-2">{avatar.name}</h2>
-              <p className="text-gray-300 mb-4">{avatar.description}</p>
-              <div className="bg-gray-700 p-4 rounded-lg">
-                <h3 className="font-medium mb-2">Personality</h3>
-                <p className="text-gray-300">{avatar.personality}</p>
+    <div className="min-h-screen bg-gray-100 py-6 flex flex-col justify-center sm:py-12">
+      <div className="relative py-3 sm:max-w-xl sm:mx-auto">
+        <div className="absolute inset-0 bg-gradient-to-r from-cyan-400 to-light-blue-500 shadow-lg transform -skew-y-6 sm:skew-y-0 sm:-rotate-6 sm:rounded-3xl"></div>
+        <div className="relative px-4 py-10 bg-white shadow-lg sm:rounded-3xl sm:p-20">
+          <div className="max-w-md mx-auto">
+            <div className="divide-y divide-gray-200">
+              <div className="py-8 text-base leading-6 space-y-4 text-gray-700 sm:text-lg sm:leading-7">
+                <h2 className="text-2xl font-bold mb-8">
+                  Complete Your Purchase
+                </h2>
+                {clientId && templateId && collectionId ? (
+                  <CrossmintProvider apiKey={clientId}>
+                    <CrossmintHostedCheckout
+                      lineItems={{
+                        collectionLocator: `crossmint:${collectionId}:${templateId}`,
+                        callData: {
+                          collectionId: collectionId,
+                          templateId: templateId,
+                          totalPrice: "0.1",
+                          quantity: 1,
+                        },
+                      }}
+                      payment={{
+                        crypto: { enabled: true },
+                        fiat: { enabled: true },
+                      }}
+                    />
+                  </CrossmintProvider>
+                ) : (
+                  <p>Missing required parameters</p>
+                )}
               </div>
             </div>
-          </div>
-
-          <div className="border-t border-gray-700 pt-6">
-            <CrossmintProvider apiKey={process.env.CROSSMINT_CLIENT_API_KEY}>
-              <CrossmintCheckoutProvider>
-                <CheckoutComponent 
-                  avatar={avatar}
-                  templateId={templateId}
-                  collectionId={collectionId}
-                />
-              </CrossmintCheckoutProvider>
-            </CrossmintProvider>
           </div>
         </div>
       </div>
@@ -109,4 +54,6 @@ function CheckoutPage() {
   );
 }
 
-export default CheckoutPage;
+const container = document.getElementById("root");
+const root = createRoot(container);
+root.render(<CheckoutPage />);

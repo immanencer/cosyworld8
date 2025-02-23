@@ -174,7 +174,6 @@ export async function sendAvatarProfileEmbedFromObject(avatar) {
     emoji,
     short_description,
     description,
-    personality,
     imageUrl,
     channelId,
     model,
@@ -301,26 +300,10 @@ export async function sendAvatarProfileEmbedFromObject(avatar) {
       const crossmintData = await db.collection('crossmint_dev').findOne({ avatarId: _id });
       const collectionId = crossmintData?.collectionId || process.env.CROSSMINT_COLLECTION_ID;
 
-      // Update crossmint metadata
-      await db.collection('crossmint_dev').updateOne(
-        { avatarId: _id },
-        { 
-          $set: { 
-            name,
-            description: description || short_description,
-            emoji,
-            personality,
-            imageUrl,
-            traits
-          }
-        },
-        { upsert: true }
-      );
-
       const collectButton = new ButtonBuilder()
         .setLabel('Collect')
         .setStyle(ButtonStyle.Link)
-        .setURL(`${process.env.PUBLIC_URL}/checkout.html?templateId=${templateId}&collectionId=${process.env.CROSSMINT_COLLECTION_ID}&avatarId=${_id}`);
+        .setURL(`${process.env.PUBLIC_URL}/checkout.html?templateId=${templateId}&collectionId=${collectionId}`);
       const actionRow = new ActionRowBuilder().addComponents(collectButton);
       components.push(actionRow);
     }
