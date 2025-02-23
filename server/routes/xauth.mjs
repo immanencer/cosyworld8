@@ -1,50 +1,27 @@
-
 import express from 'express';
+import crypto from 'crypto';
+import nacl from 'tweetnacl';
+import { PublicKey } from '@solana/web3.js';
 import { TwitterApi } from 'twitter-api-v2';
 
 const DEFAULT_TOKEN_EXPIRY = 7200; // 2 hours in seconds
-const TEMP_AUTH_EXPIRY = 10 * 60 * 1000; // 10 minutes in milliseconds
+
+// Helper: verify that the provided signature (base64) is valid for the challenge message and wallet address.
+function verifyWalletSignature(message, signature, publicKeyStr) {
+    try {
+        const publicKey = new PublicKey(publicKeyStr).toBytes();
+        const messageUint8 = new TextEncoder().encode(message);
+        const signatureUint8 = Uint8Array.from(Buffer.from(signature, 'base64'));
+        return nacl.sign.detached.verify(messageUint8, signatureUint8, publicKey);
+    } catch (err) {
+        console.error('Signature verification error:', err);
+        return false;
+    }
+}
 
 export default function xauthRoutes(db) {
     const router = express.Router();
 
-    router.get('/auth-url', async (req, res) => {
-        try {
-            const { avatarId, walletAddress } = req.query;
-            if (!avatarId || !walletAddress) {
-                return res.status(400).json({ error: 'Missing required parameters' });
-            }
-
-            const client = new TwitterApi({
-                clientId: process.env.X_CLIENT_ID,
-                clientSecret: process.env.X_CLIENT_SECRET
-            });
-
-            // Generate OAuth 2.0 URL
-            const { url, state, codeVerifier } = client.generateOAuth2AuthLink(
-                process.env.X_CALLBACK_URL,
-                { scope: ['tweet.read', 'tweet.write', 'users.read'] }
-            );
-
-            // Store temp auth data
-            await db.collection('x_auth_temp').insertOne({
-                state,
-                codeVerifier,
-                avatarId,
-                walletAddress,
-                createdAt: new Date()
-            });
-
-            // Clean up old temp auth entries
-            await cleanupTempAuth();
-
-            res.json({ url });
-        } catch (error) {
-            console.error('Auth URL generation error:', error);
-            res.status(500).json({ error: error.message });
-        }
-    });
-    
     async function refreshAccessToken(auth) {
         const client = new TwitterApi({
             clientId: process.env.X_CLIENT_ID,
@@ -55,7 +32,9 @@ export default function xauthRoutes(db) {
             const { accessToken, refreshToken: newRefreshToken, expiresIn } =
                 await client.refreshOAuth2Token(auth.refreshToken);
 
-            const expiresAt = new Date(Date.now() + (expiresIn || DEFAULT_TOKEN_EXPIRY) * 1000);
+            const expiresAt = new Date(
+                Date.now() + (expiresIn || DEFAULT_TOKEN_EXPIRY) * 1000
+            );
 
             await db.collection('x_auth').updateOne(
                 { avatarId: auth.avatarId },
@@ -78,57 +57,47 @@ export default function xauthRoutes(db) {
         }
     }
 
-    async function cleanupTempAuth() {
-        const expiryTime = new Date(Date.now() - TEMP_AUTH_EXPIRY);
-        await db.collection('x_auth_temp').deleteMany({
-            createdAt: { $lt: expiryTime }
-        });
-    }
-
+    // NEW: Generate an auth URL that embeds wallet data and signature in state
     router.get('/auth-url', async (req, res) => {
         try {
-            const { walletAddress, avatarId } = req.query;
-            if (!walletAddress || !avatarId) {
-                return res.status(400).json({ error: 'Missing wallet address or avatar ID' });
+            const { avatarId, walletAddress, signature } = req.query;
+            if (!avatarId || !walletAddress || !signature) {
+                return res.status(400).json({ error: 'Missing required parameters' });
             }
 
-            await db.collection('x_auth').deleteOne({ avatarId });
+            // Create a temporary session and store a codeVerifier
+            const codeVerifier = crypto.randomBytes(32).toString('hex');
+            await db.collection('x_auth_temp').updateOne(
+                { avatarId },
+                { $set: { walletAddress, codeVerifier } },
+                { upsert: true }
+            );
 
             const client = new TwitterApi({
                 clientId: process.env.X_CLIENT_ID,
                 clientSecret: process.env.X_CLIENT_SECRET
             });
 
-            const stateData = encodeURIComponent(JSON.stringify({ walletAddress, avatarId }));
-
-            const { url, codeVerifier, state } = await client.generateOAuth2AuthLink(
+            // Generate OAuth2 auth link (this returns { url, state }).
+            const { url } = client.generateOAuth2AuthLink(
                 process.env.X_CALLBACK_URL,
-                {
-                    scope: ['tweet.read', 'tweet.write', 'users.read', 'offline.access'],
-                    state: stateData
-                }
+                { code_challenge_method: 's256' }
             );
 
-            await cleanupTempAuth();
-
-            await db.collection('x_auth_temp').updateOne(
-                { avatarId },
-                {
-                    $set: {
-                        codeVerifier,
-                        createdAt: new Date()
-                    }
-                },
-                { upsert: true }
+            // Replace the state with our own JSON-encoded object
+            const stateData = encodeURIComponent(
+                JSON.stringify({ walletAddress, avatarId, signature })
             );
+            const finalUrl = url.replace(/state=[^&]+/, `state=${stateData}`);
 
-            res.json({ url });
+            res.json({ url: finalUrl });
         } catch (error) {
             console.error('Error generating auth URL:', error);
             res.status(500).json({ error: error.message });
         }
     });
 
+    // Updated callback: verify wallet signature before completing OAuth flow
     router.get('/callback', async (req, res) => {
         try {
             const { code, state } = req.query;
@@ -144,13 +113,19 @@ export default function xauthRoutes(db) {
                 throw new Error('Invalid state parameter');
             }
 
-            const { walletAddress, avatarId } = stateData;
-            if (!walletAddress || !avatarId) {
-                throw new Error('Missing wallet address or avatar ID in state');
+            const { walletAddress, avatarId, signature } = stateData;
+            if (!walletAddress || !avatarId || !signature) {
+                throw new Error('Missing wallet address, avatar ID, or signature in state');
             }
 
-            const storedAuth = await db.collection('x_auth_temp').findOne({ avatarId });
+            // Verify wallet signature
+            const challengeMessage = `Link X Account for avatar ${avatarId}`;
+            if (!verifyWalletSignature(challengeMessage, signature, walletAddress)) {
+                throw new Error('Invalid wallet signature');
+            }
 
+            // Retrieve temporary session data
+            const storedAuth = await db.collection('x_auth_temp').findOne({ avatarId });
             if (!storedAuth?.codeVerifier) {
                 throw new Error('Auth session expired');
             }
@@ -160,11 +135,12 @@ export default function xauthRoutes(db) {
                 clientSecret: process.env.X_CLIENT_SECRET
             });
 
-            const { accessToken, refreshToken, expiresIn } = await client.loginWithOAuth2({
-                code,
-                codeVerifier: storedAuth.codeVerifier,
-                redirectUri: process.env.X_CALLBACK_URL
-            });
+            const { accessToken, refreshToken, expiresIn } =
+                await client.loginWithOAuth2({
+                    code,
+                    codeVerifier: storedAuth.codeVerifier,
+                    redirectUri: process.env.X_CALLBACK_URL
+                });
 
             await db.collection('x_auth').updateOne(
                 { avatarId },
@@ -182,23 +158,30 @@ export default function xauthRoutes(db) {
 
             await db.collection('x_auth_temp').deleteOne({ avatarId });
 
+            // Update the claims database with the wallet that claimed this avatar
+            await db.collection('claims').updateOne(
+                { avatarId },
+                { $set: { walletAddress, claimedAt: new Date() } },
+                { upsert: true }
+            );
+
             res.send(`
-                <script>
-                    window.opener.postMessage({ type: 'X_AUTH_SUCCESS' }, '*');
-                    window.close();
-                </script>
-            `);
+        <script>
+          window.opener.postMessage({ type: 'X_AUTH_SUCCESS' }, '*');
+          window.close();
+        </script>
+      `);
         } catch (error) {
             console.error('OAuth callback error:', error);
             res.send(`
-                <script>
-                    window.opener.postMessage({ 
-                        type: 'X_AUTH_ERROR', 
-                        error: '${error.message}'
-                    }, '*');
-                    window.close();
-                </script>
-            `);
+        <script>
+          window.opener.postMessage({ 
+            type: 'X_AUTH_ERROR', 
+            error: '${error.message}'
+          }, '*');
+          window.close();
+        </script>
+      `);
         }
     });
 

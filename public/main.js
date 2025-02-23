@@ -330,9 +330,32 @@ async function linkXAccount(avatarId) {
     return;
   }
 
+  // Define a challenge message that the user must sign.
+  const challengeMessage = `Link X Account for avatar ${avatarId}`;
+  const encodedMessage = new TextEncoder().encode(challengeMessage);
+  const phantomProvider = window?.phantom?.solana;
+  if (!phantomProvider) {
+    alert("Please install the Phantom wallet extension.");
+    return;
+  }
+
+  let signedMessage;
+  try {
+    // Request the wallet to sign the message.
+    const signatureResponse = await phantomProvider.signMessage(encodedMessage, 'utf8');
+    // Depending on the provider, extract the signature. Here we assume it’s in signatureResponse.signature.
+    signedMessage = signatureResponse.signature;
+    // Convert signature to a base64 string.
+    signedMessage = btoa(String.fromCharCode(...new Uint8Array(signedMessage)));
+  } catch (error) {
+    console.error("Failed to sign message:", error);
+    alert("Failed to sign message.");
+    return;
+  }
+
   try {
     const response = await fetch(
-      `/api/xauth/auth-url?avatarId=${avatarId}&walletAddress=${state.wallet.publicKey}`,
+      `/api/xauth/auth-url?avatarId=${avatarId}&walletAddress=${state.wallet.publicKey}&signature=${encodeURIComponent(signedMessage)}`
     );
     const { url } = await response.json();
 

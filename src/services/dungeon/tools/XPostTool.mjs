@@ -125,7 +125,6 @@ export class XPostTool extends BaseTool {
                 
                 await v2Client.tweet(message);
                 xStatus = true;
-                }
 
                 // Always store the post
                 await db.collection('social_posts').insertOne({
