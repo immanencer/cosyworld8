@@ -37,17 +37,14 @@ export class TokenService {
           creator: walletAddress,
           name,
           symbol,
+          description,
           curveType: CurveType.CONSTANT_PRODUCT_V1,
           migrationDex: MigrationDex.RAYDIUM,
           icon: imageUrl,
-          description,
           links: [{ url: 'https://moonstonesanctum.io', label: 'Website' }],
           banner: imageUrl,
-          tokenAmount: '1000000000',
-          chainId: 'solanadevnet',
-          marketEnabled: true,
-          decimals: 9,
-          maxSupply: '1000000000000'
+          tokenAmount: '42000000000',
+          chainId: 'solanadevnet'
         });
 
         if (!prepMint || !prepMint.transaction) {
