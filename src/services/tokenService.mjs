@@ -1,6 +1,6 @@
-import { 
-  CurveType, 
-  Environment, 
+import {
+  CurveType,
+  Environment,
   MigrationDex,
   Moonshot
 } from '@wen-moon-ser/moonshot-sdk';
@@ -17,10 +17,10 @@ export class TokenService {
     });
   }
 
-  async createToken({ name, symbol, description, imageUrl }, walletAddress) {
+  async createToken({ name, symbol, description, imageUrl, walletAddress }) {
     try {
       console.log('Token creation request:', { name, symbol, description, imageUrl, walletAddress });
-      
+
       if (!name || !symbol || !description || !imageUrl || !walletAddress) {
         console.error('Missing parameters:', { name, symbol, description, imageUrl, walletAddress });
         throw new Error('Missing required token parameters');
@@ -39,7 +39,7 @@ export class TokenService {
         migrationDex: MigrationDex.RAYDIUM,
         icon: imageUrl,
         description,
-        links: [{url: 'https://moonstonesanctum.io', label: 'Website'}],
+        links: [{ url: 'https://moonstonesanctum.io', label: 'Website' }],
         banner: imageUrl,
         tokenAmount: '1000000000000' // 1 billion with 9 decimals
       });
