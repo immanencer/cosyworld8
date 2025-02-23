@@ -30,8 +30,7 @@ function CheckoutPage() {
                         collectionLocator: `crossmint:${collectionId}:${templateId}`,
                         callData: {
                           totalPrice: "0.0001",
-                          quantity: 1,
-                          chain: "base"
+                          quantity: 1
                         },
                       }}
                       payment={{
@@ -53,8 +52,8 @@ function CheckoutPage() {
                           enabled: true,
                         },
                       }}
-                    />
-                  </CrossmintProvider>
+                      />
+                      </CrossmintProvider>
                 ) : (
                   <p className="text-red-400">Missing required parameters</p>
                 )}
