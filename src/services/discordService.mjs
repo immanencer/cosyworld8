@@ -294,16 +294,18 @@ export async function sendAvatarProfileEmbedFromObject(avatar) {
     }
 
     const components = [];
-    if (templateId) {
-      // Fetch collectionId from crossmint_dev collection
-      const db = client.db; //Corrected line:  Access the client directly.
-      const crossmintData = await db.collection('crossmint_dev').findOne({ avatarId: _id });
-      const collectionId = crossmintData?.collectionId || process.env.CROSSMINT_COLLECTION_ID;
+    // Only show collect button for Base chain mints
+    const db = client.db;
+    const crossmintData = await db.collection('crossmint_dev').findOne({ 
+      avatarId: _id,
+      chain: 'base' // Only look for Base chain mints
+    });
 
+    if (crossmintData?.templateId) {
       const collectButton = new ButtonBuilder()
-        .setLabel('Collect')
+        .setLabel('Collect on Base')
         .setStyle(ButtonStyle.Link)
-        .setURL(`${process.env.PUBLIC_URL}/checkout.html?templateId=${templateId}&collectionId=${collectionId}`);
+        .setURL(`${process.env.PUBLIC_URL}/checkout.html?templateId=${crossmintData.templateId}&collectionId=${crossmintData.collectionId}`);
       const actionRow = new ActionRowBuilder().addComponents(collectButton);
       components.push(actionRow);
     }

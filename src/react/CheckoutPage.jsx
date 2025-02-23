@@ -22,7 +22,7 @@ function CheckoutPage() {
             <div className="divide-y divide-gray-200">
               <div className="py-8 text-base leading-6 space-y-4 text-gray-700 sm:text-lg sm:leading-7">
                 <h2 className="text-2xl font-bold mb-8">
-                  Complete Your Purchase
+                  Complete Your Purchase on Base
                 </h2>
                 {clientId && templateId && collectionId ? (
                   <CrossmintProvider apiKey={clientId}>
@@ -32,8 +32,9 @@ function CheckoutPage() {
                         callData: {
                           collectionId: collectionId,
                           templateId: templateId,
-                          totalPrice: "0.1",
+                          totalPrice: "0.0001", // Adjusted for Base
                           quantity: 1,
+                          chain: "base"
                         },
                       }}
                       payment={{
