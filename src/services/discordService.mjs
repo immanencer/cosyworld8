@@ -182,6 +182,7 @@ export async function sendAvatarProfileEmbedFromObject(avatar) {
     stats,
     traits,
     innerMonologueThreadId,
+    templateId,
   } = avatar;
 
   if (!channelId || typeof channelId !== 'string') {

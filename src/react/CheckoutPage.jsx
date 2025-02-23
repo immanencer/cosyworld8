@@ -30,8 +30,11 @@ function CheckoutPage() {
                       lineItems={{
                         collectionLocator: `crossmint:${collectionId}:${templateId}`,
                         callData: {
+                          collectionId: collectionId,
+                          templateId: templateId,
                           totalPrice: "0.0001", // Adjusted for Base
                           quantity: 1,
+                          chain: "base"
                         },
                       }}
                       payment={{
