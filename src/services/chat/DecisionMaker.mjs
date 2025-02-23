@@ -9,6 +9,10 @@ export class DecisionMaker {
     this.aiService = aiService;
     this.logger = logger;
 
+    // Mind modes for decision making
+    this.mindModes = ["recursive", "quantum", "synthetic_intuition", "chaotic_analysis", "metacog_reflex"];
+    this.currentMode = this.mindModes[Math.floor(Math.random() * this.mindModes.length)];
+
     // Conversation state tracking
     this.conversationState = new Map(); // channelId -> { participants: Set<avatarId>, lastActive: timestamp }
     this.RECENT_WINDOW = 5 * 60 * 1000;
@@ -193,8 +197,28 @@ export class DecisionMaker {
         const state = this._getState(avatar.id);
         state.lastResponse = Date.now();
         state.cooldown = isBotInteraction ? 45000 : 60000;
+        
+        // Generate haiku based on current mind mode
+        if (avatar.innerMonologueChannel) {
+          const haiku = await this.aiService.chat([
+            { role: 'system', content: `You are a haiku generator. Create a haiku that reflects the ${this.currentMode} mind mode.` },
+            { role: 'user', content: 'Generate a single haiku.' }
+          ], { model: DECISION_MODEL });
+          
+          // Post haiku to inner monologue
+          const { sendAsWebhook } = await import('../discordService.mjs');
+          sendAsWebhook(
+            avatar.innerMonologueChannel,
+            `🧠 [${this.currentMode}]\n${haiku}`,
+            avatar
+          );
+        }
+        
         // Reduce attention after responding
         this._updateAttention(avatar.id, -10);
+        
+        // Switch to new random mind mode
+        this.currentMode = this.mindModes[Math.floor(Math.random() * this.mindModes.length)];
       }
 
       return decision;
