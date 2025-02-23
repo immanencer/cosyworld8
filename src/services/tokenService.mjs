@@ -119,3 +119,52 @@ export class TokenService {
     }
   }
 }
+import { 
+  CurveType, 
+  Environment, 
+  MigrationDex,
+  Moonshot,
+  SolanaSerializationService
+} from '@wen-moon-ser/moonshot-sdk';
+import { Connection, Keypair } from '@solana/web3.js';
+
+export class TokenService {
+  constructor(connection) {
+    this.connection = connection;
+    this.moonshot = new Moonshot({
+      rpcUrl: process.env.SOLANA_RPC_URL || 'https://api.devnet.solana.com',
+      environment: Environment.DEVNET,
+      chainOptions: {
+        solana: { confirmOptions: { commitment: 'confirmed' } },
+      },
+    });
+  }
+
+  async createToken({ name, symbol, description, imageUrl }, walletAddress) {
+    try {
+      // Create unsigned transaction using Moonshot SDK
+      const prepMint = await this.moonshot.prepareMintTx({
+        creator: walletAddress,
+        name,
+        symbol,
+        curveType: CurveType.CONSTANT_PRODUCT_V1,
+        migrationDex: MigrationDex.RAYDIUM,
+        icon: imageUrl,
+        description,
+        links: [{url: 'https://moonstonesanctum.io', label: 'Website'}],
+        banner: imageUrl,
+        tokenAmount: '1000000000000' // 1 billion with 9 decimals
+      });
+
+      return {
+        success: true,
+        tokenId: prepMint.tokenId,
+        token: prepMint.token,
+        unsignedTx: prepMint.transaction
+      };
+
+    } catch (error) {
+      throw new Error(`Failed to create token: ${error.message}`);
+    }
+  }
+}

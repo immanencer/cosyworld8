@@ -44,12 +44,28 @@ export default function tokenRoutes() {
         return res.status(404).json({ error: 'Avatar not found or not claimed' });
       }
 
-      const result = await tokenService.createToken({
+      const prepResult = await tokenService.createToken({
         name: avatar.name,
-        symbol: avatar.name.substring(0, 4).toUpperCase(),
+        symbol: avatar.name.substring(0, 4).toUpperCase(), 
         description: `Token for ${avatar.name} from Moonstone Sanctum`,
         imageUrl: avatar.imageUrl
-      }, walletAddress, devBuyAmount);
+      }, walletAddress);
+
+      // Client needs to sign the transaction and submit back
+      res.json({
+        success: true,
+        tokenId: prepResult.tokenId,
+        token: prepResult.token,
+        unsignedTx: prepResult.unsignedTx
+      });
+
+      // Store token creation attempt
+      await db.collection('avatar_tokens').insertOne({
+        avatarId: new ObjectId(avatarId),
+        tokenId: prepResult.tokenId,
+        status: 'pending',
+        createdAt: new Date()
+      });
 
       await db.collection('avatar_tokens').insertOne({
         avatarId: new ObjectId(avatarId),
