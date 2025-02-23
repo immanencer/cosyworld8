@@ -22,5 +22,9 @@
     <div id="root"></div>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="/js/checkout.js"></script>
+    <script>
+      const root = ReactDOM.createRoot(document.getElementById('root'));
+      root.render(React.createElement(Checkout.default));
+    </script>
 </body>
 </html>
