@@ -3,9 +3,11 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <script src="https://cdn.skypack.dev/buffer" type="module"></script>
+    <script src="https://bundle.run/buffer@6.0.3"></script>
     <script>
-        window.Buffer = window.Buffer || Buffer;
+        if (typeof window !== 'undefined' && !window.Buffer) {
+            window.Buffer = buffer.Buffer;
+        }
     </script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>NFT Checkout</title>
