@@ -2,8 +2,11 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <script src="/js/buffer-polyfill.js" type="module"></script>
     <meta charset="UTF-8">
+    <script src="https://cdn.skypack.dev/buffer" type="module"></script>
+    <script>
+        window.Buffer = window.Buffer || Buffer;
+    </script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>NFT Checkout</title>
     <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
