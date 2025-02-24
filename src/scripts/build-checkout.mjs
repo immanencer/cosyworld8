@@ -14,7 +14,8 @@ await esbuild.build({
   define: {
     'process.env.NODE_ENV': '"production"',
     'window.React': 'React',
-    'global': 'window'
+    'global': 'window',
+    'process.env.CROSSMINT_CLIENT_API_KEY': `"${process.env.CROSSMINT_CLIENT_API_KEY}"`
   },
   external: ['react', 'react-dom', '@crossmint/client-sdk-react-ui'],
   loader: {
