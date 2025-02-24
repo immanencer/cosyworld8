@@ -21,6 +21,9 @@ const PORT = process.env.PORT || 3080;
 
 app.use(cors());
 app.use(express.json());
+import { serveCheckout } from './routes/checkout.mjs';
+
+app.get('/checkout', serveCheckout);
 app.use(express.static('public'));
 
 // Serve the checkout page
