@@ -23,13 +23,9 @@ app.use(cors());
 app.use(express.json());
 import { serveCheckout } from './routes/checkout.mjs';
 
+// Serve static files after route definitions
 app.get('/checkout', serveCheckout);
 app.use(express.static('public'));
-
-// Serve the checkout page
-app.get('/checkout', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'checkout.html'));
-});
 
 
 async function initializeApp() {
