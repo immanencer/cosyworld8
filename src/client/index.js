@@ -1,9 +1,20 @@
+import { Buffer } from 'buffer';
+import {
+  Moonshot,
+  CurveType,
+  Environment,
+  MigrationDex,
+  SolanaSerializationService
+} from '@wen-moon-ser/moonshot-sdk';
 
 import { connectWallet } from './services/wallet';
 import { createToken } from './services/token';
 import { fetchJSON } from './services/api';
 import './ui/tabs';
 import './ui/content';
+
+// Make Buffer available globally
+window.Buffer = Buffer;
 
 // Initialize global state
 window.state = {

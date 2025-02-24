@@ -1,2 +1,3 @@
-import './src/index.mjs';
+
+import './src/client/index.js';
 import './server/app.mjs';
