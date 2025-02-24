@@ -190,37 +190,61 @@
       button.disabled = true;
       button.innerHTML = '<span class="animate-pulse">Creating token...</span>';
       
-      // Get token preparation data
+      // Get token metadata
       const data = await fetchJSON(`/api/tokens/create/${avatarId}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ walletAddress: state.wallet.publicKey }),
       });
       
-      if (!data.transaction || !data.tokenId) {
+      if (!data.success || !data.tokenParams) {
         throw new Error(data.error || "Failed to prepare token creation");
       }
+
+      // Initialize Moonshot SDK
+      const moonshot = new Moonshot({
+        rpcUrl: process.env.SOLANA_RPC_URL || "https://api.devnet.solana.com",
+        environment: Environment.DEVNET,
+        chainOptions: {
+          solana: { confirmOptions: { commitment: 'confirmed' } },
+        },
+      });
+
+      // Prepare the mint transaction
+      const prepMint = await moonshot.prepareMintTx({
+        ...data.tokenParams,
+        curveType: CurveType.CONSTANT_PRODUCT_V1,
+        migrationDex: MigrationDex.RAYDIUM,
+        tokenAmount: '42000000000'
+      });
 
       // Sign the transaction with Phantom
       const phantomProvider = window?.phantom?.solana;
       if (!phantomProvider) throw new Error("Phantom wallet not found");
       
-      const tx = data.transaction;
-      const signedTx = await phantomProvider.signTransaction(tx);
+      const signedTx = await phantomProvider.signTransaction(prepMint.transaction);
       
       // Submit the signed transaction
-      const submitResponse = await fetchJSON(`/api/tokens/submit/${data.tokenId}`, {
+      const submitResult = await moonshot.submitMintTx({
+        tokenId: prepMint.tokenId,
+        signedTransaction: signedTx
+      });
+
+      // Record the token creation in our database
+      await fetchJSON(`/api/tokens/submit/${prepMint.tokenId}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          signedTx: signedTx.serialize(),
+          avatarId: data.avatarId,
+          tokenId: prepMint.tokenId,
+          mint: submitResult.mint
         }),
       });
 
       const tokenDetails = `
         <div class="space-y-2">
-          <p class="text-lg">Token "${data.name}" (${data.symbol}) created successfully!</p>
-          <p class="text-sm text-gray-400">Token ID: ${data.tokenId}</p>
+          <p class="text-lg">Token "${data.tokenParams.name}" (${data.tokenParams.symbol}) created successfully!</p>
+          <p class="text-sm text-gray-400">Token ID: ${prepMint.tokenId}</p>
         </div>
       `;
       createModal("Token Created Successfully!", tokenDetails);
@@ -228,7 +252,7 @@
       // Update token status display
       const tokenStatus = document.getElementById('token-status');
       if (tokenStatus) {
-        tokenStatus.innerHTML = `<div class="text-green-400">✓ Token Created: ${data.symbol}</div>`;
+        tokenStatus.innerHTML = `<div class="text-green-400">✓ Token Created: ${data.tokenParams.symbol}</div>`;
       }
     } catch (error) {
       console.error("Error creating token:", error);

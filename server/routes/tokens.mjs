@@ -41,7 +41,6 @@ export default function tokenRoutes(db) {
       const { avatarId } = req.params;
       const { walletAddress } = req.body;
 
-
       const avatar = await db.collection('avatars').findOne({
         _id: new ObjectId(avatarId),
         claimed: true
@@ -51,7 +50,6 @@ export default function tokenRoutes(db) {
         return res.status(404).json({ error: 'Avatar not found or not claimed' });
       }
 
-      // Validate if token already exists
       const existingToken = await db.collection('avatar_tokens').findOne({
         avatarId: new ObjectId(avatarId)
       });
@@ -70,23 +68,10 @@ export default function tokenRoutes(db) {
         icon, banner
       };
 
-      const prepResult = await tokenService.createToken(tokenParams);
-
-      await db.collection('avatar_tokens').insertOne({
-        avatarId: new ObjectId(avatarId),
-        tokenId: prepResult.tokenId,
-        status: 'pending',
-        walletAddress,
-        createdAt: new Date()
-      });
-
       res.json({
         success: true,
-        tokenId: prepResult.tokenId,
-        token: prepResult.token,
-        transaction: prepResult.transaction,
-        symbol: tokenParams.symbol,
-        name: tokenParams.name
+        tokenParams,
+        avatarId: avatar._id.toString()
       });
     } catch (error) {
       res.status(500).json({ error: error.message });
