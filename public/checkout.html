@@ -3,11 +3,11 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <script src="https://bundle.run/buffer@6.0.3"></script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>NFT Checkout</title>
-    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
-    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    <script src="https://bundle.run/buffer@6.0.3"></script>
     <script src="https://unpkg.com/@crossmint/client-sdk-react-ui/lib/index.global.js"></script>
     <link href="/css/tailwind.css" rel="stylesheet">
     <style>
@@ -34,10 +34,8 @@
     </script>
     <script src="/js/checkout.js"></script>
     <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            const root = ReactDOM.createRoot(document.getElementById('root'));
-            root.render(React.createElement(CheckoutPage.default));
-        });
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(React.createElement(CheckoutPage.default));
     </script>
 </body>
 </html>

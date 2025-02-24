@@ -13,7 +13,8 @@ await esbuild.build({
   plugins: [],
   define: {
     'process.env.NODE_ENV': '"production"',
-    'window.React': 'React',
+    'React': 'window.React',
+    'ReactDOM': 'window.ReactDOM',
     'global': 'window'
   },
   external: ['react', 'react-dom', '@crossmint/client-sdk-react-ui'],
