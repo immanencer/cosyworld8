@@ -78,14 +78,19 @@
 
     
 
-    <!-- Buffer Polyfill -->
+    <!-- Buffer and Polyfills -->
     <script src="https://cdn.jsdelivr.net/npm/buffer@6.0.3/index.js"></script>
-    <script>window.Buffer = buffer.Buffer;</script>
+    <script>
+      window.Buffer = buffer.Buffer;
+      window.global = window;
+      window.process = { env: {} };
+    </script>
+    
     <!-- Moonshot SDK -->
-    <script src="/js/moonshot-sdk.js"></script>
-    <script src="/js/buffer-polyfill.js"></script>
+    <script src="/js/moonshot-sdk.js" type="module"></script>
+    <script src="/js/buffer-polyfill.js" type="module"></script>
 
     <!-- Main JS -->
-    <script src="main.js"></script>
+    <script src="main.js" type="module"></script>
   </body>
 </html>
