@@ -1,5 +1,5 @@
 
-const { Moonshot, CurveType, Environment, MigrationDex, SolanaSerializationService } = MoonshotSDK;
+const { Moonshot, CurveType, Environment, MigrationDex, SolanaSerializationService } = window.MoonshotSDK;
 
 
 (() => {
