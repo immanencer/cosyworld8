@@ -210,10 +210,19 @@
           }),
         },
       );
-      createModal(
-        "Token Created Successfully!",
-        `Token ID: ${submitResponse.tokenId}`,
-      );
+      const tokenDetails = `
+        <div class="space-y-2">
+          <p class="text-lg">Token "${data.name}" (${data.symbol}) created successfully!</p>
+          <p class="text-sm text-gray-400">Token ID: ${data.tokenId}</p>
+        </div>
+      `;
+      createModal("Token Created Successfully!", tokenDetails);
+      
+      // Update token status display
+      const tokenStatus = document.getElementById('token-status');
+      if (tokenStatus) {
+        tokenStatus.innerHTML = `<div class="text-green-400">✓ Token Created: ${data.symbol}</div>`;
+      }
     } catch (error) {
       console.error("Error creating token:", error);
       createModal(

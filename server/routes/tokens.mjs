@@ -100,7 +100,9 @@ export default function tokenRoutes(db) {
         success: true,
         tokenId: prepResult.tokenId,
         token: prepResult.token,
-        unsignedTx: prepResult.unsignedTx
+        unsignedTx: prepResult.unsignedTx,
+        symbol: tokenParams.symbol,
+        name: tokenParams.name
       });
 
       // Store token creation attempt
