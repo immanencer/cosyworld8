@@ -27,15 +27,24 @@ export class TokenService {
     try {
       console.log('Token creation request:', { name, symbol, description });
 
+      // Validate required parameters
       if (!name || !symbol || !description || !icon || !banner) {
         throw new Error('Missing required token parameters');
       }
 
-      if (symbol.length > 4) {
-        symbol = symbol.substring(0, 4).toUpperCase();
+      // Normalize symbol
+      symbol = symbol.substring(0, 4).toUpperCase();
+
+      // Validate token parameters
+      if (name.length < 3) {
+        throw new Error('Token name must be at least 3 characters long');
+      }
+      if (symbol.length < 2) {
+        throw new Error('Token symbol must be at least 2 characters long');
       }
 
-      const prepMint = await this.moonshot.prepareMintTx({
+      // Prepare mint transaction
+      const mintParams = {
         name,
         symbol,
         curveType: CurveType.CONSTANT_PRODUCT_V1,
@@ -45,12 +54,37 @@ export class TokenService {
         links: [{ url: 'https://www.moonstone-sanctum.com', label: 'Website' }],
         banner,
         tokenAmount: '42000000000',
+      };
+
+      console.log('Preparing mint with params:', mintParams);
+
+      const prepMint = await this.moonshot.prepareMintTx(mintParams);
+      
+      if (!prepMint || !prepMint.tokenId) {
+        throw new Error('Invalid response from Moonshot SDK');
+      }
+
+      console.log('Mint preparation successful:', {
+        tokenId: prepMint.tokenId,
+        name: prepMint.name,
+        symbol: prepMint.symbol
       });
 
-      console.log('Mint preparation:', prepMint);
       return prepMint;
     } catch (error) {
-      console.error('Error creating token:', error);
+      console.error('Error creating token:', {
+        error: error.message,
+        stack: error.stack,
+        name: error.name
+      });
+      
+      if (error.response) {
+        console.error('API Response:', {
+          status: error.response.status,
+          data: error.response.data
+        });
+      }
+      
       throw new Error(`Failed to create token: ${error.message}`);
     }
   }
