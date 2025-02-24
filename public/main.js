@@ -240,11 +240,14 @@ const tabButtons = document.querySelectorAll("[data-tab]");
       const phantomProvider = window?.phantom?.solana;
       if (!phantomProvider) throw new Error("Phantom wallet not found");
       
-      const deserializedTx = SolanaSerializationService.deserializeVersionedTransaction(prepMint.transaction);
+      // Convert base64 transaction to Uint8Array
+      const txBytes = Uint8Array.from(atob(prepMint.transaction), c => c.charCodeAt(0));
+      const deserializedTx = SolanaSerializationService.deserializeVersionedTransaction(txBytes);
       if (!deserializedTx) throw new Error("Failed to deserialize transaction");
       
       const signedTx = await phantomProvider.signTransaction(deserializedTx);
-      const serializedTx = SolanaSerializationService.serializeVersionedTransaction(signedTx);
+      // Convert signed transaction to base64
+      const serializedTx = btoa(String.fromCharCode.apply(null, SolanaSerializationService.serializeVersionedTransaction(signedTx)));
       
       // Submit the signed transaction
       const result = await moonshot.submitMintTx({
