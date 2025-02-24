@@ -8,8 +8,11 @@
   };
 
   // DOM REFERENCES
-  const content = document.getElementById("content");
-  const tabButtons = document.querySelectorAll("[data-tab]");
+  // Import Moonshot SDK
+import { Moonshot, CurveType, Environment, MigrationDex, SolanaSerializationService } from '@wen-moon-ser/moonshot-sdk';
+
+const content = document.getElementById("content");
+const tabButtons = document.querySelectorAll("[data-tab]");
 
   // HELPER FUNCTIONS
   const fetchJSON = async (url, options = {}) => {
