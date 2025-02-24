@@ -201,37 +201,14 @@
         throw new Error(data.error || "Failed to prepare token creation");
       }
 
-      // Initialize Moonshot SDK
-      const moonshot = new Moonshot({
-        rpcUrl: process.env.SOLANA_RPC_URL || "https://api.devnet.solana.com",
-        environment: Environment.DEVNET,
-        chainOptions: {
-          solana: { confirmOptions: { commitment: 'confirmed' } },
-        },
-      });
-
-      // Prepare the mint transaction
-      const prepMint = await moonshot.prepareMintTx({
-        ...data.tokenParams,
-        curveType: CurveType.CONSTANT_PRODUCT_V1,
-        migrationDex: MigrationDex.RAYDIUM,
-        tokenAmount: '42000000000'
-      });
-
       // Sign the transaction with Phantom
       const phantomProvider = window?.phantom?.solana;
       if (!phantomProvider) throw new Error("Phantom wallet not found");
       
-      const signedTx = await phantomProvider.signTransaction(prepMint.transaction);
+      const signedTx = await phantomProvider.signTransaction(data.transaction);
       
-      // Submit the signed transaction
-      const submitResult = await moonshot.submitMintTx({
-        tokenId: prepMint.tokenId,
-        signedTransaction: signedTx
-      });
-
-      // Record the token creation in our database
-      await fetchJSON(`/api/tokens/submit/${prepMint.tokenId}`, {
+      // Submit the signed transaction back to server
+      const result = await fetchJSON(`/api/tokens/submit/${data.tokenId}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

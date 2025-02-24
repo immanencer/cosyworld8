@@ -68,10 +68,22 @@ export default function tokenRoutes(db) {
         icon, banner
       };
 
+      const prepMint = await tokenService.createToken(tokenParams);
+
+      await db.collection('avatar_tokens').insertOne({
+        avatarId: new ObjectId(avatarId),
+        tokenId: prepMint.tokenId,
+        status: 'pending',
+        walletAddress,
+        createdAt: new Date()
+      });
+
       res.json({
         success: true,
-        tokenParams,
-        avatarId: avatar._id.toString()
+        tokenId: prepMint.tokenId,
+        transaction: prepMint.transaction,
+        name: tokenParams.name,
+        symbol: tokenParams.symbol
       });
     } catch (error) {
       res.status(500).json({ error: error.message });
