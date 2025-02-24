@@ -1,10 +1,9 @@
 
-import { Buffer } from 'https://cdn.skypack.dev/buffer';
-window.Buffer = Buffer;
 // Buffer polyfill for browser environment
 (function(global) {
-  if (global.Buffer) return;
-
-  const Buffer = require('buffer/').Buffer;
-  global.Buffer = Buffer;
+  if (typeof window !== 'undefined') {
+    window.Buffer = window.Buffer || require('buffer/').Buffer;
+    window.process = window.process || { env: {} };
+    window.global = window;
+  }
 })(typeof window !== 'undefined' ? window : global);

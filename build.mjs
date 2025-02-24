@@ -6,7 +6,7 @@ import path from 'path';
 
 const execAsync = promisify(exec);
 
-// Create proper React components
+// Create proper React components with Buffer polyfill
 const checkoutComponent = `
 import React from 'react';
 import ReactDOM from 'react-dom/client';
@@ -14,6 +14,7 @@ import { Buffer } from 'buffer';
 
 // Make Buffer available globally
 window.Buffer = Buffer;
+window.global = window;
 
 const Checkout = () => {
   return (
@@ -34,9 +35,14 @@ fs.writeFileSync(path.join(process.cwd(), 'public', 'checkout.html'), `
 <html>
 <head>
   <title>Checkout</title>
+  <script src="https://bundle.run/buffer@6.0.3"></script>
 </head>
 <body>
   <div id="root"></div>
+  <script>
+    window.global = window;
+    window.process = { env: {} };
+  </script>
   <script src="/js/dist/checkout.js"></script> 
 </body>
 </html>
