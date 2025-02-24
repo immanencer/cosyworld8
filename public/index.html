@@ -75,22 +75,7 @@
     <main id="content" class="p-4" role="tabpanel">
       <!-- Content (owned avatars, actions, etc.) is injected by main.js -->
     </main>
-
-    
-
-    <!-- Buffer and Polyfills -->
-    <script src="https://cdn.jsdelivr.net/npm/buffer@6.0.3/index.js"></script>
-    <script>
-      window.Buffer = buffer.Buffer;
-      window.global = window;
-      window.process = { env: {} };
-    </script>
-    
-    <!-- Moonshot SDK -->
-    <script src="/js/moonshot-sdk.js" type="module"></script>
-    <script src="/js/buffer-polyfill.js" type="module"></script>
-
     <!-- Main JS -->
-    <script src="main.js" type="module"></script>
+    <script src="output.js" type="module"></script>
   </body>
 </html>

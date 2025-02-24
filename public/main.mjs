@@ -1,11 +1,20 @@
-
-// Initialize Moonshot SDK globals
-let Moonshot, CurveType, Environment, MigrationDex, SolanaSerializationService;
+import {
+  CurveType,
+  MigrationDex,
+  Moonshot,
+  SolanaSerializationService,
+} from "@wen-moon-ser/moonshot-sdk";
 
 // Wait for SDK to load
-window.addEventListener('load', () => {
+window.addEventListener("load", () => {
   if (window.MoonshotSDK) {
-    ({ Moonshot, CurveType, Environment, MigrationDex, SolanaSerializationService } = window.MoonshotSDK);
+    ({
+      Moonshot,
+      CurveType,
+      Environment,
+      MigrationDex,
+      SolanaSerializationService,
+    } = window.MoonshotSDK);
   }
 });
 
@@ -20,8 +29,8 @@ window.addEventListener('load', () => {
 
   // DOM REFERENCES
   // DOM REFERENCES
-const content = document.getElementById("content");
-const tabButtons = document.querySelectorAll("[data-tab]");
+  const content = document.getElementById("content");
+  const tabButtons = document.querySelectorAll("[data-tab]");
 
   // HELPER FUNCTIONS
   const fetchJSON = async (url, options = {}) => {
@@ -201,24 +210,25 @@ const tabButtons = document.querySelectorAll("[data-tab]");
     try {
       button.disabled = true;
       button.innerHTML = '<span class="animate-pulse">Creating token...</span>';
-      
-      // Get token metadata
+
       // Initialize Moonshot SDK
       const moonshot = new Moonshot({
         rpcUrl: "https://api.devnet.solana.com",
         environment: "devnet",
         chainOptions: {
-          solana: { confirmOptions: { commitment: 'confirmed' } },
+          solana: { confirmOptions: { commitment: "confirmed" } },
         },
       });
 
-      // Get token metadata first
-      const tokenMetadata = await fetchJSON(`/api/tokens/metadata/${avatarId}`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ walletAddress: state.wallet.publicKey }),
-      });
-
+      // Get token metadata
+      const tokenMetadata = await fetchJSON(
+        `/api/tokens/metadata/${avatarId}`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ walletAddress: state.wallet.publicKey }),
+        },
+      );
       if (!tokenMetadata.success) {
         throw new Error(tokenMetadata.error || "Failed to get token metadata");
       }
@@ -233,28 +243,28 @@ const tabButtons = document.querySelectorAll("[data-tab]");
         banner: tokenMetadata.banner,
         curveType: CurveType.CONSTANT_PRODUCT_V1,
         migrationDex: MigrationDex.RAYDIUM,
-        tokenAmount: '42000000000'
+        tokenAmount: "42000000000",
       });
+
+      // Convert hex string to Uint8Array and deserialize transaction
+      const txBytes = Uint8Array.from(Buffer.from(prepMint.transaction, "hex"));
+      const tx =
+        SolanaSerializationService.deserializeVersionedTransaction(txBytes);
+      if (!tx) throw new Error("Failed to deserialize transaction");
 
       // Sign the transaction with Phantom
       const phantomProvider = window?.phantom?.solana;
       if (!phantomProvider) throw new Error("Phantom wallet not found");
-      
-      // Convert hex string to Uint8Array
-      // Handle transaction bytes
-      const txBytes = Uint8Array.from(Buffer.from(prepMint.transaction, 'hex'));
-      const tx = SolanaSerializationService.deserializeVersionedTransaction(txBytes);
-      if (!tx) throw new Error("Failed to deserialize transaction");
-      
       const signedTx = await phantomProvider.signTransaction(tx);
-      const serializedBytes = SolanaSerializationService.serializeVersionedTransaction(signedTx);
-      const serializedTx = Buffer.from(serializedBytes).toString('hex');
-      
+      const serializedBytes =
+        SolanaSerializationService.serializeVersionedTransaction(signedTx);
+      const serializedTx = Buffer.from(serializedBytes).toString("hex");
+
       // Submit the signed transaction
       const result = await moonshot.submitMintTx({
-        tokenId: prepMint.tokenId, 
+        tokenId: prepMint.tokenId,
         token: prepMint.token,
-        signedTransaction: serializedTx
+        signedTransaction: serializedTx,
       });
 
       // Update backend about the token
@@ -262,24 +272,24 @@ const tabButtons = document.querySelectorAll("[data-tab]");
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          avatarId: data.avatarId,
+          avatarId: avatarId,
           tokenId: prepMint.tokenId,
-          mint: submitResult.mint
+          mint: result.mint,
         }),
       });
 
       const tokenDetails = `
         <div class="space-y-2">
-          <p class="text-lg">Token "${data.tokenParams.name}" (${data.tokenParams.symbol}) created successfully!</p>
+          <p class="text-lg">Token "${tokenMetadata.name}" (${tokenMetadata.symbol}) created successfully!</p>
           <p class="text-sm text-gray-400">Token ID: ${prepMint.tokenId}</p>
         </div>
       `;
       createModal("Token Created Successfully!", tokenDetails);
-      
+
       // Update token status display
-      const tokenStatus = document.getElementById('token-status');
+      const tokenStatus = document.getElementById("token-status");
       if (tokenStatus) {
-        tokenStatus.innerHTML = `<div class="text-green-400">✓ Token Created: ${data.tokenParams.symbol}</div>`;
+        tokenStatus.innerHTML = `<div class="text-green-400">✓ Token Created: ${tokenMetadata.symbol}</div>`;
       }
     } catch (error) {
       console.error("Error creating token:", error);
