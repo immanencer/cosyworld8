@@ -13,51 +13,56 @@ function CheckoutPage() {
   const clientId = window.CROSSMINT_CLIENT_API_KEY;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-900 to-purple-900 py-6 flex flex-col justify-center sm:py-12">
-      <div className="relative py-3 sm:max-w-xl sm:mx-auto">
-        <div className="absolute inset-0 bg-gradient-to-r from-cyan-400 to-blue-500 shadow-lg transform -skew-y-6 sm:skew-y-0 sm:-rotate-6 sm:rounded-3xl opacity-75"></div>
-        <div className="relative px-4 py-10 bg-black shadow-xl sm:rounded-3xl sm:p-20 border border-cyan-500/20">
-          <div className="max-w-md mx-auto">
-            <div className="divide-y divide-gray-700">
-              <div className="py-8 text-base leading-6 space-y-8 text-gray-200 sm:text-lg sm:leading-7">
-                <h2 className="text-3xl font-bold mb-8 text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-blue-400">
-                  Collect on Base
-                </h2>
-                {clientId && templateId && collectionId ? (
-                  <CrossmintProvider apiKey={clientId}>
-                    <CrossmintHostedCheckout
-                      lineItems={{
-                        collectionLocator: `crossmint:${collectionId}:${templateId}`,
-                        callData: {
-                          totalPrice: "0.0001",
-                          quantity: 1
+    <div className="min-h-screen bg-gray-900 text-white">
+      <div className="container mx-auto px-4 py-8">
+        <div className="max-w-2xl mx-auto">
+          <div className="bg-gray-800 rounded-lg shadow-xl p-6">
+            <h1 className="text-2xl font-bold mb-6 text-center">NFT Checkout</h1>
+            <div className="space-y-4">
+              {clientId && templateId && collectionId ? (
+                <CrossmintProvider apiKey={clientId}>
+                  <CrossmintHostedCheckout
+                    clientId={clientId}
+                    environment="staging"
+                    lineItems={[{
+                      collectionLocator: `crossmint:${collectionId}:${templateId}`,
+                      callData: {
+                        totalPrice: "0.001",
+                        quantity: 1
+                      }
+                    }]}
+                    onError={(error) => {
+                      if (error.message.includes("must be enabled")) {
+                        console.error("Please enable template minting in the console");
+                      } else if (error.message.includes("template")) {
+                        console.error("Invalid template ID provided");
+                      } else {
+                        console.error("Minting failed:", error);
+                      }
+                    }}
+                    onSuccess={(data) => {
+                      console.log("Minting successful:", data);
+                    }}
+                    appearance={{
+                      theme: {
+                        button: "dark",
+                        checkout: "dark",
+                      },
+                      variables: {
+                        colors: {
+                          accent: "#22d3ee",
                         },
-                      }}
-                      payment={{
-                        crypto: { enabled: true },
-                        fiat: { enabled: true },
-                      }}
-                      appearance={{
-                        theme: {
-                          button: "dark",
-                          checkout: "dark",
-                        },
-                        variables: {
-                          colors: {
-                            accent: "#22d3ee",
-                          },
-                        },
-                        display: "popup",
-                        overlay: {
-                          enabled: true,
-                        },
-                      }}
-                      />
-                      </CrossmintProvider>
-                ) : (
-                  <p className="text-red-400">Missing required parameters</p>
-                )}
-              </div>
+                      },
+                      display: "popup",
+                      overlay: {
+                        enabled: true,
+                      },
+                    }}
+                  />
+                </CrossmintProvider>
+              ) : (
+                <p className="text-red-400">Missing required parameters</p>
+              )}
             </div>
           </div>
         </div>
@@ -66,6 +71,7 @@ function CheckoutPage() {
   );
 }
 
-const container = document.getElementById("root");
-const root = createRoot(container);
+const root = createRoot(document.getElementById("root"));
 root.render(<CheckoutPage />);
+
+export default CheckoutPage;
