@@ -1,4 +1,3 @@
-
 import esbuild from 'esbuild';
 import dotenv from 'dotenv';
 
@@ -10,18 +9,10 @@ await esbuild.build({
   outfile: 'public/js/checkout.js',
   format: 'iife',
   globalName: 'CheckoutPage',
-  plugins: [],
   define: {
-    'process.env.NODE_ENV': '"production"',
-    'React': 'window.React',
-    'ReactDOM': 'window.ReactDOM',
-    'global': 'window'
+    'process.env.NODE_ENV': '"development"',
   },
   external: ['react', 'react-dom', '@crossmint/client-sdk-react-ui'],
-  loader: {
-    '.js': 'jsx',
-    '.jsx': 'jsx'
-  }
 });
 
 console.log('Checkout page built successfully');

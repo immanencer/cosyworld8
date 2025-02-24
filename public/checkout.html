@@ -1,41 +1,23 @@
-
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>NFT Checkout</title>
-    <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
-    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
-    <script src="https://bundle.run/buffer@6.0.3"></script>
+    <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
     <script src="https://unpkg.com/@crossmint/client-sdk-react-ui/lib/index.global.js"></script>
-    <link href="/css/tailwind.css" rel="stylesheet">
-    <style>
-        body {
-            margin: 0;
-            padding: 20px;
-            font-family: system-ui, sans-serif;
-            background: #13111c;
-            color: #fff;
-        }
-        .error {
-            color: #ff4444;
-            padding: 20px;
-            text-align: center;
-        }
-    </style>
 </head>
 <body>
     <div id="root"></div>
     <script>
         window.CROSSMINT_CLIENT_API_KEY = '{{CROSSMINT_CLIENT_API_KEY}}';
-        window.Buffer = buffer.Buffer;
-        window.global = window;
     </script>
     <script src="/js/checkout.js"></script>
     <script>
-        const root = ReactDOM.createRoot(document.getElementById('root'));
-        root.render(React.createElement(CheckoutPage.default));
+        window.onload = function() {
+            const root = ReactDOM.createRoot(document.getElementById('root'));
+            root.render(React.createElement(CheckoutPage.default));
+        };
     </script>
 </body>
 </html>
