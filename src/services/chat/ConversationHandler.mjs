@@ -361,8 +361,11 @@ Based on all of the above context, share an updated personality that reflects yo
           timestamp: msg.createdTimestamp
         }));
 
-      // If the last message was from this avatar, skip responding
-      if (messageHistory[messageHistory.length - 1]?.author === avatar.name) {
+      // If the last message was from this avatar (checking name and emoji), skip responding
+      const lastMessage = messageHistory[messageHistory.length - 1];
+      if (lastMessage && 
+          (lastMessage.author === avatar.name || 
+           (avatar.emoji && lastMessage.author === `${avatar.name} ${avatar.emoji}`))) {
         return null;
       }
 
