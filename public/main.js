@@ -1,13 +1,7 @@
 
 // Initialize Moonshot SDK globals
-let Moonshot, CurveType, Environment, MigrationDex, SolanaSerializationService;
-
-// Wait for SDK to load
-window.addEventListener('load', () => {
-  if (window.MoonshotSDK) {
-    ({ Moonshot, CurveType, Environment, MigrationDex, SolanaSerializationService } = window.MoonshotSDK);
-  }
-});
+// Initialize SDK globals
+const { Moonshot, CurveType, Environment, MigrationDex, SolanaSerializationService } = window.MoonshotSDK || {};
 
 (() => {
   // GLOBAL STATE
@@ -241,14 +235,14 @@ const tabButtons = document.querySelectorAll("[data-tab]");
       if (!phantomProvider) throw new Error("Phantom wallet not found");
       
       // Convert hex string to Uint8Array
-      const txBytes = new Uint8Array(prepMint.transaction.match(/.{1,2}/g).map(byte => parseInt(byte, 16)));
-      const deserializedTx = SolanaSerializationService.deserializeVersionedTransaction(txBytes);
-      if (!deserializedTx) throw new Error("Failed to deserialize transaction");
+      // Handle transaction bytes
+      const txBytes = Uint8Array.from(Buffer.from(prepMint.transaction, 'hex'));
+      const tx = SolanaSerializationService.deserializeVersionedTransaction(txBytes);
+      if (!tx) throw new Error("Failed to deserialize transaction");
       
-      const signedTx = await phantomProvider.signTransaction(deserializedTx);
-      // Convert Uint8Array to hex string
+      const signedTx = await phantomProvider.signTransaction(tx);
       const serializedBytes = SolanaSerializationService.serializeVersionedTransaction(signedTx);
-      const serializedTx = Array.from(serializedBytes).map(b => b.toString(16).padStart(2, '0')).join('');
+      const serializedTx = Buffer.from(serializedBytes).toString('hex');
       
       // Submit the signed transaction
       const result = await moonshot.submitMintTx({
