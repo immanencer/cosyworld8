@@ -30,11 +30,12 @@
     <script>
         window.CROSSMINT_CLIENT_API_KEY = "{{CROSSMINT_CLIENT_API_KEY}}";
         window.Buffer = buffer.Buffer;
+        window.global = window;
     </script>
     <script src="/js/checkout.js"></script>
     <script>
         const root = ReactDOM.createRoot(document.getElementById('root'));
-        root.render(React.createElement(CheckoutPage));
+        root.render(React.createElement(CheckoutPage.default));
     </script>
 </body>
 </html>
