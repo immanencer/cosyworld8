@@ -79,9 +79,11 @@
     
 
     <!-- Buffer Polyfill -->
-    <script src="https://bundle.run/buffer@6.0.3"></script>
+    <script src="https://cdn.jsdelivr.net/npm/buffer@6.0.3/index.js"></script>
+    <script>window.Buffer = buffer.Buffer;</script>
     <!-- Moonshot SDK -->
     <script src="/js/moonshot-sdk.js"></script>
+    <script src="/js/buffer-polyfill.js"></script>
 
     <!-- Main JS -->
     <script src="main.js"></script>

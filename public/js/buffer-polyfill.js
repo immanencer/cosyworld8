@@ -1,9 +1,9 @@
 
-// Buffer polyfill for browser environment
-(function(global) {
+(function() {
   if (typeof window !== 'undefined') {
-    window.Buffer = window.Buffer || require('buffer/').Buffer;
-    window.process = window.process || { env: {} };
+    const buffer = require('buffer/');
+    window.Buffer = buffer.Buffer;
     window.global = window;
+    window.process = { env: {} };
   }
-})(typeof window !== 'undefined' ? window : global);
+})();

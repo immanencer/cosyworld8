@@ -1,7 +1,13 @@
 
 // Initialize Moonshot SDK globals
-// Initialize SDK globals
-const { Moonshot, CurveType, Environment, MigrationDex, SolanaSerializationService } = window.MoonshotSDK || {};
+let Moonshot, CurveType, Environment, MigrationDex, SolanaSerializationService;
+
+// Wait for SDK to load
+window.addEventListener('load', () => {
+  if (window.MoonshotSDK) {
+    ({ Moonshot, CurveType, Environment, MigrationDex, SolanaSerializationService } = window.MoonshotSDK);
+  }
+});
 
 (() => {
   // GLOBAL STATE
