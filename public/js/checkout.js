@@ -45,23 +45,26 @@ var CheckoutPage = (() => {
     const templateId = params.get("templateId");
     const collectionId = params.get("collectionId");
     const clientId = window.CROSSMINT_CLIENT_API_KEY;
-    if (!clientId || !templateId || !collectionId) {
-      return /* @__PURE__ */ import_react.default.createElement("div", { className: "error" }, "Missing required parameters. Please ensure templateId, collectionId and API key are provided.");
+    if (!clientId) {
+      return /* @__PURE__ */ import_react.default.createElement("div", null, "Missing API key");
     }
-    return /* @__PURE__ */ import_react.default.createElement("div", { className: "min-h-screen bg-gradient-to-br from-gray-900 via-purple-900 to-gray-900 text-white" }, /* @__PURE__ */ import_react.default.createElement("div", { className: "container mx-auto px-4 py-12" }, /* @__PURE__ */ import_react.default.createElement("div", { className: "max-w-2xl mx-auto" }, /* @__PURE__ */ import_react.default.createElement("div", { className: "bg-gray-800/40 backdrop-blur-lg rounded-2xl shadow-2xl border border-purple-500/20 p-8" }, /* @__PURE__ */ import_react.default.createElement("h1", { className: "text-3xl font-bold mb-8 text-center bg-clip-text text-transparent bg-gradient-to-r from-purple-400 to-pink-400" }, "NFT Checkout"), /* @__PURE__ */ import_react.default.createElement(import_client_sdk_react_ui.CrossmintProvider, { apiKey: clientId }, /* @__PURE__ */ import_react.default.createElement(
+    if (!templateId || !collectionId) {
+      return /* @__PURE__ */ import_react.default.createElement("div", null, "Missing template or collection ID");
+    }
+    return /* @__PURE__ */ import_react.default.createElement("div", null, /* @__PURE__ */ import_react.default.createElement("h1", null, "NFT Checkout"), /* @__PURE__ */ import_react.default.createElement(import_client_sdk_react_ui.CrossmintProvider, { apiKey: clientId }, /* @__PURE__ */ import_react.default.createElement(
       import_client_sdk_react_ui.CrossmintEmbeddedCheckout,
       {
+        clientId,
+        environment: "staging",
         lineItems: {
           collectionLocator: `crossmint:${collectionId}:${templateId}`,
           callData: {
             totalPrice: "0.001",
             quantity: 1
           }
-        },
-        onError: (error) => console.error("Minting failed:", error),
-        onSuccess: (data) => console.log("Success:", data)
+        }
       }
-    ))))));
+    )));
   }
   var CheckoutPage_default = CheckoutPage;
   return __toCommonJS(CheckoutPage_exports);
