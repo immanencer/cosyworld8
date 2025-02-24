@@ -1,3 +1,7 @@
+
+import { Moonshot, CurveType, Environment, MigrationDex, SolanaSerializationService } from '@wen-moon-ser/moonshot-sdk';
+
+
 (() => {
   // GLOBAL STATE
   const state = {
@@ -8,9 +12,7 @@
   };
 
   // DOM REFERENCES
-  // Import Moonshot SDK
-import { Moonshot, CurveType, Environment, MigrationDex, SolanaSerializationService } from '@wen-moon-ser/moonshot-sdk';
-
+  // DOM REFERENCES
 const content = document.getElementById("content");
 const tabButtons = document.querySelectorAll("[data-tab]");
 
