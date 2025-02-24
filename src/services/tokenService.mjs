@@ -23,12 +23,12 @@ export class TokenService {
     });
   }
 
-  async createToken({ name, symbol, description, icon, banner }) {
+  async createToken({ name, symbol, description, icon, banner, walletAddress }) {
     try {
       console.log('Token creation request:', { name, symbol, description });
 
       // Validate required parameters
-      if (!name || !symbol || !description || !icon || !banner) {
+      if (!name || !symbol || !description || !icon || !banner || !walletAddress) {
         throw new Error('Missing required token parameters');
       }
 
@@ -43,8 +43,9 @@ export class TokenService {
         throw new Error('Token symbol must be at least 2 characters long');
       }
 
-      // Prepare mint transaction
+      // Prepare mint params
       const mintParams = {
+        creator: walletAddress,
         name,
         symbol,
         curveType: CurveType.CONSTANT_PRODUCT_V1,

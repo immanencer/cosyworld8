@@ -191,24 +191,58 @@
       button.innerHTML = '<span class="animate-pulse">Creating token...</span>';
       
       // Get token metadata
-      const data = await fetchJSON(`/api/tokens/create/${avatarId}`, {
+      // Initialize Moonshot SDK
+      const moonshot = new Moonshot({
+        rpcUrl: process.env.SOLANA_RPC_URL || "https://api.devnet.solana.com",
+        environment: Environment.DEVNET,
+        chainOptions: {
+          solana: { confirmOptions: { commitment: 'confirmed' } },
+        },
+      });
+
+      // Get token metadata first
+      const tokenMetadata = await fetchJSON(`/api/tokens/metadata/${avatarId}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ walletAddress: state.wallet.publicKey }),
       });
-      
-      if (!data.success || !data.tokenParams) {
-        throw new Error(data.error || "Failed to prepare token creation");
+
+      if (!tokenMetadata.success) {
+        throw new Error(tokenMetadata.error || "Failed to get token metadata");
       }
+
+      // Prepare mint transaction
+      const prepMint = await moonshot.prepareMintTx({
+        creator: state.wallet.publicKey,
+        name: tokenMetadata.name,
+        symbol: tokenMetadata.symbol,
+        description: tokenMetadata.description,
+        icon: tokenMetadata.icon,
+        banner: tokenMetadata.banner,
+        curveType: CurveType.CONSTANT_PRODUCT_V1,
+        migrationDex: MigrationDex.RAYDIUM,
+        tokenAmount: '42000000000'
+      });
 
       // Sign the transaction with Phantom
       const phantomProvider = window?.phantom?.solana;
       if (!phantomProvider) throw new Error("Phantom wallet not found");
       
-      const signedTx = await phantomProvider.signTransaction(data.transaction);
+      const deserializedTx = SolanaSerializationService.deserializeVersionedTransaction(prepMint.transaction);
+      if (!deserializedTx) throw new Error("Failed to deserialize transaction");
       
-      // Submit the signed transaction back to server
-      const result = await fetchJSON(`/api/tokens/submit/${data.tokenId}`, {
+      const signedTx = await phantomProvider.signTransaction(deserializedTx);
+      const serializedTx = SolanaSerializationService.serializeVersionedTransaction(signedTx);
+      
+      // Submit the signed transaction
+      const result = await moonshot.submitMintTx({
+        tokenId: prepMint.tokenId, 
+        token: prepMint.token,
+        signedTransaction: serializedTx
+      });
+
+      // Update backend about the token
+      await fetchJSON(`/api/tokens/record/${avatarId}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
