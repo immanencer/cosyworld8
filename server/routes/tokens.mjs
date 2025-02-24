@@ -3,9 +3,6 @@ import { TokenService } from '../../src/services/tokenService.mjs';
 import { ObjectId } from 'mongodb';
 import { processImage } from '../../src/services/utils/processImage.mjs';
 
-
-
-
 export default function tokenRoutes(db) {
   const router = express.Router();
   const tokenService = new TokenService();
@@ -16,13 +13,11 @@ export default function tokenRoutes(db) {
       const existingToken = await db.collection('avatar_tokens').findOne({
         avatarId: new ObjectId(avatarId)
       });
-
       res.json({ exists: !!existingToken });
     } catch (error) {
       res.status(500).json({ error: error.message });
     }
   });
-
 
   // Create new wallet for user
   router.post('/wallet', async (req, res) => {
@@ -46,16 +41,6 @@ export default function tokenRoutes(db) {
       const { avatarId } = req.params;
       const { walletAddress } = req.body;
 
-      console.log('Token creation request received:', {
-        avatarId,
-        walletAddress,
-        body: req.body
-      });
-
-      if (!walletAddress) {
-        console.error('Missing wallet address in request');
-        return res.status(400).json({ error: 'Wallet address is required' });
-      }
 
       const avatar = await db.collection('avatars').findOne({
         _id: new ObjectId(avatarId),
@@ -75,12 +60,6 @@ export default function tokenRoutes(db) {
         return res.status(400).json({ error: 'Token already exists for this avatar' });
       }
 
-      // Ensure walletAddress is properly passed
-      if (!walletAddress) {
-        console.error('Wallet address missing in token creation request');
-        return res.status(400).json({ error: 'Wallet address is required' });
-      }
-
       const icon = await processImage(avatar.imageUrl, 512, 512);
       const banner = await processImage(avatar.imageUrl, 512, 256);
 
@@ -88,25 +67,11 @@ export default function tokenRoutes(db) {
         name: avatar.name,
         symbol: avatar.name.substring(0, 4).toUpperCase(),
         description: `Token for ${avatar.name} from Moonstone Sanctum`,
-        icon, banner,
-        walletAddress: walletAddress
+        icon, banner
       };
 
-      console.log('Creating token with params:', tokenParams);
       const prepResult = await tokenService.createToken(tokenParams);
 
-      // Client needs to sign the transaction and submit back
-      res.json({
-        success: true,
-        tokenId: prepResult.tokenId,
-        token: prepResult.token,
-        unsignedTx: prepResult.unsignedTx,
-        symbol: tokenParams.symbol,
-        name: tokenParams.name
-      });
-
-      // Store token creation attempt
-      // Store token creation attempt
       await db.collection('avatar_tokens').insertOne({
         avatarId: new ObjectId(avatarId),
         tokenId: prepResult.tokenId,
@@ -115,7 +80,14 @@ export default function tokenRoutes(db) {
         createdAt: new Date()
       });
 
-      console.log('Token creation record stored:', prepResult);
+      res.json({
+        success: true,
+        tokenId: prepResult.tokenId,
+        token: prepResult.token,
+        transaction: prepResult.transaction,
+        symbol: tokenParams.symbol,
+        name: tokenParams.name
+      });
     } catch (error) {
       res.status(500).json({ error: error.message });
     }
@@ -133,6 +105,24 @@ export default function tokenRoutes(db) {
       }
 
       const result = await tokenService.linkExistingToken(tokenMint, new ObjectId(avatarId), db);
+      res.json(result);
+    } catch (error) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  router.post('/submit/:tokenId', async (req, res) => {
+    try {
+      const { tokenId } = req.params;
+      const { signedTx } = req.body;
+
+      const result = await tokenService.submitSignedTransaction(signedTx, tokenId);
+
+      await db.collection('avatar_tokens').updateOne(
+        { tokenId },
+        { $set: { status: 'completed', completedAt: new Date() } }
+      );
+
       res.json(result);
     } catch (error) {
       res.status(500).json({ error: error.message });

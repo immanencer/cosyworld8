@@ -189,27 +189,34 @@
     try {
       button.disabled = true;
       button.innerHTML = '<span class="animate-pulse">Creating token...</span>';
+      
+      // Get token preparation data
       const data = await fetchJSON(`/api/tokens/create/${avatarId}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ walletAddress: state.wallet.publicKey }),
       });
-      if (!data.unsignedTx)
-        throw new Error(data.error || "Failed to create token");
+      
+      if (!data.transaction || !data.tokenId) {
+        throw new Error(data.error || "Failed to prepare token creation");
+      }
+
+      // Sign the transaction with Phantom
       const phantomProvider = window?.phantom?.solana;
       if (!phantomProvider) throw new Error("Phantom wallet not found");
-      const signedTx = await phantomProvider.signTransaction(data.unsignedTx);
-      const submitResponse = await fetchJSON(
-        `/api/tokens/${data.tokenId}/submit`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            signedTx: signedTx.serialize(),
-            walletAddress: state.wallet.publicKey,
-          }),
-        },
-      );
+      
+      const tx = data.transaction;
+      const signedTx = await phantomProvider.signTransaction(tx);
+      
+      // Submit the signed transaction
+      const submitResponse = await fetchJSON(`/api/tokens/submit/${data.tokenId}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          signedTx: signedTx.serialize(),
+        }),
+      });
+
       const tokenDetails = `
         <div class="space-y-2">
           <p class="text-lg">Token "${data.name}" (${data.symbol}) created successfully!</p>
