@@ -1,16 +1,15 @@
 import express from 'express';
 import { TokenService } from '../../src/services/tokenService.mjs';
-import { Connection } from '@solana/web3.js';
 import { ObjectId } from 'mongodb';
+import { processImage } from '../../src/services/utils/processImage.mjs';
 
 
 
 
 export default function tokenRoutes(db) {
   const router = express.Router();
-  const connection = new Connection(process.env.SOLANA_RPC_URL);
-  const tokenService = new TokenService(connection);
-  
+  const tokenService = new TokenService();
+
   router.get('/check/:avatarId', async (req, res) => {
     try {
       const { avatarId } = req.params;
@@ -46,7 +45,7 @@ export default function tokenRoutes(db) {
     try {
       const { avatarId } = req.params;
       const { walletAddress } = req.body;
-      
+
       console.log('Token creation request received:', {
         avatarId,
         walletAddress,
@@ -58,7 +57,7 @@ export default function tokenRoutes(db) {
         return res.status(400).json({ error: 'Wallet address is required' });
       }
 
-      const avatar = await db.collection('avatars').findOne({ 
+      const avatar = await db.collection('avatars').findOne({
         _id: new ObjectId(avatarId),
         claimed: true
       });
@@ -82,11 +81,14 @@ export default function tokenRoutes(db) {
         return res.status(400).json({ error: 'Wallet address is required' });
       }
 
+      const icon = await processImage(avatar.imageUrl, 512, 512);
+      const banner = await processImage(avatar.imageUrl, 512, 256);
+
       const tokenParams = {
         name: avatar.name,
-        symbol: avatar.name.substring(0, 4).toUpperCase(), 
+        symbol: avatar.name.substring(0, 4).toUpperCase(),
         description: `Token for ${avatar.name} from Moonstone Sanctum`,
-        imageUrl: avatar.imageUrl,
+        icon, banner,
         walletAddress: walletAddress
       };
 
