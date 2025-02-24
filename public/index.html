@@ -12,7 +12,7 @@
     />
 
     <!-- Tailwind CSS -->
-    <link href="/css/tailwind.css" rel="stylesheet">
+    <link href="/css/tailwind.css" rel="stylesheet" />
   </head>
   <body class="bg-gray-900 text-white font-sans">
     <!-- Tabs Navigation -->
@@ -77,11 +77,13 @@
     </main>
 
     <!-- Buffer Polyfill -->
-    <script src="https://bundle.run/buffer@6.0.3"></script>
-    
+    <script>
+      var Buffer = require("buffer").Buffer;
+    </script>
+
     <!-- Moonshot SDK -->
     <script src="/js/moonshot-sdk.js"></script>
-    
+
     <!-- Main JS -->
     <script src="main.js"></script>
   </body>
