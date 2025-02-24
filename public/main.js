@@ -206,7 +206,7 @@ const tabButtons = document.querySelectorAll("[data-tab]");
       // Initialize Moonshot SDK
       const moonshot = new Moonshot({
         rpcUrl: "https://api.devnet.solana.com",
-        environment: Environment.DEVNET,
+        environment: "devnet",
         chainOptions: {
           solana: { confirmOptions: { commitment: 'confirmed' } },
         },
