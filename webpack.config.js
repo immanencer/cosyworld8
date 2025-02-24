@@ -1,7 +1,12 @@
 
-const path = require('path');
+import path from 'path';
+import { fileURLToPath } from 'url';
+import { dirname } from 'path';
 
-module.exports = {
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+
+export default {
   entry: './src/client/index.js',
   output: {
     filename: 'bundle.js',
@@ -25,9 +30,9 @@ module.exports = {
   resolve: {
     extensions: ['.js', '.mjs'],
     fallback: {
-      "buffer": require.resolve("buffer/"),
-      "stream": require.resolve("stream-browserify"),
-      "crypto": require.resolve("crypto-browserify")
+      "buffer": "buffer/",
+      "stream": "stream-browserify",
+      "crypto": "crypto-browserify"
     }
   }
 };
