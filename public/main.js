@@ -1,5 +1,5 @@
 
-import { Moonshot, CurveType, Environment, MigrationDex, SolanaSerializationService } from '@wen-moon-ser/moonshot-sdk';
+const { Moonshot, CurveType, Environment, MigrationDex, SolanaSerializationService } = MoonshotSDK;
 
 
 (() => {
