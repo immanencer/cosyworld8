@@ -2,20 +2,6 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
-
-@layer components {
-  .crossmint-button {
-    @apply bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white font-semibold py-3 px-6 rounded-lg transition-all duration-200 shadow-lg hover:shadow-xl;
-  }
-  
-  .checkout-input {
-    @apply bg-gray-700/50 border border-purple-500/20 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-purple-500/40 transition-all duration-200;
-  }
-}
-
-.crossmint-embedded-checkout {
-  @apply rounded-xl overflow-hidden shadow-2xl border border-purple-500/20;
-}
 /* Custom spacing for documentation */
 .documentation-container {
   @apply max-w-4xl mx-auto px-6 py-8;

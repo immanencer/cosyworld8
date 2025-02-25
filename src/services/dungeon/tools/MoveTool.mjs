@@ -1,5 +1,4 @@
 import { BaseTool } from './BaseTool.mjs';
-import { LocationService } from '../../location/locationService.mjs';
 import { sendAsWebhook } from '../../discordService.mjs';
 
 export class MoveTool extends BaseTool {
@@ -13,6 +12,9 @@ export class MoveTool extends BaseTool {
       throw new Error('Discord client is required for MoveTool');
     }
     this.locationService = dungeonService.locationService;
+    this.name = 'move';
+    this.description = 'Move to the location specified';
+    this.emoji = '🧠';
   }
 
   /**

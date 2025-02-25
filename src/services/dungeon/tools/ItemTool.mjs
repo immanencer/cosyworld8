@@ -19,6 +19,10 @@ export class ItemTool extends BaseTool {
       dungeonService.aiService,
       dungeonService.db
     );
+
+    this.name = 'item';
+    this.description = 'Use an item from your inventory';
+    this.emoji = '📦';
   }
 
   /**
@@ -240,6 +244,6 @@ export class ItemTool extends BaseTool {
    * Returns syntax instructions for using the item command.
    */
   getSyntax() {
-    return '!item <take|drop|use|search|create> <item name or query>';
+    return '📦 <take|drop|use|search|create> <item name or query>';
   }
 }

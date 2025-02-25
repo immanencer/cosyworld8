@@ -34,7 +34,7 @@ export class DungeonService {
     this.dungeonLog = new DungeonLog(logger);
     this.tools = new Map();
     this.toolEmojis = new Map();
-    
+
     // Initialize tools
     const toolClasses = {
       summon: SummonTool,
@@ -94,55 +94,34 @@ export class DungeonService {
     return this.db;
   }
 
-  /**
-   * Parses a text message for any tool commands.
-   * @param {string} text - The message text.
-   * @returns {Object} - Contains an array of commands, the cleaned text, and the original command lines.
-   */
-  /**
-   * Parses a text message for any tool commands.
-   * This version is more resilient to commands appearing anywhere in the text.
-   *
-   * @param {string} text - The message text.
-   * @returns {Object} - Contains:
-   *   - commands: an array of { command, params } objects,
-   *   - cleanText: the message text with commands removed,
-   *   - commandLines: an array of lines that contained commands.
-   */
   extractToolCommands(text) {
     if (!text) return { commands: [], cleanText: '', commandLines: [] };
 
     const commands = [];
     const commandLines = [];
-    // This regex looks for commands that are preceded by either the start-of-line or whitespace.
-    // It captures:
-    //   Group 1: the full command (including the leading "!")
-    //   Group 2: the command name (word characters)
-    //   Group 3: any parameters following the command (up until the next "!" or end-of-line)
-    const commandRegex = /(?:^|\s)(!(\w+)(?:\s+([^!]+))?)/g;
+    const trimmedText = text.trim();
 
-    // Use matchAll to scan the entire text for commands.
-    for (const match of text.matchAll(commandRegex)) {
-      const commandName = match[2]; // e.g., "item", "move", etc.
-      const paramString = match[3] || '';
-      // Only add the command if it matches one of the registered tools.
-      if (this.tools.has(commandName)) {
-        const params = paramString.trim() ? paramString.trim().split(/\s+/) : [];
-        commands.push({ command: commandName, params });
+    // 1. Check for an emoji-based command at the very start of the text.
+    // Iterate over the registered emoji-tool mappings.
+    for (const [emoji, toolName] of this.toolEmojis.entries()) {
+      if (trimmedText.startsWith(emoji)) {
+        // Remove the emoji from the start and treat the rest as parameters.
+        const rest = trimmedText.slice(emoji.length).trim();
+        const params = rest ? rest.split(/\s+/) : [];
+        commands.push({ command: toolName, params });
+        break; // Only consider one emoji command at the start.
       }
     }
-
-    // Also, record which lines contain commands.
-    const lines = text.split('\n');
-    for (const line of lines) {
-      if (line.match(commandRegex)) {
-        commandLines.push(line);
+    let cleanText = trimmedText;
+    // Then, if the clean text still starts with one of our tool emojis, remove it.
+    for (const [emoji] of this.toolEmojis.entries()) {
+      if (cleanText.trim().startsWith(emoji)) {
+        cleanText = cleanText.trim().slice(emoji.length).trim();
+        break;
       }
     }
-
-    // Remove all the command snippets from the text to create a clean version.
-    // We replace each command occurrence with a single space and then clean up extra spaces.
-    const cleanText = text.replace(commandRegex, ' ').replace(/\s+/g, ' ').trim();
+    // Normalize whitespace.
+    cleanText = cleanText.replace(/\s+/g, ' ').trim();
 
     return { commands, cleanText, commandLines };
   }
@@ -181,13 +160,13 @@ export class DungeonService {
       // Use fallback values if the tool does not implement getSyntax or getDescription.
       const syntax = (typeof tool.getSyntax === 'function')
         ? tool.getSyntax()
-        : `!${name}`;
+        : `${emoji}`;
       const description = (typeof tool.getDescription === 'function')
         ? tool.getDescription()
         : 'No description available.';
 
       // Format the output. Adjust formatting as desired.
-      commands.push(`**!${name}**\nSyntax: ${syntax}\nDescription: ${description}`);
+      commands.push(`Name: ${name}\nTrigger: ${tool.emoji}\nSyntax: ${syntax}\nDescription: ${description}`);
     }
     return commands.join('\n\n');
   }

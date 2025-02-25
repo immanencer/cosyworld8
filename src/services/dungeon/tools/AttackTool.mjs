@@ -3,6 +3,12 @@ import { BaseTool } from './BaseTool.mjs';
 import { ObjectId } from 'mongodb';
 
 export class AttackTool extends BaseTool {
+  constructor(dungeonService) {
+    super(dungeonService);
+    this.name = 'attack';
+    this.description = 'Attacks the specified avatar';
+    this.emoji = '⚔️';
+  }
   async execute(message, params) {
     if (!params || !params[0]) {
       return "🤺 Attack what? Specify a target!";
@@ -49,9 +55,6 @@ export class AttackTool extends BaseTool {
     }
 
     return `🛡️ ${message.author.username}'s attack misses ${targetAvatar.name}! (${attackRoll} vs AC ${armorClass})`;
-
-    await this.updateStatsWithRetry(targetAvatar._id, targetStats);
-    return `⚔️ ${message.author.username} attacks ${targetAvatar.name} for ${damage} damage!`;
   }
 
   async getStatsWithRetry(avatarId, retries = 3) {

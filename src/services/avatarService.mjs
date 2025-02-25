@@ -339,9 +339,10 @@ export class AvatarGenerationService {
           const response = await this.aiService.chat([
             { role: 'system', content: 'You are a creative and unsettling character designer.' },
             { role: 'user', content: prompt },
-          ], { 
+          ], {
             model: this.config.getAIConfig().openrouter.metaModel,
-            format: "json" });
+            format: "json"
+          });
           if (!response) {
             throw new Error('Failed to generate avatar details.');
           }
@@ -543,8 +544,6 @@ export class AvatarGenerationService {
    */
   async createAvatar(data) {
     let prompt = data.prompt;
-    let summoner = data.summoner;
-    let systemPrompt;
     try {
       if (this.isArweaveUrl(prompt)) {
         const arweaveData = await this.fetchPrompt(prompt);
@@ -578,11 +577,11 @@ export class AvatarGenerationService {
       }
 
       // Check if the name matches an existing avatar
-      const existingAvatar = await this.db.collection(this.AVATARS_COLLECTION).findOne({ name });
+      const existingAvatar = await this.db.collection(this.AVATARS_COLLECTION).findOne({ name: avatar.name });
       if (existingAvatar) {
         this.logger.warn('Avatar creation aborted: name already exists.');
         return existingAvatar;
-    }
+      }
       const imageFile = await this.generateAvatarImage(avatar.description);
       const s3url = await uploadImage(imageFile);
       this.logger.info('S3 URL: ' + s3url);

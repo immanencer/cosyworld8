@@ -1,9 +1,5 @@
 import express from 'express';
-import path from 'path';
-import { fileURLToPath } from 'url';
 import cors from 'cors';
-
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 import { DatabaseService } from '../src/services/databaseService.mjs';
 
@@ -24,11 +20,7 @@ const PORT = process.env.PORT || 3080;
 
 app.use(cors());
 app.use(express.json());
-import { serveCheckout } from './routes/checkout.mjs';
-
-// Serve static files before dynamic routes
 app.use(express.static('public'));
-app.get('/checkout', serveCheckout);
 
 
 async function initializeApp() {
@@ -67,7 +59,7 @@ async function initializeApp() {
     // Graceful shutdown
     process.on('SIGINT', async () => {
       try {
-        await db.close(); // Assuming db has a close method
+        await client.close();
         console.log('MongoDB connection closed');
         process.exit(0);
       } catch (error) {
@@ -79,6 +71,63 @@ async function initializeApp() {
   } catch (error) {
     console.error('Failed to connect to MongoDB:', error);
     process.exit(1);
+  }
+}
+
+async function initializeIndexes(db) {
+  try {
+    await Promise.all([
+      // Consolidated messages indexes
+      db.messages.createIndexes([
+        { key: { authorUsername: 1 }, background: true },
+        { key: { timestamp: -1 }, background: true },
+        { key: { avatarId: 1 }, background: true },
+      ]),
+      // Consolidated avatars indexes
+      db.avatars.createIndexes([
+        { key: { name: 1, createdAt: -1 }, background: true },
+        { key: { model: 1 }, background: true },
+        { key: { emoji: 1 }, background: true },
+        { key: { parents: 1 }, background: true },
+        { key: { createdAt: -1 }, background: true },
+        { key: { name: 'text', description: 'text' }, background: true },
+      ]),
+      // Dungeon stats index
+      db.dungeon_stats.createIndex(
+        { avatarId: 1 },
+        { unique: true, background: true }
+      ),
+      // Narratives index
+      db.narratives.createIndex(
+        { avatarId: 1, timestamp: -1 },
+        { background: true }
+      ),
+      // Memories index
+      db.memories.createIndex(
+        { avatarId: 1, timestamp: -1 },
+        { background: true }
+      ),
+      // Dungeon log indexes
+      db.dungeon_log.createIndexes([
+        { key: { timestamp: -1 }, background: true },
+        { key: { actor: 1 }, background: true },
+        { key: { target: 1 }, background: true },
+      ]),
+      // Token transactions indexes
+      db.token_transactions.createIndexes([
+        { key: { walletAddress: 1, timestamp: -1 }, background: true },
+        { key: { transactionSignature: 1 }, unique: true, background: true },
+      ]),
+      // Minted nfts indexes
+      db.minted_nfts.createIndexes([
+        { key: { walletAddress: 1 }, background: true },
+        { key: { avatarId: 1 }, background: true },
+      ])
+    ]);
+    console.log('Database indexes created successfully');
+  } catch (error) {
+    console.error('Error creating indexes:', error);
+    throw error;
   }
 }
 

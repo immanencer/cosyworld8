@@ -192,7 +192,7 @@ async function handleBreedCommand(message, args, commandLine) {
   Combine their attributes in a creative way.
       `;
 
-    // Return the created avatar from handleSummonCommand (passing breed: true)
+    message.content = prompt;
     return await handleSummonCommand(message, true, {
       summoner: `${message.author.username}@${message.author.id}`,
       parents: [avatar1._id, avatar2._id],
@@ -259,7 +259,6 @@ async function handleSummonCommand(message, breed = false, attributes = {}) {
     const prompt = configService.config.prompt.summon || 'Create a twisted avatar, a servant of darkness.';
     const recentMessages = await chatService.getRecentMessagesFromDatabase(message.channel.id);
     recentMessages.reverse();
-    const messageString = recentMessages.map((m) => `${m.author?.username || 'Whisper'}: ${m.content}`).join('\n');
     const avatarData = { prompt: sanitizeInput(prompt + "\n\n Summon an avatar with the following concept or idea:\n\n" + content), channelId: message.channel.id };
     if (prompt.match(/^(https:\/\/.*\.arweave\.net\/|ar:\/\/)/)) avatarData.arweave_prompt = prompt;
 

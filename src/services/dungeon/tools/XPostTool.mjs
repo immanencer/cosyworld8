@@ -7,6 +7,8 @@ export class XPostTool extends BaseTool {
     constructor(dungeonService) {
         super(dungeonService);
         this.emoji = '🐦';
+        this.name = 'post';
+        this.description = 'Post a relevant message to social media.';
     }
 
     async refreshAccessToken(db, auth) {
@@ -90,7 +92,6 @@ export class XPostTool extends BaseTool {
 
             const auth = await db.collection('x_auth').findOne({ avatarId: avatar._id.toString() });
             const message = params.join(' ');
-            let result = message;
             let xStatus = false;
 
             try {
@@ -122,7 +123,7 @@ export class XPostTool extends BaseTool {
                 if (message.length > 280) {
                     return '❌ Message exceeds X character limit of 280 characters';
                 }
-                
+
                 await v2Client.tweet(message);
                 xStatus = true;
 
@@ -155,6 +156,6 @@ export class XPostTool extends BaseTool {
     }
 
     getSyntax() {
-        return '!xpost <message>';
+        return '🐦 <message>';
     }
 }
