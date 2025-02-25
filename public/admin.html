@@ -26,8 +26,66 @@
                 </div>
             </div>
 
-            <!-- Spam Blacklist Section -->
+            <!-- Global Prompts Configuration -->
             <div class="bg-gray-800 p-6 rounded-lg">
+                <h2 class="text-xl font-semibold mb-4">Global Prompts</h2>
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-sm mb-1">Summoning Prompt</label>
+                        <textarea id="summoningPrompt" class="w-full p-2 bg-gray-700 rounded"></textarea>
+                    </div>
+                    <div>
+                        <label class="block text-sm mb-1">Welcoming Prompt</label>
+                        <textarea id="welcomingPrompt" class="w-full p-2 bg-gray-700 rounded"></textarea>
+                    </div>
+                    <div>
+                        <label class="block text-sm mb-1">Location Creation Prompt</label>
+                        <textarea id="locationPrompt" class="w-full p-2 bg-gray-700 rounded"></textarea>
+                    </div>
+                    <div>
+                        <label class="block text-sm mb-1">Item Creation Prompt</label>
+                        <textarea id="itemPrompt" class="w-full p-2 bg-gray-700 rounded"></textarea>
+                    </div>
+                    <button onclick="saveGlobalPrompts()" class="w-full bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded">
+                        Save Global Prompts
+                    </button>
+                </div>
+            </div>
+
+            <!-- Tool Configuration -->
+            <div class="bg-gray-800 p-6 rounded-lg">
+                <h2 class="text-xl font-semibold mb-4">Tool Configuration</h2>
+                <div id="toolConfig" class="space-y-4">
+                    <div class="tool-item flex items-center gap-4 p-2 bg-gray-700 rounded">
+                        <input type="text" placeholder="🔮" class="w-16 p-2 bg-gray-600 rounded" data-tool="summon">
+                        <span>Summon</span>
+                        <label class="flex items-center ml-auto">
+                            <input type="checkbox" class="mr-2" checked>
+                            Enable
+                        </label>
+                    </div>
+                    <!-- Additional tool configurations are added dynamically -->
+                </div>
+                <button onclick="saveToolConfig()" class="w-full bg-green-600 hover:bg-green-700 px-4 py-2 rounded mt-4">
+                    Save Tool Configuration
+                </button>
+            </div>
+
+            <!-- Guild-Specific Overrides -->
+            <div class="bg-gray-800 p-6 rounded-lg">
+                <h2 class="text-xl font-semibold mb-4">Guild Overrides</h2>
+                <div class="space-y-4">
+                    <select id="guildSelect" class="w-full p-2 bg-gray-700 rounded">
+                        <option value="">Select Guild</option>
+                    </select>
+                    <div id="guildOverrides" class="space-y-4">
+                        <!-- Override fields appear when guild is selected -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- Spam Blacklist Section -->
+            <div class="bg-gray-800 p-6 rounded-lg col-span-2">
                 <h2 class="text-xl font-semibold mb-4">Spam Blacklist</h2>
                 <div id="blacklistedUsers" class="space-y-2">
                     <table class="w-full text-left">
@@ -47,6 +105,158 @@
     </div>
     
     <script>
+        const defaultTools = {
+            summon: { emoji: '🔮', enabled: true },
+            breed: { emoji: '🏹', enabled: true },
+            attack: { emoji: '⚔️', enabled: true },
+            defend: { emoji: '🛡️', enabled: true },
+            move: { emoji: '👣', enabled: true },
+            remember: { emoji: '🧠', enabled: true },
+            create: { emoji: '🎨', enabled: true },
+            item: { emoji: '📦', enabled: true }
+        };
+
+        async function loadConfig() {
+            try {
+                const response = await fetch('/api/admin/config');
+                const config = await response.json();
+                
+                // Load prompts
+                document.getElementById('summoningPrompt').value = config.prompts?.summoning || '';
+                document.getElementById('welcomingPrompt').value = config.prompts?.welcoming || '';
+                document.getElementById('locationPrompt').value = config.prompts?.location || '';
+                document.getElementById('itemPrompt').value = config.prompts?.item || '';
+
+                // Load tool configuration
+                const toolContainer = document.getElementById('toolConfig');
+                toolContainer.innerHTML = '';
+                
+                Object.entries(config.tools || defaultTools).forEach(([tool, settings]) => {
+                    const div = document.createElement('div');
+                    div.className = 'tool-item flex items-center gap-4 p-2 bg-gray-700 rounded';
+                    div.innerHTML = `
+                        <input type="text" value="${settings.emoji}" class="w-16 p-2 bg-gray-600 rounded" data-tool="${tool}">
+                        <span>${tool.charAt(0).toUpperCase() + tool.slice(1)}</span>
+                        <label class="flex items-center ml-auto">
+                            <input type="checkbox" class="mr-2" ${settings.enabled ? 'checked' : ''}>
+                            Enable
+                        </label>
+                    `;
+                    toolContainer.appendChild(div);
+                });
+
+                // Load guild list
+                const guildSelect = document.getElementById('guildSelect');
+                guildSelect.innerHTML = '<option value="">Select Guild</option>';
+                config.whitelistedGuilds.forEach(guild => {
+                    const option = document.createElement('option');
+                    option.value = guild;
+                    option.textContent = guild;
+                    guildSelect.appendChild(option);
+                });
+            } catch (error) {
+                console.error('Failed to load config:', error);
+            }
+        }
+
+        async function saveGlobalPrompts() {
+            const prompts = {
+                summoning: document.getElementById('summoningPrompt').value,
+                welcoming: document.getElementById('welcomingPrompt').value,
+                location: document.getElementById('locationPrompt').value,
+                item: document.getElementById('itemPrompt').value
+            };
+
+            try {
+                await fetch('/api/admin/config/prompts', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(prompts)
+                });
+                alert('Prompts saved successfully');
+            } catch (error) {
+                console.error('Failed to save prompts:', error);
+                alert('Failed to save prompts');
+            }
+        }
+
+        async function saveToolConfig() {
+            const tools = {};
+            document.querySelectorAll('.tool-item').forEach(item => {
+                const toolName = item.querySelector('input[data-tool]').dataset.tool;
+                tools[toolName] = {
+                    emoji: item.querySelector('input[type="text"]').value,
+                    enabled: item.querySelector('input[type="checkbox"]').checked
+                };
+            });
+
+            try {
+                await fetch('/api/admin/config/tools', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(tools)
+                });
+                alert('Tool configuration saved successfully');
+            } catch (error) {
+                console.error('Failed to save tool config:', error);
+                alert('Failed to save tool configuration');
+            }
+        }
+
+        document.getElementById('guildSelect').addEventListener('change', async (e) => {
+            const guildId = e.target.value;
+            if (!guildId) {
+                document.getElementById('guildOverrides').innerHTML = '';
+                return;
+            }
+
+            try {
+                const response = await fetch(`/api/admin/config/guild/${guildId}`);
+                const config = await response.json();
+                
+                const container = document.getElementById('guildOverrides');
+                container.innerHTML = `
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-sm mb-1">Guild Summoning Prompt</label>
+                            <textarea class="w-full p-2 bg-gray-700 rounded" data-override="summoning">${config.prompts?.summoning || ''}</textarea>
+                        </div>
+                        <div>
+                            <label class="block text-sm mb-1">Guild Welcoming Prompt</label>
+                            <textarea class="w-full p-2 bg-gray-700 rounded" data-override="welcoming">${config.prompts?.welcoming || ''}</textarea>
+                        </div>
+                        <button onclick="saveGuildOverrides('${guildId}')" class="w-full bg-purple-600 hover:bg-purple-700 px-4 py-2 rounded">
+                            Save Guild Overrides
+                        </button>
+                    </div>
+                `;
+            } catch (error) {
+                console.error('Failed to load guild config:', error);
+            }
+        });
+
+        async function saveGuildOverrides(guildId) {
+            const overrides = {
+                prompts: {
+                    summoning: document.querySelector('[data-override="summoning"]').value,
+                    welcoming: document.querySelector('[data-override="welcoming"]').value
+                }
+            };
+
+            try {
+                await fetch(`/api/admin/config/guild/${guildId}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(overrides)
+                });
+                alert('Guild overrides saved successfully');
+            } catch (error) {
+                console.error('Failed to save guild overrides:', error);
+                alert('Failed to save guild overrides');
+            }
+        }
+
+        // Existing functions
         async function banUser(userId) {
             try {
                 await fetch('/api/admin/ban', {
@@ -96,12 +306,11 @@
                 </tr>
             `).join('');
         }
+
         async function loadStats() {
             try {
                 const response = await fetch('/api/admin/stats');
-                if (!response.ok) {
-                    throw new Error(`HTTP error! status: ${response.status}`);
-                }
+                if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
                 const stats = await response.json();
                 displayWhitelistedGuilds(stats.whitelistedGuilds || []);
                 displayBlacklistedUsers(stats.blacklistedUsers || []);
@@ -125,6 +334,7 @@
             if (result.success) {
                 displayWhitelistedGuilds(result.whitelistedGuilds);
                 document.getElementById('guildId').value = '';
+                loadConfig(); // Reload config to update guild select
             }
         }
 
@@ -137,6 +347,7 @@
                 const result = await response.json();
                 if (result.success) {
                     displayWhitelistedGuilds(result.whitelistedGuilds);
+                    loadConfig(); // Reload config to update guild select
                 }
             } catch (error) {
                 console.error('Error removing guild:', error);
@@ -157,45 +368,8 @@
             `).join('');
         }
 
-        async function unbanUser(userId) {
-            try {
-                const response = await fetch('/api/admin/unban', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ userId })
-                });
-                if (response.ok) {
-                    loadStats(); // Refresh the display
-                } else {
-                    throw new Error('Failed to unban user');
-                }
-            } catch (error) {
-                console.error('Error unbanning user:', error);
-                alert('Failed to unban user');
-            }
-        }
-
-        function displayBlacklistedUsers(users) {
-            const container = document.getElementById('blacklistedUsers');
-            container.innerHTML = users.map(user => `
-                <div class="bg-gray-700 p-2 rounded">
-                    <div class="font-semibold">User ID: ${user.userId}</div>
-                    <div class="text-sm text-gray-400">
-                        Strikes: ${user.strikeCount}
-                        <br>
-                        ${user.permanentlyBlacklisted 
-                            ? '<span class="text-red-500">Permanently Blacklisted</span>'
-                            : `Penalty Until: ${new Date(user.penaltyExpires).toLocaleString()}`
-                        }
-                    </div>
-                    <button onclick="unbanUser('${user.userId}')" 
-                            class="mt-2 bg-green-600 hover:bg-green-700 px-2 py-1 rounded">
-                        Unban User
-                    </button>
-                </div>
-            `).join('');
-        }
-
+        // Initialize the page
+        loadConfig();
         loadStats();
     </script>
 </body>
