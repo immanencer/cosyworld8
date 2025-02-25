@@ -2,6 +2,7 @@
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { dirname } from 'path';
+import webpack from 'webpack';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -30,15 +31,9 @@ export default {
   resolve: {
     extensions: ['.js', '.mjs'],
     fallback: {
-      "buffer": require.resolve("buffer/"),
-      "stream": require.resolve("stream-browserify"),
-      "crypto": require.resolve("crypto-browserify")
+      "buffer": false,
+      "stream": false,
+      "crypto": false
     }
-  },
-  plugins: [
-    new webpack.ProvidePlugin({
-      Buffer: ['buffer', 'Buffer'],
-      process: 'process/browser'
-    })
-  ]
+  }
 };
