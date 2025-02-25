@@ -1,4 +1,11 @@
+// ES Module imports
 import { Buffer } from 'buffer';
+
+// Make Buffer and other Node.js globals available if needed
+window.Buffer = Buffer;
+window.global = window;
+window.process = { env: {} };
+
 import {
   Moonshot,
   CurveType,
@@ -12,9 +19,6 @@ import { createToken } from './services/token';
 import { fetchJSON } from './services/api';
 import './ui/tabs';
 import './ui/content';
-
-// Make Buffer available globally
-window.Buffer = Buffer;
 
 // Initialize global state
 window.state = {

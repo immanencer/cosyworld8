@@ -31,9 +31,15 @@ export default {
   resolve: {
     extensions: ['.js', '.mjs'],
     fallback: {
-      "buffer": false,
-      "stream": false,
-      "crypto": false
+      "buffer": require.resolve("buffer/"),
+      "stream": require.resolve("stream-browserify"),
+      "crypto": require.resolve("crypto-browserify")
     }
-  }
+  },
+  plugins: [
+    new webpack.ProvidePlugin({
+      Buffer: ['buffer', 'Buffer'],
+      process: 'process/browser'
+    })
+  ]
 };
