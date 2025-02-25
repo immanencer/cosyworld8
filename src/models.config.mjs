@@ -560,10 +560,6 @@ export default [
     "rarity": "common"
   },
   {
-    "model": "meta-llama/llama-guard-3-8b",
-    "rarity": "common"
-  },
-  {
     "model": "ai21/jamba-1-5-mini",
     "rarity": "common"
   },
@@ -621,10 +617,6 @@ export default [
   },
   {
     "model": "perplexity/llama-3.1-sonar-small-128k-online",
-    "rarity": "common"
-  },
-  {
-    "model": "meta-llama/llama-guard-2-8b",
     "rarity": "common"
   },
   {
