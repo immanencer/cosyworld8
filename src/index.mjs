@@ -181,12 +181,17 @@ async function handleBreedCommand(message, args, commandLine) {
     `AVATAR 2: ${avatar2.name} - ${avatar2.prompt}\n${avatar2.description}\n${avatar2.personality}\n${narrative2}\n\n` +
     `Combine their attributes creatively, avoid cosmic or mystical creatures and aim for a down to earth feel suitable for the moonstone sanctum.`;
 
-  logger.info(prompt)
-  message.content = prompt;
+  logger.info(prompt);
+  // Store original content to restore after summoning
+  const originalContent = message.content;
+  // Set the breeding prompt as content for the summon command
+  message.content = `🔮 ${prompt}`;
   await handleSummonCommand(message, true, {
     summoner: `${message.author.username}@${message.author.id}`,
     parents: [avatar1._id, avatar2._id],
   });
+  // Restore original content after summoning
+  message.content = originalContent;
 }
 
 /**
