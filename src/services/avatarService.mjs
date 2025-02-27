@@ -311,6 +311,18 @@ export class AvatarGenerationService {
     }
   }
 
+  getRandomAlignment() {
+    const alignments = ['neutral', 'good', 'evil'];
+    const randomIndex = Math.floor(Math.random() * alignments.length);
+    const alignment = alignments[randomIndex];
+
+    const chaotic = ['chaotic', 'neutral', 'lawful'];
+    const randomIndex2 = Math.floor(Math.random() * chaotic.length);
+    const chaoticAlignment = chaotic[randomIndex2];
+
+    return `${chaoticAlignment} ${alignment}`;
+  }
+
   /**
    * Generates an avatar description using the AI service.
    * @param {string} userPrompt - The user-provided prompt.
@@ -322,7 +334,7 @@ export class AvatarGenerationService {
       const baseDelay = 1000;
       for (let attempt = 1; attempt <= maxRetries; attempt++) {
         try {
-          const prompt = `Provide a detailed visual description, an appropriate emoji, and a personality description for a character based on the following prompt
+          const prompt = `Provide a detailed visual description, an appropriate emoji, and a personality description for a ${this.getRandomAlignment()} character based on the following prompt
 
           "${userPrompt}".
 

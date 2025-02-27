@@ -259,7 +259,7 @@ async function handleSummonCommand(message, breed = false, attributes = {}) {
       configService.config.prompt.summon ||
       "Create a twisted avatar, a servant of darkness.";
     const avatarData = {
-      prompt: sanitizeInput(`${prompt}\n\nSummon an avatar with this concept:\n\n${content}`),
+      prompt: sanitizeInput(`${prompt}\n\nSummon an avatar inspired by this concept:\n\n${content}`),
       channelId: message.channel.id,
     };
     if (prompt.match(/^(https:\/\/.*\.arweave\.net\/|ar:\/\/)/)) {
