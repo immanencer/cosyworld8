@@ -66,13 +66,14 @@ async function loadContent() {
 
 // Helper function to shorten wallet address
 function shortenAddress(address) {
+  if (typeof address !== 'string') return '';
   return address.slice(0, 6) + '...' + address.slice(-4);
 }
 
 // Load Squad Tab
 async function loadSquad() {
   const content = document.getElementById("content");
-  if (!walletState.wallet) {
+  if (!state.wallet) {
     content.innerHTML = `
       <div class="text-center py-12">
         <p class="mb-4">Connect your wallet to view your Squad</p>
@@ -81,28 +82,44 @@ async function loadSquad() {
     return;
   }
   try {
-    const data = await fetchJSON(`${API_BASE_URL}/avatars?view=owned&walletAddress=${walletState.wallet.publicKey}&page=1&limit=12`);
+    console.log(state.wallet.publicKey);
+    const data = await fetchJSON(`${API_BASE_URL}/avatars?view=claims&walletAddress=${state.wallet.publicKey}&page=1&limit=12`);
     if (!data.avatars || data.avatars.length === 0) {
       content.innerHTML = '<div class="text-center py-12">No Squad members found</div>';
       return;
     }
-    
-    // Use our new AvatarDetails component to render cards
+
+    // Fetch claim status for each avatar to determine minting status
+    const avatarsWithStatus = await Promise.all(data.avatars.map(async avatar => {
+      try {
+        const claimStatus = await fetchJSON(`/api/claims/status/${avatar._id}`);
+        // An avatar is considered unminted if it's claimed but not minted yet
+        avatar.mintStatus = claimStatus.claimed && !claimStatus.minted ? 'unminted' : 'minted';
+      } catch (err) {
+        avatar.mintStatus = 'unknown';
+      }
+      return avatar;
+    }));
+    // Use our new AvatarDetails component to render cards with status
     content.innerHTML = `
       <div class="text-center py-4">
-        <h2 class="text-xl font-bold">Wallet: ${shortenAddress(walletState.wallet.publicKey)}</h2>
+        <h2 class="text-xl font-bold">Wallet: ${shortenAddress(state.wallet.publicKey)}</h2>
       </div>
       <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-        ${data.avatars.map(avatar => `
-          <div onclick="showAvatarDetails('${avatar._id}')" class="cursor-pointer">
+        ${avatarsWithStatus.map(avatar => `
+          <div onclick="showAvatarDetails('${avatar._id}')" class="cursor-pointer relative">
             ${window.AvatarDetails.renderAvatarCard(avatar)}
+            ${avatar.mintStatus === 'unminted' ?
+        `<div class="absolute top-2 right-2 px-2 py-1 bg-yellow-600 text-white text-xs rounded-full">
+                Unminted
+              </div>` : ''}
           </div>
         `).join("")}
       </div>
       <div id="claims-container" class="container mx-auto max-w-7xl"></div>
       <div id="claim-form-container" class="container mx-auto max-w-7xl hidden"></div>
     `;
-    
+
     // Load user claims
     await loadUserClaims();
   } catch (err) {
@@ -120,52 +137,52 @@ async function loadActionLog() {
       content.innerHTML = '<div class="text-center py-12">No actions found</div>';
       return;
     }
-    
+
     content.innerHTML = `
       <div class="max-w-6xl mx-auto">
         <h1 class="text-3xl font-bold mb-6">Action Log</h1>
         <div class="space-y-4">
           ${actions.map(action => {
-            // Safe extraction with defaults
-            const actorName = action.actorName || 'Unknown';
-            const initial = actorName.charAt(0).toUpperCase();
-            const actorImageUrl = action.actorImageUrl || ''; // Use direct image URL
-            
-            // Format the description for specific action types
-            let actionDescription = '';
-            let actionIcon = '';
-            
-            switch (action.action) {
-              case 'attack':
-                actionIcon = '⚔️';
-                actionDescription = `${actorName} attacked ${action.targetName || 'a target'}`;
-                break;
-              case 'defend':
-                actionIcon = '🛡️';
-                actionDescription = `${actorName} took a defensive stance`;
-                break;
-              case 'move':
-                actionIcon = '🚶';
-                actionDescription = `${actorName} moved to ${action.targetName || action.location?.name || 'a location'}`;
-                break;
-              case 'remember':
-                actionIcon = '💭';
-                actionDescription = `${actorName} formed a memory`;
-                break;
-              case 'xpost':
-                actionIcon = '🐦';
-                actionDescription = `${actorName} posted to X`;
-                break;
-              case 'post':
-                actionIcon = '📝';
-                actionDescription = `${actorName} posted to the social feed`;
-                break;
-              default:
-                actionIcon = '❓';
-                actionDescription = `${actorName} used ${action.action || 'an action'}`;
-            }
-            
-            return `
+      // Safe extraction with defaults
+      const actorName = action.actorName || 'Unknown';
+      const initial = actorName.charAt(0).toUpperCase();
+      const actorImageUrl = action.actorImageUrl || ''; // Use direct image URL
+
+      // Format the description for specific action types
+      let actionDescription = '';
+      let actionIcon = '';
+
+      switch (action.action) {
+        case 'attack':
+          actionIcon = '⚔️';
+          actionDescription = `${actorName} attacked ${action.targetName || 'a target'}`;
+          break;
+        case 'defend':
+          actionIcon = '🛡️';
+          actionDescription = `${actorName} took a defensive stance`;
+          break;
+        case 'move':
+          actionIcon = '🚶';
+          actionDescription = `${actorName} moved to ${action.targetName || action.location?.name || 'a location'}`;
+          break;
+        case 'remember':
+          actionIcon = '💭';
+          actionDescription = `${actorName} formed a memory`;
+          break;
+        case 'xpost':
+          actionIcon = '🐦';
+          actionDescription = `${actorName} posted to X`;
+          break;
+        case 'post':
+          actionIcon = '📝';
+          actionDescription = `${actorName} posted to the social feed`;
+          break;
+        default:
+          actionIcon = '❓';
+          actionDescription = `${actorName} used ${action.action || 'an action'}`;
+      }
+
+      return `
               <div class="bg-gray-800 p-4 rounded-lg hover:bg-gray-750 transition-colors">
                 <div class="flex items-start gap-3">
                   <!-- Actor image with fallbacks -->
@@ -250,7 +267,7 @@ async function loadActionLog() {
                 </div>
               </div>
             `;
-          }).join('')}
+    }).join('')}
         </div>
       </div>`;
   } catch (err) {
@@ -272,7 +289,7 @@ async function loadLeaderboard() {
           <p class="mt-2 text-gray-400">Loading more avatars...</p>
         </div>
       </div>`;
-    
+
     // Set up window scroll state for infinite scrolling
     if (state.activeTab === "leaderboard") {
       window.scrollState = {
@@ -288,24 +305,24 @@ async function loadLeaderboard() {
         hasMore: true,
       };
     }
-    
+
     // Load initial data
     const data = await fetchJSON(`${API_BASE_URL}/leaderboard?page=1&limit=12`);
     const leaderboardItems = document.getElementById("leaderboard-items");
     const loader = document.getElementById("leaderboard-loader");
-    
+
     if (!data.avatars || data.avatars.length === 0) {
       leaderboardItems.innerHTML = '<div class="text-center py-4">No leaderboard data available</div>';
       return;
     }
-    
+
     // Function to render a leaderboard card with fallback if the component function is not available
     const renderLeaderboardItem = (avatar) => {
       // First try using our component
       if (window.AvatarDetails && typeof window.AvatarDetails.renderLeaderboardCard === 'function') {
         return window.AvatarDetails.renderLeaderboardCard(avatar);
       }
-      
+
       // Fallback to render the card directly if the component function is not available
       const getTier = (model) => {
         if (!model) return "U";
@@ -314,7 +331,7 @@ async function loadLeaderboard() {
         if (model.includes("claude")) return "B";
         return "C";
       };
-      
+
       const getTierColor = (model) => {
         const tier = getTier(model);
         const colors = {
@@ -326,7 +343,7 @@ async function loadLeaderboard() {
         };
         return colors[tier] || colors.U;
       };
-      
+
       return `
         <div class="avatar-card bg-gray-800 p-3 rounded-lg hover:bg-gray-700 transition-colors">
           <div class="flex gap-3 items-center">
@@ -351,31 +368,31 @@ async function loadLeaderboard() {
         </div>
       `;
     };
-    
+
     // Use our render function (either component or fallback)
     leaderboardItems.innerHTML = data.avatars.map(avatar => `
       <div onclick="showAvatarDetails('${avatar._id}')" class="cursor-pointer">
         ${renderLeaderboardItem(avatar)}
       </div>
     `).join("");
-    
+
     // Set up infinite scroll with the same render function
     const loadMore = async () => {
       if (window.scrollState.loading || !window.scrollState.hasMore) return;
-      
+
       window.scrollState.loading = true;
       loader.classList.remove("hidden");
-      
+
       try {
         const nextPage = window.scrollState.page + 1;
         const moreData = await fetchJSON(`${API_BASE_URL}/leaderboard?page=${nextPage}&limit=12`);
-        
+
         if (!moreData.avatars || moreData.avatars.length === 0) {
           window.scrollState.hasMore = false;
           loader.classList.add("hidden");
           return;
         }
-        
+
         // Append new avatar cards
         const fragment = document.createDocumentFragment();
         moreData.avatars.forEach(avatar => {
@@ -385,10 +402,10 @@ async function loadLeaderboard() {
           div.innerHTML = renderLeaderboardItem(avatar);
           fragment.appendChild(div);
         });
-        
+
         leaderboardItems.appendChild(fragment);
         window.scrollState.page = nextPage;
-        
+
       } catch (err) {
         console.error("Failed to load more leaderboard items:", err);
         const errorDiv = document.createElement("div");
@@ -409,18 +426,18 @@ async function loadLeaderboard() {
         }
       }
     };
-    
+
     // Set up intersection observer for infinite scroll
     const observer = new IntersectionObserver(entries => {
       if (entries[0].isIntersecting && !window.scrollState.loading && window.scrollState.hasMore) {
         loadMore();
       }
     }, { threshold: 0.1 });
-    
+
     if (loader) {
       observer.observe(loader);
     }
-    
+
   } catch (err) {
     console.error("Load Leaderboard error:", err);
     content.innerHTML = `<div class="text-center py-12 text-red-500">Failed to load leaderboard: ${err.message}</div>`;
@@ -470,7 +487,7 @@ async function setSocialSort(sort) {
 // Load Tribes Tab
 async function loadTribes() {
   const content = document.getElementById("content");
-  
+
   try {
     content.innerHTML = `
       <div class="max-w-7xl mx-auto px-4">
@@ -507,19 +524,19 @@ async function loadTribes() {
         </div>
       </div>
     `;
-    
+
     // Get tribe counts
     const tribeCounts = await fetchJSON(`${API_BASE_URL}/tribes/counts`);
     const loader = document.getElementById('tribes-loader');
     const tribesContent = document.getElementById('tribes-content');
     const tribesGrid = document.getElementById('tribes-grid');
     const tribeDetails = document.getElementById('tribe-details');
-    
+
     if (!tribeCounts || tribeCounts.length === 0) {
       loader.innerHTML = '<div class="text-center text-gray-400">No tribes found</div>';
       return;
     }
-    
+
     // Render tribe cards
     tribesGrid.innerHTML = tribeCounts.map(tribe => `
       <div 
@@ -534,17 +551,17 @@ async function loadTribes() {
         </div>
       </div>
     `).join('');
-    
+
     // Hide loader, show content
     loader.classList.add('hidden');
     tribesContent.classList.remove('hidden');
-    
+
     // Set up back button handler
     document.getElementById('back-to-tribes').addEventListener('click', () => {
       tribesContent.classList.remove('hidden');
       tribeDetails.classList.add('hidden');
     });
-    
+
   } catch (err) {
     console.error("Load Tribes error:", err);
     content.innerHTML = `
@@ -569,23 +586,23 @@ async function showTribeDetails(emoji) {
     const tribeEmoji = document.getElementById('tribe-emoji');
     const tribeName = document.getElementById('tribe-name');
     const tribeMembers = document.getElementById('tribe-members');
-    
+
     // Update UI
     tribesContent.classList.add('hidden');
     tribeDetails.classList.remove('hidden');
     tribeEmoji.textContent = emoji;
     tribeName.textContent = emoji;
-    
+
     // Show loading state
     tribeMembers.innerHTML = `
       <div class="col-span-full flex justify-center py-8">
         <div class="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-primary-600"></div>
       </div>
     `;
-    
+
     // Fetch tribe details
     const tribeData = await fetchJSON(`${API_BASE_URL}/tribes/${emoji}`);
-    
+
     if (!tribeData || !tribeData.members || tribeData.members.length === 0) {
       tribeMembers.innerHTML = `
         <div class="col-span-full text-center text-gray-400 py-8">
@@ -594,7 +611,7 @@ async function showTribeDetails(emoji) {
       `;
       return;
     }
-    
+
     // Render tribe members with safe name extraction
     tribeMembers.innerHTML = tribeData.members.map(member => {
       const safeName = member.name || 'Unknown';
@@ -605,17 +622,16 @@ async function showTribeDetails(emoji) {
           onclick="showAvatarDetails('${member._id}')"
         >
           <div class="flex items-center gap-3">
-            ${
-              member.imageUrl
-                ? `<img 
+            ${member.imageUrl
+          ? `<img 
                       src="${member.imageUrl}" 
                       alt="${safeName}" 
                       class="w-16 h-16 object-cover rounded-full"
                       onerror="this.onerror=null; this.src='data:image/svg+xml,%3Csvg xmlns=\\'http://www.w3.org/2000/svg\\' width=\\'100\\' height=\\'100\\' viewBox=\\'0 0 100 100\\'%3E%3Crect fill=\\'%23333\\' width=\\'100\\' height=\\'100\\'/%3E%3Ctext fill=\\'%23FFF\\' x=\\'50\\' y=\\'50\\' font-size=\\'50\\' text-anchor=\\'middle\\' dominant-baseline=\\'middle\\'%3E${initial}%3C/text%3E%3C/svg%3E';">`
-                : `<div class="w-16 h-16 rounded-full bg-gray-700 flex items-center justify-center text-2xl font-bold text-white">
+          : `<div class="w-16 h-16 rounded-full bg-gray-700 flex items-center justify-center text-2xl font-bold text-white">
                       ${initial}
                   </div>`
-            }
+        }
             
             <div class="flex-1 min-w-0">
               <h3 class="text-lg font-semibold truncate">${safeName}</h3>
@@ -629,7 +645,7 @@ async function showTribeDetails(emoji) {
         </div>
       `;
     }).join('');
-    
+
   } catch (err) {
     console.error("Show Tribe Details error:", err);
     document.getElementById('tribe-members').innerHTML = `
@@ -660,12 +676,12 @@ function showToast(message) {
     alert(message);
     return;
   }
-  
+
   const toast = document.createElement("div");
   toast.className = "toast bg-gray-800 text-white p-3 rounded shadow";
   toast.textContent = message;
   container.appendChild(toast);
-  
+
   // Remove after animation completes
   setTimeout(() => {
     if (toast.parentNode === container) {
@@ -681,7 +697,7 @@ document.addEventListener("DOMContentLoaded", () => {
   if (walletContainer && !walletContainer.innerHTML.trim()) {
     walletContainer.innerHTML = `<button onclick="connectWallet()" class="px-4 py-2 bg-blue-600 text-white rounded">Connect Wallet</button>`;
   }
-  
+
   // Auto connect wallet if available and trusted
   const provider = window?.phantom?.solana;
   if (provider) {
@@ -701,7 +717,7 @@ document.addEventListener("DOMContentLoaded", () => {
   } else {
     loadAvatarDetailsScript();
   }
-  
+
   function loadAvatarDetailsScript() {
     // Load the AvatarDetails component script
     if (!window.AvatarDetails) {
@@ -720,7 +736,7 @@ document.addEventListener("DOMContentLoaded", () => {
       loadContent();
     }
   }
-  
+
   // Event listener to close modal when clicking outside
   document.getElementById("avatar-modal")?.addEventListener("click", (e) => {
     if (e.target.id === "avatar-modal") {
@@ -747,13 +763,15 @@ async function showAvatarDetails(avatarId) {
     // Fetch all necessary avatar data
     const [
       avatarResponse,
-      xAuthStatusResponse,
+      xauthStatusResponse,
+      claimStatusResponse,
       narrativesResponse,
       actionsResponse,
       statsResponse,
     ] = await Promise.all([
       fetchJSON(`/api/avatars/${avatarId}`),
-      fetchJSON(`/auth/x/status/${avatarId}`),
+      fetchJSON(`/api/xauth/status/${avatarId}`),
+      fetchJSON(`/api/claims/status/${avatarId}`),
       fetchJSON(`/api/avatars/${avatarId}/narratives`),
       fetchJSON(`/api/avatars/${avatarId}/dungeon-actions`),
       fetchJSON(`/api/avatars/${avatarId}/stats`),
@@ -770,8 +788,42 @@ async function showAvatarDetails(avatarId) {
     // Set the selected avatar so that claimAvatar() can use it
     window.selectedAvatar = avatar;
 
-    const claimed = xAuthStatusResponse?.authorized;
-    
+    // Process X authorization status
+    const xAuthStatus = processXAuthStatus(xauthStatusResponse, avatarId);
+
+    // Use claimStatusResponse to determine if avatar is already claimed
+    const isAvatarClaimed = claimStatusResponse && claimStatusResponse.claimed;
+    const claimantAddress = claimStatusResponse?.claimedBy || '';
+
+    // Check if the avatar is claimed by the current wallet
+    const isClaimedByCurrentWallet = isAvatarClaimed &&
+      claimantAddress?.toLowerCase() === state.wallet?.publicKey?.toLowerCase();
+
+    // Add X auth button and status display only if claimed by current wallet
+    const xAuthSection = isClaimedByCurrentWallet ? `
+  <div class="mt-4 border-t border-gray-700 pt-4">
+    <h3 class="font-medium text-lg mb-2">X Authorization Status</h3>
+    <div class="flex items-center">
+      <span class="px-2 py-1 rounded text-sm ${xAuthStatus.statusClass}">${xAuthStatus.statusText}</span>
+      ${xAuthStatus.showButton ?
+        `<button id="xauth-button" class="ml-2 bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded text-sm">
+          ${xAuthStatus.buttonText}
+        </button>` : ''}
+    </div>
+    ${xAuthStatus.message ? `<p class="text-sm mt-2 text-gray-400">${xAuthStatus.message}</p>` : ''}
+  </div>
+` : '';
+
+    // Add claim button only if avatar is not claimed and wallet is connected
+    const claimSection = !isAvatarClaimed && state.wallet ?
+      `<button id="claim-btn" class="mt-4 bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded">
+        Claim this Avatar
+      </button>` :
+      (isAvatarClaimed ?
+        `<div class="mt-4 px-4 py-2 bg-gray-700 rounded text-center">
+          Already claimed by ${shortenAddress(claimantAddress)}
+        </div>` : '');
+
     // Use our AvatarDetails component for the modal content
     modalContent.innerHTML = `
       <div class="relative p-6">
@@ -812,10 +864,10 @@ async function showAvatarDetails(avatarId) {
                 ${avatar.actions.slice(0, 5).map(action => `
                   <div class="text-sm flex items-center gap-2 bg-gray-700/30 p-2 rounded">
                     <span class="text-lg">
-                      ${action.action === "attack" ? "⚔️" : 
-                        action.action === "defend" ? "🛡️" : 
-                        action.action === "move" ? "🚶" : 
-                        action.action === "remember" ? "💭" : "❓"}
+                      ${action.action === "attack" ? "⚔️" :
+        action.action === "defend" ? "🛡️" :
+          action.action === "move" ? "🚶" :
+            action.action === "remember" ? "💭" : "❓"}
                     </span>
                     <span>${action.description || action.action}</span>
                   </div>
@@ -825,20 +877,26 @@ async function showAvatarDetails(avatarId) {
           </div>
         </div>
         
-        <!-- Claim button if applicable -->
-        ${!claimed && state.wallet ? `
-          <div class="mt-6 text-center">
-            <button 
-              id="claim-btn"
-              onclick="claimAvatar()"
-              class="px-6 py-3 bg-green-600 hover:bg-green-700 text-white font-bold rounded-lg transition-colors"
-            >
-              Claim This Avatar
-            </button>
-          </div>
-        ` : ''}
+
+        <!-- X Auth Section -->
+        ${xAuthSection}
+
+        <!-- Claim Section -->
+        ${claimSection}
       </div>
     `;
+
+    if (xAuthStatus.showButton) {
+      const xauthButton = document.getElementById("xauth-button");
+      if (xauthButton) {
+        xauthButton.addEventListener("click", () => initiateXAuth(avatarId));
+      }
+    }
+
+    const claimBtn = document.getElementById('claim-btn');
+    if (claimBtn) {
+      claimBtn.addEventListener('click', () => claimAvatar(avatarId));
+    }
   } catch (err) {
     console.error("Error loading avatar details:", err);
     modalContent.innerHTML = `
@@ -849,7 +907,129 @@ async function showAvatarDetails(avatarId) {
     `;
   }
 }
+// Helper function to process X authorization status
+function processXAuthStatus(response, avatarId) {
+  // Default values
+  let result = {
+    authorized: false,
+    statusText: "Not Authorized",
+    statusClass: "bg-red-600",
+    showButton: true,
+    buttonText: "Authorize with X",
+    message: ""
+  };
 
+  if (!response) {
+    return result;
+  }
+
+  switch (response.status) {
+    case "authorized":
+      result = {
+        authorized: true,
+        statusText: "Authorized",
+        statusClass: "bg-green-600",
+        showButton: false,
+        buttonText: "",
+        message: "Your X account is successfully linked to this avatar."
+      };
+      break;
+    case "pending":
+      result = {
+        authorized: false,
+        statusText: "Pending",
+        statusClass: "bg-yellow-600",
+        showButton: true,
+        buttonText: "Complete Authorization",
+        message: "Your authorization is pending. Please complete the process."
+      };
+      break;
+    case "expired":
+      result = {
+        authorized: false,
+        statusText: "Expired",
+        statusClass: "bg-orange-600",
+        showButton: true,
+        buttonText: "Reauthorize",
+        message: "Your authorization has expired. Please reauthorize."
+      };
+      break;
+    // Add more cases as needed
+  }
+
+  return result;
+}
+
+// Convert Uint8Array to hex string
+function uint8ArrayToHexString(uint8Array) {
+  return Array.from(uint8Array)
+    .map(byte => byte.toString(16).padStart(2, '0'))
+    .join('');
+}
+
+async function initiateXAuth(avatarId) {
+  if (!state.wallet) {
+    showAlert("Please connect your wallet first");
+    return;
+  }
+
+  try {
+    // Create a message to sign - include avatar ID and timestamp to prevent replay attacks
+    const message = `Authorize X for avatar ${avatarId} at ${Date.now()}`;
+
+    // Get wallet address from state - make sure to get publicKey for Phantom wallet
+    const walletAddress = state.wallet.publicKey ||
+      (typeof state.wallet === 'object' ?
+        state.wallet.address || state.wallet.toString() :
+        state.wallet);
+
+    // Show a loading indicator or message
+    showAlert("Please approve the signature request in your wallet");
+
+    // Sign the message using Phantom wallet
+    if (window.phantom && window.phantom.solana) {
+      // Convert message to Uint8Array for Solana
+      const messageBytes = new TextEncoder().encode(message);
+
+      // Request signature from Phantom
+      const signedMessage = await window.phantom.solana.signMessage(messageBytes, 'utf8');
+
+      // Convert to hex string - same approach as working claims.js
+      const signature = uint8ArrayToHexString(signedMessage.signature);
+
+      // Use the auth-url endpoint with signature
+      const queryParams = new URLSearchParams({
+        avatarId,
+        walletAddress,
+        signature,
+        message
+      });
+
+      const response = await fetch(`/api/xauth/auth-url?${queryParams}`);
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error("X auth error response:", errorText);
+        throw new Error(`HTTP error ${response.status}`);
+      }
+
+      const data = await response.json();
+
+      if (data.url) {
+        // Open X authorization page in a new window/tab
+        window.open(data.url, "_blank");
+        showAlert("X authorization initiated. Please complete the process in the new window.");
+      } else {
+        showAlert("Failed to initiate X authorization.");
+      }
+    } else {
+      throw new Error("Phantom wallet not connected");
+    }
+  } catch (error) {
+    console.error("Error initiating X auth:", error);
+    showAlert(`Error initiating X authorization: ${error.message}`);
+  }
+}
 // Function to close the avatar modal
 function closeAvatarModal() {
   const modal = document.getElementById("avatar-modal");
@@ -868,62 +1048,62 @@ function retryLeaderboardLoad() {
 
 // Function to claim avatar from modal
 async function claimAvatar() {
-  if (!walletState.wallet) {
+  if (!state.wallet) {
     showToast('Please connect your wallet first');
     return;
   }
-  
+
   const avatar = window.selectedAvatar;
   if (!avatar || !avatar._id) {
     showToast('No avatar selected');
     return;
   }
-  
+
   const claimBtn = document.getElementById('claim-btn');
   if (claimBtn) claimBtn.disabled = true;
-  
+
   try {
     // Request signature from user
     const message = `I am claiming avatar ${avatar._id}`;
     const encodedMessage = new TextEncoder().encode(message);
-    
+
     showToast('Please approve the signature request in your wallet');
-    
+
     const signature = await window.phantom.solana.signMessage(encodedMessage, 'utf8');
-    
+
     // Convert signature to hex string
     const signatureHex = Array.from(signature.signature)
       .map(b => b.toString(16).padStart(2, '0'))
       .join('');
-    
+
     // Submit claim
     const response = await fetch('/api/claims/claim', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         avatarId: avatar._id,
-        walletAddress: walletState.wallet.publicKey,
+        walletAddress: state.wallet.publicKey,
         signature: signatureHex,
         message
       })
     });
-    
+
     const data = await response.json();
     if (!response.ok) {
       throw new Error(data.error || 'Failed to claim avatar');
     }
-    
+
     // Close the modal
     closeAvatarModal();
-    
+
     // Show success message
     showToast('Avatar claimed successfully! View it in your squad.');
-    
+
     // Refresh the content if on squad tab
     if (state.activeTab === "squad") {
       loadContent();
     }
-    
+
   } catch (error) {
     console.error('Claim avatar error:', error);
     showToast('Failed to claim avatar: ' + (error.message || 'Unknown error'));
@@ -936,32 +1116,32 @@ async function claimAvatar() {
 
 // Load user claims
 async function loadUserClaims() {
-  if (!walletState.wallet) return;
-  
+  if (!state.wallet) return;
+
   const claimsContainer = document.getElementById('claims-container');
   if (!claimsContainer) {
     console.error('Claims container not found when rendering claims');
     return;
   }
-  
+
   claimsContainer.innerHTML = `
     <div class="text-center py-8">
       <div class="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-primary-600 mx-auto"></div>
       <p class="mt-2 text-gray-400">Loading your claims...</p>
     </div>
   `;
-  
+
   try {
-    const response = await fetch(`/api/claims/user/${walletState.wallet.publicKey}`);
+    const response = await fetch(`/api/claims/user/${state.wallet.publicKey}`);
     const data = await response.json();
-    
+
     if (!response.ok) {
       throw new Error(data.error || 'Failed to fetch claims');
     }
-    
+
     claims = data.claims || [];
     allowance = data.allowance || { allowed: false, remaining: 0, current: 0 };
-    
+
     renderClaims();
     renderClaimForm();
   } catch (error) {
@@ -984,29 +1164,29 @@ function renderClaims() {
     console.error('Claims container not found when rendering claims');
     return;
   }
-  
+
   if (claims.length === 0) {
     container.innerHTML = `
       <div class="text-center py-8 text-gray-400">
         You haven't claimed any avatars yet.
-        ${allowance.allowed ? 
-          `<p class="mt-2">You can claim up to ${allowance.remaining} more avatars.</p>` : 
-          '<p class="mt-2">You have reached your claim limit.</p>'
-        }
+        ${allowance.allowed ?
+        `<p class="mt-2">You can claim up to ${allowance.remaining} more avatars.</p>` :
+        '<p class="mt-2">You have reached your claim limit.</p>'
+      }
       </div>
     `;
     return;
   }
-  
+
   container.innerHTML = `
     <div class="mb-4">
       <h2 class="text-xl font-bold">Your Claims</h2>
       <p class="text-sm text-gray-400">
         You have claimed ${allowance.current} avatar${allowance.current !== 1 ? 's' : ''}.
-        ${allowance.allowed ? 
-          `You can claim ${allowance.remaining} more.` : 
-          'You have reached your claim limit.'
-        }
+        ${allowance.allowed ?
+      `You can claim ${allowance.remaining} more.` :
+      'You have reached your claim limit.'
+    }
       </p>
     </div>
     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -1026,7 +1206,7 @@ function renderClaimCard(claimData) {
       </div>
     `;
   }
-  
+
   return `
     <div class="bg-gray-800 p-4 rounded-lg">
       <div class="flex items-center gap-3">
@@ -1088,12 +1268,12 @@ function renderClaimForm() {
     console.error('Claim form container not found when rendering form');
     return;
   }
-  
+
   if (!allowance.allowed) {
     claimFormContainer.classList.add('hidden');
     return;
   }
-  
+
   claimFormContainer.classList.remove('hidden');
   claimFormContainer.innerHTML = `
     <div class="bg-gray-800 p-6 rounded-lg">
@@ -1166,12 +1346,12 @@ async function findAvatar() {
   const avatarId = avatarIdInput.value.trim();
   const avatarPreview = document.getElementById('avatar-preview');
   const claimBtn = document.getElementById('claim-btn');
-  
+
   if (!avatarId) {
     showAlert('Please enter an Avatar ID');
     return;
   }
-  
+
   avatarPreview.innerHTML = `
     <div class="text-center py-4">
       <div class="animate-spin rounded-full h-6 w-6 border-t-2 border-b-2 border-primary-600 mx-auto"></div>
@@ -1180,16 +1360,16 @@ async function findAvatar() {
   `;
   avatarPreview.classList.remove('hidden');
   claimBtn.disabled = true;
-  
+
   try {
     // First check if avatar is already claimed
     const claimStatusRes = await fetch(`/api/claims/status/${avatarId}`);
     const claimStatusData = await claimStatusRes.json();
-    
+
     if (!claimStatusRes.ok) {
       throw new Error(claimStatusData.error || 'Failed to check claim status');
     }
-    
+
     if (claimStatusData.claimed) {
       avatarPreview.innerHTML = `
         <div class="text-center py-4 text-red-500">
@@ -1201,18 +1381,18 @@ async function findAvatar() {
       `;
       return;
     }
-    
+
     // If not claimed, fetch avatar details
     const avatarRes = await fetch(`/api/avatars/${avatarId}`);
     const avatar = await avatarRes.json();
-    
+
     if (!avatarRes.ok) {
       throw new Error(avatar.error || 'Failed to fetch avatar');
     }
-    
+
     // Store avatar data for claim process
     window.selectedAvatar = avatar;
-    
+
     // Render avatar preview
     avatarPreview.innerHTML = `
       <div class="flex items-center gap-3">
@@ -1230,7 +1410,7 @@ async function findAvatar() {
         </div>
       </div>
     `;
-    
+
     claimBtn.disabled = false;
   } catch (error) {
     console.error('Find avatar error:', error);
@@ -1257,7 +1437,7 @@ async function claimAvatar() {
     return;
   }
   claimBtn.disabled = true;
-  
+
   try {
     const avatar = window.selectedAvatar;
     if (!avatar || !avatar._id) {
@@ -1265,32 +1445,32 @@ async function claimAvatar() {
       claimBtn.disabled = false;
       return;
     }
-    if (!walletState.wallet) {
+    if (!state.wallet) {
       showAlert('Wallet not connected. Please connect your wallet.');
       claimBtn.disabled = false;
       return;
     }
-    
+
     // Request signature from user
     const message = `I am claiming avatar ${avatar._id}`;
     const encodedMessage = new TextEncoder().encode(message);
     const signature = await window.phantom.solana.signMessage(encodedMessage, 'utf8');
-    
+
     // Convert signature to hex string
     const signatureHex = uint8ArrayToHexString(signature.signature);
-    
+
     // Submit claim
     const response = await fetch('/api/claims/claim', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         avatarId: avatar._id,
-        walletAddress: walletState.wallet.publicKey,
+        walletAddress: state.wallet.publicKey,
         signature: signatureHex,
         message
       })
     });
-    
+
     const data = await response.json();
     if (!response.ok) {
       if (data.error === 'Avatar already claimed') {
@@ -1303,7 +1483,7 @@ async function claimAvatar() {
       claimBtn.disabled = false;
       return;
     }
-    
+
     // Reload claims
     await loadUserClaims();
     showAlert('Avatar claimed successfully!');
@@ -1318,7 +1498,7 @@ async function claimAvatar() {
 // Helper functions
 function showAlert(message) {
   console.log('Alert:', message);
-  
+
   // Try to use toast notification if available
   const toastContainer = document.getElementById('toast-container');
   if (toastContainer) {
@@ -1333,12 +1513,13 @@ function showAlert(message) {
     }, 3000);
     return;
   }
-  
+
   // Fall back to standard alert
   alert(message);
 }
 
 function shortenAddress(address) {
+  if (typeof address !== 'string') return '';
   return address.slice(0, 6) + '...' + address.slice(-4);
 }
 

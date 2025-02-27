@@ -74,11 +74,13 @@ export default function(db) {
       // Check if avatar is already claimed
       const claim = await db.collection('avatar_claims').findOne({ avatarId: objectId });
       
+      // Inside the status route handler (around line 67)
       if (claim) {
         return res.json({
           claimed: true,
           claimedBy: claim.walletAddress,
-          claimedAt: claim.updatedAt
+          claimedAt: claim.updatedAt,
+          minted: claim.status === 'minted'  // Add this line to include minting status
         });
       }
       
@@ -160,7 +162,10 @@ export default function(db) {
       // Check if avatar is already claimed
       const existingClaim = await db.collection('avatar_claims').findOne({ avatarId: objectId });
       if (existingClaim) {
-        return res.status(409).json({ error: 'Avatar already claimed' });
+        return res.status(409).json({ 
+          error: 'Avatar already claimed', 
+          claimedBy: existingClaim.walletAddress 
+        });
       }
       
       // Verify signature

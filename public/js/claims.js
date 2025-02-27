@@ -28,7 +28,7 @@ function onWalletDisconnected() {
 
 // Load user claims
 async function loadUserClaims() {
-  if (!walletState.wallet) return;
+  if (!state.wallet) return;
   
   const claimsContainer = document.getElementById('claims-container');
   if (!claimsContainer) {
@@ -44,7 +44,7 @@ async function loadUserClaims() {
   `;
   
   try {
-    const response = await fetch(`/api/claims/user/${walletState.wallet.publicKey}`);
+    const response = await fetch(`/api/claims/user/${state.wallet.publicKey}`);
     const data = await response.json();
     
     if (!response.ok) {
@@ -101,10 +101,64 @@ function renderClaims() {
         }
       </p>
     </div>
-    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-      ${claims.map(claim => renderClaimCard(claim)).join('')}
+    <div class="flex space-x-2">
+      ${claims.map(claim => renderClaimIcon(claim)).join('')}
     </div>
   `;
+}
+
+// Render claim icon
+function renderClaimIcon(claimData) {
+  const { claim, avatar } = claimData;
+  if (!avatar) {
+    return `
+      <div class="relative">
+        <div class="w-16 h-16 bg-gray-800 rounded-full flex items-center justify-center">
+          <span class="text-gray-400">N/A</span>
+        </div>
+      </div>
+    `;
+  }
+
+  return `
+    <div class="relative group">
+      <img 
+        src="${avatar.thumbnailUrl || avatar.imageUrl || ''}" 
+        alt="${avatar.name || 'Avatar'}" 
+        class="w-16 h-16 object-cover rounded-full"
+        onerror="this.onerror=null; this.src='data:image/svg+xml,%3Csvg xmlns=\\'http://www.w3.org/2000/svg\\' width=\\'100\\' height=\\'100\\' viewBox=\\'0 0 100 100\\'%3E%3Crect fill=\\'%23333\\' width=\\'100\\' height=\\'100\\'/%3E%3Ctext fill=\\'%23FFF\\' x=\\'50\\' y=\\'50\\' font-size=\\'50\\' text-anchor=\\'middle\\' dominant-baseline=\\'middle\\'%3E${(avatar.name || 'A').charAt(0).toUpperCase()}%3C/text%3E%3C/svg%3E';"
+      >
+      <button 
+        onclick="renounceClaim('${claim.avatarId}')"
+        class="absolute top-0 right-0 bg-red-600 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition"
+      >
+        &times;
+      </button>
+    </div>
+  `;
+}
+
+// Renounce claim
+async function renounceClaim(avatarId) {
+  try {
+    const response = await fetch('/api/claims/renounce', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ avatarId, walletAddress: state.wallet.publicKey })
+    });
+
+    const data = await response.json();
+    if (!response.ok) {
+      throw new Error(data.error || 'Failed to renounce claim');
+    }
+
+    // Reload claims
+    await loadUserClaims();
+    showAlert('Claim renounced successfully!');
+  } catch (error) {
+    console.error('Renounce claim error:', error);
+    showAlert('Failed to renounce claim: ' + (error.message || 'Unknown error'));
+  }
 }
 
 // Render claim card
@@ -354,7 +408,7 @@ async function claimAvatar() {
       claimBtn.disabled = false;
       return;
     }
-    if (!walletState.wallet) {
+    if (!state.wallet) {
       showAlert('Wallet not connected. Please connect your wallet.');
       claimBtn.disabled = false;
       return;
@@ -374,7 +428,7 @@ async function claimAvatar() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         avatarId: avatar._id,
-        walletAddress: walletState.wallet.publicKey,
+        walletAddress: state.wallet.publicKey,
         signature: signatureHex,
         message
       })
@@ -428,6 +482,7 @@ function showAlert(message) {
 }
 
 function shortenAddress(address) {
+  if (typeof address !== 'string') return '';
   return address.slice(0, 6) + '...' + address.slice(-4);
 }
 

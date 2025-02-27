@@ -1,12 +1,6 @@
 import express from 'express';
 import cors from 'cors';
 import { MongoClient } from 'mongodb';
-import path from 'path';
-import { fileURLToPath } from 'url';
-
-// Get __dirname equivalent in ES modules
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
 
 // External route modules
 import leaderboardRoutes from './routes/leaderboard.mjs';
@@ -46,12 +40,12 @@ async function initializeApp() {
     db.dungeon_log = db.collection('dungeon_log');
     db.token_transactions = db.collection('token_transactions');
     db.minted_nfts = db.collection('minted_nfts');
-    db.avatar_claims = db.collection('avatar_claims'); // Add claims collection reference
+    db.avatar_claims = db.collection('avatar_claims'); 
 
     console.log(`Connected to MongoDB database: ${mongoDbName}`);
 
     // Initialize indexes
-    await dbService.createIndexes();
+    await initializeIndexes(db);
 
     // Mount routes with database connection
     app.use('/api/leaderboard', leaderboardRoutes(db));
@@ -64,6 +58,21 @@ async function initializeApp() {
     app.use('/api/wiki', wikiRoutes(db));
     app.use('/api/social', socialRoutes(db));
     app.use('/api/claims', claimsRoutes(db)); // Mount claims routes
+
+    // Add renounce claim route
+    app.post('/api/claims/renounce', async (req, res) => {
+      const { avatarId, walletAddress } = req.body;
+      try {
+        const result = await db.avatar_claims.deleteOne({ avatarId, walletAddress });
+        if (result.deletedCount === 0) {
+          return res.status(404).json({ error: 'Claim not found' });
+        }
+        res.status(200).json({ message: 'Claim renounced successfully' });
+      } catch (error) {
+        console.error('Error renouncing claim:', error);
+        res.status(500).json({ error: 'Internal server error' });
+      }
+    });
 
     // Models route
     const modelsRouter = await import('./routes/models.mjs');

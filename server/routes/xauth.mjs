@@ -1,18 +1,33 @@
 import express from 'express';
 import crypto from 'crypto';
 import nacl from 'tweetnacl';
-import { PublicKey } from '@solana/web3.js';
 import { TwitterApi } from 'twitter-api-v2';
+import ethUtil from 'ethereumjs-util';  // Make sure to install this: npm install ethereumjs-util
+import bs58 from 'bs58'; // Make sure to add this import
 
 const DEFAULT_TOKEN_EXPIRY = 7200; // 2 hours in seconds
 
-// Helper: verify that the provided signature (base64) is valid for the challenge message and wallet address.
-function verifyWalletSignature(message, signature, publicKeyStr) {
+// Helper: verify that the provided signature is valid for the challenge message and wallet address
+function verifyWalletSignature(message, signature, walletAddress) {
     try {
-        const publicKey = new PublicKey(publicKeyStr).toBytes();
-        const messageUint8 = new TextEncoder().encode(message);
-        const signatureUint8 = Uint8Array.from(Buffer.from(signature, 'base64'));
-        return nacl.sign.detached.verify(messageUint8, signatureUint8, publicKey);
+        // Convert message to Uint8Array
+        const messageBytes = new TextEncoder().encode(message);
+        
+        // For Solana addresses, which are base58 encoded
+        const publicKey = bs58.decode(walletAddress);
+        
+        // Convert hex signature to Uint8Array
+        const signatureBytes = Buffer.from(signature, 'hex');
+        
+        // Verify signature using tweetnacl
+        const verified = nacl.sign.detached.verify(
+            messageBytes,
+            signatureBytes,
+            publicKey
+        );
+        
+        console.log("Signature verification result:", verified);
+        return verified;
     } catch (err) {
         console.error('Signature verification error:', err);
         return false;
@@ -57,45 +72,76 @@ export default function xauthRoutes(db) {
         }
     }
 
-    // NEW: Generate an auth URL that embeds wallet data and signature in state
     router.get('/auth-url', async (req, res) => {
         try {
-            const { avatarId, walletAddress, signature } = req.query;
-            if (!avatarId || !walletAddress || !signature) {
-                return res.status(400).json({ error: 'Missing required parameters' });
+          const { avatarId, walletAddress, signature, message } = req.query;
+          if (!avatarId || !walletAddress || !signature || !message) {
+            return res.status(400).json({ error: 'Missing required parameters' });
+          }
+      
+          // Verify the signature based on your wallet type
+          let isValidSignature = false;
+          
+          // For Solana wallets
+          try {
+            isValidSignature = verifyWalletSignature(message, signature, walletAddress);
+          } catch (err) {
+            console.error('Solana signature verification failed, trying Ethereum verification:', err);
+            
+            // For Ethereum wallets
+            try {
+              const msgBuffer = Buffer.from(message);
+              const msgHash = ethUtil.hashPersonalMessage(msgBuffer);
+              const sigParams = ethUtil.fromRpcSig(signature);
+              const publicKey = ethUtil.ecrecover(
+                msgHash,
+                sigParams.v,
+                sigParams.r,
+                sigParams.s
+              );
+              const addressBuffer = ethUtil.publicToAddress(publicKey);
+              const recoveredAddress = ethUtil.bufferToHex(addressBuffer);
+              
+              isValidSignature = recoveredAddress.toLowerCase() === walletAddress.toLowerCase();
+            } catch (ethErr) {
+              console.error('Ethereum signature verification failed:', ethErr);
             }
-
-            // Create a temporary session and store a codeVerifier
-            const codeVerifier = crypto.randomBytes(32).toString('hex');
-            await db.collection('x_auth_temp').updateOne(
-                { avatarId },
-                { $set: { walletAddress, codeVerifier } },
-                { upsert: true }
-            );
-
-            const client = new TwitterApi({
-                clientId: process.env.X_CLIENT_ID,
-                clientSecret: process.env.X_CLIENT_SECRET
-            });
-
-            // Generate OAuth2 auth link (this returns { url, state }).
-            const { url } = client.generateOAuth2AuthLink(
-                process.env.X_CALLBACK_URL,
-                { code_challenge_method: 's256' }
-            );
-
-            // Replace the state with our own JSON-encoded object
-            const stateData = encodeURIComponent(
-                JSON.stringify({ walletAddress, avatarId, signature })
-            );
-            const finalUrl = url.replace(/state=[^&]+/, `state=${stateData}`);
-
-            res.json({ url: finalUrl });
+          }
+      
+          if (!isValidSignature) {
+            return res.status(401).json({ error: 'Invalid signature' });
+          }
+      
+          // Create a temporary session and store a codeVerifier
+          const codeVerifier = crypto.randomBytes(32).toString('hex');
+          const codeChallenge = crypto
+            .createHash('sha256')
+            .update(codeVerifier)
+            .digest('base64')
+            .replace(/\+/g, '-')
+            .replace(/\//g, '_')
+            .replace(/=/g, '');
+      
+          await db.collection('x_auth_temp').updateOne(
+            { avatarId },
+            { 
+              $set: { 
+                walletAddress, 
+                codeVerifier, 
+                message,
+                signature,
+                createdAt: new Date() 
+              }
+            },
+            { upsert: true }
+          );
+      
+          // Rest of your function to generate the X auth URL...
         } catch (error) {
-            console.error('Error generating auth URL:', error);
-            res.status(500).json({ error: error.message });
+          console.error('Error generating auth URL:', error);
+          res.status(500).json({ error: error.message });
         }
-    });
+      });
 
     // Updated callback: verify wallet signature before completing OAuth flow
     router.get('/callback', async (req, res) => {

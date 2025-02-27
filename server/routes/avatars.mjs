@@ -150,19 +150,37 @@ export default function avatarRoutes(db) {
       let query = {};
       let sort = { createdAt: -1 };
 
-      // Example logic for "owned" filtering, using x_auth:
-      if (view === 'owned' && req.query.walletAddress) {
-        const xAuths = await db.collection('x_auth')
-          .find({ walletAddress: req.query.walletAddress })
-          .toArray();
+      // Example logic for "owned" filtering:
+      if (view === 'claims' && req.query.walletAddress) {
+        // Get avatars from both X auth and avatar claims collections
+        const [xAuths, avatarClaims] = await Promise.all([
+          db.collection('x_auth')
+            .find({ walletAddress: req.query.walletAddress })
+            .toArray(),
+          db.collection('avatar_claims')
+            .find({ walletAddress: req.query.walletAddress.toLowerCase() })
+            .toArray()
+        ]);
 
-        const authorizedAvatarIds = xAuths.map((auth) => {
-          return typeof auth.avatarId === 'string'
-            ? new ObjectId(auth.avatarId)
-            : auth.avatarId;
-        });
+        // Combine avatar IDs from both sources
+        const authorizedAvatarIds = [
+          ...xAuths.map(auth => {
+            return typeof auth.avatarId === 'string'
+              ? new ObjectId(auth.avatarId)
+              : auth.avatarId;
+          }),
+          ...avatarClaims.map(claim => {
+            return typeof claim.avatarId === 'string'
+              ? new ObjectId(claim.avatarId)
+              : claim.avatarId;
+          })
+        ];
 
-        query._id = { $in: authorizedAvatarIds };
+        // Filter out duplicates (if same avatar appears in both collections)
+        const uniqueIds = [...new Map(authorizedAvatarIds.map(id =>
+          [id.toString(), id])).values()];
+
+        query._id = { $in: uniqueIds };
       }
 
       const [avatars, total] = await Promise.all([
@@ -316,8 +334,8 @@ export default function avatarRoutes(db) {
       // Record the burn transaction
       await db.collection('avatar_claims').updateOne(
         { avatarId: new ObjectId(avatarId) },
-        { 
-          $set: { 
+        {
+          $set: {
             walletAddress,
             burnTxSignature,
             claimedAt: new Date()
@@ -585,6 +603,40 @@ export default function avatarRoutes(db) {
     }
   });
 
+  // Add a new route to handle fetching avatar details by name or ID
+  router.get('/details/:identifier', async (req, res) => {
+    try {
+      const { identifier } = req.params;
+      let query;
+
+      // Allow lookup by ObjectId or name
+      try {
+        query = {
+          $or: [
+            { _id: new ObjectId(identifier) },
+            { name: identifier }
+          ]
+        };
+      } catch (err) {
+        query = { name: identifier };
+      }
+
+      const avatar = await db.collection('avatars').findOne(query, { projection: avatarSchema });
+
+      if (!avatar) {
+        console.error(`Avatar not found for identifier: ${identifier}`);
+        return res.status(404).json({ error: '404: Avatar details not found' });
+      }
+
+      res.json(avatar);
+    } catch (error) {
+      console.error('Error fetching avatar details:', error);
+      res.status(500).json({
+        error: 'Failed to fetch avatar details',
+        details: process.env.NODE_ENV === 'development' ? error.message : undefined
+      });
+    }
+  });
 
   return router;
 }

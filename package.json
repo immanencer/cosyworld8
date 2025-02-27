@@ -37,6 +37,7 @@
     "discord.js": "^14.14.1",
     "dotenv": "^16.4.5",
     "esbuild": "^0.25.0",
+    "ethereumjs-util": "^7.1.5",
     "express": "^4.21.1",
     "fuse.js": "^7.0.0",
     "mongodb": "^6.11.0",
