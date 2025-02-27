@@ -176,11 +176,12 @@ async function handleBreedCommand(message, args, commandLine) {
     [memories2]
   );
 
-  const prompt = `Breed the following avatars to create a new one:\n\n` +
+  const prompt = `Breed the following avatars to combine them, develop a short backstory for the offspring of these two avatars and include it in the final description:\n\n` +
     `AVATAR 1: ${avatar1.name} - ${avatar1.prompt}\n${avatar1.description}\n${avatar1.personality}\n${narrative1}\n\n` +
     `AVATAR 2: ${avatar2.name} - ${avatar2.prompt}\n${avatar2.description}\n${avatar2.personality}\n${narrative2}\n\n` +
-    `Combine their attributes creatively.`;
+    `Combine their attributes creatively, avoid cosmic or mystical creatures and aim for a down to earth feel suitable for the moonstone sanctum.`;
 
+  logger.info(prompt)
   message.content = prompt;
   await handleSummonCommand(message, true, {
     summoner: `${message.author.username}@${message.author.id}`,
