@@ -1,5 +1,5 @@
 {
-  "name": "cosyworld8",
+  "name": "moonstone-sanctum",
   "version": "1.0.0",
   "main": "src/index.mjs",
   "type": "module",
@@ -12,10 +12,15 @@
     "build": "npm run build:css && node src/scripts/build-checkout.mjs",
     "build:css": "tailwindcss -i ./src/tailwind.css -o ./public/css/tailwind.css --minify"
   },
-  "keywords": [],
+  "keywords": [
+    "discord",
+    "ai",
+    "avatar",
+    "rpg"
+  ],
   "author": "",
   "license": "ISC",
-  "description": "",
+  "description": "AI Avatar Discord Bot with persistent memory, combat mechanics, and cross-platform capabilities",
   "dependencies": {
     "@babel/cli": "^7.26.4",
     "@crossmint/client-sdk-react-ui": "^1.14.9",
@@ -34,7 +39,6 @@
     "esbuild": "^0.25.0",
     "express": "^4.21.1",
     "fuse.js": "^7.0.0",
-    "lucide-react": "^0.468.0",
     "mongodb": "^6.11.0",
     "node-cache": "^5.1.2",
     "ollama": "^0.5.9",

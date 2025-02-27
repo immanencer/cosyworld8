@@ -21,6 +21,51 @@ function escapeRegExp(str) {
   return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
+// Map rarities to a "tier" label (used in advanced leaderboard example)
+const rarityToTier = {
+  legendary: 'S',
+  rare: 'A',
+  uncommon: 'B',
+  common: 'C',
+};
+
+/**
+ * Returns the ancestry (parent chain) of an avatar by iterating up the family tree.
+ * Example usage in an advanced leaderboard scenario.
+ */
+async function getAvatarAncestry(db, avatarId) {
+  const ancestry = [];
+  let currentAvatar = await db.collection('avatars').findOne(
+    { _id: new ObjectId(avatarId) },
+    { projection: { parents: 1 } }
+  );
+
+  while (currentAvatar?.parents?.length) {
+    const parentId = currentAvatar.parents[0];
+    const parent = await db.collection('avatars').findOne(
+      { _id: new ObjectId(parentId) },
+      { projection: { _id: 1, name: 1, imageUrl: 1, emoji: 1, parents: 1 } }
+    );
+    if (!parent) break;
+    ancestry.push(parent);
+    currentAvatar = parent;
+  }
+
+  return ancestry;
+}
+
+// Schema for avatar data
+const avatarSchema = {
+  _id: 1,
+  name: 1,
+  imageUrl: 1,
+  thumbnailUrl: 1,
+  createdAt: 1,
+  claimed: 1,
+  claimedBy: 1,
+  emoji: 1,
+};
+
 /**
  * Main export function that returns the configured router.
  */
@@ -53,7 +98,7 @@ export default function avatarRoutes(db) {
         };
       }
 
-      const avatar = await db.collection('avatars').findOne(query);
+      const avatar = await db.collection('avatars').findOne(query, { projection: avatarSchema });
 
       if (!avatar) {
         console.error(`Avatar not found for id/name: ${avatarId}`);

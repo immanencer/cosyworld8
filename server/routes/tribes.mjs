@@ -1,4 +1,3 @@
-
 import express from 'express';
 import NodeCache from 'node-cache';
 import { thumbnailService } from '../services/thumbnailService.mjs';
@@ -22,11 +21,22 @@ export default function(db) {
         return res.json(cachedCounts);
       }
 
+      // Changed aggregation: project a normalized emoji field (or "Glitch Tribe" if missing)
       const tribes = await db.collection('avatars').aggregate([
-        { $match: { emoji: { $exists: true, $ne: null, $ne: '' } } },
+        {
+          $project: {
+            emoji: {
+              $cond: [
+                { $or: [ { $eq: ["$emoji", null] }, { $eq: ["$emoji", ""] } ] },
+                "Glitch Tribe",
+                "$emoji"
+              ]
+            }
+          }
+        },
         {
           $group: {
-            _id: '$emoji',
+            _id: "$emoji",
             count: { $sum: 1 }
           }
         },
@@ -56,13 +66,15 @@ export default function(db) {
       if (cachedTribe) {
         return res.json(cachedTribe);
       }
+      
+      // Build match condition based on tribe emoji
+      const matchCondition = emoji === "Glitch Tribe" 
+        ? { $or: [ { emoji: { $eq: null } }, { emoji: "" }, { emoji: { $exists: false } } ] }
+        : { emoji: emoji };
 
       const tribe = await db.collection('avatars').aggregate([
         {
-          $match: { 
-            emoji: emoji,
-            emoji: { $exists: true, $ne: null, $ne: '' } 
-          }
+          $match: matchCondition
         },
         {
           $lookup: {

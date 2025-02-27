@@ -1,7 +1,12 @@
 import express from 'express';
 import cors from 'cors';
+import { MongoClient } from 'mongodb';
+import path from 'path';
+import { fileURLToPath } from 'url';
 
-import { DatabaseService } from '../src/services/databaseService.mjs';
+// Get __dirname equivalent in ES modules
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 // External route modules
 import leaderboardRoutes from './routes/leaderboard.mjs';
@@ -13,24 +18,37 @@ import tribeRoutes from './routes/tribes.mjs';
 import xauthRoutes from './routes/xauth.mjs';
 import wikiRoutes from './routes/wiki.mjs';
 import socialRoutes from './routes/social.mjs';
-import adminRoutes from './routes/admin.mjs';
+import claimsRoutes from './routes/claims.mjs'; // Added claims routes
 
 const app = express();
-const PORT = process.env.PORT || 3080;
+const PORT = process.env.PORT || 3001;
 
 app.use(cors());
 app.use(express.json());
 app.use(express.static('public'));
 
 
+// MongoDB Setup
+const mongoUri = process.env.MONGO_URI || 'mongodb://localhost:27017';
+const mongoDbName = process.env.MONGO_DB_NAME || 'cosyworld';
+
 async function initializeApp() {
   try {
-    // Use the centralized DatabaseService
-    const dbService = new DatabaseService(console);
-    const db = await dbService.connect();
-    if (!db) {
-      throw new Error('Failed to connect to database');
-    }
+    const client = new MongoClient(mongoUri);
+    await client.connect();
+    const db = client.db(mongoDbName);
+    
+    db.avatars = db.collection('avatars');
+    db.messages = db.collection('messages');
+    db.narratives = db.collection('narratives');
+    db.memories = db.collection('memories');
+    db.dungeon_stats = db.collection('dungeon_stats');
+    db.dungeon_log = db.collection('dungeon_log');
+    db.token_transactions = db.collection('token_transactions');
+    db.minted_nfts = db.collection('minted_nfts');
+    db.avatar_claims = db.collection('avatar_claims'); // Add claims collection reference
+
+    console.log(`Connected to MongoDB database: ${mongoDbName}`);
 
     // Initialize indexes
     await dbService.createIndexes();
@@ -45,7 +63,7 @@ async function initializeApp() {
     app.use('/api/xauth', xauthRoutes(db));
     app.use('/api/wiki', wikiRoutes(db));
     app.use('/api/social', socialRoutes(db));
-    app.use('/api/admin', adminRoutes(db));
+    app.use('/api/claims', claimsRoutes(db)); // Mount claims routes
 
     // Models route
     const modelsRouter = await import('./routes/models.mjs');
@@ -122,6 +140,13 @@ async function initializeIndexes(db) {
       db.minted_nfts.createIndexes([
         { key: { walletAddress: 1 }, background: true },
         { key: { avatarId: 1 }, background: true },
+      ]),
+      
+      // Avatar claims indexes
+      db.avatar_claims.createIndexes([
+        { key: { avatarId: 1 }, unique: true, background: true },
+        { key: { walletAddress: 1 }, background: true },
+        { key: { status: 1 }, background: true }
       ])
     ]);
     console.log('Database indexes created successfully');
