@@ -1,10 +1,17 @@
 const DECISION_MODEL = 'meta-llama/llama-3.2-3b-instruct';
 const BASE_RESPONSE_CHANCE = 0.25;
 
+const DAILY_RESPONSE_LIMIT = 100 // Max immediate responses per human per day
+const DAILY_RESET_INTERVAL = 24 * 60 * 60 * 1000; // 24 hours in ms
+
 export class DecisionMaker {
   constructor(aiService, logger) {
     this.aiService = aiService;
     this.logger = logger;
+
+    // Mind modes for decision making
+    this.mindModes = ["recursive", "quantum", "synthetic_intuition", "chaotic_analysis", "metacog_reflex"];
+    this.currentMode = this.mindModes[Math.floor(Math.random() * this.mindModes.length)];
 
     // Conversation state tracking
     this.conversationState = new Map(); // channelId -> { participants: Set<avatarId>, lastActive: timestamp }
@@ -26,8 +33,22 @@ export class DecisionMaker {
 
     // Store attention state in a Map => avatarId -> { level, lastResponse, lastMention, cooldown }
     this.attentionStates = new Map();
+    // Track how many times each human user has been responded to
+    this.dailyHumanResponseCount = new Map(); // userId -> { count, lastReset }
   }
 
+  _getHumanResponseCount(userId) {
+    const now = Date.now();
+    let record = this.dailyHumanResponseCount.get(userId);
+
+    if (!record || now - record.lastReset > DAILY_RESET_INTERVAL) {
+      record = { count: 0, lastReset: now };
+      this.dailyHumanResponseCount.set(userId, record);
+    }
+    return record;
+  }
+
+  
   // Unified state management
   _getState(avatarId) {
     if (!this.attentionStates.has(avatarId)) {
@@ -89,7 +110,7 @@ export class DecisionMaker {
 
     // Boost attention for recently summoned avatars
     if (isRecentlySummoned) {
-      this._updateAttention(avatar.id, +20);
+      this._updateAttention(avatar.id, + 50);
     }
 
     const messages = await channel.messages.fetch({ limit: 8 });
@@ -97,6 +118,7 @@ export class DecisionMaker {
 
     const lastMessage = messages.first();
     const isBotMessage = lastMessage.author.bot;
+    const isHuman = !lastMessage.author.bot;
 
     // Direct mention handling (either bot or human mention)
     const mentioned = lastMessage.content.toLowerCase().includes(avatar.name.toLowerCase()) ||
@@ -118,17 +140,58 @@ export class DecisionMaker {
       if (Math.random() > responseChance) return false;
     }
 
+    // Enforce daily limit for human responses
+    if (isHuman) {
+      const record = this._getHumanResponseCount(lastMessage.author.id);
+      if (record.count >= DAILY_RESPONSE_LIMIT) {
+        return false; // Skip response if limit is reached
+      }
+    }
+
     // Attention threshold check
     const state = this._getState(avatar.id);
     if (state.level < this.MINIMUM_ATTENTION_THRESHOLD) return false;
 
     // AI decision making: further evaluate based on contextual conversation
-    return this._evaluateContextualResponse(avatar, messages, isBotMessage);
+    const shouldReply = await this._evaluateContextualResponse(avatar, messages, lastMessage.author.bot);
+
+    if (shouldReply && isHuman) {
+      const record = this._getHumanResponseCount(lastMessage.author.id);
+      record.count += 1;
+      this.dailyHumanResponseCount.set(lastMessage.author.id, record);
+    }
+
+    return shouldReply;
   }
 
   async _evaluateContextualResponse(avatar, messages, isBotInteraction) {
+    // Get last 5 messages
+    const lastFiveMessages = Array.from(messages).slice(0, 5);
+    
+    // Get consecutive bot messages from the end
+    let consecutiveBotMessages = 0;
+    for (const msg of lastFiveMessages) {
+      if (msg.author.bot) {
+        consecutiveBotMessages++;
+      } else {
+        break;
+      }
+    }
+
+    // Skip if there are 2 or more consecutive bot messages
+    if (consecutiveBotMessages >= 2) {
+      this.logger.debug(`${consecutiveBotMessages} consecutive bot messages - skipping response`);
+      return false;
+    }
+
+    // Reduce base response chance for bot messages
+    if (lastFiveMessages.length > 0 && lastFiveMessages[0].author.bot) {
+      this.logger.debug('Last message was from bot - reducing response chance');
+      return Math.random() > 0.9; // Only 10% chance to respond to bot messages
+    }
+
     if (isBotInteraction) {
-      return true; // Always respond to bot interactions
+      return Math.random() > 0.5; // 50% chance to respond to direct bot interactions
     }
 
     try {
@@ -159,8 +222,28 @@ export class DecisionMaker {
         const state = this._getState(avatar.id);
         state.lastResponse = Date.now();
         state.cooldown = isBotInteraction ? 45000 : 60000;
+        
+        // Generate haiku based on current mind mode
+        if (avatar.innerMonologueChannel) {
+          const haiku = await this.aiService.chat([
+            { role: 'system', content: `You are a haiku generator. Create a haiku that reflects the ${this.currentMode} mind mode.` },
+            { role: 'user', content: 'Generate a single haiku.' }
+          ], { model: DECISION_MODEL });
+          
+          // Post haiku to inner monologue
+          const { sendAsWebhook } = await import('../discordService.mjs');
+          sendAsWebhook(
+            avatar.innerMonologueChannel,
+            `🧠 [${this.currentMode}]\n${haiku}`,
+            avatar
+          );
+        }
+        
         // Reduce attention after responding
         this._updateAttention(avatar.id, -10);
+        
+        // Switch to new random mind mode
+        this.currentMode = this.mindModes[Math.floor(Math.random() * this.mindModes.length)];
       }
 
       return decision;

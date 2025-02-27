@@ -6,13 +6,11 @@
 
 import express from 'express';
 import { ObjectId } from 'mongodb';
-import Fuse from 'fuse.js';
 
-// Example imports, adjust paths as needed
+
 import { thumbnailService } from '../services/thumbnailService.mjs';
-import { NFTMintingService } from '../../src/services/nftMintService.mjs';
 import { StatGenerationService } from '../../src/services/statGenerationService.mjs';
-import models from '../../src/models.config.mjs';
+import { NFTMintingService } from '../../src/services/nftMintService.mjs';
 
 const router = express.Router();
 
@@ -56,84 +54,35 @@ async function getAvatarAncestry(db, avatarId) {
   return ancestry;
 }
 
+// Schema for avatar data
+const avatarSchema = {
+  _id: 1,
+  name: 1,
+  imageUrl: 1,
+  thumbnailUrl: 1,
+  createdAt: 1,
+  claimed: 1,
+  claimedBy: 1,
+  emoji: 1,
+};
+
 /**
  * Main export function that returns the configured router.
  */
 export default function avatarRoutes(db) {
-  // API routes implementations...
-  router.get('/', async (req, res) => {
-    try {
-      const page = Math.max(1, parseInt(req.query.page, 10) || 1);
-      const limit = Math.min(100, Math.max(1, parseInt(req.query.limit, 10) || 50));
-      const skip = (page - 1) * limit;
-      const view = req.query.view || 'all';
-
-      let query = {};
-      let sort = { createdAt: -1 };
-
-      if (view === 'owned' && req.query.walletAddress) {
-        const xAuths = await db.collection('x_auth')
-          .find({ walletAddress: req.query.walletAddress })
-          .toArray();
-
-        const authorizedAvatarIds = xAuths.map((auth) => {
-          return typeof auth.avatarId === 'string'
-            ? new ObjectId(auth.avatarId)
-            : auth.avatarId;
-        });
-
-        query._id = { $in: authorizedAvatarIds };
-      }
-
-      const [avatars, total] = await Promise.all([
-        db.collection('avatars')
-          .find(query)
-          .sort(sort)
-          .skip(skip)
-          .limit(limit)
-          .toArray(),
-        db.collection('avatars').countDocuments(query)
-      ]);
-
-      await thumbnailService.ensureThumbnailDir();
-      const avatarsWithThumbs = await Promise.all(
-        avatars.map(async (avatar) => {
-          try {
-            const thumbnailUrl = await thumbnailService.generateThumbnail(avatar.imageUrl);
-            return { ...avatar, thumbnailUrl };
-          } catch (err) {
-            console.error(`Thumbnail failed for avatar ${avatar._id}:`, err);
-            return { ...avatar, thumbnailUrl: avatar.imageUrl };
-          }
-        })
-      );
-
-      res.json({
-        avatars: avatarsWithThumbs,
-        total,
-        page,
-        totalPages: Math.ceil(total / limit),
-        limit
-      });
-    } catch (error) {
-      console.error('Avatar listing error:', error);
-      res.status(500).json({
-        error: 'Failed to fetch avatars',
-        details: process.env.NODE_ENV === 'development' ? error.message : undefined
-      });
-    }
-  });
 
   // ------------------------------------
-  // 10) GET /:avatarId
+  // GET /:avatarId
+  // Returns the avatar details along with its inventory
   // ------------------------------------
   router.get('/:avatarId', async (req, res) => {
     try {
       const { avatarId } = req.params;
       let query;
 
+      // Allow lookup by ObjectId or name
       try {
-        query = { 
+        query = {
           $or: [
             { _id: new ObjectId(avatarId) },
             { _id: avatarId },
@@ -141,7 +90,7 @@ export default function avatarRoutes(db) {
           ]
         };
       } catch (err) {
-        query = { 
+        query = {
           $or: [
             { _id: avatarId },
             { name: avatarId }
@@ -149,26 +98,45 @@ export default function avatarRoutes(db) {
         };
       }
 
-      const avatar = await db.collection('avatars').findOne(query);
+      const avatar = await db.collection('avatars').findOne(query, { projection: avatarSchema });
 
       if (!avatar) {
         console.error(`Avatar not found for id/name: ${avatarId}`);
         return res.status(404).json({ error: 'Avatar not found' });
       }
 
-      // Generate thumbnail if needed
+      // Generate thumbnail for the avatar image if needed
       const thumbnailUrl = await thumbnailService.generateThumbnail(avatar.imageUrl);
       avatar.thumbnailUrl = thumbnailUrl;
+
+      // Fetch inventory items for this avatar (items where "owner" matches the avatar's _id)
+      const items = await db.collection('items').find({
+        owner: new ObjectId(avatar._id)
+      }).toArray();
+
+      // Generate thumbnails for each inventory item if needed
+      const itemsWithThumbs = await Promise.all(
+        items.map(async (item) => {
+          if (!item.thumbnailUrl && item.imageUrl) {
+            item.thumbnailUrl = await thumbnailService.generateThumbnail(item.imageUrl);
+          }
+          return item;
+        })
+      );
+
+      // Attach the inventory to the avatar object
+      avatar.inventory = itemsWithThumbs;
 
       res.json(avatar);
     } catch (error) {
       console.error('Error fetching avatar details:', error);
-      res.status(500).json({ 
+      res.status(500).json({
         error: 'Failed to fetch avatar details',
         details: process.env.NODE_ENV === 'development' ? error.message : undefined
       });
     }
   });
+
   // -----------------------------
   // 1) GET / (paginated avatars)
   // -----------------------------
@@ -182,19 +150,37 @@ export default function avatarRoutes(db) {
       let query = {};
       let sort = { createdAt: -1 };
 
-      // Example logic for "owned" filtering, using x_auth:
-      if (view === 'owned' && req.query.walletAddress) {
-        const xAuths = await db.collection('x_auth')
-          .find({ walletAddress: req.query.walletAddress })
-          .toArray();
+      // Example logic for "owned" filtering:
+      if (view === 'claims' && req.query.walletAddress) {
+        // Get avatars from both X auth and avatar claims collections
+        const [xAuths, avatarClaims] = await Promise.all([
+          db.collection('x_auth')
+            .find({ walletAddress: req.query.walletAddress })
+            .toArray(),
+          db.collection('avatar_claims')
+            .find({ walletAddress: req.query.walletAddress.toLowerCase() })
+            .toArray()
+        ]);
 
-        const authorizedAvatarIds = xAuths.map((auth) => {
-          return typeof auth.avatarId === 'string'
-            ? new ObjectId(auth.avatarId)
-            : auth.avatarId;
-        });
+        // Combine avatar IDs from both sources
+        const authorizedAvatarIds = [
+          ...xAuths.map(auth => {
+            return typeof auth.avatarId === 'string'
+              ? new ObjectId(auth.avatarId)
+              : auth.avatarId;
+          }),
+          ...avatarClaims.map(claim => {
+            return typeof claim.avatarId === 'string'
+              ? new ObjectId(claim.avatarId)
+              : claim.avatarId;
+          })
+        ];
 
-        query._id = { $in: authorizedAvatarIds };
+        // Filter out duplicates (if same avatar appears in both collections)
+        const uniqueIds = [...new Map(authorizedAvatarIds.map(id =>
+          [id.toString(), id])).values()];
+
+        query._id = { $in: uniqueIds };
       }
 
       const [avatars, total] = await Promise.all([
@@ -297,46 +283,19 @@ export default function avatarRoutes(db) {
     }
   });
 
-  // -------------------------------------------------
-  // 4) POST /claim (claim a random unminted avatar)
-  // -------------------------------------------------
-  router.post('/claim', async (req, res) => {
-    try {
-      const { walletAddress } = req.body;
-      if (!walletAddress) {
-        return res.status(400).json({ error: 'Wallet address required' });
-      }
 
-      // Example avatar service not shown in your snippet; you can adapt:
-      // e.g., const avatarService = new AvatarGenerationService(db);
-      // const randomAvatar = await avatarService.getRandomUnmintedAvatar();
-      // We'll assume you have such a function or direct query:
-      const randomAvatar = await db.collection('avatars').findOne({ claimed: { $ne: true } });
-      if (!randomAvatar) {
-        return res.status(404).json({ error: 'No available avatars to claim' });
-      }
-
-      // Mark as claimed + mint
-      const nftMintService = new NFTMintingService(db);
-      await nftMintService.mintAvatarToWallet(randomAvatar._id, walletAddress);
-
-      res.json({ success: true, avatar: randomAvatar });
-    } catch (error) {
-      console.error('Error claiming avatar (random):', error);
-      res.status(500).json({ error: error.message });
-    }
-  });
-
-  // ---------------------------------------------------------
   // 5) POST /:avatarId/claim (claim a *specific* avatar)
-  // ---------------------------------------------------------
   router.post('/:avatarId/claim', async (req, res) => {
     try {
       const { avatarId } = req.params;
-      const { walletAddress } = req.body;
+      const { walletAddress, burnTxSignature } = req.body;
 
       if (!walletAddress) {
         return res.status(400).json({ error: 'Wallet address required' });
+      }
+
+      if (!burnTxSignature) {
+        return res.status(400).json({ error: 'Burn transaction signature required' });
       }
 
       const avatar = await db.collection('avatars').findOne({
@@ -347,15 +306,42 @@ export default function avatarRoutes(db) {
         return res.status(404).json({ error: 'Avatar not found' });
       }
 
-      // Check if avatar is already claimed (optional logic)
-      if (avatar.claimed) {
-        return res.status(400).json({ error: 'Avatar already claimed' });
+      // Check if the avatar is already claimed
+      const existingClaim = await db.collection('avatar_claims').findOne({
+        avatarId: new ObjectId(avatarId)
+      });
+
+      if (existingClaim) {
+        if (existingClaim.walletAddress === walletAddress) {
+          return res.json({ success: true, alreadyOwned: true });
+        }
+        return res.status(400).json({ error: 'Avatar already claimed by another wallet' });
       }
 
-      // Mark as claimed
-      await db.collection('avatars').updateOne(
-        { _id: new ObjectId(avatarId) },
-        { $set: { claimed: true, claimedBy: walletAddress } }
+      // Verify burn transaction
+      const connection = new Connection(process.env.SOLANA_RPC_URL || 'https://api.mainnet-beta.solana.com');
+      const burnService = new TokenBurnService(connection);
+      const burnVerified = await burnService.verifyBurnTransaction(burnTxSignature);
+
+      if (!burnVerified) {
+        return res.status(400).json({ error: 'Invalid or unconfirmed burn transaction' });
+      }
+
+      // Use NFTMintingService to mark the avatar as ready to mint for this wallet
+      const nftMintService = new NFTMintingService(db);
+      await nftMintService.markAvatarForMint(avatarId, walletAddress);
+
+      // Record the burn transaction
+      await db.collection('avatar_claims').updateOne(
+        { avatarId: new ObjectId(avatarId) },
+        {
+          $set: {
+            walletAddress,
+            burnTxSignature,
+            claimedAt: new Date()
+          }
+        },
+        { upsert: true }
       );
 
       res.json({ success: true });
@@ -487,8 +473,8 @@ export default function avatarRoutes(db) {
   router.get('/:avatarId/stats', async (req, res) => {
     try {
       const { avatarId } = req.params;
-      const avatar = await db.collection('avatars').findOne({ 
-        _id: new ObjectId(avatarId) 
+      const avatar = await db.collection('avatars').findOne({
+        _id: new ObjectId(avatarId)
       });
 
       if (!avatar) {
@@ -496,9 +482,9 @@ export default function avatarRoutes(db) {
       }
 
       const statService = new StatGenerationService();
-      
+
       // Try to get existing stats first
-      let stats = await db.collection('dungeon_stats').findOne({ 
+      let stats = await db.collection('dungeon_stats').findOne({
         avatarId: new ObjectId(avatarId)
       });
 
@@ -554,6 +540,103 @@ export default function avatarRoutes(db) {
     }
   });
 
+  // ------------------------------------
+  // GET /:avatarId/inventory
+  // Returns the inventory items for the specified avatar.
+  // ------------------------------------
+  router.get('/:avatarId/inventory', async (req, res) => {
+    try {
+      const { avatarId } = req.params;
+      // Query the items collection for items owned by the avatar.
+      // Adjust the query if your schema stores the owner as a string or differently.
+      const items = await db.collection('items').find({
+        owner: new ObjectId(avatarId)
+      }).toArray();
+
+      // Generate thumbnails for each item if needed.
+      const itemsWithThumbs = await Promise.all(
+        items.map(async (item) => {
+          if (!item.thumbnailUrl && item.imageUrl) {
+            item.thumbnailUrl = await thumbnailService.generateThumbnail(item.imageUrl);
+          }
+          return item;
+        })
+      );
+
+      res.json({ items: itemsWithThumbs });
+    } catch (error) {
+      console.error('Error fetching inventory for avatar:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // ------------------------------------
+  // GET /:avatarId/status
+  // Returns the account link status for the specified avatar.
+  // ------------------------------------
+  router.get('/:avatarId/status', async (req, res) => {
+    try {
+      const { avatarId } = req.params;
+      // Try to parse avatarId as an ObjectId
+      const id = new ObjectId(avatarId);
+
+      // Check if the avatar has been claimed
+      const claim = await db.collection('avatar_claims').findOne({ avatarId: id });
+
+      // Check if the X account is linked (from x_auth collection)
+      const xAuth = await db.collection('x_auth').findOne({ avatarId: id });
+
+      // Retrieve the avatar to check SPL token creation status.
+      const avatar = await db.collection('avatars').findOne({ _id: id });
+
+      res.json({
+        claimed: !!claim,
+        walletAddress: claim ? claim.walletAddress : null,
+        burnTxSignature: claim ? claim.burnTxSignature : null,
+        splTokenCreated: avatar?.splTokenCreated || false, // adjust if you store this elsewhere
+        xAccountLinked: !!xAuth,
+        xAccountData: xAuth || null,
+      });
+    } catch (error) {
+      console.error('Error fetching avatar status:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Add a new route to handle fetching avatar details by name or ID
+  router.get('/details/:identifier', async (req, res) => {
+    try {
+      const { identifier } = req.params;
+      let query;
+
+      // Allow lookup by ObjectId or name
+      try {
+        query = {
+          $or: [
+            { _id: new ObjectId(identifier) },
+            { name: identifier }
+          ]
+        };
+      } catch (err) {
+        query = { name: identifier };
+      }
+
+      const avatar = await db.collection('avatars').findOne(query, { projection: avatarSchema });
+
+      if (!avatar) {
+        console.error(`Avatar not found for identifier: ${identifier}`);
+        return res.status(404).json({ error: '404: Avatar details not found' });
+      }
+
+      res.json(avatar);
+    } catch (error) {
+      console.error('Error fetching avatar details:', error);
+      res.status(500).json({
+        error: 'Failed to fetch avatar details',
+        details: process.env.NODE_ENV === 'development' ? error.message : undefined
+      });
+    }
+  });
 
   return router;
 }

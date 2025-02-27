@@ -11,3 +11,5 @@ logs
 *-wallet.json
 dist/
 attached_assets/*
+src/config/user.config.json
+CLAUDE.md

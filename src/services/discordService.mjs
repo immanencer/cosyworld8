@@ -4,9 +4,11 @@ import {
   Client,
   GatewayIntentBits,
   Partials,
-  WebhookClient,
-  EmbedBuilder
+  WebhookClient
 } from 'discord.js';
+import { DatabaseService } from './databaseService.mjs';
+import configService from './configService.mjs';
+import { EmbedBuilder, ButtonBuilder, ButtonStyle, ActionRowBuilder } from 'discord.js';
 import winston from 'winston';
 
 import { chunkMessage } from './utils/messageChunker.mjs';
@@ -14,7 +16,7 @@ import { processMessageLinks } from './utils/linkProcessor.mjs';
 
 // Initialize Logger
 const logger = winston.createLogger({
-  level: 'info',
+  level: configService.get('logging.level') || 'info',
   format: winston.format.combine(
     winston.format.timestamp(),
     winston.format.printf(
@@ -27,6 +29,12 @@ const logger = winston.createLogger({
   ],
 });
 
+// Get Discord configuration
+const discordConfig = configService.getDiscordConfig();
+
+// Initialize database service
+const databaseService = new DatabaseService(logger);
+
 // Instantiate the Discord client with necessary permissions
 export const client = new Client({
   intents: [
@@ -36,7 +44,29 @@ export const client = new Client({
     GatewayIntentBits.GuildMessageReactions,
   ],
   partials: [Partials.Message, Partials.Channel, Partials.Reaction],
+  token: discordConfig.botToken
 });
+
+// Connect to MongoDB when Discord client is ready
+client.once('ready', async () => {
+  try {
+    const db = await databaseService.connect();
+    client.db = db;
+    logger.info('Connected to MongoDB database');
+  } catch (error) {
+    logger.error('Failed to connect to MongoDB:', error);
+  }
+});
+
+// Validate required configuration
+if (!discordConfig.botToken) {
+  logger.error('Discord bot token not configured');
+  throw new Error('Discord bot token is required');
+}
+
+if (!discordConfig.clientId) {
+  logger.warn('Discord client ID not configured - some features may be limited');
+}
 
 // Webhook management cache
 const webhookCache = new Map();
@@ -48,23 +78,15 @@ const webhookCache = new Map();
  * @param {string} messageId - The ID of the message to react to.
  * @param {string} emoji - The emoji to react with.
  */
-export async function reactToMessage(client, channelId, messageId, emoji) {
+export async function reactToMessage(message, emoji) {
   try {
-    const channel = await client.channels.fetch(channelId);
-    if (!channel) {
-      throw new Error(`Channel with ID ${channelId} not found.`);
-    }
-
-    const message = await channel.messages.fetch(messageId);
-    if (!message) {
-      throw new Error(`Message with ID ${messageId} not found.`);
-    }
 
     await message.react(emoji);
-    logger.info(`Reacted to message ${messageId} in channel ${channelId} with ${emoji}`);
+    logger.info(`Reacted to message ${message.id} in channel ${message.channel.id} with ${emoji}`);
   } catch (error) {
-    logger.error(`Failed to react to message ${messageId} in channel ${channelId}: ${error.message}`);
+    logger.error(`Failed to react to message: ` + error.message);
   }
+
 }
 
 /**
@@ -74,18 +96,8 @@ export async function reactToMessage(client, channelId, messageId, emoji) {
  * @param {string} messageId - The ID of the message to reply to.
  * @param {string} replyContent - The content of the reply.
  */
-export async function replyToMessage(channelId, messageId, replyContent) {
+export async function replyToMessage(message, replyContent) {
   try {
-    const channel = await client.channels.fetch(channelId);
-    if (!channel) {
-      throw new Error(`Channel with ID ${channelId} not found.`);
-    }
-
-    const message = await channel.messages.fetch(messageId);
-    if (!message) {
-      throw new Error(`Message with ID ${messageId} not found.`);
-    }
-
     await message.reply(replyContent);
     logger.info(`Replied to message ${messageId} in channel ${channelId} with: ${replyContent}`);
   } catch (error) {
@@ -100,6 +112,10 @@ export async function replyToMessage(channelId, messageId, replyContent) {
  */
 async function getOrCreateWebhook(channel) {
   try {
+    if (!discordConfig.botToken) {
+      throw new Error('Discord bot token not configured');
+    }
+
     // If the channel is a thread, fetch its parent channel
     if (channel.isThread()) {
       channel = await channel.parent.fetch();
@@ -146,11 +162,7 @@ function generateProgressBar(value, increment, emoji) {
   return emoji.repeat(Math.floor(value / increment));
 }
 
-/**
- * Sends an avatar profile as an embed via webhook with a custom username and avatar.
- * Includes dungeon stats such as Attack, Defense, and HP.
- * @param {Object} avatar - The avatar object containing profile information.
- */
+
 export async function sendAvatarProfileEmbedFromObject(avatar) {
   if (!avatar || typeof avatar !== 'object') {
     throw new Error('Invalid avatar object provided.');
@@ -170,6 +182,7 @@ export async function sendAvatarProfileEmbedFromObject(avatar) {
     stats,
     traits,
     innerMonologueThreadId,
+    templateId,
   } = avatar;
 
   if (!channelId || typeof channelId !== 'string') {
@@ -276,12 +289,30 @@ export async function sendAvatarProfileEmbedFromObject(avatar) {
       avatarEmbed.addFields(
         { name: '⚔️ Attack', value: 'N/A', inline: true },
         { name: '🛡️ Defense', value: 'N/A', inline: true },
-        { name: '❤️ HP', value: 'N/A', inline: true },
+        { name: '❤️ HP', value: 'N/A', inline: true }
       );
+    }
+
+    const components = [];
+    // Only show collect button for Base chain mints
+    const db = client.db;
+    const crossmintData = await db.collection('crossmint_dev').findOne({ 
+      avatarId: _id,
+      chain: 'base' // Only look for Base chain mints
+    });
+
+    if (crossmintData?.templateId) {
+      const collectButton = new ButtonBuilder()
+        .setLabel('Collect on Base')
+        .setStyle(ButtonStyle.Link)
+        .setURL(`${process.env.PUBLIC_URL}/checkout.html?templateId=${crossmintData.templateId}&collectionId=${crossmintData.collectionId}`);
+      const actionRow = new ActionRowBuilder().addComponents(collectButton);
+      components.push(actionRow);
     }
 
     await webhookClient.send({
       embeds: [avatarEmbed],
+      components,
       threadId: channel.isThread() ? channelId : undefined,
       username: `🔮 ${name.slice(0, 80)}`,
       avatarURL: imageUrl,
@@ -293,6 +324,7 @@ export async function sendAvatarProfileEmbedFromObject(avatar) {
   }
 }
 
+
 /**
  * Sends a message via webhook with a custom username and avatar.
  * @param {string} channelId - The ID of the channel to send the message in.
@@ -300,7 +332,9 @@ export async function sendAvatarProfileEmbedFromObject(avatar) {
  * @param {string} username - The username to display for the webhook message.
  * @param {string} avatarUrl - The URL of the avatar to display for the webhook message.
  */
-export async function sendAsWebhook(channelId, content, username, avatarUrl) {
+export async function sendAsWebhook(channelId, content, avatar) {
+  const username = `${avatar.name.slice(0, 78)}` + (avatar.emoji ? ` ${avatar.emoji}` : '');
+  const avatarUrl = avatar.imageUrl;
   if (!channelId || typeof channelId !== 'string') {
     throw new Error(`Invalid channel ID: ${channelId}`);
   }
@@ -358,3 +392,24 @@ export async function getRecentMessages(client, channelId, limit = 10) {
     return [];
   }
 }
+
+client.on('messageCreate', async (message) => {
+  try {
+    // Ignore DMs and messages without a guild
+    if (!message.guild) return;
+
+    // Load config and check whitelist
+    const config = await configService.get('whitelistedGuilds');
+    const whitelistedGuilds = Array.isArray(config) ? config : [];
+
+    // Only process messages from whitelisted guilds
+    if (!whitelistedGuilds.includes(message.guild.id)) {
+      return;
+    }
+
+  } catch (error) {
+    logger.error(`Error processing message: ${error.message}`);
+  }
+});
+
+client.login(discordConfig.botToken);

@@ -161,4 +161,5 @@ export class MessageHandler {
 
     return mentionCounts;
   }
+
 }

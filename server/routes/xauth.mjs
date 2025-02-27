@@ -1,13 +1,42 @@
-
 import express from 'express';
+import crypto from 'crypto';
+import nacl from 'tweetnacl';
 import { TwitterApi } from 'twitter-api-v2';
+import ethUtil from 'ethereumjs-util';  // Make sure to install this: npm install ethereumjs-util
+import bs58 from 'bs58'; // Make sure to add this import
 
 const DEFAULT_TOKEN_EXPIRY = 7200; // 2 hours in seconds
-const TEMP_AUTH_EXPIRY = 10 * 60 * 1000; // 10 minutes in milliseconds
+
+// Helper: verify that the provided signature is valid for the challenge message and wallet address
+function verifyWalletSignature(message, signature, walletAddress) {
+    try {
+        // Convert message to Uint8Array
+        const messageBytes = new TextEncoder().encode(message);
+        
+        // For Solana addresses, which are base58 encoded
+        const publicKey = bs58.decode(walletAddress);
+        
+        // Convert hex signature to Uint8Array
+        const signatureBytes = Buffer.from(signature, 'hex');
+        
+        // Verify signature using tweetnacl
+        const verified = nacl.sign.detached.verify(
+            messageBytes,
+            signatureBytes,
+            publicKey
+        );
+        
+        console.log("Signature verification result:", verified);
+        return verified;
+    } catch (err) {
+        console.error('Signature verification error:', err);
+        return false;
+    }
+}
 
 export default function xauthRoutes(db) {
     const router = express.Router();
-    
+
     async function refreshAccessToken(auth) {
         const client = new TwitterApi({
             clientId: process.env.X_CLIENT_ID,
@@ -18,7 +47,9 @@ export default function xauthRoutes(db) {
             const { accessToken, refreshToken: newRefreshToken, expiresIn } =
                 await client.refreshOAuth2Token(auth.refreshToken);
 
-            const expiresAt = new Date(Date.now() + (expiresIn || DEFAULT_TOKEN_EXPIRY) * 1000);
+            const expiresAt = new Date(
+                Date.now() + (expiresIn || DEFAULT_TOKEN_EXPIRY) * 1000
+            );
 
             await db.collection('x_auth').updateOne(
                 { avatarId: auth.avatarId },
@@ -41,57 +72,78 @@ export default function xauthRoutes(db) {
         }
     }
 
-    async function cleanupTempAuth() {
-        const expiryTime = new Date(Date.now() - TEMP_AUTH_EXPIRY);
-        await db.collection('x_auth_temp').deleteMany({
-            createdAt: { $lt: expiryTime }
-        });
-    }
-
     router.get('/auth-url', async (req, res) => {
         try {
-            const { walletAddress, avatarId } = req.query;
-            if (!walletAddress || !avatarId) {
-                return res.status(400).json({ error: 'Missing wallet address or avatar ID' });
+          const { avatarId, walletAddress, signature, message } = req.query;
+          if (!avatarId || !walletAddress || !signature || !message) {
+            return res.status(400).json({ error: 'Missing required parameters' });
+          }
+      
+          // Verify the signature based on your wallet type
+          let isValidSignature = false;
+          
+          // For Solana wallets
+          try {
+            isValidSignature = verifyWalletSignature(message, signature, walletAddress);
+          } catch (err) {
+            console.error('Solana signature verification failed, trying Ethereum verification:', err);
+            
+            // For Ethereum wallets
+            try {
+              const msgBuffer = Buffer.from(message);
+              const msgHash = ethUtil.hashPersonalMessage(msgBuffer);
+              const sigParams = ethUtil.fromRpcSig(signature);
+              const publicKey = ethUtil.ecrecover(
+                msgHash,
+                sigParams.v,
+                sigParams.r,
+                sigParams.s
+              );
+              const addressBuffer = ethUtil.publicToAddress(publicKey);
+              const recoveredAddress = ethUtil.bufferToHex(addressBuffer);
+              
+              isValidSignature = recoveredAddress.toLowerCase() === walletAddress.toLowerCase();
+            } catch (ethErr) {
+              console.error('Ethereum signature verification failed:', ethErr);
             }
-
-            await db.collection('x_auth').deleteOne({ avatarId });
-
-            const client = new TwitterApi({
-                clientId: process.env.X_CLIENT_ID,
-                clientSecret: process.env.X_CLIENT_SECRET
-            });
-
-            const stateData = encodeURIComponent(JSON.stringify({ walletAddress, avatarId }));
-
-            const { url, codeVerifier, state } = await client.generateOAuth2AuthLink(
-                process.env.X_CALLBACK_URL,
-                {
-                    scope: ['tweet.read', 'tweet.write', 'users.read', 'offline.access'],
-                    state: stateData
-                }
-            );
-
-            await cleanupTempAuth();
-
-            await db.collection('x_auth_temp').updateOne(
-                { avatarId },
-                {
-                    $set: {
-                        codeVerifier,
-                        createdAt: new Date()
-                    }
-                },
-                { upsert: true }
-            );
-
-            res.json({ url });
+          }
+      
+          if (!isValidSignature) {
+            return res.status(401).json({ error: 'Invalid signature' });
+          }
+      
+          // Create a temporary session and store a codeVerifier
+          const codeVerifier = crypto.randomBytes(32).toString('hex');
+          const codeChallenge = crypto
+            .createHash('sha256')
+            .update(codeVerifier)
+            .digest('base64')
+            .replace(/\+/g, '-')
+            .replace(/\//g, '_')
+            .replace(/=/g, '');
+      
+          await db.collection('x_auth_temp').updateOne(
+            { avatarId },
+            { 
+              $set: { 
+                walletAddress, 
+                codeVerifier, 
+                message,
+                signature,
+                createdAt: new Date() 
+              }
+            },
+            { upsert: true }
+          );
+      
+          // Rest of your function to generate the X auth URL...
         } catch (error) {
-            console.error('Error generating auth URL:', error);
-            res.status(500).json({ error: error.message });
+          console.error('Error generating auth URL:', error);
+          res.status(500).json({ error: error.message });
         }
-    });
+      });
 
+    // Updated callback: verify wallet signature before completing OAuth flow
     router.get('/callback', async (req, res) => {
         try {
             const { code, state } = req.query;
@@ -107,13 +159,19 @@ export default function xauthRoutes(db) {
                 throw new Error('Invalid state parameter');
             }
 
-            const { walletAddress, avatarId } = stateData;
-            if (!walletAddress || !avatarId) {
-                throw new Error('Missing wallet address or avatar ID in state');
+            const { walletAddress, avatarId, signature } = stateData;
+            if (!walletAddress || !avatarId || !signature) {
+                throw new Error('Missing wallet address, avatar ID, or signature in state');
             }
 
-            const storedAuth = await db.collection('x_auth_temp').findOne({ avatarId });
+            // Verify wallet signature
+            const challengeMessage = `Link X Account for avatar ${avatarId}`;
+            if (!verifyWalletSignature(challengeMessage, signature, walletAddress)) {
+                throw new Error('Invalid wallet signature');
+            }
 
+            // Retrieve temporary session data
+            const storedAuth = await db.collection('x_auth_temp').findOne({ avatarId });
             if (!storedAuth?.codeVerifier) {
                 throw new Error('Auth session expired');
             }
@@ -123,11 +181,12 @@ export default function xauthRoutes(db) {
                 clientSecret: process.env.X_CLIENT_SECRET
             });
 
-            const { accessToken, refreshToken, expiresIn } = await client.loginWithOAuth2({
-                code,
-                codeVerifier: storedAuth.codeVerifier,
-                redirectUri: process.env.X_CALLBACK_URL
-            });
+            const { accessToken, refreshToken, expiresIn } =
+                await client.loginWithOAuth2({
+                    code,
+                    codeVerifier: storedAuth.codeVerifier,
+                    redirectUri: process.env.X_CALLBACK_URL
+                });
 
             await db.collection('x_auth').updateOne(
                 { avatarId },
@@ -145,23 +204,30 @@ export default function xauthRoutes(db) {
 
             await db.collection('x_auth_temp').deleteOne({ avatarId });
 
+            // Update the claims database with the wallet that claimed this avatar
+            await db.collection('claims').updateOne(
+                { avatarId },
+                { $set: { walletAddress, claimedAt: new Date() } },
+                { upsert: true }
+            );
+
             res.send(`
-                <script>
-                    window.opener.postMessage({ type: 'X_AUTH_SUCCESS' }, '*');
-                    window.close();
-                </script>
-            `);
+        <script>
+          window.opener.postMessage({ type: 'X_AUTH_SUCCESS' }, '*');
+          window.close();
+        </script>
+      `);
         } catch (error) {
             console.error('OAuth callback error:', error);
             res.send(`
-                <script>
-                    window.opener.postMessage({ 
-                        type: 'X_AUTH_ERROR', 
-                        error: '${error.message}'
-                    }, '*');
-                    window.close();
-                </script>
-            `);
+        <script>
+          window.opener.postMessage({ 
+            type: 'X_AUTH_ERROR', 
+            error: '${error.message}'
+          }, '*');
+          window.close();
+        </script>
+      `);
         }
     });
 

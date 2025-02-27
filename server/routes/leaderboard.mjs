@@ -53,6 +53,7 @@ export default function leaderboardRoutes(db) {
   const router = Router();
 
   router.get('/', async (req, res) => {
+    console.log('Leaderboard request:', req.query);
     try {
       const { tier, lastMessageCount, lastId, limit: limitStr } = req.query;
       const limit = Math.min(parseInt(limitStr, 10) || 24, 100);

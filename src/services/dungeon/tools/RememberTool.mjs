@@ -8,6 +8,10 @@ export class RememberTool extends BaseTool {
   constructor(dungeonService) {
     super(dungeonService);
     this.aiService = new OpenRouterService();
+    this.name = 'remember';
+    this.description = 'Generates a memory from the current context.';
+    this.emoji = '🧠';
+    this.aiService = new OpenRouterService();
   }
 
   async getChannelContext(channel) {
@@ -17,10 +21,10 @@ export class RememberTool extends BaseTool {
 
   async generateMemory(context, prompt = '') {
     const systemPrompt = "You are a concise memory recorder. Create a single memorable moment or observation based on the context. Keep it under 280 characters. Focus on key events, emotions, or revelations.";
-    
+
     const response = await this.aiService.chat([
       { role: 'system', content: systemPrompt },
-      { role: 'user', content: `Context:\n${context}\n${prompt ? `Remember specifically about: ${prompt}` : 'What seems most memorable from this context?'}`}
+      { role: 'user', content: `Context:\n${context}\n${prompt ? `Remember specifically about: ${prompt}` : 'What seems most memorable from this context?'}` }
     ]);
 
     return response || 'Failed to generate memory';
@@ -41,8 +45,7 @@ export class RememberTool extends BaseTool {
       sendAsWebhook(
         avatar.innerMonologueChannel,
         `🧠 Memory Generated: ${formattedMemory}`,
-        `${avatar.name} ${avatar.emoji}`,
-        avatar.imageUrl
+        avatar
       );
     }
     this.logger?.debug(`Generated memory: ${formattedMemory}`);
@@ -54,6 +57,6 @@ export class RememberTool extends BaseTool {
   }
 
   getSyntax() {
-    return '!remember [optional focus]';
+    return '🧠 [optional focus]';
   }
 }

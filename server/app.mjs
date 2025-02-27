@@ -7,17 +7,20 @@ import leaderboardRoutes from './routes/leaderboard.mjs';
 import dungeonRoutes from './routes/dungeon.mjs';
 import healthRoutes from './routes/health.mjs';
 import avatarRoutes from './routes/avatars.mjs';
+import tokenRoutes from './routes/tokens.mjs';
 import tribeRoutes from './routes/tribes.mjs';
 import xauthRoutes from './routes/xauth.mjs';
 import wikiRoutes from './routes/wiki.mjs';
 import socialRoutes from './routes/social.mjs';
+import claimsRoutes from './routes/claims.mjs'; // Added claims routes
 
 const app = express();
-const PORT = process.env.PORT || 3080;
+const PORT = process.env.PORT || 3001;
 
 app.use(cors());
 app.use(express.json());
 app.use(express.static('public'));
+
 
 // MongoDB Setup
 const mongoUri = process.env.MONGO_URI || 'mongodb://localhost:27017';
@@ -37,6 +40,7 @@ async function initializeApp() {
     db.dungeon_log = db.collection('dungeon_log');
     db.token_transactions = db.collection('token_transactions');
     db.minted_nfts = db.collection('minted_nfts');
+    db.avatar_claims = db.collection('avatar_claims'); 
 
     console.log(`Connected to MongoDB database: ${mongoDbName}`);
 
@@ -48,10 +52,27 @@ async function initializeApp() {
     app.use('/api/dungeon', dungeonRoutes(db));
     app.use('/api/health', healthRoutes(db));
     app.use('/api/avatars', avatarRoutes(db));
+    app.use('/api/tokens', tokenRoutes(db));
     app.use('/api/tribes', tribeRoutes(db));
-    app.use('/auth/x', xauthRoutes(db));
+    app.use('/api/xauth', xauthRoutes(db));
     app.use('/api/wiki', wikiRoutes(db));
     app.use('/api/social', socialRoutes(db));
+    app.use('/api/claims', claimsRoutes(db)); // Mount claims routes
+
+    // Add renounce claim route
+    app.post('/api/claims/renounce', async (req, res) => {
+      const { avatarId, walletAddress } = req.body;
+      try {
+        const result = await db.avatar_claims.deleteOne({ avatarId, walletAddress });
+        if (result.deletedCount === 0) {
+          return res.status(404).json({ error: 'Claim not found' });
+        }
+        res.status(200).json({ message: 'Claim renounced successfully' });
+      } catch (error) {
+        console.error('Error renouncing claim:', error);
+        res.status(500).json({ error: 'Internal server error' });
+      }
+    });
 
     // Models route
     const modelsRouter = await import('./routes/models.mjs');
@@ -128,6 +149,13 @@ async function initializeIndexes(db) {
       db.minted_nfts.createIndexes([
         { key: { walletAddress: 1 }, background: true },
         { key: { avatarId: 1 }, background: true },
+      ]),
+      
+      // Avatar claims indexes
+      db.avatar_claims.createIndexes([
+        { key: { avatarId: 1 }, unique: true, background: true },
+        { key: { walletAddress: 1 }, background: true },
+        { key: { status: 1 }, background: true }
       ])
     ]);
     console.log('Database indexes created successfully');

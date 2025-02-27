@@ -1,10 +1,16 @@
 import { BaseTool } from './BaseTool.mjs';
 
 export class DefendTool extends BaseTool {
+  constructor(dungeonService) {
+    super(dungeonService);
+    this.name = 'defend';
+    this.description = 'Raise your AC temporarily';
+    this.emoji = '🛡️';
+  }
   async execute(message) {
     const avatarId = message.author.id;
     const stats = await this.dungeonService.getAvatarStats(avatarId);
-    
+
     const acBoost = 2;
     const boostDuration = 60000; // 1 minute
 
@@ -12,7 +18,7 @@ export class DefendTool extends BaseTool {
     const originalDexterity = stats.dexterity;
     stats.dexterity += 4; // +2 to AC via +4 dexterity
     await this.dungeonService.updateAvatarStats(avatarId, stats);
-    
+
     setTimeout(async () => {
       const currentStats = await this.dungeonService.getAvatarStats(avatarId);
       // Only remove boost if dexterity hasn't been modified by other effects
