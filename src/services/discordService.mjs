@@ -99,9 +99,9 @@ export async function reactToMessage(message, emoji) {
 export async function replyToMessage(message, replyContent) {
   try {
     await message.reply(replyContent);
-    logger.info(`Replied to message ${messageId} in channel ${channelId} with: ${replyContent}`);
+    logger.info(`Replied to message ${message.id} in channel ${message.channel.id} with: ${replyContent}`);
   } catch (error) {
-    logger.error(`Failed to reply to message ${messageId} in channel ${channelId}: ${error.message}`);
+    logger.error(`Failed to reply to message ${message.id} in channel ${message.channel.id}: ${error.message}`);
   }
 }
 
