@@ -1,7 +1,7 @@
 // Admin Panel Module
 const AdminPanel = (() => {
   // DOM elements
-  const adminBtn = document.getElementById('admin-btn');
+  const adminBtn = document.getElementById('admin-button');
   const adminModal = document.getElementById('admin-modal');
   const adminContent = adminModal ? document.getElementById('admin-content') : null;
   const closeAdminBtn = document.createElement('button');
@@ -218,6 +218,17 @@ const AdminPanel = (() => {
       createAvatarBtn.addEventListener('click', showCreateAvatarForm);
     }
   }
+  
+  // Add return statement to expose public methods
+  return {
+    init
+  };
+})();
+
+// Initialize the admin panel when the DOM is fully loaded
+document.addEventListener('DOMContentLoaded', () => {
+  AdminPanel.init();
+});
 
   // Show create avatar form
   function showCreateAvatarForm() {
