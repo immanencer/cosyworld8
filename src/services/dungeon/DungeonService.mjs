@@ -24,11 +24,17 @@ export class DungeonService {
    * @param {Object} logger - A logging interface.
    * @param {Object} [avatarService=null] - The avatar service.
    */
-  constructor(client, logger, avatarService = null, db) {
+  constructor(client, logger, avatarService = null, db, commands = {
+    summon: () => { },
+    breed: () => { },
+    item: () => { },
+    respond: () => { },
+  }) {
     this.db = db;
     this.client = client;
     this.logger = logger;
     this.avatarService = avatarService;
+    this.handleSummonCommand = commands.summon;
 
     // Tools & Logging
     this.dungeonLog = new DungeonLog(logger);

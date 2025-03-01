@@ -484,7 +484,7 @@ async function main() {
     logger.info("✅ Arweave prompts updated successfully");
 
     spamControlService = new SpamControlService(db, logger);
-    chatService = new ChatService(client, db, { logger, avatarService, aiService });
+    chatService = new ChatService(client, db, { logger, avatarService, aiService, handleSummonCommand, handleBreedCommand });
     messageHandler = new MessageHandler(chatService, avatarService, logger);
 
     await client.login(DISCORD_BOT_TOKEN);
