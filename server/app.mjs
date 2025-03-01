@@ -1,6 +1,8 @@
 import express from 'express';
 import cors from 'cors';
 import { MongoClient } from 'mongodb';
+import swaggerUi from 'swagger-ui-express';
+import swaggerDocument from './openapi.json'; // Assuming openapi.json exists
 
 // External route modules
 import leaderboardRoutes from './routes/leaderboard.mjs';
@@ -12,8 +14,8 @@ import tribeRoutes from './routes/tribes.mjs';
 import xauthRoutes from './routes/xauth.mjs';
 import wikiRoutes from './routes/wiki.mjs';
 import socialRoutes from './routes/social.mjs';
-import claimsRoutes from './routes/claims.mjs'; // Added claims routes
-import apiRoutes from './routes/api/index.mjs'; // Added OpenAPI compatible routes
+import claimsRoutes from './routes/claims.mjs'; 
+import apiRoutes from './routes/api/index.mjs';
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -22,10 +24,8 @@ app.use(cors());
 app.use(express.json());
 app.use(express.static('public'));
 
-// API documentation route
-app.get('/api-docs', (req, res) => {
-  res.sendFile('api-docs.html', { root: 'public' });
-});
+// API documentation route (using swagger-ui-express)
+app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerDocument));
 
 
 // MongoDB Setup
@@ -37,7 +37,7 @@ async function initializeApp() {
     const client = new MongoClient(mongoUri);
     await client.connect();
     const db = client.db(mongoDbName);
-    
+
     db.avatars = db.collection('avatars');
     db.messages = db.collection('messages');
     db.narratives = db.collection('narratives');
@@ -63,8 +63,8 @@ async function initializeApp() {
     app.use('/api/xauth', xauthRoutes(db));
     app.use('/api/wiki', wikiRoutes(db));
     app.use('/api/social', socialRoutes(db));
-    app.use('/api/claims', claimsRoutes(db)); // Mount claims routes
-    app.use('/api/v1', apiRoutes(db)); // Mount OpenAPI compatible routes
+    app.use('/api/claims', claimsRoutes(db)); 
+    app.use('/api/v1', apiRoutes(db)); 
 
     // Add renounce claim route
     app.post('/api/claims/renounce', async (req, res) => {
@@ -157,7 +157,7 @@ async function initializeIndexes(db) {
         { key: { walletAddress: 1 }, background: true },
         { key: { avatarId: 1 }, background: true },
       ]),
-      
+
       // Avatar claims indexes
       db.avatar_claims.createIndexes([
         { key: { avatarId: 1 }, unique: true, background: true },

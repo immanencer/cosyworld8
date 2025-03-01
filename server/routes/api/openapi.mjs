@@ -912,3 +912,576 @@ function getOpenApiSpec() {
 }
 
 export default router;
+// OpenAPI specification for RATi API
+export const openApiSpec = {
+  openapi: "3.0.0",
+  info: {
+    title: "RATi API",
+    description: "API for managing avatars, items, and locations in the RATi ecosystem",
+    version: "1.0.0"
+  },
+  servers: [
+    {
+      url: "/api",
+      description: "API server"
+    }
+  ],
+  paths: {
+    "/avatars": {
+      get: {
+        summary: "Get all avatars",
+        description: "Retrieve a list of all avatars",
+        tags: ["Avatars"],
+        responses: {
+          "200": {
+            description: "A list of avatars",
+            content: {
+              "application/json": {
+                schema: {
+                  type: "array",
+                  items: {
+                    $ref: "#/components/schemas/Avatar"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/avatars/{id}": {
+      get: {
+        summary: "Get avatar by ID",
+        description: "Retrieve an avatar by its ID",
+        tags: ["Avatars"],
+        parameters: [
+          {
+            name: "id",
+            in: "path",
+            required: true,
+            schema: {
+              type: "string"
+            },
+            description: "The avatar ID"
+          }
+        ],
+        responses: {
+          "200": {
+            description: "Avatar details",
+            content: {
+              "application/json": {
+                schema: {
+                  $ref: "#/components/schemas/Avatar"
+                }
+              }
+            }
+          },
+          "404": {
+            description: "Avatar not found"
+          }
+        }
+      }
+    },
+    "/avatars/{id}/memory": {
+      get: {
+        summary: "Get avatar memory",
+        description: "Retrieve an avatar's memory records",
+        tags: ["Avatars"],
+        parameters: [
+          {
+            name: "id",
+            in: "path",
+            required: true,
+            schema: {
+              type: "string"
+            },
+            description: "The avatar ID"
+          }
+        ],
+        responses: {
+          "200": {
+            description: "Avatar memory records",
+            content: {
+              "application/json": {
+                schema: {
+                  type: "array",
+                  items: {
+                    $ref: "#/components/schemas/Memory"
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            description: "Avatar not found"
+          }
+        }
+      }
+    },
+    "/items": {
+      get: {
+        summary: "Get all items",
+        description: "Retrieve a list of all items",
+        tags: ["Items"],
+        responses: {
+          "200": {
+            description: "A list of items",
+            content: {
+              "application/json": {
+                schema: {
+                  type: "array",
+                  items: {
+                    $ref: "#/components/schemas/Item"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/items/{id}": {
+      get: {
+        summary: "Get item by ID",
+        description: "Retrieve an item by its ID",
+        tags: ["Items"],
+        parameters: [
+          {
+            name: "id",
+            in: "path",
+            required: true,
+            schema: {
+              type: "string"
+            },
+            description: "The item ID"
+          }
+        ],
+        responses: {
+          "200": {
+            description: "Item details",
+            content: {
+              "application/json": {
+                schema: {
+                  $ref: "#/components/schemas/Item"
+                }
+              }
+            }
+          },
+          "404": {
+            description: "Item not found"
+          }
+        }
+      }
+    },
+    "/locations": {
+      get: {
+        summary: "Get all locations",
+        description: "Retrieve a list of all locations",
+        tags: ["Locations"],
+        responses: {
+          "200": {
+            description: "A list of locations",
+            content: {
+              "application/json": {
+                schema: {
+                  type: "array",
+                  items: {
+                    $ref: "#/components/schemas/Location"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/locations/{id}": {
+      get: {
+        summary: "Get location by ID",
+        description: "Retrieve a location by its ID",
+        tags: ["Locations"],
+        parameters: [
+          {
+            name: "id",
+            in: "path",
+            required: true,
+            schema: {
+              type: "string"
+            },
+            description: "The location ID"
+          }
+        ],
+        responses: {
+          "200": {
+            description: "Location details",
+            content: {
+              "application/json": {
+                schema: {
+                  $ref: "#/components/schemas/Location"
+                }
+              }
+            }
+          },
+          "404": {
+            description: "Location not found"
+          }
+        }
+      }
+    },
+    "/locations/{id}/avatars": {
+      get: {
+        summary: "Get avatars in location",
+        description: "Retrieve all avatars present in a specific location",
+        tags: ["Locations"],
+        parameters: [
+          {
+            name: "id",
+            in: "path",
+            required: true,
+            schema: {
+              type: "string"
+            },
+            description: "The location ID"
+          }
+        ],
+        responses: {
+          "200": {
+            description: "List of avatars in the location",
+            content: {
+              "application/json": {
+                schema: {
+                  type: "array",
+                  items: {
+                    $ref: "#/components/schemas/Avatar"
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            description: "Location not found"
+          }
+        }
+      }
+    },
+    "/chat": {
+      post: {
+        summary: "Chat with avatar",
+        description: "Send a message to an avatar and get a response",
+        tags: ["Chat"],
+        requestBody: {
+          required: true,
+          content: {
+            "application/json": {
+              schema: {
+                type: "object",
+                required: ["avatarId", "message"],
+                properties: {
+                  avatarId: {
+                    type: "string",
+                    description: "ID of the avatar to chat with"
+                  },
+                  message: {
+                    type: "string",
+                    description: "Message to send to the avatar"
+                  },
+                  locationId: {
+                    type: "string",
+                    description: "Optional location ID where the conversation is taking place"
+                  }
+                }
+              }
+            }
+          }
+        },
+        responses: {
+          "200": {
+            description: "Avatar response",
+            content: {
+              "application/json": {
+                schema: {
+                  type: "object",
+                  properties: {
+                    response: {
+                      type: "string",
+                      description: "Avatar's response to the message"
+                    },
+                    avatarId: {
+                      type: "string",
+                      description: "ID of the responding avatar"
+                    },
+                    avatarName: {
+                      type: "string",
+                      description: "Name of the responding avatar"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            description: "Avatar not found"
+          }
+        }
+      }
+    }
+  },
+  components: {
+    schemas: {
+      Avatar: {
+        type: "object",
+        required: ["tokenId", "name", "description", "attributes"],
+        properties: {
+          tokenId: {
+            type: "string",
+            description: "A unique identifier for the avatar NFT"
+          },
+          name: {
+            type: "string",
+            description: "The display name of the avatar"
+          },
+          description: {
+            type: "string",
+            description: "A narrative describing the avatar's origins, purpose, and role"
+          },
+          media: {
+            type: "object",
+            properties: {
+              image: {
+                type: "string",
+                description: "URI for the avatar's image"
+              },
+              video: {
+                type: "string",
+                description: "URI for any associated video content"
+              }
+            }
+          },
+          attributes: {
+            type: "array",
+            description: "An array of traits that define the avatar's characteristics",
+            items: {
+              type: "object",
+              properties: {
+                trait_type: {
+                  type: "string",
+                  description: "The category of the trait (e.g., 'Personality', 'Role')"
+                },
+                value: {
+                  type: "string",
+                  description: "The value of the trait (e.g., 'Brave', 'Explorer')"
+                }
+              }
+            }
+          },
+          evolution: {
+            type: "object",
+            properties: {
+              level: {
+                type: "integer",
+                description: "The current evolution level of the avatar"
+              },
+              previous: {
+                type: "array",
+                description: "References to tokenIds of avatars burned to create this evolution",
+                items: {
+                  type: "string"
+                }
+              },
+              timestamp: {
+                type: "string",
+                description: "ISO timestamp of the last evolution event"
+              }
+            }
+          },
+          memory: {
+            type: "object",
+            properties: {
+              recent: {
+                type: "string",
+                description: "URI pointing to recent interactions and context"
+              },
+              archive: {
+                type: "string",
+                description: "URI pointing to the complete historical archive"
+              }
+            }
+          }
+        }
+      },
+      Item: {
+        type: "object",
+        required: ["tokenId", "name", "description", "attributes"],
+        properties: {
+          tokenId: {
+            type: "string",
+            description: "A unique identifier for the item NFT"
+          },
+          name: {
+            type: "string",
+            description: "The display name of the item"
+          },
+          description: {
+            type: "string",
+            description: "A narrative describing the item's origins, purpose, and role"
+          },
+          media: {
+            type: "object",
+            properties: {
+              image: {
+                type: "string",
+                description: "URI for the item's image"
+              },
+              video: {
+                type: "string",
+                description: "URI for any associated video content"
+              }
+            }
+          },
+          attributes: {
+            type: "array",
+            description: "An array of traits that define the item's characteristics",
+            items: {
+              type: "object",
+              properties: {
+                trait_type: {
+                  type: "string",
+                  description: "The category of the trait (e.g., 'Rarity', 'Effect')"
+                },
+                value: {
+                  type: "string",
+                  description: "The value of the trait (e.g., 'Legendary', 'Portal Creation')"
+                }
+              }
+            }
+          },
+          evolution: {
+            type: "object",
+            properties: {
+              level: {
+                type: "integer",
+                description: "The current evolution level of the item"
+              },
+              previous: {
+                type: "array",
+                description: "References to tokenIds of items burned to create this evolution",
+                items: {
+                  type: "string"
+                }
+              },
+              timestamp: {
+                type: "string",
+                description: "ISO timestamp of the last evolution event"
+              }
+            }
+          }
+        }
+      },
+      Location: {
+        type: "object",
+        required: ["tokenId", "name", "description", "attributes"],
+        properties: {
+          tokenId: {
+            type: "string",
+            description: "A unique identifier for the location NFT"
+          },
+          name: {
+            type: "string",
+            description: "The display name of the location"
+          },
+          description: {
+            type: "string",
+            description: "A narrative describing the location's origins, purpose, and role"
+          },
+          media: {
+            type: "object",
+            properties: {
+              image: {
+                type: "string",
+                description: "URI for the location's image"
+              },
+              video: {
+                type: "string",
+                description: "URI for any associated video content"
+              }
+            }
+          },
+          attributes: {
+            type: "array",
+            description: "An array of traits that define the location's characteristics",
+            items: {
+              type: "object",
+              properties: {
+                trait_type: {
+                  type: "string",
+                  description: "The category of the trait (e.g., 'Region', 'Ambience')"
+                },
+                value: {
+                  type: "string",
+                  description: "The value of the trait (e.g., 'Moonstone Sanctum', 'Mystical')"
+                }
+              }
+            }
+          },
+          currentAvatars: {
+            type: "array",
+            description: "List of avatar IDs currently in this location",
+            items: {
+              type: "string"
+            }
+          }
+        }
+      },
+      Memory: {
+        type: "object",
+        properties: {
+          id: {
+            type: "string",
+            description: "Unique identifier for the memory record"
+          },
+          avatarId: {
+            type: "string",
+            description: "ID of the avatar this memory belongs to"
+          },
+          timestamp: {
+            type: "string",
+            description: "ISO timestamp when this memory was created"
+          },
+          content: {
+            type: "string",
+            description: "Content of the memory"
+          },
+          type: {
+            type: "string",
+            description: "Type of memory (e.g., 'interaction', 'observation', 'reflection')"
+          },
+          locationId: {
+            type: "string",
+            description: "ID of the location where this memory was formed (if applicable)"
+          },
+          relatedEntities: {
+            type: "array",
+            description: "Other entities (avatars, items) involved in this memory",
+            items: {
+              type: "object",
+              properties: {
+                id: {
+                  type: "string",
+                  description: "ID of the related entity"
+                },
+                type: {
+                  type: "string",
+                  description: "Type of entity (avatar, item)"
+                },
+                role: {
+                  type: "string",
+                  description: "Role in the memory (e.g., 'participant', 'observer')"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+};

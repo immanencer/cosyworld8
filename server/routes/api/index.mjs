@@ -400,3 +400,165 @@ export default function(db) {
 
   return router;
 }
+import express from 'express';
+import { openApiSpec } from './openapi.mjs';
+
+export const router = express.Router();
+
+// OpenAPI specification endpoint
+router.get('/openapi.json', (req, res) => {
+  res.json(openApiSpec);
+});
+
+// Avatar endpoints
+router.get('/avatars', async (req, res) => {
+  try {
+    const avatarService = req.app.get('avatarService');
+    const avatars = await avatarService.getAllAvatars();
+    res.json(avatars);
+  } catch (error) {
+    console.error('Error fetching avatars:', error);
+    res.status(500).json({ error: 'Failed to fetch avatars' });
+  }
+});
+
+router.get('/avatars/:id', async (req, res) => {
+  try {
+    const avatarService = req.app.get('avatarService');
+    const avatar = await avatarService.getAvatarById(req.params.id);
+    if (!avatar) {
+      return res.status(404).json({ error: 'Avatar not found' });
+    }
+    res.json(avatar);
+  } catch (error) {
+    console.error(`Error fetching avatar ${req.params.id}:`, error);
+    res.status(500).json({ error: 'Failed to fetch avatar' });
+  }
+});
+
+router.get('/avatars/:id/memory', async (req, res) => {
+  try {
+    // This is a placeholder - implement based on your memory storage system
+    const db = req.app.get('db');
+    const memories = await db.collection('memories')
+      .find({ avatarId: req.params.id })
+      .sort({ timestamp: -1 })
+      .toArray();
+    
+    res.json(memories);
+  } catch (error) {
+    console.error(`Error fetching memories for avatar ${req.params.id}:`, error);
+    res.status(500).json({ error: 'Failed to fetch avatar memories' });
+  }
+});
+
+// Item endpoints
+router.get('/items', async (req, res) => {
+  try {
+    const db = req.app.get('db');
+    const items = await db.collection('items').find({}).toArray();
+    res.json(items);
+  } catch (error) {
+    console.error('Error fetching items:', error);
+    res.status(500).json({ error: 'Failed to fetch items' });
+  }
+});
+
+router.get('/items/:id', async (req, res) => {
+  try {
+    const db = req.app.get('db');
+    const item = await db.collection('items').findOne({ _id: req.params.id });
+    if (!item) {
+      return res.status(404).json({ error: 'Item not found' });
+    }
+    res.json(item);
+  } catch (error) {
+    console.error(`Error fetching item ${req.params.id}:`, error);
+    res.status(500).json({ error: 'Failed to fetch item' });
+  }
+});
+
+// Location endpoints
+router.get('/locations', async (req, res) => {
+  try {
+    const db = req.app.get('db');
+    const locations = await db.collection('locations').find({}).toArray();
+    res.json(locations);
+  } catch (error) {
+    console.error('Error fetching locations:', error);
+    res.status(500).json({ error: 'Failed to fetch locations' });
+  }
+});
+
+router.get('/locations/:id', async (req, res) => {
+  try {
+    const db = req.app.get('db');
+    const location = await db.collection('locations').findOne({ _id: req.params.id });
+    if (!location) {
+      return res.status(404).json({ error: 'Location not found' });
+    }
+    res.json(location);
+  } catch (error) {
+    console.error(`Error fetching location ${req.params.id}:`, error);
+    res.status(500).json({ error: 'Failed to fetch location' });
+  }
+});
+
+router.get('/locations/:id/avatars', async (req, res) => {
+  try {
+    const db = req.app.get('db');
+    const location = await db.collection('locations').findOne({ _id: req.params.id });
+    if (!location) {
+      return res.status(404).json({ error: 'Location not found' });
+    }
+    
+    const avatarService = req.app.get('avatarService');
+    // Assuming location has currentAvatars field with avatar IDs
+    if (!location.currentAvatars || !location.currentAvatars.length) {
+      return res.json([]);
+    }
+    
+    const avatars = await avatarService.getAvatars(location.currentAvatars);
+    res.json(avatars);
+  } catch (error) {
+    console.error(`Error fetching avatars for location ${req.params.id}:`, error);
+    res.status(500).json({ error: 'Failed to fetch location avatars' });
+  }
+});
+
+// Chat endpoint
+router.post('/chat', async (req, res) => {
+  try {
+    const { avatarId, message, locationId } = req.body;
+    
+    if (!avatarId || !message) {
+      return res.status(400).json({ error: 'Avatar ID and message are required' });
+    }
+    
+    const avatarService = req.app.get('avatarService');
+    const chatService = req.app.get('chatService');
+    
+    const avatar = await avatarService.getAvatarById(avatarId);
+    if (!avatar) {
+      return res.status(404).json({ error: 'Avatar not found' });
+    }
+    
+    // This is a simplified example - your chat logic will be more complex
+    const aiService = req.app.get('aiService');
+    const response = await aiService.chat([
+      { role: 'system', content: `You are ${avatar.name}, with the following personality: ${avatar.personality}. You are in ${locationId ? 'the location: ' + locationId : 'an unknown location'}.` },
+      { role: 'user', content: message }
+    ]);
+    
+    res.json({
+      response: response.content,
+      avatarId: avatar._id,
+      avatarName: avatar.name
+    });
+  } catch (error) {
+    console.error('Error in chat endpoint:', error);
+    res.status(500).json({ error: 'Failed to process chat request' });
+  }
+});
+
+export default router;
