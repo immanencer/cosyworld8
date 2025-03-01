@@ -1,15 +1,6 @@
-
 // Admin Panel Module
 const AdminPanel = (() => {
-  // DOM elements
-  let adminPanel;
-  let adminModalToggle;
-  let adminModal;
-  let adminTabs;
-  let adminContent;
-  let closeModal;
-
-  // Configuration data
+  // State variables
   let serverConfig = {
     servers: [],
     emojis: {
@@ -26,137 +17,115 @@ const AdminPanel = (() => {
 
   // Initialize admin panel
   function init() {
-    console.log('Trying to initialize admin panel');
+    console.log('Initializing Admin Panel');
 
     // Get DOM elements
-    adminPanel = document.getElementById('adminPanel');
-    adminModalToggle = document.getElementById('adminModalToggle');
-    adminModal = document.getElementById('adminModal');
-    adminTabs = document.getElementById('adminTabs');
-    adminContent = document.getElementById('admin-content');
-    closeModal = document.getElementById('closeModal');
+    const adminButton = document.getElementById('admin-button');
+    const adminModal = document.getElementById('admin-modal');
+    const closeAdmin = document.getElementById('close-admin');
+    const adminContent = document.getElementById('admin-content');
 
-    // Check if admin elements exist
-    if (!adminModal || !adminModalToggle) {
-      console.log('Admin panel elements not found. Initialization skipped.');
+    // Tab buttons
+    const adminTabButtons = document.querySelectorAll('.admin-tab-button');
+
+    if (!adminButton || !adminModal || !closeAdmin) {
+      console.error('Admin panel elements not found');
       return;
     }
 
-    console.log('Initializing admin panel');
-
-    // Add event listeners
-    adminModalToggle.addEventListener('click', function() {
-      adminModal.classList.toggle('hidden');
+    // Set up event listeners
+    adminButton.addEventListener('click', () => {
+      adminModal.classList.remove('hidden');
       fetchAdminData();
     });
 
-    closeModal.addEventListener('click', function() {
+    closeAdmin.addEventListener('click', () => {
       adminModal.classList.add('hidden');
     });
 
-    // Tab navigation
-    const tabButtons = adminTabs.querySelectorAll('button[data-tab]');
-    tabButtons.forEach(button => {
-      button.addEventListener('click', function() {
-        const tabName = this.getAttribute('data-tab');
-        
-        // Update active tab styling
-        tabButtons.forEach(btn => {
-          btn.classList.remove('bg-primary-600');
-          btn.classList.add('bg-surface-700');
+    // Set up tab switching
+    adminTabButtons.forEach(button => {
+      button.addEventListener('click', () => {
+        // Remove active class from all buttons
+        adminTabButtons.forEach(btn => {
+          btn.classList.remove('bg-primary-600', 'text-white');
+          btn.classList.add('hover:bg-surface-700', 'text-surface-300', 'hover:text-white');
         });
-        this.classList.remove('bg-surface-700');
-        this.classList.add('bg-primary-600');
-        
-        console.log('Showing tab content for:', tabName);
-        
-        // Show appropriate content
-        switch(tabName) {
-          case 'dashboard':
-            showDashboardTab();
-            break;
-          case 'avatars':
-            showAvatarsTab();
-            break;
-          case 'servers':
-            showServersTab();
-            break;
-          case 'tools':
-            showToolsTab();
-            break;
-          case 'settings':
-            showSettingsTab();
-            break;
-        }
+
+        // Add active class to clicked button
+        button.classList.remove('hover:bg-surface-700', 'text-surface-300', 'hover:text-white');
+        button.classList.add('bg-primary-600', 'text-white');
+
+        // Show corresponding tab content
+        const tabName = button.getAttribute('data-admin-tab');
+        console.log(`Showing tab content for: ${tabName}`);
+        showTabContent(tabName);
       });
     });
 
-    // Show dashboard tab by default
-    document.querySelector('button[data-tab="dashboard"]').click();
+    // Initially show dashboard tab
+    showTabContent('dashboard');
   }
 
-  // Fetch admin data from the server
-  async function fetchAdminData() {
-    try {
-      const response = await fetch('/api/admin/config');
-      if (!response.ok) {
-        throw new Error('Network response was not ok');
-      }
-      const data = await response.json();
-      updateAdminUI(data);
-    } catch (error) {
-      console.log('Error fetching admin data:', error);
-    }
-
-    try {
-      const serverResponse = await fetch('/api/admin/servers');
-      if (serverResponse.ok) {
-        const serverData = await serverResponse.json();
-        if (serverData.servers) {
-          serverConfig.servers = serverData.servers;
-          if (document.querySelector('button[data-tab="servers"].bg-primary-600')) {
-            showServersTab();
-          }
+  // Fetch admin data from API
+  function fetchAdminData() {
+    fetch('/api/admin/config')
+      .then(response => {
+        if (!response.ok) {
+          throw new Error(`HTTP error! Status: ${response.status}`);
         }
-      }
-    } catch (error) {
-      console.error('Error fetching servers:', error);
-    }
-
-    try {
-      const emojiResponse = await fetch('/api/admin/config/emojis');
-      if (emojiResponse.ok) {
-        const emojiData = await emojiResponse.json();
-        if (emojiData.emojis) {
-          serverConfig.emojis = emojiData.emojis;
-        }
-        if (emojiData.prompts) {
-          serverConfig.prompts = emojiData.prompts;
-        }
-        if (document.querySelector('button[data-tab="tools"].bg-primary-600')) {
-          showToolsTab();
-        }
-      }
-    } catch (error) {
-      console.error('Error fetching emoji config:', error);
-    }
+        return response.json();
+      })
+      .then(data => {
+        updateAdminUI(data);
+      })
+      .catch(error => {
+        console.error('Error fetching admin data:', error);
+      });
   }
 
+  // Update UI with fetched data
   function updateAdminUI(data) {
     if (data.stats) {
       const avatarCount = document.getElementById('avatarCount');
       const userCount = document.getElementById('userCount');
       const messageCount = document.getElementById('messageCount');
-      
+
       if (avatarCount) avatarCount.textContent = data.stats.avatarCount || 0;
       if (userCount) userCount.textContent = data.stats.userCount || 0;
       if (messageCount) messageCount.textContent = data.stats.messageCount || 0;
+    }
+
+    if (data.config) {
+      serverConfig = { ...serverConfig, ...data.config };
+    }
+  }
+
+  // Show appropriate tab content
+  function showTabContent(tabName) {
+    const adminContent = document.getElementById('admin-content');
+
+    switch (tabName) {
+      case 'dashboard':
+        showDashboardTab();
+        break;
+      case 'servers':
+        showServersTab();
+        break;
+      case 'settings':
+        showSettingsTab();
+        break;
+      default:
+        showDashboardTab();
     }
   }
 
   // Tab content generators
   function showDashboardTab() {
+    const adminContent = document.getElementById('admin-content');
     adminContent.innerHTML = `
+      <h2 class="text-2xl font-bold mb-6">Dashboard</h2>
+
       <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
         <div class="bg-surface-800 rounded-lg p-4 flex flex-col justify-between">
           <div>
@@ -164,377 +133,181 @@ const AdminPanel = (() => {
             <h3 class="text-2xl font-bold text-white" id="avatarCount">--</h3>
           </div>
           <div class="flex justify-between items-center mt-4">
-            <span class="text-surface-400 text-xs">24% increase</span>
+            <span class="text-surface-400 text-xs">Growth Metric</span>
             <svg class="w-6 h-6 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"></path></svg>
           </div>
         </div>
-        
+
         <div class="bg-surface-800 rounded-lg p-4 flex flex-col justify-between">
           <div>
             <span class="text-surface-400 text-sm">Active Users</span>
             <h3 class="text-2xl font-bold text-white" id="userCount">--</h3>
           </div>
           <div class="flex justify-between items-center mt-4">
-            <span class="text-surface-400 text-xs">12% increase</span>
+            <span class="text-surface-400 text-xs">Growth Metric</span>
             <svg class="w-6 h-6 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"></path></svg>
           </div>
         </div>
-        
+
         <div class="bg-surface-800 rounded-lg p-4 flex flex-col justify-between">
           <div>
             <span class="text-surface-400 text-sm">Total Messages</span>
             <h3 class="text-2xl font-bold text-white" id="messageCount">--</h3>
           </div>
           <div class="flex justify-between items-center mt-4">
-            <span class="text-surface-400 text-xs">18% increase</span>
+            <span class="text-surface-400 text-xs">Growth Metric</span>
             <svg class="w-6 h-6 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"></path></svg>
           </div>
         </div>
       </div>
-      
-      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div class="bg-surface-800 rounded-lg p-4 md:p-6">
-          <h3 class="text-lg md:text-xl font-semibold text-white mb-4">System Status</h3>
-          <div class="space-y-4">
-            <div>
-              <div class="flex justify-between mb-1">
-                <span class="text-surface-300">Server Load</span>
-                <span class="text-surface-300">28%</span>
-              </div>
-              <div class="w-full bg-surface-700 rounded-full h-2">
-                <div class="bg-blue-500 h-2 rounded-full" style="width: 28%"></div>
-              </div>
-            </div>
 
-            <div>
-              <div class="flex justify-between mb-1">
-                <span class="text-surface-300">Database</span>
-                <span class="text-surface-300">45%</span>
-              </div>
-              <div class="w-full bg-surface-700 rounded-full h-2">
-                <div class="bg-emerald-500 h-2 rounded-full" style="width: 45%"></div>
-              </div>
-            </div>
+      <h3 class="text-xl font-bold mb-4">Activity Overview</h3>
+      <div class="bg-surface-800 rounded-lg p-4 mb-6">
+        <p class="text-surface-300">Activity chart would go here</p>
+      </div>
 
-            <div>
-              <div class="flex justify-between mb-1">
-                <span class="text-surface-300">API Rate Limit</span>
-                <span class="text-surface-300">62%</span>
-              </div>
-              <div class="w-full bg-surface-700 rounded-full h-2">
-                <div class="bg-amber-500 h-2 rounded-full" style="width: 62%"></div>
-              </div>
-            </div>
-          </div>
-        </div>
-        
-        <div class="bg-surface-800 rounded-lg p-4 md:p-6">
-          <h3 class="text-lg md:text-xl font-semibold text-white mb-4">Recent Activity</h3>
-          <div class="space-y-4">
-            <div class="flex items-center gap-3">
-              <div class="w-10 h-10 rounded-full bg-surface-700 flex items-center justify-center text-lg">🧙</div>
-              <div class="flex-1">
-                <p class="text-white">New avatar created</p>
-                <p class="text-surface-400 text-sm">10 minutes ago</p>
-              </div>
-            </div>
-            <div class="flex items-center gap-3">
-              <div class="w-10 h-10 rounded-full bg-surface-700 flex items-center justify-center text-lg">🏆</div>
-              <div class="flex-1">
-                <p class="text-white">Dungeon cleared</p>
-                <p class="text-surface-400 text-sm">25 minutes ago</p>
-              </div>
-            </div>
-            <div class="flex items-center gap-3">
-              <div class="w-10 h-10 rounded-full bg-surface-700 flex items-center justify-center text-lg">💬</div>
-              <div class="flex-1">
-                <p class="text-white">New chat thread started</p>
-                <p class="text-surface-400 text-sm">45 minutes ago</p>
-              </div>
-            </div>
-          </div>
-        </div>
+      <h3 class="text-xl font-bold mb-4">Recent Activity</h3>
+      <div class="bg-surface-800 rounded-lg overflow-hidden">
+        <table class="min-w-full">
+          <thead class="bg-surface-700">
+            <tr>
+              <th class="py-3 px-4 text-left text-xs font-medium text-surface-300 uppercase tracking-wider">Time</th>
+              <th class="py-3 px-4 text-left text-xs font-medium text-surface-300 uppercase tracking-wider">Event</th>
+              <th class="py-3 px-4 text-left text-xs font-medium text-surface-300 uppercase tracking-wider">Details</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-surface-700">
+            <tr>
+              <td class="py-3 px-4 text-sm text-surface-300">10 min ago</td>
+              <td class="py-3 px-4 text-sm text-white">New Avatar Created</td>
+              <td class="py-3 px-4 text-sm text-surface-300">User created "Mystical Wizard"</td>
+            </tr>
+            <tr>
+              <td class="py-3 px-4 text-sm text-surface-300">25 min ago</td>
+              <td class="py-3 px-4 text-sm text-white">Server Connected</td>
+              <td class="py-3 px-4 text-sm text-surface-300">New Discord server "Fantasy Realm" connected</td>
+            </tr>
+            <tr>
+              <td class="py-3 px-4 text-sm text-surface-300">1 hour ago</td>
+              <td class="py-3 px-4 text-sm text-white">Combat Event</td>
+              <td class="py-3 px-4 text-sm text-surface-300">Dragon Knight defeated Shadow Assassin</td>
+            </tr>
+          </tbody>
+        </table>
       </div>
     `;
-  }
 
-  function showAvatarsTab() {
-    adminContent.innerHTML = `
-      <div class="bg-surface-800 rounded-lg p-4 md:p-6 mb-6">
-        <div class="flex justify-between items-center mb-4">
-          <h3 class="text-lg md:text-xl font-semibold text-white">Avatars Overview</h3>
-          <button class="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 text-sm">Add New Avatar</button>
-        </div>
-        
-        <div class="overflow-x-auto">
-          <table class="min-w-full divide-y divide-surface-700">
-            <thead>
-              <tr>
-                <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-surface-400 uppercase tracking-wider">Name</th>
-                <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-surface-400 uppercase tracking-wider">Model</th>
-                <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-surface-400 uppercase tracking-wider">Status</th>
-                <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-surface-400 uppercase tracking-wider">Created</th>
-                <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-surface-400 uppercase tracking-wider">Actions</th>
-              </tr>
-            </thead>
-            <tbody class="divide-y divide-surface-700">
-              <tr>
-                <td class="px-4 py-3 whitespace-nowrap">
-                  <div class="flex items-center">
-                    <div class="h-8 w-8 rounded-full bg-surface-700 flex items-center justify-center text-lg">🧙</div>
-                    <div class="ml-3">
-                      <div class="text-sm font-medium text-white">Gandalf</div>
-                    </div>
-                  </div>
-                </td>
-                <td class="px-4 py-3 whitespace-nowrap">
-                  <div class="text-sm text-surface-300">Claude</div>
-                </td>
-                <td class="px-4 py-3 whitespace-nowrap">
-                  <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">Active</span>
-                </td>
-                <td class="px-4 py-3 whitespace-nowrap text-sm text-surface-300">3 days ago</td>
-                <td class="px-4 py-3 whitespace-nowrap text-sm font-medium">
-                  <button class="text-primary-500 hover:text-primary-400 mr-3">Edit</button>
-                  <button class="text-red-500 hover:text-red-400">Delete</button>
-                </td>
-              </tr>
-              <tr>
-                <td class="px-4 py-3 whitespace-nowrap">
-                  <div class="flex items-center">
-                    <div class="h-8 w-8 rounded-full bg-surface-700 flex items-center justify-center text-lg">🧝</div>
-                    <div class="ml-3">
-                      <div class="text-sm font-medium text-white">Legolas</div>
-                    </div>
-                  </div>
-                </td>
-                <td class="px-4 py-3 whitespace-nowrap">
-                  <div class="text-sm text-surface-300">GPT-4</div>
-                </td>
-                <td class="px-4 py-3 whitespace-nowrap">
-                  <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">Active</span>
-                </td>
-                <td class="px-4 py-3 whitespace-nowrap text-sm text-surface-300">1 week ago</td>
-                <td class="px-4 py-3 whitespace-nowrap text-sm font-medium">
-                  <button class="text-primary-500 hover:text-primary-400 mr-3">Edit</button>
-                  <button class="text-red-500 hover:text-red-400">Delete</button>
-                </td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-      </div>
-    `;
+    // After populating the dashboard, fetch the latest data
+    fetchAdminData();
   }
 
   function showServersTab() {
-    let serversHTML = '';
-    
-    if (serverConfig.servers && serverConfig.servers.length > 0) {
-      serversHTML = serverConfig.servers.map(server => `
-        <tr>
-          <td class="px-4 py-3 whitespace-nowrap">
-            <div class="flex items-center">
-              <div class="ml-1">
-                <div class="text-sm font-medium text-white">${server.name || 'Unnamed Server'}</div>
-                <div class="text-xs text-surface-400">${server.id || 'No ID'}</div>
-              </div>
-            </div>
-          </td>
-          <td class="px-4 py-3 whitespace-nowrap">
-            <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${server.status === 'online' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}">${server.status || 'Unknown'}</span>
-          </td>
-          <td class="px-4 py-3 whitespace-nowrap text-sm text-surface-300">${server.users || 0}</td>
-          <td class="px-4 py-3 whitespace-nowrap text-sm text-surface-300">${server.avatars || 0}</td>
-          <td class="px-4 py-3 whitespace-nowrap text-sm font-medium">
-            <button class="text-primary-500 hover:text-primary-400 mr-3">Configure</button>
-            <button class="text-red-500 hover:text-red-400">Disconnect</button>
-          </td>
-        </tr>
-      `).join('');
-    } else {
-      serversHTML = `
-        <tr>
-          <td colspan="5" class="px-4 py-8 text-center text-surface-400">
-            No servers connected. Click "Add Server" to connect a new Discord server.
-          </td>
-        </tr>
-      `;
-    }
-
+    const adminContent = document.getElementById('admin-content');
     adminContent.innerHTML = `
-      <div class="bg-surface-800 rounded-lg p-4 md:p-6 mb-6">
-        <div class="flex flex-wrap justify-between items-center mb-4 gap-2">
-          <h3 class="text-lg md:text-xl font-semibold text-white">Connected Servers</h3>
-          <button class="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 text-sm">Add Server</button>
-        </div>
-        
-        <div class="overflow-x-auto">
-          <table class="min-w-full divide-y divide-surface-700">
-            <thead>
-              <tr>
-                <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-surface-400 uppercase tracking-wider">Server</th>
-                <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-surface-400 uppercase tracking-wider">Status</th>
-                <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-surface-400 uppercase tracking-wider">Users</th>
-                <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-surface-400 uppercase tracking-wider">Avatars</th>
-                <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-surface-400 uppercase tracking-wider">Actions</th>
-              </tr>
-            </thead>
-            <tbody class="divide-y divide-surface-700">
-              ${serversHTML}
-            </tbody>
-          </table>
-        </div>
+      <div class="flex justify-between items-center mb-6">
+        <h2 class="text-2xl font-bold">Connected Servers</h2>
+        <button class="bg-primary-600 hover:bg-primary-700 text-white px-4 py-2 rounded-md text-sm flex items-center">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+          </svg>
+          Add Server
+        </button>
       </div>
-    `;
 
-    // Add server button functionality
-    const addServerBtn = adminContent.querySelector('button');
-    addServerBtn.addEventListener('click', function() {
-      const newServer = {
-        id: 'server-' + Math.floor(Math.random() * 1000),
-        name: 'New Discord Server',
-        status: 'online',
-        users: Math.floor(Math.random() * 100),
-        avatars: Math.floor(Math.random() * 10)
-      };
-      
-      serverConfig.servers.push(newServer);
-      showServersTab(); // Refresh the tab
-    });
-  }
+      <div class="bg-surface-800 rounded-lg overflow-hidden mb-6">
+        <table class="min-w-full">
+          <thead class="bg-surface-700">
+            <tr>
+              <th class="py-3 px-4 text-left text-xs font-medium text-surface-300 uppercase tracking-wider">Server Name</th>
+              <th class="py-3 px-4 text-left text-xs font-medium text-surface-300 uppercase tracking-wider">Status</th>
+              <th class="py-3 px-4 text-left text-xs font-medium text-surface-300 uppercase tracking-wider">Users</th>
+              <th class="py-3 px-4 text-left text-xs font-medium text-surface-300 uppercase tracking-wider">Avatars</th>
+              <th class="py-3 px-4 text-left text-xs font-medium text-surface-300 uppercase tracking-wider">Actions</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-surface-700" id="server-list">
+            <tr>
+              <td class="py-3 px-4 text-sm text-white">Fantasy Realm</td>
+              <td class="py-3 px-4">
+                <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
+                  Online
+                </span>
+              </td>
+              <td class="py-3 px-4 text-sm text-surface-300">128</td>
+              <td class="py-3 px-4 text-sm text-surface-300">12</td>
+              <td class="py-3 px-4 text-sm text-surface-300">
+                <button class="text-primary-500 hover:text-primary-400 mr-2">Edit</button>
+                <button class="text-red-500 hover:text-red-400">Remove</button>
+              </td>
+            </tr>
+            <tr>
+              <td class="py-3 px-4 text-sm text-white">Dragon's Lair</td>
+              <td class="py-3 px-4">
+                <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
+                  Online
+                </span>
+              </td>
+              <td class="py-3 px-4 text-sm text-surface-300">85</td>
+              <td class="py-3 px-4 text-sm text-surface-300">8</td>
+              <td class="py-3 px-4 text-sm text-surface-300">
+                <button class="text-primary-500 hover:text-primary-400 mr-2">Edit</button>
+                <button class="text-red-500 hover:text-red-400">Remove</button>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
 
-  function showToolsTab() {
-    adminContent.innerHTML = `
-      <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <div class="bg-surface-800 rounded-lg p-4 md:p-6">
-          <h3 class="text-lg md:text-xl font-semibold text-white mb-4">Custom Emojis</h3>
-          <p class="text-surface-300 mb-4">Configure the emojis used for different actions in the game.</p>
-          
-          <div class="space-y-4">
-            <div>
-              <label class="block text-surface-300 text-sm font-medium mb-2">Summon Emoji</label>
-              <div class="flex">
-                <input type="text" id="summonEmoji" value="${serverConfig.emojis.summon}" class="w-full rounded-lg bg-surface-700 border-0 text-white focus:ring-2 focus:ring-primary-500 p-2 text-lg">
-              </div>
-            </div>
-            
-            <div>
-              <label class="block text-surface-300 text-sm font-medium mb-2">Breed Emoji</label>
-              <div class="flex">
-                <input type="text" id="breedEmoji" value="${serverConfig.emojis.breed}" class="w-full rounded-lg bg-surface-700 border-0 text-white focus:ring-2 focus:ring-primary-500 p-2 text-lg">
-              </div>
-            </div>
-            
-            <div>
-              <label class="block text-surface-300 text-sm font-medium mb-2">Attack Emoji</label>
-              <div class="flex">
-                <input type="text" id="attackEmoji" value="${serverConfig.emojis.attack}" class="w-full rounded-lg bg-surface-700 border-0 text-white focus:ring-2 focus:ring-primary-500 p-2 text-lg">
-              </div>
-            </div>
-            
-            <div>
-              <label class="block text-surface-300 text-sm font-medium mb-2">Defend Emoji</label>
-              <div class="flex">
-                <input type="text" id="defendEmoji" value="${serverConfig.emojis.defend}" class="w-full rounded-lg bg-surface-700 border-0 text-white focus:ring-2 focus:ring-primary-500 p-2 text-lg">
-              </div>
-            </div>
-            
-            <button id="saveEmojisButton" class="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 text-sm w-full">Save Emoji Changes</button>
+      <div class="flex justify-between items-center mb-6">
+        <h2 class="text-2xl font-bold">Command Emojis</h2>
+        <button class="bg-primary-600 hover:bg-primary-700 text-white px-4 py-2 rounded-md text-sm">Save Changes</button>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+        <div class="bg-surface-800 rounded-lg p-4">
+          <div class="mb-4">
+            <label class="block text-sm font-medium text-surface-300 mb-1">Summon Emoji</label>
+            <input type="text" id="summonEmoji" value="🔮" class="w-full bg-surface-700 border border-surface-600 rounded-md py-2 px-3 text-white focus:outline-none focus:ring-2 focus:ring-primary-500">
+          </div>
+
+          <div class="mb-4">
+            <label class="block text-sm font-medium text-surface-300 mb-1">Breed Emoji</label>
+            <input type="text" id="breedEmoji" value="🏹" class="w-full bg-surface-700 border border-surface-600 rounded-md py-2 px-3 text-white focus:outline-none focus:ring-2 focus:ring-primary-500">
           </div>
         </div>
-        
-        <div class="bg-surface-800 rounded-lg p-4 md:p-6">
-          <h3 class="text-lg md:text-xl font-semibold text-white mb-4">Custom Prompts</h3>
-          <p class="text-surface-300 mb-4">Configure the prompts used for different actions in the game.</p>
-          
-          <div class="space-y-4">
-            <div>
-              <label class="block text-surface-300 text-sm font-medium mb-2">Introduction Prompt</label>
-              <textarea id="introPrompt" class="w-full rounded-lg bg-surface-700 border-0 text-white focus:ring-2 focus:ring-primary-500 p-2 h-24">${serverConfig.prompts.introduction}</textarea>
-            </div>
-            
-            <div>
-              <label class="block text-surface-300 text-sm font-medium mb-2">Summon Prompt</label>
-              <textarea id="summonPrompt" class="w-full rounded-lg bg-surface-700 border-0 text-white focus:ring-2 focus:ring-primary-500 p-2 h-24">${serverConfig.prompts.summon}</textarea>
-            </div>
-            
-            <button id="savePromptsButton" class="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 text-sm w-full">Save Prompt Changes</button>
+
+        <div class="bg-surface-800 rounded-lg p-4">
+          <div class="mb-4">
+            <label class="block text-sm font-medium text-surface-300 mb-1">Attack Emoji</label>
+            <input type="text" id="attackEmoji" value="⚔️" class="w-full bg-surface-700 border border-surface-600 rounded-md py-2 px-3 text-white focus:outline-none focus:ring-2 focus:ring-primary-500">
+          </div>
+
+          <div class="mb-4">
+            <label class="block text-sm font-medium text-surface-300 mb-1">Defend Emoji</label>
+            <input type="text" id="defendEmoji" value="🛡️" class="w-full bg-surface-700 border border-surface-600 rounded-md py-2 px-3 text-white focus:outline-none focus:ring-2 focus:ring-primary-500">
           </div>
         </div>
       </div>
     `;
 
-    // Save emojis button
-    const saveEmojisButton = document.getElementById('saveEmojisButton');
-    saveEmojisButton.addEventListener('click', function() {
-      const newEmojis = {
-        summon: document.getElementById('summonEmoji').value,
-        breed: document.getElementById('breedEmoji').value,
-        attack: document.getElementById('attackEmoji').value,
-        defend: document.getElementById('defendEmoji').value
-      };
-
-      serverConfig.emojis = newEmojis;
-
-      fetch('/api/admin/config/emojis', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ emojis: newEmojis })
-      })
-      .then(response => response.json())
-      .then(data => {
-        if (data.success) {
-          alert('Emoji configuration saved successfully!');
-        } else {
-          alert('Error saving emoji configuration');
-        }
-      })
-      .catch(error => {
-        console.error('Error saving emoji config:', error);
-        alert('Error saving configuration');
-      });
-    });
-
-    // Save prompts button
-    const savePromptsButton = document.getElementById('savePromptsButton');
-    savePromptsButton.addEventListener('click', function() {
-      const newPrompts = {
-        introduction: document.getElementById('introPrompt').value,
-        summon: document.getElementById('summonPrompt').value
-      };
-
-      serverConfig.prompts = newPrompts;
-
-      fetch('/api/admin/config/prompts', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ prompts: newPrompts })
-      })
-      .then(response => response.json())
-      .then(data => {
-        if (data.success) {
-          alert('Prompt configuration saved successfully!');
-        } else {
-          alert('Error saving prompt configuration');
-        }
-      })
-      .catch(error => {
-        console.error('Error saving prompt config:', error);
-        alert('Error saving configuration');
-      });
-    });
+    // Populate emoji inputs with config data
+    document.getElementById('summonEmoji').value = serverConfig.emojis.summon;
+    document.getElementById('breedEmoji').value = serverConfig.emojis.breed;
+    document.getElementById('attackEmoji').value = serverConfig.emojis.attack;
+    document.getElementById('defendEmoji').value = serverConfig.emojis.defend;
   }
 
   function showSettingsTab() {
+    const adminContent = document.getElementById('admin-content');
     adminContent.innerHTML = `
+      <div class="flex justify-between items-center mb-6">
+        <h2 class="text-2xl font-bold">System Settings</h2>
+        <button id="saveSettingsButton" class="bg-primary-600 hover:bg-primary-700 text-white px-4 py-2 rounded-md text-sm">Save Changes</button>
+      </div>
+
       <div class="bg-surface-800 rounded-lg p-4 md:p-6 mb-6">
         <h3 class="text-lg md:text-xl font-semibold text-white mb-4">General Settings</h3>
-        
+
         <div class="space-y-6">
           <div>
             <h4 class="text-md font-medium text-white mb-3">Feature Toggles</h4>
@@ -553,73 +326,92 @@ const AdminPanel = (() => {
               </div>
             </div>
           </div>
-          
+
           <div>
-            <h4 class="text-md font-medium text-white mb-3">Rate Limits</h4>
-            <div class="grid grid-cols-2 gap-4">
+            <h4 class="text-md font-medium text-white mb-3">Rate Limiting</h4>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label class="block text-surface-300 text-sm font-medium mb-2">Messages per Interval</label>
-                <input type="number" id="rateMessages" class="w-full rounded-lg bg-surface-700 border-0 text-white focus:ring-2 focus:ring-primary-500 p-2" value="5">
+                <label for="rateMessages" class="block text-sm text-surface-300 mb-1">Messages per Interval</label>
+                <input type="number" id="rateMessages" value="5" min="1" max="100" class="w-full bg-surface-700 border border-surface-600 rounded-md py-2 px-3 text-white focus:outline-none focus:ring-2 focus:ring-primary-500">
               </div>
               <div>
-                <label class="block text-surface-300 text-sm font-medium mb-2">Interval (seconds)</label>
-                <input type="number" id="rateInterval" class="w-full rounded-lg bg-surface-700 border-0 text-white focus:ring-2 focus:ring-primary-500 p-2" value="10">
+                <label for="rateInterval" class="block text-sm text-surface-300 mb-1">Interval (seconds)</label>
+                <input type="number" id="rateInterval" value="10" min="1" max="3600" class="w-full bg-surface-700 border border-surface-600 rounded-md py-2 px-3 text-white focus:outline-none focus:ring-2 focus:ring-primary-500">
               </div>
             </div>
           </div>
-          
+
+          <div>
+            <h4 class="text-md font-medium text-white mb-3">System Prompts</h4>
+            <div class="space-y-4">
+              <div>
+                <label for="introPrompt" class="block text-sm text-surface-300 mb-1">Avatar Introduction Prompt</label>
+                <textarea id="introPrompt" rows="3" class="w-full bg-surface-700 border border-surface-600 rounded-md py-2 px-3 text-white focus:outline-none focus:ring-2 focus:ring-primary-500">${serverConfig.prompts.introduction}</textarea>
+              </div>
+              <div>
+                <label for="summonPrompt" class="block text-sm text-surface-300 mb-1">Summon Prompt</label>
+                <textarea id="summonPrompt" rows="3" class="w-full bg-surface-700 border border-surface-600 rounded-md py-2 px-3 text-white focus:outline-none focus:ring-2 focus:ring-primary-500">${serverConfig.prompts.summon}</textarea>
+              </div>
+            </div>
+          </div>
+
           <div>
             <h4 class="text-md font-medium text-white mb-3">Admin Access</h4>
-            <div class="space-y-3">
-              <div>
-                <label class="block text-surface-300 text-sm font-medium mb-2">Admin Discord Roles (comma-separated)</label>
-                <input type="text" id="adminRoles" class="w-full rounded-lg bg-surface-700 border-0 text-white focus:ring-2 focus:ring-primary-500 p-2" value="Admin, Moderator">
-              </div>
+            <div>
+              <label for="adminRoles" class="block text-sm text-surface-300 mb-1">Admin Role Names (comma separated)</label>
+              <input type="text" id="adminRoles" value="Admin, Moderator" class="w-full bg-surface-700 border border-surface-600 rounded-md py-2 px-3 text-white focus:outline-none focus:ring-2 focus:ring-primary-500">
             </div>
           </div>
-          
-          <button id="saveSettingsButton" class="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 text-sm">Save Settings</button>
         </div>
       </div>
     `;
 
-    // Save settings button
+    // Save settings button handler
     const saveSettingsButton = document.getElementById('saveSettingsButton');
-    saveSettingsButton.addEventListener('click', function() {
-      const settings = {
-        features: {
-          breeding: document.getElementById('featureBreeding').checked,
-          combat: document.getElementById('featureCombat').checked,
-          itemCreation: document.getElementById('featureItems').checked
-        },
-        rateLimit: {
-          messages: parseInt(document.getElementById('rateMessages').value),
-          interval: parseInt(document.getElementById('rateInterval').value)
-        },
-        adminRoles: document.getElementById('adminRoles').value.split(',').map(role => role.trim())
-      };
+    if (saveSettingsButton) {
+      saveSettingsButton.addEventListener('click', function() {
+        const settings = {
+          features: {
+            breeding: document.getElementById('featureBreeding').checked,
+            combat: document.getElementById('featureCombat').checked,
+            itemCreation: document.getElementById('featureItems').checked
+          },
+          rateLimit: {
+            messages: parseInt(document.getElementById('rateMessages').value),
+            interval: parseInt(document.getElementById('rateInterval').value)
+          },
+          prompts: {
+            introduction: document.getElementById('introPrompt').value,
+            summon: document.getElementById('summonPrompt').value
+          },
+          adminRoles: document.getElementById('adminRoles').value.split(',').map(role => role.trim())
+        };
 
-      fetch('/api/admin/settings', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(settings)
-      })
-      .then(response => response.json())
-      .then(data => {
-        if (data.success) {
-          alert('Settings saved successfully!');
-        } else {
+        fetch('/api/admin/settings', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(settings)
+        })
+        .then(response => response.json())
+        .then(data => {
+          if (data.success) {
+            alert('Settings saved successfully!');
+          } else {
+            alert('Error saving settings');
+          }
+        })
+        .catch(error => {
+          console.error('Error saving settings:', error);
           alert('Error saving settings');
-        }
-      })
-      .catch(error => {
-        console.error('Error saving settings:', error);
-        alert('Error saving settings');
+        });
       });
-    });
+    }
   }
+
+  // Initialize on page load
+  document.addEventListener('DOMContentLoaded', init);
 
   // Return public methods
   return {
@@ -627,7 +419,7 @@ const AdminPanel = (() => {
   };
 })();
 
-// Initialize the admin panel when the DOM is ready
-document.addEventListener('DOMContentLoaded', function() {
+// Additional initialization check in case DOM is already loaded
+if (document.readyState === 'complete' || document.readyState === 'interactive') {
   AdminPanel.init();
-});
+}

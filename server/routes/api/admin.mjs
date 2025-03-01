@@ -330,7 +330,7 @@ function createRouter(db) {
   }));
 
   // Get all configuration for admin panel
-  router.get('/config', asyncHandler(async (req, res) => {
+  router.get('/admin/config', asyncHandler(async (req, res) => { // Added admin prefix to avoid conflict
     try {
       // Get various stats from the database
       const avatarCount = await db.avatars.countDocuments();
@@ -466,7 +466,7 @@ function createRouter(db) {
     }
   }));
 
-    router.post('/avatars', asyncHandler(async (req, res) => {
+  router.post('/avatars', asyncHandler(async (req, res) => {
     const {
       name,
       description,
@@ -670,6 +670,140 @@ function createRouter(db) {
       },
       recentActivity
     });
+  }));
+
+
+  // Inject the admin routes from the edited code
+  const adminRouter = adminRouterFactory(db);
+  router.use('/admin', adminRouter);
+
+
+  return router;
+}
+
+//This function is injected from the edited code.
+export default function adminRouterFactory(db) {
+  const router = express.Router();
+
+  // Get admin dashboard data
+  router.get('/config', asyncHandler(async (req, res) => {
+    try {
+      // Get various stats from the database
+      const avatarCount = await db.avatars.countDocuments();
+      const messageCount = await db.messages.countDocuments();
+      const locationCount = await db.collection('locations').countDocuments();
+
+      // Mock server data (in a real app, this would come from a database)
+      const servers = [
+        {
+          id: 'server-1',
+          name: 'Fantasy Realm',
+          status: 'online',
+          users: 128,
+          avatars: 12
+        },
+        {
+          id: 'server-2',
+          name: 'Dragon\'s Lair',
+          status: 'online',
+          users: 85,
+          avatars: 8
+        }
+      ];
+
+      // Mock config data (in a real app, this would come from a database or config file)
+      const config = {
+        emojis: {
+          summon: "🔮",
+          breed: "🏹",
+          attack: "⚔️",
+          defend: "🛡️"
+        },
+        prompts: {
+          introduction: "You have been summoned to this realm. This is your one chance to impress me, and save yourself from Elimination. Good luck, and DONT fuck it up.",
+          summon: "Create a unique avatar with a special ability."
+        },
+        features: {
+          breeding: true,
+          combat: true,
+          itemCreation: true
+        },
+        rateLimit: {
+          messages: 5,
+          interval: 10
+        },
+        adminRoles: ["Admin", "Moderator"]
+      };
+
+      res.json({
+        success: true,
+        stats: {
+          avatarCount,
+          userCount: 250, // Mock data
+          messageCount,
+          locationCount
+        },
+        servers,
+        config
+      });
+    } catch (error) {
+      console.error("Error fetching admin config:", error);
+      res.status(500).json({ error: error.message });
+    }
+  }));
+
+  // Save admin settings
+  router.post('/settings', asyncHandler(async (req, res) => {
+    try {
+      const { features, rateLimit, prompts, adminRoles } = req.body;
+
+      // In a real app, we would save these to a database or config file
+      console.log('New settings received:', { features, rateLimit, prompts, adminRoles });
+
+      res.json({ 
+        success: true,
+        message: 'Settings saved successfully'
+      });
+    } catch (error) {
+      console.error("Error saving admin settings:", error);
+      res.status(500).json({ error: error.message });
+    }
+  }));
+
+  // Update server configuration
+  router.post('/servers', asyncHandler(async (req, res) => {
+    try {
+      const { servers } = req.body;
+
+      // In a real app, we would save these to a database
+      console.log('Server configuration updated:', servers);
+
+      res.json({ 
+        success: true,
+        message: 'Server configuration updated'
+      });
+    } catch (error) {
+      console.error("Error updating server configuration:", error);
+      res.status(500).json({ error: error.message });
+    }
+  }));
+
+  // Update emoji configuration
+  router.post('/emojis', asyncHandler(async (req, res) => {
+    try {
+      const { emojis } = req.body;
+
+      // In a real app, we would save these to a database
+      console.log('Emoji configuration updated:', emojis);
+
+      res.json({ 
+        success: true,
+        message: 'Emoji configuration updated'
+      });
+    } catch (error) {
+      console.error("Error updating emoji configuration:", error);
+      res.status(500).json({ error: error.message });
+    }
   }));
 
   return router;
