@@ -226,6 +226,124 @@ function createRouter(db) {
     }
   }));
 
+  // Get connected servers
+  router.get('/servers', asyncHandler(async (req, res) => {
+    try {
+      // In a production environment, this would fetch from Discord API
+      // For now, we'll return mock data
+      const servers = [
+        {
+          id: '123456789012345678',
+          name: 'Moonstone Sanctum',
+          icon: '🌙',
+          memberCount: 387,
+          channels: ['general', 'bot-commands', 'roleplay']
+        },
+        {
+          id: '987654321098765432',
+          name: 'AI Avatars Community',
+          icon: '🤖',
+          memberCount: 1245,
+          channels: ['general', 'summons', 'dungeon']
+        }
+      ];
+      
+      res.json({ success: true, servers });
+    } catch (error) {
+      res.status(500).json({ error: error.message });
+    }
+  }));
+
+  // Get emoji configuration
+  router.get('/config/emojis', asyncHandler(async (req, res) => {
+    try {
+      const config = await loadConfig();
+      res.json({
+        success: true,
+        emojis: config.toolEmojis || {
+          '🔮': 'summon',
+          '🏹': 'breed',
+          '⚔️': 'attack',
+          '🛡️': 'defend'
+        },
+        prompts: config.prompts || {
+          introduction: 'You have been summoned to this realm. This is your one chance to impress me, and save yourself from Elimination. Good luck, and DONT fuck it up.',
+          summon: 'Create a unique avatar with a special ability.'
+        }
+      });
+    } catch (error) {
+      res.status(500).json({ error: error.message });
+    }
+  }));
+
+  // Update emoji configuration
+  router.post('/config/emojis', asyncHandler(async (req, res) => {
+    try {
+      const { emojis } = req.body;
+      const config = await loadConfig();
+      
+      config.toolEmojis = emojis;
+      await saveUserConfig(config);
+      
+      res.json({ success: true, emojis });
+    } catch (error) {
+      res.status(500).json({ error: error.message });
+    }
+  }));
+
+  // Update prompt configuration
+  router.post('/config/prompts', asyncHandler(async (req, res) => {
+    try {
+      const { prompts } = req.body;
+      const config = await loadConfig();
+      
+      config.prompts = prompts;
+      await saveUserConfig(config);
+      
+      res.json({ success: true, prompts });
+    } catch (error) {
+      res.status(500).json({ error: error.message });
+    }
+  }));
+
+  // Get all configuration for admin panel
+  router.get('/config', asyncHandler(async (req, res) => {
+    try {
+      // Get various stats from the database
+      const avatarCount = await db.avatars.countDocuments();
+      const messageCount = await db.messages.countDocuments();
+      const locations = await db.collection('locations').countDocuments();
+      
+      // Get config
+      const config = await loadConfig();
+      
+      res.json({
+        success: true,
+        stats: {
+          avatarCount,
+          userCount: 250, // Mock data
+          messageCount,
+          locationCount: locations
+        },
+        config: {
+          features: config.features || {
+            breeding: true,
+            combat: true,
+            itemCreation: true
+          },
+          adminRoles: config.adminRoles || ["Admin", "Moderator"],
+          rateLimit: config.rateLimit || {
+            messages: 5,
+            interval: 10
+          }
+        }
+      });
+    } catch (error) {
+      console.error("Error fetching admin config:", error);
+      res.status(500).json({ error: error.message });
+    }
+  }));
+
   router.get('/stats', asyncHandler(async (req, res) => {
     try {
       const config = await loadConfig();
