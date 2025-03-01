@@ -1,3 +1,4 @@
+
 // Admin Panel Module
 const AdminPanel = (() => {
   // DOM elements
@@ -6,220 +7,377 @@ const AdminPanel = (() => {
   const adminContent = adminModal ? document.getElementById('admin-content') : null;
   const closeAdminBtn = document.createElement('button');
 
-  // State
-  let isInitialized = false;
-
-  // Initialize the admin panel
+  // Initialize admin panel
   function init() {
-    if (isInitialized) return;
-
-    if (!adminModal || !adminBtn) {
-      console.warn('Admin panel elements not found. Initialization skipped.');
+    // Check if admin elements exist
+    if (!adminBtn || !adminModal || !adminContent) {
+      console.log('Admin panel elements not found. Initialization skipped.');
       return;
     }
 
-    setupEventListeners();
-    createCloseButton();
-    isInitialized = true;
-  }
+    console.log('Initializing admin panel');
 
-  // Set up event listeners
-  function setupEventListeners() {
-    if (adminBtn) {
-      adminBtn.addEventListener('click', toggleAdminPanel);
-    }
+    // Set up close button
+    closeAdminBtn.className = 'absolute top-4 right-4 text-gray-600 hover:text-gray-800';
+    closeAdminBtn.innerHTML = '<svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>';
+    adminModal.appendChild(closeAdminBtn);
 
-    // Close modal when clicking outside content
-    if (adminModal) {
-      adminModal.addEventListener('click', (e) => {
-        if (e.target === adminModal) {
-          hideAdminPanel();
-        }
-      });
-    }
-
-    // Keyboard shortcut (Escape)
-    document.addEventListener('keydown', (e) => {
-      if (e.key === 'Escape' && adminModal && adminModal.classList.contains('flex')) {
-        hideAdminPanel();
-      }
-    });
-  }
-
-  // Create close button
-  function createCloseButton() {
-    closeAdminBtn.classList.add('absolute', 'top-4', 'right-4', 'text-gray-400', 'hover:text-white', 'p-2');
-    closeAdminBtn.innerHTML = `
-      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6">
-        <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
-      </svg>
-    `;
+    // Add event listeners
+    adminBtn.addEventListener('click', showAdminPanel);
     closeAdminBtn.addEventListener('click', hideAdminPanel);
-  }
 
-  // Toggle admin panel visibility
-  function toggleAdminPanel() {
-    if (!adminModal) return;
-
-    if (adminModal.classList.contains('hidden')) {
-      showAdminPanel();
-    } else {
-      hideAdminPanel();
-    }
+    // Create tabs
+    createTabs();
   }
 
   // Show admin panel
   function showAdminPanel() {
-    if (!adminModal || !adminContent) return;
-
-    adminModal.classList.remove('hidden');
-    adminModal.classList.add('flex');
-    document.body.classList.add('overflow-hidden');
-
-    // Add close button to admin panel
-    const headerDiv = adminContent.querySelector('.admin-header') || document.createElement('div');
-    if (!headerDiv.classList.contains('admin-header')) {
-      headerDiv.classList.add('admin-header', 'relative');
-      adminContent.prepend(headerDiv);
+    if (adminModal) {
+      adminModal.classList.remove('hidden');
+      fetchAdminData();
     }
-    headerDiv.appendChild(closeAdminBtn);
-
-    // Load admin panel content
-    loadAdminContent();
   }
 
   // Hide admin panel
   function hideAdminPanel() {
-    if (!adminModal) return;
-
-    adminModal.classList.remove('flex');
-    adminModal.classList.add('hidden');
-    document.body.classList.remove('overflow-hidden');
+    if (adminModal) {
+      adminModal.classList.add('hidden');
+    }
   }
 
-  // Load admin panel content
-  function loadAdminContent() {
-    if (!adminContent) return;
+  // Fetch admin data
+  async function fetchAdminData() {
+    try {
+      // Fetch avatars
+      const avatarsResponse = await fetch('/api/admin/avatars');
+      const avatarsData = await avatarsResponse.json();
+      
+      // Fetch items
+      const itemsResponse = await fetch('/api/admin/items');
+      const itemsData = await itemsResponse.json();
+      
+      // Fetch locations
+      const locationsResponse = await fetch('/api/admin/locations');
+      const locationsData = await locationsResponse.json();
+      
+      // Update UI with data
+      updateAvatarsTab(avatarsData);
+      updateItemsTab(itemsData);
+      updateLocationsTab(locationsData);
+      
+    } catch (error) {
+      console.error('Error fetching admin data:', error);
+      showToast('Error loading admin data. Please try again.', 'error');
+    }
+  }
 
-    adminContent.innerHTML = `
-      <div class="admin-header relative p-4 border-b border-surface-700 flex justify-between items-center">
-        <h2 class="text-xl font-semibold text-white">Admin Panel</h2>
-      </div>
+  // Create admin tabs
+  function createTabs() {
+    const tabsContainer = document.createElement('div');
+    tabsContainer.className = 'border-b border-gray-200';
+    
+    const tabsList = document.createElement('div');
+    tabsList.className = 'flex -mb-px';
+    
+    const tabs = [
+      { id: 'avatars-tab', name: 'Avatars' },
+      { id: 'items-tab', name: 'Items' },
+      { id: 'locations-tab', name: 'Locations' },
+      { id: 'create-tab', name: 'Create' }
+    ];
+    
+    tabs.forEach((tab, index) => {
+      const tabBtn = document.createElement('button');
+      tabBtn.className = index === 0 
+        ? 'py-2 px-4 text-sm font-medium text-blue-600 border-b-2 border-blue-600'
+        : 'py-2 px-4 text-sm font-medium text-gray-500 hover:text-gray-700 hover:border-gray-300';
+      tabBtn.textContent = tab.name;
+      tabBtn.id = tab.id;
+      tabBtn.addEventListener('click', () => switchTab(tab.id));
+      tabsList.appendChild(tabBtn);
+    });
+    
+    tabsContainer.appendChild(tabsList);
+    adminContent.appendChild(tabsContainer);
+    
+    // Create content containers for each tab
+    tabs.forEach(tab => {
+      const contentDiv = document.createElement('div');
+      contentDiv.id = `${tab.id}-content`;
+      contentDiv.className = tab.id === 'avatars-tab' ? 'mt-4' : 'mt-4 hidden';
+      adminContent.appendChild(contentDiv);
+    });
+    
+    // Create forms for the "Create" tab
+    setupCreateTab();
+  }
 
-      <div class="p-6 space-y-6">
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <!-- Avatar Management -->
-          <div class="bg-surface-800 rounded-lg p-4 shadow">
-            <h3 class="text-lg font-medium mb-4">Avatar Management</h3>
-            <div class="grid grid-cols-2 gap-3 mb-4">
-              <div class="bg-surface-800 p-3 rounded">
-                <p class="text-gray-400 text-sm">Total Avatars</p>
-                <p class="text-xl font-semibold" id="avatar-count">Loading...</p>
-              </div>
-              <div class="bg-surface-800 p-3 rounded">
-                <p class="text-gray-400 text-sm">Active Avatars</p>
-                <p class="text-xl font-semibold">-</p>
-              </div>
-            </div>
-            <button id="create-avatar-btn" class="bg-primary-600 hover:bg-primary-700 text-white py-2 px-4 rounded">
-              Create New Avatar
-            </button>
-          </div>
+  // Switch between tabs
+  function switchTab(tabId) {
+    // Reset all tabs
+    const allTabs = document.querySelectorAll('[id$="-tab"]');
+    allTabs.forEach(tab => {
+      tab.className = 'py-2 px-4 text-sm font-medium text-gray-500 hover:text-gray-700 hover:border-gray-300';
+    });
+    
+    // Reset all content divs
+    const allContent = document.querySelectorAll('[id$="-tab-content"]');
+    allContent.forEach(content => {
+      content.classList.add('hidden');
+    });
+    
+    // Activate selected tab
+    document.getElementById(tabId).className = 'py-2 px-4 text-sm font-medium text-blue-600 border-b-2 border-blue-600';
+    document.getElementById(`${tabId}-content`).classList.remove('hidden');
+  }
 
-          <!-- System Stats -->
-          <div class="bg-surface-800 rounded-lg p-4 shadow">
-            <h3 class="text-lg font-medium mb-4">System Stats</h3>
-            <div class="grid grid-cols-2 gap-3">
-              <div class="bg-surface-800 p-3 rounded">
-                <p class="text-gray-400 text-sm">Total Items</p>
-                <p class="text-xl font-semibold" id="item-count">Loading...</p>
-              </div>
-              <div class="bg-surface-800 p-3 rounded">
-                <p class="text-gray-400 text-sm">Total Locations</p>
-                <p class="text-xl font-semibold" id="location-count">Loading...</p>
-              </div>
-            </div>
-          </div>
+  // Setup create tab
+  function setupCreateTab() {
+    const createContent = document.getElementById('create-tab-content');
+    if (!createContent) return;
+    
+    createContent.innerHTML = `
+      <div class="space-y-6">
+        <h3 class="text-lg font-medium text-gray-900">Create New</h3>
+        <div class="space-y-2">
+          <button id="create-avatar-btn" class="bg-blue-600 text-white px-4 py-2 rounded">New Avatar</button>
+          <button id="create-item-btn" class="bg-green-600 text-white px-4 py-2 rounded">New Item</button>
+          <button id="create-location-btn" class="bg-purple-600 text-white px-4 py-2 rounded">New Location</button>
         </div>
       </div>
     `;
-
-    // Add the close button back to the header
-    const headerDiv = adminContent.querySelector('.admin-header');
-    if (headerDiv) {
-      headerDiv.appendChild(closeAdminBtn);
-    }
-
-    // Load system stats
-    loadSystemStats();
-
-    // Set up buttons
-    setupAdminButtons();
-  }
-
-  // Load system statistics
-  function loadSystemStats() {
-    // Fetch avatar count
-    fetch('/api/avatars?limit=1')
-      .then(res => res.json())
-      .then(data => {
-        const avatarCount = document.getElementById('avatar-count');
-        if (avatarCount) {
-          avatarCount.textContent = data.total || 0;
-        }
-      })
-      .catch(err => {
-        const avatarCount = document.getElementById('avatar-count');
-        if (avatarCount) {
-          avatarCount.textContent = 'Error';
-        }
-        console.error('Error fetching avatar count:', err);
-      });
-
-    // Fetch item count
-    fetch('/api/items?limit=1')
-      .then(res => res.json())
-      .then(data => {
-        const itemCount = document.getElementById('item-count');
-        if (itemCount) {
-          itemCount.textContent = data.total || 0;
-        }
-      })
-      .catch(err => {
-        const itemCount = document.getElementById('item-count');
-        if (itemCount) {
-          itemCount.textContent = 'Error';
-        }
-        console.error('Error fetching item count:', err);
-      });
-
-    // Fetch location count
-    fetch('/api/locations?limit=1')
-      .then(res => res.json())
-      .then(data => {
-        const locationCount = document.getElementById('location-count');
-        if (locationCount) {
-          locationCount.textContent = data.total || 0;
-        }
-      })
-      .catch(err => {
-        const locationCount = document.getElementById('location-count');
-        if (locationCount) {
-          locationCount.textContent = 'Error';
-        }
-        console.error('Error fetching location count:', err);
-      });
-  }
-
-  // Set up admin buttons
-  function setupAdminButtons() {
+    
     const createAvatarBtn = document.getElementById('create-avatar-btn');
     if (createAvatarBtn) {
       createAvatarBtn.addEventListener('click', showCreateAvatarForm);
     }
   }
-  
-  // Add return statement to expose public methods
+
+  // Show create avatar form
+  function showCreateAvatarForm() {
+    const createContent = document.getElementById('create-tab-content');
+    if (!createContent) return;
+    
+    createContent.innerHTML = `
+      <div class="space-y-6">
+        <div class="flex items-center">
+          <button id="back-to-create" class="mr-2">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
+            </svg>
+          </button>
+          <h3 class="text-lg font-medium text-gray-900">Create New Avatar</h3>
+        </div>
+        
+        <form id="create-avatar-form" class="space-y-4">
+          <div>
+            <label for="avatar-name" class="block text-sm font-medium text-gray-700">Name</label>
+            <input type="text" id="avatar-name" name="name" class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2">
+          </div>
+          
+          <div>
+            <label for="avatar-description" class="block text-sm font-medium text-gray-700">Description</label>
+            <textarea id="avatar-description" name="description" rows="3" class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"></textarea>
+          </div>
+          
+          <div>
+            <label for="avatar-personality" class="block text-sm font-medium text-gray-700">Personality</label>
+            <textarea id="avatar-personality" name="personality" rows="3" class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"></textarea>
+          </div>
+          
+          <div>
+            <label for="avatar-emoji" class="block text-sm font-medium text-gray-700">Emoji</label>
+            <input type="text" id="avatar-emoji" name="emoji" class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2" maxlength="5">
+          </div>
+          
+          <div>
+            <label for="avatar-model" class="block text-sm font-medium text-gray-700">AI Model</label>
+            <select id="avatar-model" name="model" class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2">
+              <option value="llama3:8b-instruct-fp16">Llama 3 (8B)</option>
+              <option value="llama3:70b-instruct-fp16">Llama 3 (70B)</option>
+              <option value="claude-3-haiku">Claude 3 Haiku</option>
+              <option value="claude-3-sonnet">Claude 3 Sonnet</option>
+              <option value="gpt-4-turbo">GPT-4 Turbo</option>
+              <option value="gpt-3.5-turbo">GPT-3.5 Turbo</option>
+            </select>
+          </div>
+          
+          <div>
+            <button type="submit" class="bg-blue-600 text-white px-4 py-2 rounded">Create Avatar</button>
+          </div>
+        </form>
+      </div>
+    `;
+    
+    // Back button handler
+    const backBtn = document.getElementById('back-to-create');
+    if (backBtn) {
+      backBtn.addEventListener('click', setupCreateTab);
+    }
+    
+    // Form submission
+    const form = document.getElementById('create-avatar-form');
+    if (form) {
+      form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        await createAvatar(form);
+      });
+    }
+  }
+
+  // Create avatar
+  async function createAvatar(form) {
+    const formData = new FormData(form);
+    const avatarData = {
+      name: formData.get('name'),
+      description: formData.get('description'),
+      personality: formData.get('personality'),
+      emoji: formData.get('emoji'),
+      model: formData.get('model'),
+      status: 'active'
+    };
+    
+    try {
+      const response = await fetch('/api/admin/avatars', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(avatarData)
+      });
+      
+      if (response.ok) {
+        const result = await response.json();
+        showToast('Avatar created successfully!', 'success');
+        setupCreateTab();
+        fetchAdminData();
+      } else {
+        const error = await response.json();
+        showToast(error.message || 'Error creating avatar', 'error');
+      }
+    } catch (error) {
+      console.error('Error creating avatar:', error);
+      showToast('Error creating avatar. Please try again.', 'error');
+    }
+  }
+
+  // Update avatars tab with data
+  function updateAvatarsTab(avatars) {
+    const avatarsContent = document.getElementById('avatars-tab-content');
+    if (!avatarsContent) return;
+    
+    if (!avatars || avatars.length === 0) {
+      avatarsContent.innerHTML = '<p class="text-gray-500">No avatars found.</p>';
+      return;
+    }
+    
+    let html = `
+      <div class="overflow-x-auto">
+        <table class="min-w-full divide-y divide-gray-200">
+          <thead class="bg-gray-50">
+            <tr>
+              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
+              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Emoji</th>
+              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Model</th>
+              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+            </tr>
+          </thead>
+          <tbody class="bg-white divide-y divide-gray-200">
+    `;
+    
+    avatars.forEach(avatar => {
+      html += `
+        <tr>
+          <td class="px-6 py-4 whitespace-nowrap">${avatar.name}</td>
+          <td class="px-6 py-4 whitespace-nowrap">${avatar.emoji || '—'}</td>
+          <td class="px-6 py-4 whitespace-nowrap">
+            <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-${avatar.status === 'active' ? 'green' : 'gray'}-100 text-${avatar.status === 'active' ? 'green' : 'gray'}-800">
+              ${avatar.status}
+            </span>
+          </td>
+          <td class="px-6 py-4 whitespace-nowrap">${avatar.model || 'Default'}</td>
+          <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+            <button class="text-indigo-600 hover:text-indigo-900 mr-2 edit-avatar" data-id="${avatar._id}">Edit</button>
+            <button class="text-red-600 hover:text-red-900 delete-avatar" data-id="${avatar._id}">Delete</button>
+          </td>
+        </tr>
+      `;
+    });
+    
+    html += `
+          </tbody>
+        </table>
+      </div>
+    `;
+    
+    avatarsContent.innerHTML = html;
+    
+    // Add event listeners for edit and delete buttons
+    const editButtons = avatarsContent.querySelectorAll('.edit-avatar');
+    editButtons.forEach(button => {
+      button.addEventListener('click', () => {
+        const avatarId = button.getAttribute('data-id');
+        editAvatar(avatarId);
+      });
+    });
+    
+    const deleteButtons = avatarsContent.querySelectorAll('.delete-avatar');
+    deleteButtons.forEach(button => {
+      button.addEventListener('click', () => {
+        const avatarId = button.getAttribute('data-id');
+        deleteAvatar(avatarId);
+      });
+    });
+  }
+
+  // Update items tab with data
+  function updateItemsTab(items) {
+    const itemsContent = document.getElementById('items-tab-content');
+    if (!itemsContent) return;
+    
+    // Similar implementation as updateAvatarsTab
+    itemsContent.innerHTML = '<p class="text-gray-500">Items tab content loading...</p>';
+  }
+
+  // Update locations tab with data
+  function updateLocationsTab(locations) {
+    const locationsContent = document.getElementById('locations-tab-content');
+    if (!locationsContent) return;
+    
+    // Similar implementation as updateAvatarsTab
+    locationsContent.innerHTML = '<p class="text-gray-500">Locations tab content loading...</p>';
+  }
+
+  // Edit avatar
+  function editAvatar(avatarId) {
+    console.log('Edit avatar:', avatarId);
+    // Implementation TBD
+  }
+
+  // Delete avatar
+  async function deleteAvatar(avatarId) {
+    if (!confirm('Are you sure you want to delete this avatar?')) return;
+    
+    try {
+      const response = await fetch(`/api/admin/avatars/${avatarId}`, {
+        method: 'DELETE'
+      });
+      
+      if (response.ok) {
+        showToast('Avatar deleted successfully!', 'success');
+        fetchAdminData();
+      } else {
+        const error = await response.json();
+        showToast(error.message || 'Error deleting avatar', 'error');
+      }
+    } catch (error) {
+      console.error('Error deleting avatar:', error);
+      showToast('Error deleting avatar. Please try again.', 'error');
+    }
+  }
+
+  // Return public methods
   return {
     init
   };
@@ -229,143 +387,3 @@ const AdminPanel = (() => {
 document.addEventListener('DOMContentLoaded', () => {
   AdminPanel.init();
 });
-
-  // Show create avatar form
-  function showCreateAvatarForm() {
-    if (!adminContent) return;
-
-    adminContent.innerHTML = `
-      <div class="admin-header relative p-4 border-b border-surface-700 flex justify-between items-center">
-        <h2 class="text-xl font-semibold text-white">Create New Avatar</h2>
-        <button id="back-to-admin" class="text-gray-400 hover:text-white">
-          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M9 15L3 9m0 0l6-6M3 9h12a6 6 0 010 12h-3" />
-          </svg>
-        </button>
-      </div>
-
-      <div class="p-6">
-        <form id="avatar-form" class="space-y-4">
-          <div>
-            <label for="name" class="block text-sm font-medium text-gray-300">Name</label>
-            <input type="text" id="name" name="name" required
-                  class="mt-1 block w-full bg-surface-700 border border-surface-600 rounded-md shadow-sm py-2 px-3 text-white">
-          </div>
-
-          <div>
-            <label for="description" class="block text-sm font-medium text-gray-300">Description</label>
-            <textarea id="description" name="description" rows="3" required
-                     class="mt-1 block w-full bg-surface-700 border border-surface-600 rounded-md shadow-sm py-2 px-3 text-white"></textarea>
-          </div>
-
-          <div>
-            <label for="personality" class="block text-sm font-medium text-gray-300">Personality</label>
-            <textarea id="personality" name="personality" rows="3" required
-                     class="mt-1 block w-full bg-surface-700 border border-surface-600 rounded-md shadow-sm py-2 px-3 text-white"></textarea>
-          </div>
-
-          <div>
-            <label for="emoji" class="block text-sm font-medium text-gray-300">Emoji</label>
-            <input type="text" id="emoji" name="emoji" placeholder="✨"
-                  class="mt-1 block w-full bg-surface-700 border border-surface-600 rounded-md shadow-sm py-2 px-3 text-white">
-          </div>
-
-          <div>
-            <label for="imageUrl" class="block text-sm font-medium text-gray-300">Image URL</label>
-            <input type="text" id="imageUrl" name="imageUrl"
-                  class="mt-1 block w-full bg-surface-700 border border-surface-600 rounded-md shadow-sm py-2 px-3 text-white">
-          </div>
-
-          <div>
-            <label for="locationId" class="block text-sm font-medium text-gray-300">Location</label>
-            <select id="locationId" name="locationId"
-                   class="mt-1 block w-full bg-surface-700 border border-surface-600 rounded-md shadow-sm py-2 px-3 text-white">
-              <option value="">Select location...</option>
-            </select>
-          </div>
-
-          <div class="pt-2">
-            <button type="submit" class="bg-primary-600 hover:bg-primary-700 text-white py-2 px-4 rounded">
-              Create Avatar
-            </button>
-          </div>
-        </form>
-      </div>
-    `;
-
-    // Add close button
-    const headerDiv = adminContent.querySelector('.admin-header');
-    if (headerDiv) {
-      headerDiv.appendChild(closeAdminBtn);
-    }
-
-    // Load locations for dropdown
-    fetch('/api/locations?limit=100')
-      .then(res => res.json())
-      .then(data => {
-        const locationSelect = document.querySelector('select[name="locationId"]');
-        if (locationSelect) {
-          data.data.forEach(location => {
-            const option = document.createElement('option');
-            option.value = location._id;
-            option.textContent = location.name;
-            locationSelect.appendChild(option);
-          });
-        }
-      })
-      .catch(err => console.error('Error fetching locations:', err));
-
-    // Set up back button
-    const backBtn = document.getElementById('back-to-admin');
-    if (backBtn) {
-      backBtn.addEventListener('click', loadAdminContent);
-    }
-
-    // Set up form submission
-    const avatarForm = document.getElementById('avatar-form');
-    if (avatarForm) {
-      avatarForm.addEventListener('submit', function(e) {
-        e.preventDefault();
-
-        const formData = new FormData(this);
-        const avatarData = {
-          name: formData.get('name'),
-          description: formData.get('description'),
-          personality: formData.get('personality'),
-          emoji: formData.get('emoji') || '✨',
-          imageUrl: formData.get('imageUrl') || 'https://via.placeholder.com/200',
-          locationId: formData.get('locationId')
-        };
-
-        fetch('/api/admin/avatars', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify(avatarData)
-        })
-        .then(res => res.json())
-        .then(data => {
-          if (data.error) {
-            throw new Error(data.error);
-          }
-          alert('Avatar created successfully!');
-          loadAdminContent();
-        })
-        .catch(err => {
-          console.error('Error creating avatar:', err);
-          alert('Failed to create avatar: ' + err.message);
-        });
-      });
-    }
-  }
-
-  // Public API
-  return {
-    init,
-    toggleAdminPanel
-  };
-})();
-
-// Initialize when DOM is loaded
-document.addEventListener('DOMContentLoaded', AdminPanel.init);
