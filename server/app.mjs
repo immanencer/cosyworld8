@@ -43,8 +43,7 @@ async function initializeApp() {
     // Mount the API router
     app.use('/api', (await import('./routes/api/index.mjs')).default(db));
     
-    // Mount admin routes
-    app.use('/api/admin', (await import('./routes/api/admin.mjs')).default(db));
+    // Admin routes are already mounted in index.mjs router
 
     // Explicitly mount your original routes with database connection
     // You'll need to gradually migrate these to the OpenAPI format
