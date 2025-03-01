@@ -1,5 +1,5 @@
 import { ObjectId } from 'mongodb';
-import { OpenRouterService } from '../openrouterService.mjs';
+import { GoogleAIService as AIService } from '../googleAIService.mjs';
 
 import { DungeonLog } from './DungeonLog.mjs';
 import { AttackTool } from './tools/AttackTool.mjs';
@@ -78,7 +78,7 @@ export class DungeonService {
     this.avatarPositions = new Map(); // avatarId -> { locationId, areaId }
 
     // AI service initialization
-    this.aiService = new OpenRouterService();
+    this.aiService = new AIService();
     this.locationService = new LocationService(this.client, this.aiService, this.db);
     this.itemService = new ItemService(this.client, this.aiService, this.db);
     this.registerTools();

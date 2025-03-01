@@ -3,7 +3,7 @@
 import { SchemaValidator } from './utils/schemaValidator.mjs';
 import Replicate from 'replicate';
 // import { OllamaService as AIService } from './ollamaService.mjs';
-import { OpenRouterService as AIService } from './openrouterService.mjs';
+import { GoogleAIService as AIService } from './googleAIService.mjs';
 
 import process from 'process';
 import winston from 'winston';

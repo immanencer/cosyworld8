@@ -91,7 +91,7 @@ async function initializeApp() {
     });
 
   } catch (error) {
-    console.error('Failed to connect to MongoDB:', error);
+    console.error('Failed to initialize server', error);
     process.exit(1);
   }
 }
