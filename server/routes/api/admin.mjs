@@ -16,7 +16,7 @@ function createRouter(db) {
   router.get('/avatars', asyncHandler(async (req, res) => {
     const limit = parseInt(req.query.limit) || 20;
     const offset = parseInt(req.query.offset) || 0;
-    
+
     const total = await db.avatars.countDocuments();
     const data = await db.avatars
       .find()
@@ -24,18 +24,18 @@ function createRouter(db) {
       .skip(offset)
       .limit(limit)
       .toArray();
-    
+
     res.json({ data, total, limit, offset });
   }));
-  
+
   router.post('/avatars', asyncHandler(async (req, res) => {
     const { name, description, personality, emoji, model } = req.body;
-    
+
     // Basic validation
     if (!name) {
       return res.status(400).json({ error: 'Name is required' });
     }
-    
+
     const newAvatar = {
       name,
       description: description || '',
@@ -46,13 +46,13 @@ function createRouter(db) {
       createdAt: new Date(),
       updatedAt: new Date()
     };
-    
+
     const result = await db.avatars.insertOne(newAvatar);
     newAvatar._id = result.insertedId;
-    
+
     res.status(201).json(newAvatar);
   }));
-  
+
   router.get('/avatars/:id', asyncHandler(async (req, res) => {
     let id;
     try {
@@ -60,15 +60,15 @@ function createRouter(db) {
     } catch (err) {
       return res.status(400).json({ error: 'Invalid ID format' });
     }
-    
+
     const avatar = await db.avatars.findOne({ _id: id });
     if (!avatar) {
       return res.status(404).json({ error: 'Avatar not found' });
     }
-    
+
     res.json(avatar);
   }));
-  
+
   router.put('/avatars/:id', asyncHandler(async (req, res) => {
     let id;
     try {
@@ -76,14 +76,14 @@ function createRouter(db) {
     } catch (err) {
       return res.status(400).json({ error: 'Invalid ID format' });
     }
-    
+
     const { name, description, personality, emoji, model, status } = req.body;
-    
+
     // Basic validation
     if (!name) {
       return res.status(400).json({ error: 'Name is required' });
     }
-    
+
     const updatedAvatar = {
       name,
       description,
@@ -93,19 +93,19 @@ function createRouter(db) {
       status,
       updatedAt: new Date()
     };
-    
+
     const result = await db.avatars.updateOne(
       { _id: id },
       { $set: updatedAvatar }
     );
-    
+
     if (result.matchedCount === 0) {
       return res.status(404).json({ error: 'Avatar not found' });
     }
-    
+
     res.json({ ...updatedAvatar, _id: id });
   }));
-  
+
   router.delete('/avatars/:id', asyncHandler(async (req, res) => {
     let id;
     try {
@@ -113,20 +113,20 @@ function createRouter(db) {
     } catch (err) {
       return res.status(400).json({ error: 'Invalid ID format' });
     }
-    
+
     const result = await db.avatars.deleteOne({ _id: id });
-    
+
     if (result.deletedCount === 0) {
       return res.status(404).json({ error: 'Avatar not found' });
     }
-    
+
     res.status(204).end();
   }));
-  
+
   router.get('/items', asyncHandler(async (req, res) => {
     const limit = parseInt(req.query.limit) || 20;
     const offset = parseInt(req.query.offset) || 0;
-    
+
     const total = await db.collection('items').countDocuments();
     const data = await db.collection('items')
       .find()
@@ -134,14 +134,14 @@ function createRouter(db) {
       .skip(offset)
       .limit(limit)
       .toArray();
-    
+
     res.json({ data, total, limit, offset });
   }));
-  
+
   router.get('/locations', asyncHandler(async (req, res) => {
     const limit = parseInt(req.query.limit) || 20;
     const offset = parseInt(req.query.offset) || 0;
-    
+
     const total = await db.collection('locations').countDocuments();
     const data = await db.collection('locations')
       .find()
@@ -149,7 +149,7 @@ function createRouter(db) {
       .skip(offset)
       .limit(limit)
       .toArray();
-    
+
     res.json({ data, total, limit, offset });
   }));
 
@@ -229,25 +229,24 @@ function createRouter(db) {
   // Get connected servers
   router.get('/servers', asyncHandler(async (req, res) => {
     try {
-      // In a production environment, this would fetch from Discord API
-      // For now, we'll return mock data
+      // Mock data or fetch from database
       const servers = [
         {
-          id: '123456789012345678',
-          name: 'Moonstone Sanctum',
-          icon: '🌙',
-          memberCount: 387,
-          channels: ['general', 'bot-commands', 'roleplay']
+          id: 'server1',
+          name: 'CosyWorld Main',
+          status: 'online',
+          users: 124,
+          avatars: 45
         },
         {
-          id: '987654321098765432',
-          name: 'AI Avatars Community',
-          icon: '🤖',
-          memberCount: 1245,
-          channels: ['general', 'summons', 'dungeon']
+          id: 'server2',
+          name: 'AI Tavern',
+          status: 'online',
+          users: 87,
+          avatars: 23
         }
       ];
-      
+
       res.json({ success: true, servers });
     } catch (error) {
       res.status(500).json({ error: error.message });
@@ -258,17 +257,17 @@ function createRouter(db) {
   router.get('/config/emojis', asyncHandler(async (req, res) => {
     try {
       const config = await loadConfig();
-      res.json({
-        success: true,
-        emojis: config.toolEmojis || {
-          '🔮': 'summon',
-          '🏹': 'breed',
-          '⚔️': 'attack',
-          '🛡️': 'defend'
+      res.json({ 
+        success: true, 
+        emojis: config.emojis || {
+          summon: "🔮",
+          breed: "🏹",
+          attack: "⚔️",
+          defend: "🛡️"
         },
         prompts: config.prompts || {
-          introduction: 'You have been summoned to this realm. This is your one chance to impress me, and save yourself from Elimination. Good luck, and DONT fuck it up.',
-          summon: 'Create a unique avatar with a special ability.'
+          introduction: "You have been summoned to this realm. This is your one chance to impress me, and save yourself from Elimination. Good luck, and DONT fuck it up.",
+          summon: "Create a unique avatar with a special ability."
         }
       });
     } catch (error) {
@@ -280,11 +279,14 @@ function createRouter(db) {
   router.post('/config/emojis', asyncHandler(async (req, res) => {
     try {
       const { emojis } = req.body;
+      if (!emojis) {
+        return res.status(400).json({ error: 'Emoji configuration is required' });
+      }
+
       const config = await loadConfig();
-      
-      config.toolEmojis = emojis;
+      config.emojis = emojis;
       await saveUserConfig(config);
-      
+
       res.json({ success: true, emojis });
     } catch (error) {
       res.status(500).json({ error: error.message });
@@ -295,12 +297,33 @@ function createRouter(db) {
   router.post('/config/prompts', asyncHandler(async (req, res) => {
     try {
       const { prompts } = req.body;
+      if (!prompts) {
+        return res.status(400).json({ error: 'Prompt configuration is required' });
+      }
+
       const config = await loadConfig();
-      
       config.prompts = prompts;
       await saveUserConfig(config);
-      
+
       res.json({ success: true, prompts });
+    } catch (error) {
+      res.status(500).json({ error: error.message });
+    }
+  }));
+
+  // Update admin settings
+  router.post('/settings', asyncHandler(async (req, res) => {
+    try {
+      const { features, rateLimit, adminRoles } = req.body;
+
+      const config = await loadConfig();
+      if (features) config.features = features;
+      if (rateLimit) config.rateLimit = rateLimit;
+      if (adminRoles) config.adminRoles = adminRoles;
+
+      await saveUserConfig(config);
+
+      res.json({ success: true, config: { features, rateLimit, adminRoles } });
     } catch (error) {
       res.status(500).json({ error: error.message });
     }
@@ -313,10 +336,8 @@ function createRouter(db) {
       const avatarCount = await db.avatars.countDocuments();
       const messageCount = await db.messages.countDocuments();
       const locations = await db.collection('locations').countDocuments();
-      
-      // Get config
+
       const config = await loadConfig();
-      
       res.json({
         success: true,
         stats: {
@@ -456,12 +477,12 @@ function createRouter(db) {
       lives,
       status
     } = req.body;
-    
+
     // Validate required fields
     if (!name || !description || !personality) {
       return res.status(400).json({ error: 'Name, description, and personality are required' });
     }
-    
+
     // Create avatar object
     const avatar = {
       name,
@@ -475,17 +496,17 @@ function createRouter(db) {
       createdAt: new Date(),
       updatedAt: new Date()
     };
-    
+
     // Insert into database
     const result = await db.avatars.insertOne(avatar);
-    
+
     // Return created avatar with ID
     res.status(201).json({
       _id: result.insertedId,
       ...avatar
     });
   }));
-  
+
   router.delete('/avatars/:id', asyncHandler(async (req, res) => {
     let id;
     try {
@@ -493,17 +514,17 @@ function createRouter(db) {
     } catch (err) {
       return res.status(400).json({ error: 'Invalid ID format' });
     }
-    
+
     // Delete avatar
     const result = await db.avatars.deleteOne({ _id: id });
-    
+
     if (result.deletedCount === 0) {
       return res.status(404).json({ error: 'Avatar not found' });
     }
-    
+
     res.json({ message: 'Avatar deleted successfully' });
   }));
-  
+
   router.put('/avatars/:id', asyncHandler(async (req, res) => {
     let id;
     try {
@@ -511,7 +532,7 @@ function createRouter(db) {
     } catch (err) {
       return res.status(400).json({ error: 'Invalid ID format' });
     }
-    
+
     const {
       name,
       description,
@@ -522,7 +543,7 @@ function createRouter(db) {
       lives,
       status
     } = req.body;
-    
+
     // Create update object with only provided fields
     const updateObj = {};
     if (name !== undefined) updateObj.name = name;
@@ -533,20 +554,20 @@ function createRouter(db) {
     if (locationId !== undefined) updateObj.locationId = locationId;
     if (lives !== undefined) updateObj.lives = lives;
     if (status !== undefined) updateObj.status = status;
-    
+
     // Add updated timestamp
     updateObj.updatedAt = new Date();
-    
+
     // Update avatar
     const result = await db.avatars.updateOne(
       { _id: id },
       { $set: updateObj }
     );
-    
+
     if (result.matchedCount === 0) {
       return res.status(404).json({ error: 'Avatar not found' });
     }
-    
+
     // Return updated avatar
     const updatedAvatar = await db.avatars.findOne({ _id: id });
     res.json(updatedAvatar);
@@ -562,12 +583,12 @@ function createRouter(db) {
       owner,
       locationId
     } = req.body;
-    
+
     // Validate required fields
     if (!name || !description) {
       return res.status(400).json({ error: 'Name and description are required' });
     }
-    
+
     // Create item object
     const item = {
       name,
@@ -580,17 +601,17 @@ function createRouter(db) {
       createdAt: new Date(),
       updatedAt: new Date()
     };
-    
+
     // Insert into database
     const result = await db.collection('items').insertOne(item);
-    
+
     // Return created item with ID
     res.status(201).json({
       _id: result.insertedId,
       ...item
     });
   }));
-  
+
   router.post('/locations', asyncHandler(async (req, res) => {
     const {
       name,
@@ -598,12 +619,12 @@ function createRouter(db) {
       imageUrl,
       type
     } = req.body;
-    
+
     // Validate required fields
     if (!name || !description) {
       return res.status(400).json({ error: 'Name and description are required' });
     }
-    
+
     // Create location object
     const location = {
       name,
@@ -613,17 +634,17 @@ function createRouter(db) {
       createdAt: new Date(),
       updatedAt: new Date()
     };
-    
+
     // Insert into database
     const result = await db.collection('locations').insertOne(location);
-    
+
     // Return created location with ID
     res.status(201).json({
       _id: result.insertedId,
       ...location
     });
   }));
-  
+
   router.get('/stats', asyncHandler(async (req, res) => {
     // Get counts
     const [avatarCount, itemCount, locationCount, memoryCount] = await Promise.all([
@@ -632,14 +653,14 @@ function createRouter(db) {
       db.collection('locations').countDocuments(),
       db.memories.countDocuments()
     ]);
-    
+
     // Get recent activity (last 10 memories)
     const recentActivity = await db.memories
       .find()
       .sort({ timestamp: -1 })
       .limit(10)
       .toArray();
-    
+
     res.json({
       counts: {
         avatars: avatarCount,
