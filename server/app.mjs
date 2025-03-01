@@ -58,7 +58,7 @@ async function initializeApp() {
     app.use('/api/wiki', (await import('./routes/wiki.mjs')).default(db));
     app.use('/api/social', (await import('./routes/social.mjs')).default(db));
     app.use('/api/claims', (await import('./routes/claims.mjs')).default(db));
-    app.use('/api/v1', (await import('./routes/api/index.mjs')).default(db));
+    // Removed duplicate API router import for /api/v1
 
     // Add renounce claim route
     app.post('/api/claims/renounce', async (req, res) => {
