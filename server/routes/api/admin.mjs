@@ -223,3 +223,162 @@ export default function(db) {
   
   return router;
 }
+import express from 'express';
+import { ObjectId } from 'mongodb';
+
+const router = express.Router();
+
+// Wrap async route handlers to catch errors
+const asyncHandler = (fn) => (req, res, next) =>
+  Promise.resolve(fn(req, res, next)).catch(next);
+
+export default function(db) {
+  // Get all avatars with pagination
+  router.get('/avatars', asyncHandler(async (req, res) => {
+    const limit = parseInt(req.query.limit) || 20;
+    const offset = parseInt(req.query.offset) || 0;
+    
+    const total = await db.avatars.countDocuments();
+    const data = await db.avatars
+      .find()
+      .sort({ createdAt: -1 })
+      .skip(offset)
+      .limit(limit)
+      .toArray();
+    
+    res.json({ data, total, limit, offset });
+  }));
+  
+  // Create a new avatar
+  router.post('/avatars', asyncHandler(async (req, res) => {
+    const { name, description, personality, emoji, model } = req.body;
+    
+    // Basic validation
+    if (!name) {
+      return res.status(400).json({ error: 'Name is required' });
+    }
+    
+    const newAvatar = {
+      name,
+      description: description || '',
+      personality: personality || '',
+      emoji: emoji || '🧙‍♂️',
+      model: model || 'gpt-4',
+      status: 'active',
+      createdAt: new Date(),
+      updatedAt: new Date()
+    };
+    
+    const result = await db.avatars.insertOne(newAvatar);
+    newAvatar._id = result.insertedId;
+    
+    res.status(201).json(newAvatar);
+  }));
+  
+  // Get a specific avatar
+  router.get('/avatars/:id', asyncHandler(async (req, res) => {
+    let id;
+    try {
+      id = new ObjectId(req.params.id);
+    } catch (err) {
+      return res.status(400).json({ error: 'Invalid ID format' });
+    }
+    
+    const avatar = await db.avatars.findOne({ _id: id });
+    if (!avatar) {
+      return res.status(404).json({ error: 'Avatar not found' });
+    }
+    
+    res.json(avatar);
+  }));
+  
+  // Update an avatar
+  router.put('/avatars/:id', asyncHandler(async (req, res) => {
+    let id;
+    try {
+      id = new ObjectId(req.params.id);
+    } catch (err) {
+      return res.status(400).json({ error: 'Invalid ID format' });
+    }
+    
+    const { name, description, personality, emoji, model, status } = req.body;
+    
+    // Basic validation
+    if (!name) {
+      return res.status(400).json({ error: 'Name is required' });
+    }
+    
+    const updatedAvatar = {
+      name,
+      description,
+      personality,
+      emoji,
+      model,
+      status,
+      updatedAt: new Date()
+    };
+    
+    const result = await db.avatars.updateOne(
+      { _id: id },
+      { $set: updatedAvatar }
+    );
+    
+    if (result.matchedCount === 0) {
+      return res.status(404).json({ error: 'Avatar not found' });
+    }
+    
+    res.json({ ...updatedAvatar, _id: id });
+  }));
+  
+  // Delete an avatar
+  router.delete('/avatars/:id', asyncHandler(async (req, res) => {
+    let id;
+    try {
+      id = new ObjectId(req.params.id);
+    } catch (err) {
+      return res.status(400).json({ error: 'Invalid ID format' });
+    }
+    
+    const result = await db.avatars.deleteOne({ _id: id });
+    
+    if (result.deletedCount === 0) {
+      return res.status(404).json({ error: 'Avatar not found' });
+    }
+    
+    res.status(204).end();
+  }));
+  
+  // Basic items endpoints
+  router.get('/items', asyncHandler(async (req, res) => {
+    const limit = parseInt(req.query.limit) || 20;
+    const offset = parseInt(req.query.offset) || 0;
+    
+    const total = await db.collection('items').countDocuments();
+    const data = await db.collection('items')
+      .find()
+      .sort({ createdAt: -1 })
+      .skip(offset)
+      .limit(limit)
+      .toArray();
+    
+    res.json({ data, total, limit, offset });
+  }));
+  
+  // Basic locations endpoints
+  router.get('/locations', asyncHandler(async (req, res) => {
+    const limit = parseInt(req.query.limit) || 20;
+    const offset = parseInt(req.query.offset) || 0;
+    
+    const total = await db.collection('locations').countDocuments();
+    const data = await db.collection('locations')
+      .find()
+      .sort({ createdAt: -1 })
+      .skip(offset)
+      .limit(limit)
+      .toArray();
+    
+    res.json({ data, total, limit, offset });
+  }));
+  
+  return router;
+}
