@@ -13,9 +13,6 @@ class GuildSettingsManager {
     if (!guildSettingsContainer) return;
 
     try {
-      // Show loading state
-      this.showMessage('Loading guild configurations...', 'info');
-      
       // Load guild configs
       await this.loadGuildConfigs();
       
@@ -23,27 +20,41 @@ class GuildSettingsManager {
       this.initializeGuildSelector();
       this.initializeFormHandlers();
       
-      // Hide the loading message
-      document.getElementById('settings-message').classList.add('hidden');
+      // Show the interface
+      guildSettingsContainer.classList.remove('hidden');
     } catch (error) {
       console.error('Failed to initialize guild settings:', error);
-      this.showMessage(`Error loading configurations: ${error.message}`, 'error');
     }
   }
 
   async loadGuildConfigs() {
     try {
       const response = await fetch('/api/guilds');
-      if (!response.ok) {
-        throw new Error(`HTTP error ${response.status}`);
-      }
+      if (!response.ok) throw new Error('Failed to load guild configurations');
       
       this.guildConfigs = await response.json();
+      
+      // Also load connected guilds
+      const connectedResponse = await fetch('/api/guilds/connected/list');
+      if (connectedResponse.ok) {
+        const connectedGuilds = await connectedResponse.json();
+        
+        // Merge connected guilds with configurations
+        for (const guild of connectedGuilds) {
+          if (!this.guildConfigs.find(g => g.guildId === guild.id)) {
+            this.guildConfigs.push({
+              guildId: guild.id,
+              guildName: guild.name,
+              whitelisted: false
+            });
+          }
+        }
+      }
+      
       console.log('Loaded guild configurations:', this.guildConfigs);
-      return this.guildConfigs;
     } catch (error) {
-      console.error('Error loading guild configurations:', error);
-      throw error;
+      console.error('Error loading guild configs:', error);
+      this.guildConfigs = [];
     }
   }
 
@@ -51,175 +62,170 @@ class GuildSettingsManager {
     const selector = document.getElementById('guild-selector');
     if (!selector) return;
     
-    // Clear existing options (except the placeholder)
-    while (selector.options.length > 1) {
-      selector.remove(1);
-    }
+    // Clear existing options
+    selector.innerHTML = '';
     
-    // Add options for each guild configuration
-    this.guildConfigs.forEach(config => {
+    // Add default option
+    const defaultOption = document.createElement('option');
+    defaultOption.value = '';
+    defaultOption.textContent = 'Select Discord Server';
+    selector.appendChild(defaultOption);
+    
+    // Add options for each guild
+    this.guildConfigs.forEach(guild => {
       const option = document.createElement('option');
-      option.value = config.guildId;
-      option.textContent = config.guildName || `Server: ${config.guildId}`;
+      option.value = guild.guildId;
+      option.textContent = guild.guildName || `Server ID: ${guild.guildId}`;
       selector.appendChild(option);
     });
     
-    // Add an option to create a new guild configuration
-    const newOption = document.createElement('option');
-    newOption.value = 'new';
-    newOption.textContent = '➕ Add New Server Configuration';
-    selector.appendChild(newOption);
+    // Handle selection change
+    selector.addEventListener('change', () => {
+      this.selectedGuildId = selector.value;
+      this.loadGuildSettings(this.selectedGuildId);
+    });
+  }
+
+  async loadGuildSettings(guildId) {
+    if (!guildId) {
+      this.resetForm();
+      this.toggleFormVisibility(false);
+      return;
+    }
     
-    // Set up change event handler
-    selector.onchange = () => this.handleGuildSelection(selector.value);
+    try {
+      const response = await fetch(`/api/guilds/${guildId}`);
+      if (!response.ok) throw new Error('Failed to load guild settings');
+      
+      const settings = await response.json();
+      this.populateForm(settings);
+      this.toggleFormVisibility(true);
+    } catch (error) {
+      console.error(`Error loading settings for guild ${guildId}:`, error);
+      this.toggleFormVisibility(false);
+    }
+  }
+
+  resetForm() {
+    const form = document.getElementById('guild-settings-form');
+    if (form) form.reset();
+  }
+
+  toggleFormVisibility(visible) {
+    const form = document.getElementById('guild-settings-form');
+    const noServerMessage = document.getElementById('no-server-selected');
+    
+    if (form) form.classList.toggle('hidden', !visible);
+    if (noServerMessage) noServerMessage.classList.toggle('hidden', visible);
+  }
+
+  populateForm(settings) {
+    // Basic settings
+    this.setFormValue('guild-name', settings.guildName || '');
+    this.setFormValue('guild-whitelisted', settings.whitelisted || false);
+    this.setFormValue('summoner-role', settings.summonerRole || '');
+    
+    // Admin roles
+    this.setFormValue('admin-roles', (settings.adminRoles || []).join(', '));
+    
+    // Emojis
+    if (settings.toolEmojis) {
+      this.setFormValue('summon-emoji', settings.toolEmojis.summon || '🔮');
+      this.setFormValue('breed-emoji', settings.toolEmojis.breed || '🏹');
+      this.setFormValue('attack-emoji', settings.toolEmojis.attack || '⚔️');
+      this.setFormValue('defend-emoji', settings.toolEmojis.defend || '🛡️');
+    }
+    
+    // Features
+    if (settings.features) {
+      this.setFormValue('feature-breeding', settings.features.breeding !== false);
+      this.setFormValue('feature-combat', settings.features.combat !== false);
+      this.setFormValue('feature-item-creation', settings.features.itemCreation !== false);
+    }
+    
+    // Prompts
+    if (settings.prompts) {
+      this.setFormValue('prompt-introduction', settings.prompts.introduction || '');
+      this.setFormValue('prompt-summon', settings.prompts.summon || '');
+      this.setFormValue('prompt-attack', settings.prompts.attack || '');
+      this.setFormValue('prompt-defend', settings.prompts.defend || '');
+      this.setFormValue('prompt-breed', settings.prompts.breed || '');
+    }
+    
+    // Rate limits
+    if (settings.rateLimit) {
+      this.setFormValue('rate-limit-messages', settings.rateLimit.messages || 5);
+      this.setFormValue('rate-limit-interval', settings.rateLimit.interval / 1000 || 60);
+    }
+  }
+
+  setFormValue(id, value) {
+    const element = document.getElementById(id);
+    if (!element) return;
+    
+    if (element.type === 'checkbox') {
+      element.checked = value;
+    } else {
+      element.value = value;
+    }
+  }
+
+  getFormValue(id) {
+    const element = document.getElementById(id);
+    if (!element) return null;
+    
+    if (element.type === 'checkbox') {
+      return element.checked;
+    } else {
+      return element.value;
+    }
   }
 
   initializeFormHandlers() {
     const form = document.getElementById('guild-settings-form');
     if (!form) return;
     
-    // Set up form submission handler
-    form.onsubmit = (event) => {
+    form.addEventListener('submit', async (event) => {
       event.preventDefault();
-      this.saveGuildSettings();
-    };
-    
-    // Cancel button handler
-    const cancelButton = form.querySelector('button[type="button"]');
-    if (cancelButton) {
-      cancelButton.onclick = () => {
-        if (this.selectedGuildId) {
-          this.loadGuildSettings(this.selectedGuildId);
-        } else {
-          this.resetForm();
-          this.toggleFormVisibility(false);
-        }
-      };
-    }
-  }
-
-  handleGuildSelection(guildId) {
-    if (!guildId || guildId === '') {
-      this.selectedGuildId = null;
-      this.resetForm();
-      this.toggleFormVisibility(false);
-      return;
-    }
-    
-    if (guildId === 'new') {
-      this.selectedGuildId = 'new';
-      this.resetForm();
-      this.toggleFormVisibility(true);
-      document.getElementById('guild-id').removeAttribute('readonly');
-      document.getElementById('guild-id').focus();
-    } else {
-      this.selectedGuildId = guildId;
-      this.loadGuildSettings(guildId);
-    }
-  }
-
-  loadGuildSettings(guildId) {
-    const config = this.guildConfigs.find(c => c.guildId === guildId);
-    if (!config) {
-      this.showMessage(`Could not find configuration for server ID: ${guildId}`, 'error');
-      return;
-    }
-    
-    this.toggleFormVisibility(true);
-    
-    // Populate form fields
-    const form = document.getElementById('guild-settings-form');
-    
-    // Basic information
-    form.querySelector('#guild-id').value = config.guildId;
-    form.querySelector('#guild-id').setAttribute('readonly', true);
-    form.querySelector('#guild-name').value = config.guildName || '';
-    form.querySelector('#summoner-role').value = config.summonerRole || '';
-    form.querySelector('#admin-roles').value = (config.adminRoles || []).join(', ');
-    form.querySelector('#guild-whitelisted').checked = config.whitelisted || false;
-    
-    // Summon emoji
-    form.querySelector('#summon-emoji').value = config.summonEmoji || '✨';
-    
-    // Rate limits
-    form.querySelector('#rate-limit-messages').value = config.rateLimit?.messages || 5;
-    form.querySelector('#rate-limit-interval').value = (config.rateLimit?.interval || 60000) / 1000;
-    
-    // Prompts
-    form.querySelector('#intro-prompt').value = config.prompts?.introduction || '';
-    form.querySelector('#summon-prompt').value = config.prompts?.summon || '';
-    form.querySelector('#attack-prompt').value = config.prompts?.attack || '';
-    form.querySelector('#defend-prompt').value = config.prompts?.defend || '';
-    form.querySelector('#breed-prompt').value = config.prompts?.breed || '';
-    
-    // Tool emojis
-    form.querySelector('#tool-emoji-summon').value = config.toolEmojis?.summon || '💼';
-    form.querySelector('#tool-emoji-breed').value = config.toolEmojis?.breed || '🏹';
-    form.querySelector('#tool-emoji-attack').value = config.toolEmojis?.attack || '⚔️';
-    form.querySelector('#tool-emoji-defend').value = config.toolEmojis?.defend || '🛡️';
-    
-    // Features
-    form.querySelector('#feature-breeding').checked = config.features?.breeding || false;
-    form.querySelector('#feature-combat').checked = config.features?.combat || false;
-    form.querySelector('#feature-item-creation').checked = config.features?.itemCreation || false;
+      await this.saveGuildSettings();
+    });
   }
 
   async saveGuildSettings() {
+    if (!this.selectedGuildId) return;
+    
     try {
-      this.showMessage('Saving settings...', 'info');
-      
-      const form = document.getElementById('guild-settings-form');
-      const guildId = this.selectedGuildId === 'new' 
-        ? form.querySelector('#guild-id').value 
-        : this.selectedGuildId;
-      
-      if (!guildId) {
-        throw new Error('Guild ID is required');
-      }
-      
-      // Build settings object
       const settings = {
-        guildId: guildId,
-        guildName: form.querySelector('#guild-name').value,
-        summonerRole: form.querySelector('#summoner-role').value,
-        adminRoles: form.querySelector('#admin-roles').value.split(',')
-          .map(role => role.trim())
-          .filter(role => role),
-        whitelisted: form.querySelector('#guild-whitelisted').checked,
-        summonEmoji: form.querySelector('#summon-emoji').value,
-        rateLimit: {
-          messages: parseInt(form.querySelector('#rate-limit-messages').value) || 5,
-          interval: (parseInt(form.querySelector('#rate-limit-interval').value) || 60) * 1000
-        },
-        prompts: {
-          introduction: form.querySelector('#intro-prompt').value,
-          summon: form.querySelector('#summon-prompt').value,
-          attack: form.querySelector('#attack-prompt').value,
-          defend: form.querySelector('#defend-prompt').value,
-          breed: form.querySelector('#breed-prompt').value
-        },
+        guildName: this.getFormValue('guild-name'),
+        whitelisted: this.getFormValue('guild-whitelisted'),
+        summonerRole: this.getFormValue('summoner-role'),
+        adminRoles: this.getFormValue('admin-roles').split(',').map(role => role.trim()).filter(Boolean),
         toolEmojis: {
-          summon: form.querySelector('#tool-emoji-summon').value,
-          breed: form.querySelector('#tool-emoji-breed').value,
-          attack: form.querySelector('#tool-emoji-attack').value,
-          defend: form.querySelector('#tool-emoji-defend').value
+          summon: this.getFormValue('summon-emoji'),
+          breed: this.getFormValue('breed-emoji'),
+          attack: this.getFormValue('attack-emoji'),
+          defend: this.getFormValue('defend-emoji')
         },
         features: {
-          breeding: form.querySelector('#feature-breeding').checked,
-          combat: form.querySelector('#feature-combat').checked,
-          itemCreation: form.querySelector('#feature-item-creation').checked
+          breeding: this.getFormValue('feature-breeding'),
+          combat: this.getFormValue('feature-combat'),
+          itemCreation: this.getFormValue('feature-item-creation')
+        },
+        prompts: {
+          introduction: this.getFormValue('prompt-introduction'),
+          summon: this.getFormValue('prompt-summon'),
+          attack: this.getFormValue('prompt-attack'),
+          defend: this.getFormValue('prompt-defend'),
+          breed: this.getFormValue('prompt-breed')
+        },
+        rateLimit: {
+          messages: parseInt(this.getFormValue('rate-limit-messages'), 10),
+          interval: parseInt(this.getFormValue('rate-limit-interval'), 10) * 1000 // Convert to milliseconds
         }
       };
       
-      // Save settings to server
-      const url = this.selectedGuildId === 'new' 
-        ? '/api/guilds' 
-        : `/api/guilds/${guildId}`;
-      
-      const method = this.selectedGuildId === 'new' ? 'POST' : 'PATCH';
-      
-      const response = await fetch(url, {
-        method: method,
+      const response = await fetch(`/api/guilds/${this.selectedGuildId}`, {
+        method: 'POST',
         headers: {
           'Content-Type': 'application/json'
         },
@@ -243,55 +249,32 @@ class GuildSettingsManager {
       
       // Reselect current guild
       const selector = document.getElementById('guild-selector');
-      if (selector) selector.value = guildId;
-      this.selectedGuildId = guildId;
+      if (selector) selector.value = this.selectedGuildId;
     } catch (error) {
       console.error('Error saving guild settings:', error);
       this.showMessage(`Error: ${error.message}`, 'error');
     }
   }
 
-  resetForm() {
-    const form = document.getElementById('guild-settings-form');
-    if (form) form.reset();
-  }
-
-  toggleFormVisibility(visible) {
-    const form = document.getElementById('guild-settings-form');
-    const noServerMessage = document.getElementById('no-server-selected');
-    
-    if (form) form.classList.toggle('hidden', !visible);
-    if (noServerMessage) noServerMessage.classList.toggle('hidden', visible);
-  }
-
   showMessage(message, type = 'info') {
-    const messageElement = document.getElementById('settings-message');
-    if (!messageElement) return;
+    const messageContainer = document.getElementById('settings-message');
+    if (!messageContainer) return;
     
-    messageElement.textContent = message;
-    messageElement.classList.remove('hidden', 'message-success', 'message-error', 'message-info');
+    messageContainer.textContent = message;
+    messageContainer.className = ''; // Clear existing classes
+    messageContainer.classList.add('settings-message', `message-${type}`);
     
-    switch (type) {
-      case 'success':
-        messageElement.classList.add('message-success');
-        break;
-      case 'error':
-        messageElement.classList.add('message-error');
-        break;
-      default:
-        messageElement.classList.add('message-info');
-    }
+    // Show the message
+    messageContainer.classList.remove('hidden');
     
-    // Auto-hide success messages after 5 seconds
-    if (type === 'success') {
-      setTimeout(() => {
-        messageElement.classList.add('hidden');
-      }, 5000);
-    }
+    // Hide after 5 seconds
+    setTimeout(() => {
+      messageContainer.classList.add('hidden');
+    }, 5000);
   }
 }
 
-// Initialize on page load
+// Initialize when the page loads
 document.addEventListener('DOMContentLoaded', () => {
-  new GuildSettingsManager();
+  window.guildSettingsManager = new GuildSettingsManager();
 });
