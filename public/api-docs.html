@@ -1,59 +1,3 @@
-
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>RATi API Documentation</title>
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/swagger-ui-dist@5.10.0/swagger-ui.css">
-  <style>
-    body {
-      margin: 0;
-      padding: 0;
-      font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-    }
-    .header {
-      background-color: #1a1a1a;
-      color: white;
-      padding: 20px;
-      text-align: center;
-    }
-    .header h1 {
-      margin: 0;
-      font-size: 2rem;
-    }
-    .header p {
-      margin: 10px 0 0;
-      opacity: 0.8;
-    }
-  </style>
-</head>
-<body>
-  <div class="header">
-    <h1>RATi API Documentation</h1>
-    <p>OpenAPI specification for interacting with avatars, items, and locations</p>
-  </div>
-  <div id="swagger-ui"></div>
-
-  <script src="https://cdn.jsdelivr.net/npm/swagger-ui-dist@5.10.0/swagger-ui-bundle.js"></script>
-  <script>
-    window.onload = function() {
-      SwaggerUIBundle({
-        url: "/api/v1/openapi",
-        dom_id: "#swagger-ui",
-        deepLinking: true,
-        presets: [
-          SwaggerUIBundle.presets.apis,
-          SwaggerUIBundle.SwaggerUIStandalonePreset
-        ],
-        layout: "BaseLayout",
-        supportedSubmitMethods: ['get', 'post', 'put', 'delete', 'patch'],
-        validatorUrl: null
-      });
-    };
-  </script>
-</body>
-</html>
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -72,7 +16,7 @@
       <h1 class="text-3xl font-bold text-gray-800">RATi API Documentation</h1>
       <p class="text-gray-600 mt-2">Explore the API for managing avatars, items, and locations in the RATi ecosystem</p>
     </div>
-    
+
     <div class="bg-white shadow-md rounded-lg">
       <div id="swagger-ui"></div>
     </div>
@@ -82,7 +26,7 @@
   <script>
     window.onload = function() {
       const ui = SwaggerUIBundle({
-        url: "/api/openapi.json",
+        url: "/api/openapi",
         dom_id: "#swagger-ui",
         deepLinking: true,
         presets: [
