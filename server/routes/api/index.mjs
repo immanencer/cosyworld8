@@ -1,4 +1,3 @@
-
 import express from 'express';
 import { ObjectId } from 'mongodb';
 import openApiRouter from './openapi.mjs';
@@ -268,19 +267,19 @@ export default function(db) {
 
     try {
       // Import here to avoid circular dependencies
-      const { OpenRouterService as AIService } = await import('../../../src/services/openrouterService.mjs');
+      const { OpenRouterService } = await import('../../../src/services/openrouterService.mjs');
       const aiService = new OpenRouterService();
 
       // Generate avatar response
       const prompt = `As ${avatar.name}, respond to the following message. 
       Your personality: ${avatar.personality}
       ${avatar.dynamicPersonality ? `Current mindset: ${avatar.dynamicPersonality}` : ''}
-      
+
       Recent conversation:
       ${context.map(msg => `${msg.authorUsername}: ${msg.content}`).join('\n')}
-      
+
       User: ${message}
-      
+
       ${avatar.name}:`;
 
       const response = await aiService.generateCompletion(prompt);
@@ -350,7 +349,7 @@ export default function(db) {
 
     try {
       // Import here to avoid circular dependencies
-      const { OpenRouterService as AIService } = await import('../../../src/services/openrouterService.mjs');
+      const { OpenRouterService } = await import('../../../src/services/openrouterService.mjs');
       const aiService = new OpenRouterService();
 
       // Generate responses from each avatar
@@ -360,12 +359,12 @@ export default function(db) {
         const prompt = `As ${avatar.name}, respond to the following message in a group conversation. 
         Your personality: ${avatar.personality}
         ${avatar.dynamicPersonality ? `Current mindset: ${avatar.dynamicPersonality}` : ''}
-        
+
         Recent conversation:
         ${context.map(msg => `${msg.authorUsername}: ${msg.content}`).join('\n')}
-        
+
         User: ${message}
-        
+
         ${avatar.name}:`;
 
         const response = await aiService.generateCompletion(prompt);
