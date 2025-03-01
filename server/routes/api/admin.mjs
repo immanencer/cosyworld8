@@ -1,16 +1,333 @@
-
 import express from 'express';
+import fs from 'fs/promises';
+import path from 'path';
 import { ObjectId } from 'mongodb';
+import { fileURLToPath } from 'url';
 
-const router = express.Router();
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
-// Wrap async route handlers to catch errors
 const asyncHandler = (fn) => (req, res, next) =>
   Promise.resolve(fn(req, res, next)).catch(next);
 
-export default function(db) {
-  // Create new avatar
+function createRouter(db) {
+  const router = express.Router();
+
+  //Original routes
+  router.get('/avatars', asyncHandler(async (req, res) => {
+    const limit = parseInt(req.query.limit) || 20;
+    const offset = parseInt(req.query.offset) || 0;
+    
+    const total = await db.avatars.countDocuments();
+    const data = await db.avatars
+      .find()
+      .sort({ createdAt: -1 })
+      .skip(offset)
+      .limit(limit)
+      .toArray();
+    
+    res.json({ data, total, limit, offset });
+  }));
+  
   router.post('/avatars', asyncHandler(async (req, res) => {
+    const { name, description, personality, emoji, model } = req.body;
+    
+    // Basic validation
+    if (!name) {
+      return res.status(400).json({ error: 'Name is required' });
+    }
+    
+    const newAvatar = {
+      name,
+      description: description || '',
+      personality: personality || '',
+      emoji: emoji || '🧙‍♂️',
+      model: model || 'gpt-4',
+      status: 'active',
+      createdAt: new Date(),
+      updatedAt: new Date()
+    };
+    
+    const result = await db.avatars.insertOne(newAvatar);
+    newAvatar._id = result.insertedId;
+    
+    res.status(201).json(newAvatar);
+  }));
+  
+  router.get('/avatars/:id', asyncHandler(async (req, res) => {
+    let id;
+    try {
+      id = new ObjectId(req.params.id);
+    } catch (err) {
+      return res.status(400).json({ error: 'Invalid ID format' });
+    }
+    
+    const avatar = await db.avatars.findOne({ _id: id });
+    if (!avatar) {
+      return res.status(404).json({ error: 'Avatar not found' });
+    }
+    
+    res.json(avatar);
+  }));
+  
+  router.put('/avatars/:id', asyncHandler(async (req, res) => {
+    let id;
+    try {
+      id = new ObjectId(req.params.id);
+    } catch (err) {
+      return res.status(400).json({ error: 'Invalid ID format' });
+    }
+    
+    const { name, description, personality, emoji, model, status } = req.body;
+    
+    // Basic validation
+    if (!name) {
+      return res.status(400).json({ error: 'Name is required' });
+    }
+    
+    const updatedAvatar = {
+      name,
+      description,
+      personality,
+      emoji,
+      model,
+      status,
+      updatedAt: new Date()
+    };
+    
+    const result = await db.avatars.updateOne(
+      { _id: id },
+      { $set: updatedAvatar }
+    );
+    
+    if (result.matchedCount === 0) {
+      return res.status(404).json({ error: 'Avatar not found' });
+    }
+    
+    res.json({ ...updatedAvatar, _id: id });
+  }));
+  
+  router.delete('/avatars/:id', asyncHandler(async (req, res) => {
+    let id;
+    try {
+      id = new ObjectId(req.params.id);
+    } catch (err) {
+      return res.status(400).json({ error: 'Invalid ID format' });
+    }
+    
+    const result = await db.avatars.deleteOne({ _id: id });
+    
+    if (result.deletedCount === 0) {
+      return res.status(404).json({ error: 'Avatar not found' });
+    }
+    
+    res.status(204).end();
+  }));
+  
+  router.get('/items', asyncHandler(async (req, res) => {
+    const limit = parseInt(req.query.limit) || 20;
+    const offset = parseInt(req.query.offset) || 0;
+    
+    const total = await db.collection('items').countDocuments();
+    const data = await db.collection('items')
+      .find()
+      .sort({ createdAt: -1 })
+      .skip(offset)
+      .limit(limit)
+      .toArray();
+    
+    res.json({ data, total, limit, offset });
+  }));
+  
+  router.get('/locations', asyncHandler(async (req, res) => {
+    const limit = parseInt(req.query.limit) || 20;
+    const offset = parseInt(req.query.offset) || 0;
+    
+    const total = await db.collection('locations').countDocuments();
+    const data = await db.collection('locations')
+      .find()
+      .sort({ createdAt: -1 })
+      .skip(offset)
+      .limit(limit)
+      .toArray();
+    
+    res.json({ data, total, limit, offset });
+  }));
+
+  // Admin routes
+  const configPath = path.join(process.cwd(), 'src/config');
+
+  async function loadConfig() {
+    try {
+      const defaultConfig = JSON.parse(await fs.readFile(path.join(configPath, 'default.config.json')));
+      const userConfig = JSON.parse(await fs.readFile(path.join(configPath, 'user.config.json')));
+      return { ...defaultConfig, ...userConfig };
+    } catch (error) {
+      console.error('Config load error:', error);
+      // Return empty config if files don't exist
+      return { whitelistedGuilds: [] };
+    }
+  }
+
+  async function saveUserConfig(config) {
+    try {
+      await fs.mkdir(configPath, { recursive: true });
+      await fs.writeFile(
+        path.join(configPath, 'user.config.json'),
+        JSON.stringify(config, null, 2)
+      );
+    } catch (error) {
+      console.error('Config save error:', error);
+      throw error;
+    }
+  }
+
+  router.get('/config', asyncHandler(async (req, res) => {
+    try {
+      const config = await loadConfig();
+      res.json(config);
+    } catch (error) {
+      res.status(500).json({ error: error.message });
+    }
+  }));
+
+  router.post('/whitelist/guild', asyncHandler(async (req, res) => {
+    try {
+      const { guildId } = req.body;
+      const config = await loadConfig();
+
+      if (!config.whitelistedGuilds) {
+        config.whitelistedGuilds = [];
+      }
+
+      if (!config.whitelistedGuilds.includes(guildId)) {
+        config.whitelistedGuilds.push(guildId);
+        await saveUserConfig(config);
+      }
+
+      res.json({ success: true, whitelistedGuilds: config.whitelistedGuilds });
+    } catch (error) {
+      res.status(500).json({ error: error.message });
+    }
+  }));
+
+  router.delete('/whitelist/guild/:guildId', asyncHandler(async (req, res) => {
+    try {
+      const { guildId } = req.params;
+      const config = await loadConfig();
+
+      if (config.whitelistedGuilds) {
+        config.whitelistedGuilds = config.whitelistedGuilds.filter(id => id !== guildId);
+        await saveUserConfig(config);
+      }
+
+      res.json({ success: true, whitelistedGuilds: config.whitelistedGuilds || [] });
+    } catch (error) {
+      res.status(500).json({ error: error.message });
+    }
+  }));
+
+  router.get('/stats', asyncHandler(async (req, res) => {
+    try {
+      const config = await loadConfig();
+      const blacklistedUsers = await db.collection('user_spam_penalties')
+        .find({})
+        .sort({ strikeCount: -1 })
+        .project({
+          userId: 1,
+          strikeCount: 1,
+          penaltyExpires: 1,
+          permanentlyBlacklisted: 1,
+          server: 1
+        })
+        .toArray();
+
+      res.json({
+        whitelistedGuilds: config.whitelistedGuilds || [],
+        blacklistedUsers: blacklistedUsers
+      });
+    } catch (error) {
+      res.status(500).json({ error: error.message });
+    }
+  }));
+
+  router.post('/ban', asyncHandler(async (req, res) => {
+    try {
+      const { userId } = req.body;
+      await db.collection('user_spam_penalties').updateOne(
+        { userId },
+        {
+          $set: {
+            permanentlyBlacklisted: true,
+            blacklistedAt: new Date(),
+            penaltyExpires: new Date(8640000000000000) // Max date
+          },
+          $inc: { strikeCount: 1 }
+        },
+        { upsert: true }
+      );
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ error: error.message });
+    }
+  }));
+
+  router.post('/unban', asyncHandler(async (req, res) => {
+    try {
+      const { userId } = req.body;
+      await db.collection('user_spam_penalties').updateOne(
+        { userId },
+        { 
+          $set: { 
+            strikeCount: 0,
+            permanentlyBlacklisted: false,
+            penaltyExpires: new Date()
+          }
+        }
+      );
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ error: error.message });
+    }
+  }));
+
+  router.get('/avatars', asyncHandler(async (req, res) => {
+    try {
+      const avatars = await db.collection('avatars')
+        .find({})
+        .sort({ createdAt: -1 })
+        .limit(100)
+        .toArray();
+
+      res.json(avatars);
+    } catch (error) {
+      res.status(500).json({ error: error.message });
+    }
+  }));
+
+  router.post('/avatar/update', asyncHandler(async (req, res) => {
+    try {
+      const { avatarId, status, personality } = req.body;
+
+      const updateData = {};
+      if (status) updateData.status = status;
+      if (personality) updateData.personality = personality;
+
+      const result = await db.collection('avatars').updateOne(
+        { _id: new ObjectId(avatarId) },
+        { $set: updateData }
+      );
+
+      if (result.matchedCount === 0) {
+        return res.status(404).json({ error: 'Avatar not found' });
+      }
+
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ error: error.message });
+    }
+  }));
+
+    router.post('/avatars', asyncHandler(async (req, res) => {
     const {
       name,
       description,
@@ -51,7 +368,6 @@ export default function(db) {
     });
   }));
   
-  // Delete avatar
   router.delete('/avatars/:id', asyncHandler(async (req, res) => {
     let id;
     try {
@@ -70,7 +386,6 @@ export default function(db) {
     res.json({ message: 'Avatar deleted successfully' });
   }));
   
-  // Update avatar
   router.put('/avatars/:id', asyncHandler(async (req, res) => {
     let id;
     try {
@@ -118,8 +433,7 @@ export default function(db) {
     const updatedAvatar = await db.avatars.findOne({ _id: id });
     res.json(updatedAvatar);
   }));
-  
-  // Create new item
+
   router.post('/items', asyncHandler(async (req, res) => {
     const {
       name,
@@ -159,7 +473,6 @@ export default function(db) {
     });
   }));
   
-  // Create new location
   router.post('/locations', asyncHandler(async (req, res) => {
     const {
       name,
@@ -193,7 +506,6 @@ export default function(db) {
     });
   }));
   
-  // System stats endpoint
   router.get('/stats', asyncHandler(async (req, res) => {
     // Get counts
     const [avatarCount, itemCount, locationCount, memoryCount] = await Promise.all([
@@ -220,165 +532,8 @@ export default function(db) {
       recentActivity
     });
   }));
-  
+
   return router;
 }
-import express from 'express';
-import { ObjectId } from 'mongodb';
 
-const router = express.Router();
-
-// Wrap async route handlers to catch errors
-const asyncHandler = (fn) => (req, res, next) =>
-  Promise.resolve(fn(req, res, next)).catch(next);
-
-export default function(db) {
-  // Get all avatars with pagination
-  router.get('/avatars', asyncHandler(async (req, res) => {
-    const limit = parseInt(req.query.limit) || 20;
-    const offset = parseInt(req.query.offset) || 0;
-    
-    const total = await db.avatars.countDocuments();
-    const data = await db.avatars
-      .find()
-      .sort({ createdAt: -1 })
-      .skip(offset)
-      .limit(limit)
-      .toArray();
-    
-    res.json({ data, total, limit, offset });
-  }));
-  
-  // Create a new avatar
-  router.post('/avatars', asyncHandler(async (req, res) => {
-    const { name, description, personality, emoji, model } = req.body;
-    
-    // Basic validation
-    if (!name) {
-      return res.status(400).json({ error: 'Name is required' });
-    }
-    
-    const newAvatar = {
-      name,
-      description: description || '',
-      personality: personality || '',
-      emoji: emoji || '🧙‍♂️',
-      model: model || 'gpt-4',
-      status: 'active',
-      createdAt: new Date(),
-      updatedAt: new Date()
-    };
-    
-    const result = await db.avatars.insertOne(newAvatar);
-    newAvatar._id = result.insertedId;
-    
-    res.status(201).json(newAvatar);
-  }));
-  
-  // Get a specific avatar
-  router.get('/avatars/:id', asyncHandler(async (req, res) => {
-    let id;
-    try {
-      id = new ObjectId(req.params.id);
-    } catch (err) {
-      return res.status(400).json({ error: 'Invalid ID format' });
-    }
-    
-    const avatar = await db.avatars.findOne({ _id: id });
-    if (!avatar) {
-      return res.status(404).json({ error: 'Avatar not found' });
-    }
-    
-    res.json(avatar);
-  }));
-  
-  // Update an avatar
-  router.put('/avatars/:id', asyncHandler(async (req, res) => {
-    let id;
-    try {
-      id = new ObjectId(req.params.id);
-    } catch (err) {
-      return res.status(400).json({ error: 'Invalid ID format' });
-    }
-    
-    const { name, description, personality, emoji, model, status } = req.body;
-    
-    // Basic validation
-    if (!name) {
-      return res.status(400).json({ error: 'Name is required' });
-    }
-    
-    const updatedAvatar = {
-      name,
-      description,
-      personality,
-      emoji,
-      model,
-      status,
-      updatedAt: new Date()
-    };
-    
-    const result = await db.avatars.updateOne(
-      { _id: id },
-      { $set: updatedAvatar }
-    );
-    
-    if (result.matchedCount === 0) {
-      return res.status(404).json({ error: 'Avatar not found' });
-    }
-    
-    res.json({ ...updatedAvatar, _id: id });
-  }));
-  
-  // Delete an avatar
-  router.delete('/avatars/:id', asyncHandler(async (req, res) => {
-    let id;
-    try {
-      id = new ObjectId(req.params.id);
-    } catch (err) {
-      return res.status(400).json({ error: 'Invalid ID format' });
-    }
-    
-    const result = await db.avatars.deleteOne({ _id: id });
-    
-    if (result.deletedCount === 0) {
-      return res.status(404).json({ error: 'Avatar not found' });
-    }
-    
-    res.status(204).end();
-  }));
-  
-  // Basic items endpoints
-  router.get('/items', asyncHandler(async (req, res) => {
-    const limit = parseInt(req.query.limit) || 20;
-    const offset = parseInt(req.query.offset) || 0;
-    
-    const total = await db.collection('items').countDocuments();
-    const data = await db.collection('items')
-      .find()
-      .sort({ createdAt: -1 })
-      .skip(offset)
-      .limit(limit)
-      .toArray();
-    
-    res.json({ data, total, limit, offset });
-  }));
-  
-  // Basic locations endpoints
-  router.get('/locations', asyncHandler(async (req, res) => {
-    const limit = parseInt(req.query.limit) || 20;
-    const offset = parseInt(req.query.offset) || 0;
-    
-    const total = await db.collection('locations').countDocuments();
-    const data = await db.collection('locations')
-      .find()
-      .sort({ createdAt: -1 })
-      .skip(offset)
-      .limit(limit)
-      .toArray();
-    
-    res.json({ data, total, limit, offset });
-  }));
-  
-  return router;
-}
+export default createRouter;
