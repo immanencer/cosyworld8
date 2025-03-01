@@ -1,4 +1,3 @@
-
 import fs from 'fs/promises';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -59,6 +58,25 @@ class ConfigService {
         accessTokenSecret: process.env.X_ACCESS_TOKEN_SECRET,
         clientId: process.env.X_CLIENT_ID,
         clientSecret: process.env.X_CLIENT_SECRET
+      },
+      guildDefaults: { // Added guildDefaults
+        summonEmoji: '✨',
+        prompts: {
+          introduction: 'Welcome to this server!',
+          summon: 'Create an avatar for this server!'
+        },
+        features: {
+          feature1: true,
+          feature2: false
+        },
+        toolEmojis: {
+          tool1: '🛠️',
+          tool2: '⚙️'
+        },
+        rateLimit: {
+          perUser: 5,
+          perMinute: 60
+        }
       }
     };
     this.loadConfig();
@@ -79,9 +97,9 @@ class ConfigService {
         // If user config doesn't exist, create it with default values
         await fs.writeFile(
           path.join(CONFIG_DIR, 'user.config.json'),
-          JSON.stringify(defaultConfig, null, 2)
+          JSON.stringify(this.config, null, 2) // Use this.config instead of defaultConfig
         );
-        userConfig = defaultConfig;
+        userConfig = this.config;
       }
 
       // Merge configs with user config taking precedence
@@ -125,16 +143,85 @@ class ConfigService {
     }
   }
 
-  get(path) {
-    return path.split('.').reduce((obj, key) => obj?.[key], this.config);
-  }
-
-  getPromptConfig() {
-    return this.config.prompts;
+  async get(key) {
+    if (key.includes('mongo')) {
+      return this.config.mongo;
+    }
+    return this.config[key];
   }
 
   getDiscordConfig() {
     return this.config.discord;
+  }
+
+  async getGuildConfig(db, guildId) {
+    if (!db || !guildId) return this.config.guildDefaults;
+
+    try {
+      // Try to get guild-specific config from database
+      const guildConfig = await db.collection('guild_configs').findOne({ guildId });
+
+      if (guildConfig) {
+        // Merge with defaults for any missing properties
+        return {
+          ...this.config.guildDefaults,
+          ...guildConfig,
+          features: {
+            ...this.config.guildDefaults.features,
+            ...(guildConfig.features || {})
+          },
+          toolEmojis: {
+            ...this.config.guildDefaults.toolEmojis,
+            ...(guildConfig.toolEmojis || {})
+          },
+          rateLimit: {
+            ...this.config.guildDefaults.rateLimit,
+            ...(guildConfig.rateLimit || {})
+          }
+        };
+      }
+
+      // If no config exists, return defaults
+      return this.config.guildDefaults;
+    } catch (error) {
+      console.error(`Error getting guild config for ${guildId}:`, error);
+      return this.config.guildDefaults;
+    }
+  }
+
+  async updateGuildConfig(db, guildId, updates) {
+    if (!db || !guildId) throw new Error('Database and guildId are required');
+
+    try {
+      const updatedConfig = {
+        ...updates,
+        guildId,
+        updatedAt: new Date()
+      };
+
+      // Upsert the guild config
+      const result = await db.collection('guild_configs').updateOne(
+        { guildId },
+        { $set: updatedConfig },
+        { upsert: true }
+      );
+
+      return result;
+    } catch (error) {
+      console.error(`Error updating guild config for ${guildId}:`, error);
+      throw error;
+    }
+  }
+
+  async getAllGuildConfigs(db) {
+    if (!db) throw new Error('Database is required');
+
+    try {
+      return await db.collection('guild_configs').find({}).toArray();
+    } catch (error) {
+      console.error('Error getting all guild configs:', error);
+      throw error;
+    }
   }
 
   getMongoConfig() {

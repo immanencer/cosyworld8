@@ -14,6 +14,15 @@ app.get('/api-docs', (req, res) => {
   res.sendFile('api-docs.html', { root: 'public' });
 });
 
+// Admin routes
+app.get('/admin', (req, res) => {
+  res.sendFile('admin/index.html', { root: 'public' });
+});
+
+app.get('/admin/guild-settings', (req, res) => {
+  res.sendFile('admin/guild-settings.html', { root: 'public' });
+});
+
 // MongoDB Setup
 const mongoUri = process.env.MONGO_URI || 'mongodb://localhost:27017';
 const mongoDbName = process.env.MONGO_DB_NAME || 'cosyworld';
@@ -58,6 +67,7 @@ async function initializeApp() {
     app.use('/api/wiki', (await import('./routes/wiki.mjs')).default(db));
     app.use('/api/social', (await import('./routes/social.mjs')).default(db));
     app.use('/api/claims', (await import('./routes/claims.mjs')).default(db));
+    app.use('/api/guilds', (await import('./routes/api/guilds.mjs')).default(db));
     // Removed duplicate API router import for /api/v1
 
     // Add renounce claim route
@@ -157,7 +167,12 @@ async function initializeIndexes(db) {
         { key: { avatarId: 1 }, unique: true, background: true },
         { key: { walletAddress: 1 }, background: true },
         { key: { status: 1 }, background: true }
-      ])
+      ]),
+      // Guild configurations index
+      db.collection('guild_configs').createIndex(
+        { guildId: 1 },
+        { unique: true, background: true }
+      )
     ]);
     console.log('Database indexes created successfully');
   } catch (error) {

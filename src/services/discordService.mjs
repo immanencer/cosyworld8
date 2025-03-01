@@ -53,10 +53,53 @@ client.once('ready', async () => {
     const db = await databaseService.connect();
     client.db = db;
     logger.info('Connected to MongoDB database');
+    
+    // Track connected guilds
+    await updateConnectedGuilds(client);
   } catch (error) {
     logger.error('Failed to connect to MongoDB:', error);
   }
 });
+
+/**
+ * Updates the database with the list of connected guilds
+ * @param {Client} client - The Discord client
+ * @returns {Promise<void>}
+ */
+async function updateConnectedGuilds(client) {
+  if (!client.db) return;
+  
+  try {
+    const connectedGuilds = [];
+    
+    client.guilds.cache.forEach(guild => {
+      connectedGuilds.push({
+        id: guild.id,
+        name: guild.name,
+        memberCount: guild.memberCount,
+        icon: guild.icon,
+        updatedAt: new Date()
+      });
+    });
+    
+    logger.info(`Updating ${connectedGuilds.length} connected guilds`);
+    
+    // Use bulk operations for efficiency
+    const bulkOps = connectedGuilds.map(guild => ({
+      updateOne: {
+        filter: { id: guild.id },
+        update: { $set: guild },
+        upsert: true
+      }
+    }));
+    
+    if (bulkOps.length > 0) {
+      await client.db.collection('connected_guilds').bulkWrite(bulkOps);
+    }
+  } catch (error) {
+    logger.error('Error updating connected guilds:', error);
+  }
+}
 
 // Validate required configuration
 if (!discordConfig.botToken) {
@@ -393,18 +436,44 @@ export async function getRecentMessages(client, channelId, limit = 10) {
   }
 }
 
+// Track when the bot joins a new guild
+client.on('guildCreate', async (guild) => {
+  logger.info(`Joined new guild: ${guild.name} (${guild.id})`);
+  if (client.db) {
+    await updateConnectedGuilds(client);
+  }
+});
+
+// Track when the bot leaves a guild
+client.on('guildDelete', async (guild) => {
+  logger.info(`Left guild: ${guild.name} (${guild.id})`);
+  if (client.db) {
+    try {
+      await client.db.collection('connected_guilds').deleteOne({ id: guild.id });
+      logger.info(`Removed guild ${guild.id} from database`);
+    } catch (error) {
+      logger.error(`Error removing guild ${guild.id} from database:`, error);
+    }
+  }
+});
+
 client.on('messageCreate', async (message) => {
   try {
     // Ignore DMs and messages without a guild
     if (!message.guild) return;
 
-    // Load config and check whitelist
-    const config = await configService.get('whitelistedGuilds');
-    const whitelistedGuilds = Array.isArray(config) ? config : [];
-
-    // Only process messages from whitelisted guilds
-    if (!whitelistedGuilds.includes(message.guild.id)) {
-      return;
+    // Get guild-specific config
+    const guildConfig = await configService.getGuildConfig(client.db, message.guild.id);
+    
+    // Check if guild is whitelisted
+    if (!guildConfig.whitelisted) {
+      // Check global whitelist as fallback
+      const globalConfig = await configService.get('whitelistedGuilds');
+      const whitelistedGuilds = Array.isArray(globalConfig) ? globalConfig : [];
+      
+      if (!whitelistedGuilds.includes(message.guild.id)) {
+        return;
+      }
     }
 
   } catch (error) {
