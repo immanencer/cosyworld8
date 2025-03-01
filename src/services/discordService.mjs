@@ -53,7 +53,7 @@ client.once('ready', async () => {
     const db = await databaseService.connect();
     client.db = db;
     logger.info('Connected to MongoDB database');
-    
+
     // Track connected guilds
     await updateConnectedGuilds(client);
   } catch (error) {
@@ -68,10 +68,10 @@ client.once('ready', async () => {
  */
 async function updateConnectedGuilds(client) {
   if (!client.db) return;
-  
+
   try {
     const connectedGuilds = [];
-    
+
     client.guilds.cache.forEach(guild => {
       connectedGuilds.push({
         id: guild.id,
@@ -81,9 +81,9 @@ async function updateConnectedGuilds(client) {
         updatedAt: new Date()
       });
     });
-    
+
     logger.info(`Updating ${connectedGuilds.length} connected guilds`);
-    
+
     // Use bulk operations for efficiency
     const bulkOps = connectedGuilds.map(guild => ({
       updateOne: {
@@ -92,7 +92,7 @@ async function updateConnectedGuilds(client) {
         upsert: true
       }
     }));
-    
+
     if (bulkOps.length > 0) {
       await client.db.collection('connected_guilds').bulkWrite(bulkOps);
     }
@@ -462,9 +462,8 @@ client.on('messageCreate', async (message) => {
     // Ignore DMs and messages without a guild
     if (!message.guild) return;
 
-    // Get guild-specific config
     const guildConfig = await configService.getGuildConfig(client.db, message.guild.id);
-    
+
     // Check if guild is whitelisted
     if (guildConfig && guildConfig.whitelisted === true) {
       // Guild is explicitly whitelisted in its config, proceed with message processing
@@ -473,7 +472,7 @@ client.on('messageCreate', async (message) => {
       // Check global whitelist as fallback
       const globalConfig = await configService.get('whitelistedGuilds');
       const whitelistedGuilds = Array.isArray(globalConfig) ? globalConfig : [];
-      
+
       if (!whitelistedGuilds.includes(message.guild.id)) {
         logger.warn(`Guild ${message.guild.name}(${message.guild.id}) is not whitelisted. Ignoring message from user ${message.author.id} - ${message.author.username}.`);
         return;

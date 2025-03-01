@@ -160,7 +160,7 @@ export class SpamControlService {
         // Check global whitelist as fallback
         const globalConfig = await configService.get('whitelistedGuilds');
         const whitelistedGuilds = Array.isArray(globalConfig) ? globalConfig : [];
-        
+
         if (!whitelistedGuilds.includes(message.guild.id)) {
           this.logger.warn(`Guild ${message.guild.name}(${message.guild.id}) is not whitelisted. Ignoring message from user ${userId} - ${message.author.username}.`);
           return false;
