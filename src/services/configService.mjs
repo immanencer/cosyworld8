@@ -155,37 +155,25 @@ class ConfigService {
   }
 
   async getGuildConfig(db, guildId) {
-    if (!db || !guildId) return this.config.guildDefaults;
-
     try {
-      // Try to get guild-specific config from database
-      const guildConfig = await db.collection('guild_configs').findOne({ guildId });
-
-      if (guildConfig) {
-        // Merge with defaults for any missing properties
-        return {
-          ...this.config.guildDefaults,
-          ...guildConfig,
-          features: {
-            ...this.config.guildDefaults.features,
-            ...(guildConfig.features || {})
-          },
-          toolEmojis: {
-            ...this.config.guildDefaults.toolEmojis,
-            ...(guildConfig.toolEmojis || {})
-          },
-          rateLimit: {
-            ...this.config.guildDefaults.rateLimit,
-            ...(guildConfig.rateLimit || {})
-          }
-        };
+      // Use the provided DB or get from global client (assuming this.client exists and has a db property)
+      const dbToUse = db || (this.client && this.client.db);
+      if (!dbToUse) {
+        console.error(`No database connection available to fetch guild config for guild ${guildId}`);
+        return { guildId, whitelisted: false };
       }
 
-      // If no config exists, return defaults
-      return this.config.guildDefaults;
+      const collection = dbToUse.collection('guild_configs');
+      const guildConfig = await collection.findOne({ guildId });
+
+      // Return the found config or a default with guildId and whitelisted property
+      const result = guildConfig || { guildId, whitelisted: false };
+      console.debug(`Retrieved guild config for ${guildId}: whitelisted=${result.whitelisted}`);
+      return result;
     } catch (error) {
-      console.error(`Error getting guild config for ${guildId}:`, error);
-      return this.config.guildDefaults;
+      console.error(`Error fetching guild config for guild ${guildId} from database:`, error);
+      // Return a default config with whitelisted explicitly set to false
+      return { guildId, whitelisted: false };
     }
   }
 

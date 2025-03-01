@@ -149,18 +149,27 @@ export class SpamControlService {
       return true;
     }
 
-    // Check if guild is whitelisted
-    let config;
+    // Check if guild is whitelisted (first check guild-specific config, then global whitelist)
     try {
-      config = await configService.get('whitelistedGuilds');
+      // Check guild-specific config
+      const guildConfig = await configService.getGuildConfig(null, message.guild.id);
+      if (guildConfig && guildConfig.whitelisted === true) {
+        this.logger.debug(`Guild ${message.guild.name}(${message.guild.id}) is whitelisted via guild config.`);
+        // Guild is explicitly whitelisted
+      } else {
+        // Check global whitelist as fallback
+        const globalConfig = await configService.get('whitelistedGuilds');
+        const whitelistedGuilds = Array.isArray(globalConfig) ? globalConfig : [];
+        
+        if (!whitelistedGuilds.includes(message.guild.id)) {
+          this.logger.warn(`Guild ${message.guild.name}(${message.guild.id}) is not whitelisted. Ignoring message from user ${userId} - ${message.author.username}.`);
+          return false;
+        }
+        this.logger.debug(`Guild ${message.guild.name}(${message.guild.id}) is whitelisted via global config.`);
+      }
     } catch (error) {
-      this.logger.error(`Error fetching whitelistedGuilds config: ${error.message}`);
-      // In case of error fetching config, default to ignoring the message for safety.
-      return false;
-    }
-    const whitelistedGuilds = Array.isArray(config) ? config : [];
-    if (!whitelistedGuilds.includes(message.guild.id)) {
-      this.logger.warn(`Guild ${message.guild.name}(${message.guild.id}) is not whitelisted. Ignoring message from user ${userId} - ${message.author.username}.`);
+      this.logger.error(`Error checking whitelist status: ${error.message}`);
+      // In case of error fetching config, default to ignoring the message for safety
       return false;
     }
 

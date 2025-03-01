@@ -466,14 +466,19 @@ client.on('messageCreate', async (message) => {
     const guildConfig = await configService.getGuildConfig(client.db, message.guild.id);
     
     // Check if guild is whitelisted
-    if (!guildConfig.whitelisted) {
+    if (guildConfig && guildConfig.whitelisted === true) {
+      // Guild is explicitly whitelisted in its config, proceed with message processing
+      logger.debug(`Guild ${message.guild.name}(${message.guild.id}) is whitelisted via guild config.`);
+    } else {
       // Check global whitelist as fallback
       const globalConfig = await configService.get('whitelistedGuilds');
       const whitelistedGuilds = Array.isArray(globalConfig) ? globalConfig : [];
       
       if (!whitelistedGuilds.includes(message.guild.id)) {
+        logger.warn(`Guild ${message.guild.name}(${message.guild.id}) is not whitelisted. Ignoring message from user ${message.author.id} - ${message.author.username}.`);
         return;
       }
+      logger.debug(`Guild ${message.guild.name}(${message.guild.id}) is whitelisted via global config.`);
     }
 
   } catch (error) {
