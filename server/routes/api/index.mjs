@@ -2,6 +2,7 @@
 import express from 'express';
 import { ObjectId } from 'mongodb';
 import openApiRouter from './openapi.mjs';
+import adminRouterFactory from './admin.mjs';
 
 const router = express.Router();
 
@@ -13,6 +14,8 @@ const asyncHandler = (fn) => (req, res, next) =>
   Promise.resolve(fn(req, res, next)).catch(next);
 
 export default function(db) {
+  // Mount admin routes
+  router.use('/admin', adminRouterFactory(db));
   // Avatars endpoints
   router.get('/avatars', asyncHandler(async (req, res) => {
     const limit = parseInt(req.query.limit) || 20;
@@ -265,7 +268,7 @@ export default function(db) {
 
     try {
       // Import here to avoid circular dependencies
-      const { OpenRouterService } = await import('../../../src/services/openrouterService.mjs');
+      const { OpenRouterService as AIService } = await import('../../../src/services/openrouterService.mjs');
       const aiService = new OpenRouterService();
 
       // Generate avatar response
@@ -347,7 +350,7 @@ export default function(db) {
 
     try {
       // Import here to avoid circular dependencies
-      const { OpenRouterService } = await import('../../../src/services/openrouterService.mjs');
+      const { OpenRouterService as AIService } = await import('../../../src/services/openrouterService.mjs');
       const aiService = new OpenRouterService();
 
       // Generate responses from each avatar
