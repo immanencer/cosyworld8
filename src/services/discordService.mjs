@@ -56,6 +56,7 @@ client.once('ready', async () => {
 
     // Track connected guilds
     await updateConnectedGuilds(client);
+    client.guildWhitelist = new Map(); // Initialize guild whitelist cache
   } catch (error) {
     logger.error('Failed to connect to MongoDB:', error);
   }
@@ -462,22 +463,33 @@ client.on('messageCreate', async (message) => {
     // Ignore DMs and messages without a guild
     if (!message.guild) return;
 
-    const guildConfig = await configService.getGuildConfig(client.db, message.guild.id);
-
     // Check if guild is whitelisted
-    if (guildConfig && guildConfig.whitelisted === true) {
-      // Guild is explicitly whitelisted in its config, proceed with message processing
-      logger.debug(`Guild ${message.guild.name}(${message.guild.id}) is whitelisted via guild config.`);
-    } else {
-      // Check global whitelist as fallback
-      const globalConfig = await configService.get('whitelistedGuilds');
-      const whitelistedGuilds = Array.isArray(globalConfig) ? globalConfig : [];
+    try {
+      const guildConfig = await configService.getGuildConfig(client.db, message.guild.id);
 
-      if (!whitelistedGuilds.includes(message.guild.id)) {
-        logger.warn(`Guild ${message.guild.name}(${message.guild.id}) is not whitelisted. Ignoring message from user ${message.author.id} - ${message.author.username}.`);
+      if (guildConfig && guildConfig.whitelisted === true) {
+        // Guild is explicitly whitelisted in its config, proceed with message processing
+        logger.debug(`Guild ${message.guild.name}(${message.guild.id}) is whitelisted via guild config.`);
+      } else {
+        // Check global whitelist as fallback
+        const globalConfig = await configService.get('whitelistedGuilds');
+        const whitelistedGuilds = Array.isArray(globalConfig) ? globalConfig : [];
+
+        if (!whitelistedGuilds.includes(message.guild.id)) {
+          logger.warn(`Guild ${message.guild.name}(${message.guild.id}) is not whitelisted. Ignoring message from user ${message.author.id} - ${message.author.username}.`);
+          return;
+        }
+        logger.debug(`Guild ${message.guild.name}(${message.guild.id}) is whitelisted via global config.`);
+      }
+    } catch (error) {
+      logger.error(`Error checking guild whitelist status: ${error.message}`);
+      // Cache the guild whitelist status in client memory if it is whitelisted
+      if (client.guildWhitelist && client.guildWhitelist.has(message.guild.id)) {
+        logger.debug(`Guild ${message.guild.name}(${message.guild.id}) is whitelisted via client memory cache.`);
+      } else {
+        // Default to ignoring the message for safety
         return;
       }
-      logger.debug(`Guild ${message.guild.name}(${message.guild.id}) is whitelisted via global config.`);
     }
 
   } catch (error) {

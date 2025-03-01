@@ -10,7 +10,8 @@ export class SpamControlService {
    * @param {number} [options.spamTimeWindow=10000] - Time window in ms (default 10 seconds).
    * @param {number} [options.basePenalty=10000] - Base penalty in ms (default 10 seconds).
    */
-  constructor(db, logger, options = {}) {
+  constructor(db, logger, options = {}, client = null) {
+    this.client = client;
     this.logger = logger;
     this.spamThreshold = options.spamThreshold || 5;
     this.spamTimeWindow = options.spamTimeWindow || 10 * 1000;
@@ -152,10 +153,10 @@ export class SpamControlService {
     // Check if guild is whitelisted (first check guild-specific config, then global whitelist)
     try {
       // Check guild-specific config
-      const guildConfig = await configService.getGuildConfig(null, message.guild.id);
+      const guildConfig = await configService.getGuildConfig(this.client.db, message.guild.id);
       if (guildConfig && guildConfig.whitelisted === true) {
         this.logger.debug(`Guild ${message.guild.name}(${message.guild.id}) is whitelisted via guild config.`);
-        // Guild is explicitly whitelisted
+        return true;
       } else {
         // Check global whitelist as fallback
         const globalConfig = await configService.get('whitelistedGuilds');
@@ -166,10 +167,16 @@ export class SpamControlService {
           return false;
         }
         this.logger.debug(`Guild ${message.guild.name}(${message.guild.id}) is whitelisted via global config.`);
+        return true;
       }
     } catch (error) {
       this.logger.error(`Error checking whitelist status: ${error.message}`);
-      // In case of error fetching config, default to ignoring the message for safety
+      // In case of error fetching config, check if the client has this guild in its memory cache
+      if (this.client && this.client.guildWhitelist && this.client.guildWhitelist.has(message.guild.id)) {
+        this.logger.debug(`Guild ${message.guild.name}(${message.guild.id}) is whitelisted via client memory cache.`);
+        return true;
+      }
+      // Default to ignoring the message for safety
       return false;
     }
 
