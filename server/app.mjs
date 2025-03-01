@@ -9,6 +9,11 @@ app.use(cors());
 app.use(express.json());
 app.use(express.static('public'));
 
+// Explicit route for API documentation
+app.get('/api-docs', (req, res) => {
+  res.sendFile('api-docs.html', { root: 'public' });
+});
+
 // MongoDB Setup
 const mongoUri = process.env.MONGO_URI || 'mongodb://localhost:27017';
 const mongoDbName = process.env.MONGO_DB_NAME || 'cosyworld';
