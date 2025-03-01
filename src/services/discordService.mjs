@@ -35,6 +35,12 @@ const discordConfig = configService.getDiscordConfig();
 // Initialize database service
 const databaseService = new DatabaseService(logger);
 
+// Check for required Discord configuration
+if (!discordConfig || !discordConfig.botToken) {
+  logger.error('Discord bot token not configured. Please check your .env file for DISCORD_BOT_TOKEN');
+  throw new Error('Discord bot token is required');
+}
+
 // Instantiate the Discord client with necessary permissions
 export const client = new Client({
   intents: [

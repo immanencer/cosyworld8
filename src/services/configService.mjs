@@ -89,7 +89,16 @@ class ConfigService {
   }
 
   getDiscordConfig() {
-    return this.config.discord;
+    // Check if environment variables are present
+    if (!process.env.DISCORD_BOT_TOKEN) {
+      console.warn('Warning: DISCORD_BOT_TOKEN not found in environment variables');
+    }
+
+    return {
+      botToken: process.env.DISCORD_BOT_TOKEN,
+      clientId: process.env.DISCORD_CLIENT_ID,
+      webhooks: this.config.webhooks || {}
+    };
   }
 
   async getGuildConfig(db, guildId) {
