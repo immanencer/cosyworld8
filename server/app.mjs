@@ -13,6 +13,7 @@ import xauthRoutes from './routes/xauth.mjs';
 import wikiRoutes from './routes/wiki.mjs';
 import socialRoutes from './routes/social.mjs';
 import claimsRoutes from './routes/claims.mjs'; // Added claims routes
+import apiRoutes from './routes/api/index.mjs'; // Added OpenAPI compatible routes
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -20,6 +21,11 @@ const PORT = process.env.PORT || 3001;
 app.use(cors());
 app.use(express.json());
 app.use(express.static('public'));
+
+// API documentation route
+app.get('/api-docs', (req, res) => {
+  res.sendFile('api-docs.html', { root: 'public' });
+});
 
 
 // MongoDB Setup
@@ -58,6 +64,7 @@ async function initializeApp() {
     app.use('/api/wiki', wikiRoutes(db));
     app.use('/api/social', socialRoutes(db));
     app.use('/api/claims', claimsRoutes(db)); // Mount claims routes
+    app.use('/api/v1', apiRoutes(db)); // Mount OpenAPI compatible routes
 
     // Add renounce claim route
     app.post('/api/claims/renounce', async (req, res) => {
