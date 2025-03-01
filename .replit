@@ -10,5 +10,9 @@ run = ["sh", "-c", "npm run start"]
 deploymentTarget = "gce"
 
 [[ports]]
+localPort = 3001
+externalPort = 3001
+
+[[ports]]
 localPort = 3080
 externalPort = 80

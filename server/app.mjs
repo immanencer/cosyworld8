@@ -1,21 +1,6 @@
 import express from 'express';
 import cors from 'cors';
 import { MongoClient } from 'mongodb';
-import swaggerUi from 'swagger-ui-express';
-import swaggerDocument from './openapi.json'; // Assuming openapi.json exists
-
-// External route modules
-import leaderboardRoutes from './routes/leaderboard.mjs';
-import dungeonRoutes from './routes/dungeon.mjs';
-import healthRoutes from './routes/health.mjs';
-import avatarRoutes from './routes/avatars.mjs';
-import tokenRoutes from './routes/tokens.mjs';
-import tribeRoutes from './routes/tribes.mjs';
-import xauthRoutes from './routes/xauth.mjs';
-import wikiRoutes from './routes/wiki.mjs';
-import socialRoutes from './routes/social.mjs';
-import claimsRoutes from './routes/claims.mjs'; 
-import apiRoutes from './routes/api/index.mjs';
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -23,10 +8,6 @@ const PORT = process.env.PORT || 3001;
 app.use(cors());
 app.use(express.json());
 app.use(express.static('public'));
-
-// API documentation route (using swagger-ui-express)
-app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerDocument));
-
 
 // MongoDB Setup
 const mongoUri = process.env.MONGO_URI || 'mongodb://localhost:27017';
@@ -38,6 +19,7 @@ async function initializeApp() {
     await client.connect();
     const db = client.db(mongoDbName);
 
+    // Set up collections
     db.avatars = db.collection('avatars');
     db.messages = db.collection('messages');
     db.narratives = db.collection('narratives');
@@ -46,25 +28,30 @@ async function initializeApp() {
     db.dungeon_log = db.collection('dungeon_log');
     db.token_transactions = db.collection('token_transactions');
     db.minted_nfts = db.collection('minted_nfts');
-    db.avatar_claims = db.collection('avatar_claims'); 
+    db.avatar_claims = db.collection('avatar_claims');
 
     console.log(`Connected to MongoDB database: ${mongoDbName}`);
 
     // Initialize indexes
     await initializeIndexes(db);
 
-    // Mount routes with database connection
-    app.use('/api/leaderboard', leaderboardRoutes(db));
-    app.use('/api/dungeon', dungeonRoutes(db));
-    app.use('/api/health', healthRoutes(db));
-    app.use('/api/avatars', avatarRoutes(db));
-    app.use('/api/tokens', tokenRoutes(db));
-    app.use('/api/tribes', tribeRoutes(db));
-    app.use('/api/xauth', xauthRoutes(db));
-    app.use('/api/wiki', wikiRoutes(db));
-    app.use('/api/social', socialRoutes(db));
-    app.use('/api/claims', claimsRoutes(db)); 
-    app.use('/api/v1', apiRoutes(db)); 
+    // Mount the API router
+    app.use('/api', (await import('./routes/api/index.mjs')).default(db));
+
+    // Explicitly mount your original routes with database connection
+    // You'll need to gradually migrate these to the OpenAPI format
+
+    app.use('/api/leaderboard', (await import('./routes/leaderboard.mjs')).default(db));
+    app.use('/api/dungeon', (await import('./routes/dungeon.mjs')).default(db));
+    app.use('/api/health', (await import('./routes/health.mjs')).default(db));
+    app.use('/api/avatars', (await import('./routes/avatars.mjs')).default(db));
+    app.use('/api/tokens', (await import('./routes/tokens.mjs')).default(db));
+    app.use('/api/tribes', (await import('./routes/tribes.mjs')).default(db));
+    app.use('/api/xauth', (await import('./routes/xauth.mjs')).default(db));
+    app.use('/api/wiki', (await import('./routes/wiki.mjs')).default(db));
+    app.use('/api/social', (await import('./routes/social.mjs')).default(db));
+    app.use('/api/claims', (await import('./routes/claims.mjs')).default(db));
+    app.use('/api/v1', (await import('./routes/api/index.mjs')).default(db));
 
     // Add renounce claim route
     app.post('/api/claims/renounce', async (req, res) => {
@@ -88,6 +75,7 @@ async function initializeApp() {
     // Start server
     app.listen(PORT, '0.0.0.0', () => {
       console.log(`Server running at http://0.0.0.0:${PORT}`);
+      console.log(`API documentation available at http://0.0.0.0:${PORT}/api-docs`);
     });
 
     // Graceful shutdown
@@ -157,7 +145,6 @@ async function initializeIndexes(db) {
         { key: { walletAddress: 1 }, background: true },
         { key: { avatarId: 1 }, background: true },
       ]),
-
       // Avatar claims indexes
       db.avatar_claims.createIndexes([
         { key: { avatarId: 1 }, unique: true, background: true },
