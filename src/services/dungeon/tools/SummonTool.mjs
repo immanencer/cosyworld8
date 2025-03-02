@@ -6,7 +6,7 @@ export class SummonTool extends BaseTool {
     super(dungeonService);
     this.name = 'summon';
     this.description = 'Summons a new avatar';
-    this.emoji = '🔮';
+    this.emoji = '💼';
   }
 
   getDescription() {
@@ -14,7 +14,7 @@ export class SummonTool extends BaseTool {
   }
 
   getSyntax() {
-    return '🔮 <description or name>';
+    return '💼 <description or name>';
   }
 
   async execute(message, params) {

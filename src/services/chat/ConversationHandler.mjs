@@ -2,6 +2,7 @@ import { MongoClient } from 'mongodb';
 
 import { sendAsWebhook } from '../discordService.mjs';
 import { MemoryService } from '../memoryService.mjs';
+import { config } from 'process';
 
 const GUILD_NAME = process.env.GUILD_NAME || 'The Guild';
 
@@ -534,8 +535,8 @@ Based on all of the above context, share an updated personality that reflects yo
     return `
 These commands are available in this location:
 
-🔮 <any concept or thing> - Summon an avatar to your location.
-🏹 <avatar one> <avatar two> - Breed two avatars together.
+${config.} <any concept or thing> - Summon an avatar to your location.
+${} <avatar one> <avatar two> - Breed two avatars together.
 
 ${commandsDescription}
 

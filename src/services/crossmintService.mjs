@@ -19,7 +19,7 @@ class CrossmintService {
             attributes: [
               {
                 trait_type: "Emoji",
-                value: avatarData.emoji || "🔮"
+                value: avatarData.emoji || "💼"
               },
               {
                 trait_type: "Created",

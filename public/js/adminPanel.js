@@ -4,7 +4,7 @@ const AdminPanel = (() => {
   let serverConfig = {
     servers: [],
     emojis: {
-      summon: "🔮",
+      summon: "💼",
       breed: "🏹",
       attack: "⚔️",
       defend: "🛡️"
@@ -267,7 +267,7 @@ const AdminPanel = (() => {
         <div class="bg-surface-800 rounded-lg p-4">
           <div class="mb-4">
             <label class="block text-sm font-medium text-surface-300 mb-1">Summon Emoji</label>
-            <input type="text" id="summonEmoji" value="🔮" class="w-full bg-surface-700 border border-surface-600 rounded-md py-2 px-3 text-white focus:outline-none focus:ring-2 focus:ring-primary-500">
+            <input type="text" id="summonEmoji" value="💼" class="w-full bg-surface-700 border border-surface-600 rounded-md py-2 px-3 text-white focus:outline-none focus:ring-2 focus:ring-primary-500">
           </div>
 
           <div class="mb-4">

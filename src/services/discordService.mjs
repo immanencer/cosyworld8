@@ -364,7 +364,7 @@ export async function sendAvatarProfileEmbedFromObject(avatar) {
       embeds: [avatarEmbed],
       components,
       threadId: channel.isThread() ? channelId : undefined,
-      username: `🔮 ${name.slice(0, 80)}`,
+      username: `💼 ${name.slice(0, 80)}`,
       avatarURL: imageUrl,
     });
 

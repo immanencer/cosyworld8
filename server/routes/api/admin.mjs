@@ -23,7 +23,7 @@ async function loadConfig() {
     return { 
       whitelistedGuilds: [],
       emojis: {
-        summon: "🔮",
+        summon: "💼",
         breed: "🏹",
         attack: "⚔️",
         defend: "🛡️"
@@ -247,7 +247,7 @@ function createRouter(db) {
     const item = {
       name,
       description,
-      emoji: emoji || '🔮',
+      emoji: emoji || '💼',
       imageUrl: imageUrl || '',
       rarity: rarity || 'common',
       owner: owner || null,

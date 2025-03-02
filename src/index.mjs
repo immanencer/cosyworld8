@@ -19,7 +19,7 @@ import { MessageHandler } from "./services/chat/MessageHandler.mjs";
 // Configuration & Setup
 // --------------------------
 configService.validate();
-const aiConfig = configService.getAIConfig();
+
 
 const logger = winston.createLogger({
   level: process.env.LOG_LEVEL || "info",
@@ -139,7 +139,7 @@ async function handleBreedCommand(message, args, commandLine) {
   logger.info(prompt);
   const originalContent = message.content;
   // Temporarily set the breeding prompt as the message content
-  message.content = `🔮 ${prompt}`;
+  message.content = `💼 ${prompt}`;
   await handleSummonCommand(message, true, {
     summoner: `${message.author.username}@${message.author.id}`,
     parents: [avatar1._id, avatar2._id],
@@ -183,7 +183,7 @@ async function handleSummonCommand(message, breed = false, attributes = {}) {
 
   try {
     if (existingAvatar) {
-      await reactToMessage(message, existingAvatar.emoji || "🔮");
+      await reactToMessage(message, existingAvatar.emoji || "💼");
       await chatService.dungeonService.updateAvatarPosition(existingAvatar._id, message.channel.id);
       existingAvatar.stats = await chatService.dungeonService.getAvatarStats(existingAvatar._id);
       await avatarService.updateAvatar(existingAvatar);
@@ -283,19 +283,19 @@ async function handleAttackCommand(message, args) {
 async function handleCommands(message) {
   const content = message.content;
   if (content.startsWith("!summon")) {
-    await replyToMessage(message, "Command Deprecated. Use 🔮 instead.");
+    await replyToMessage(message, "Command Deprecated. Use 💼 instead.");
     return;
   }
-  if (content.startsWith("🔮")) {
+  if (content.startsWith("💼")) {
     const member = message.guild?.members?.cache?.get(message.author.id);
-    const requiredRole = process.env.SUMMONER_ROLE || "🔮";
+    const requiredRole = process.env.SUMMONER_ROLE || "💼";
     if (!message.author.bot && member && !member.roles.cache.some(
       (role) => role.id === requiredRole || role.name === requiredRole
     )) {
       await replyToMessage(message, "You lack the required role to summon.");
       return;
     }
-    await reactToMessage(message, "🔮");
+    await reactToMessage(message, "💼");
     await handleSummonCommand(message, false, {});
     return;
   }
