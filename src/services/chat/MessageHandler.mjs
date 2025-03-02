@@ -264,11 +264,9 @@ export class MessageHandler {
           .limit(limit)
           .toArray();
 
-        if (messages && messages.length > 0) {
+        if (messages.length > 0) {
           this.logger.debug(`Retrieved ${messages.length} messages from database for channel ${channelId}`);
           return messages.reverse();  // Chronological order
-        } else {
-          this.logger.debug(`No messages found in database for channel ${channelId}, falling back to Discord API`);
         }
       }
 
@@ -280,43 +278,54 @@ export class MessageHandler {
       }
 
       const discordMessages = await channel.messages.fetch({ limit });
-      if (!discordMessages || discordMessages.size === 0) {
-        this.logger.warn(`No messages found in Discord API for channel ${channelId}`);
-        return [];
-      }
-
       const formattedMessages = Array.from(discordMessages.values())
-        .map(msg => ({
-          messageId: msg.id,
-          channelId: msg.channel.id,
-          authorId: msg.author.id,
-          authorUsername: msg.author.username,
-          content: msg.content,
-          hasImages: msg.attachments.some(a => a.contentType?.startsWith('image/')) ||
-            msg.embeds.some(e => e.image || e.thumbnail),
-          timestamp: msg.createdTimestamp
-        }))
+        .map(msg => {
+          // More detailed image extraction
+          const hasAttachmentImages = msg.attachments.some(a => 
+            a.contentType?.startsWith('image/') || 
+            /\.(jpg|jpeg|png|gif|webp)$/i.test(a.name || '')
+          );
+
+          const hasEmbedImages = msg.embeds.some(e => 
+            e.image || e.thumbnail || 
+            (e.type === 'image' || e.type === 'photo')
+          );
+
+          return {
+            messageId: msg.id,
+            channelId: msg.channel.id,
+            authorId: msg.author.id,
+            authorUsername: msg.author.username,
+            authorIsBot: msg.author.bot,
+            content: msg.content,
+            hasImages: hasAttachmentImages || hasEmbedImages,
+            timestamp: msg.createdTimestamp
+          };
+        })
         .sort((a, b) => a.timestamp - b.timestamp);
 
       this.logger.debug(`Retrieved ${formattedMessages.length} messages from Discord API for channel ${channelId}`);
-      
-      // Save these messages to the database for future use if we have a DB connection
-      if (db && formattedMessages.length > 0) {
-        try {
-          await db.collection('messages').insertMany(
-            formattedMessages.map(msg => ({...msg, _id: msg.messageId})),
-            { ordered: false } // Continue even if some inserts fail due to duplicates
-          );
-          this.logger.debug(`Saved ${formattedMessages.length} messages from Discord API to database`);
-        } catch (saveError) {
-          // This might fail due to duplicate keys, which is fine
-          this.logger.debug(`Some messages may already exist in database: ${saveError.message}`);
-        }
-      }
-      
       return formattedMessages;
     } catch (error) {
       this.logger.error(`Error fetching channel context for channel ${channelId}:`, error);
+      return [];
+    }
+  }
+
+  async processUserAndBotMessages(channel) {
+    try {
+      // Get latest messages including those with images
+      const recentMessages = await this.getChannelContext(channel.id, 15);
+
+      // Log message processing with image detection
+      if (recentMessages.some(msg => msg.hasImages)) {
+        this.logger.info(`Processing channel ${channel.id} with ${recentMessages.length} messages including images`);
+      }
+
+      // Continue with existing processing...
+      return recentMessages;
+    } catch (error) {
+      this.logger.error(`Error processing channel messages: ${error.message}`);
       return [];
     }
   }

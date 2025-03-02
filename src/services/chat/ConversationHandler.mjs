@@ -545,46 +545,40 @@ Based on all of the above context, share an updated personality that reflects yo
         // With images - create a structured prompt that includes system and context
         const systemMessage = { role: 'system', content: systemPrompt };
         const assistantMessage = { role: 'assistant', content: lastNarrative?.content || 'No previous reflection' };
-        
-        // First fetch the channel context/history
-        let channelHistory = [];
-        try {
-          const channelContext = await this.getChannelContext(channel.id, 10);
-          if (channelContext && channelContext.length > 0) {
-            channelHistory = channelContext.map(msg => 
-              `${msg.authorUsername || 'User'}: ${msg.content || '[No content]'}`
-            ).join('\n');
-            this.logger.info(`Retrieved ${channelContext.length} messages for channel history context`);
-          } else {
-            this.logger.warn(`Failed to fetch message history for channel ${channel.id}`);
-          }
-        } catch (error) {
-          this.logger.error(`Error fetching channel context: ${error.message}`);
-        }
-        
-        // Create a proper user message that includes both text content and images
-        const enrichedTextPrompt = `
+
+        // First fetch the channel context/history - crucial for providing context with images
+        const channelHistory = await this.getChannelContext(channel.id, 15);
+        const channelContextText = channelHistory.map(msg => 
+          `${msg.authorUsername || 'User'}: ${msg.content || '[No content]'}${msg.hasImages ? ' [has image]' : ''}`
+        ).join('\n');
+
+        // Construct an enriched prompt that includes the channel history
+        const contextualPrompt = `
           Channel: #${context.channelName} in ${context.guildName}
-          
+
           Actions Available:
           ${dungeonPrompt}
-          
-          Recent channel history:
-          ${channelHistory}
-          
-          Reply in character as ${avatar.name} with a single short, casual message, suitable for this discord channel.
+
+          Recent conversation history:
+          ${channelContextText}
+
+          Reply in character as ${avatar.name} with a single short, casual message that responds to the context.
           If there are images in the conversation, comment on them as appropriate.
         `.trim();
-        
-        const userMessageParts = [...imagePromptParts, { text: enrichedTextPrompt }];
-        
-        // Make the complete chat request
+
+        // Create a proper user message that includes both text content and images
+        const userMessageParts = [...imagePromptParts, { text: contextualPrompt }];
+
+        // Log what we're sending to the model
+        this.logger.info(`Sending image message with ${imagePromptParts.length} images and ${channelHistory.length} context messages`);
+
+        // Make the complete chat request with the enriched context
         response = await this.aiService.chat(
           [systemMessage, assistantMessage], 
           userMessageParts, 
           { model: avatar.model, max_tokens: 200 }
         );
-        
+
         this.logger.info(`Generated response with images for ${avatar.name}`);
       } else {
         // Without images - standard approach

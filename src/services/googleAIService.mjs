@@ -269,6 +269,11 @@ export class GoogleAIService {
         generationConfig
       };
 
+      // Count number of images and text parts for logging
+      const imageParts = parts.filter(p => p.inlineData).length;
+      const textParts = parts.filter(p => p.text).length;
+      console.log(`Preparing Gemini request with ${imageParts} images and ${textParts} text parts`);
+      
       // Log request parameters for debugging (but truncate base64 data)
       const logParams = JSON.parse(JSON.stringify(chatParams));
       if (logParams.contents[0].parts) {
@@ -278,8 +283,15 @@ export class GoogleAIService {
               ...part,
               inlineData: {
                 ...part.inlineData,
-                data: part.inlineData.data.substring(0, 50) + '... [truncated]'
+                data: part.inlineData.data.substring(0, 50) + '... [truncated]',
+                mimeType: part.inlineData.mimeType
               }
+            };
+          } else if (part.text) {
+            return {
+              text: part.text.length > 200 ? 
+                part.text.substring(0, 200) + '... [truncated]' : 
+                part.text
             };
           }
           return part;
