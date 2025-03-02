@@ -60,10 +60,14 @@ export class DatabaseService {
   getDatabase() {
     if (!this.connected || !this.db) {
       this.logger.warn('Database is not connected. Retrying connection...');
+      // Schedule a connection attempt but don't wait for it
       this.connect().catch(err => {
         this.logger.error(`Failed to reconnect to database: ${err.message}`);
       });
-      return null;
+      
+      // Return the database object even if not fully initialized yet
+      // This helps avoid null reference errors in some cases
+      return this.db || null;
     }
     return this.db;
   }

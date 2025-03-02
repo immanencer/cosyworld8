@@ -212,7 +212,7 @@ async function checkDailySummonLimit(userId) {
     logger.error("Database not available when checking summon limits");
     return false; // Fail closed - if we can't check, don't allow
   }
-  
+
   try {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
@@ -412,6 +412,57 @@ async function handleCommands(message) {
  */
 client.on("messageCreate", async (message) => {
   try {
+    // Check if guild is whitelisted
+    try {
+      // Make sure database is available
+      const db = databaseService.getDatabase();
+      if (!db) {
+        // If database is not available, use memory cache or fall back to default behavior
+        if (client.guildWhitelist && client.guildWhitelist.has(message.guild.id)) {
+          logger.debug(`Guild ${message.guild.name}(${message.guild.id}) is whitelisted via client memory cache.`);
+        } else {
+          logger.warn(`Database not available for whitelist check, defaulting to allow messages.`);
+          // Consider updating this to match your security policy (allow or deny by default)
+        }
+        return;
+      }
+
+      const guildConfig = await configService.getGuildConfig(db, message.guild.id);
+
+      if (guildConfig && guildConfig.whitelisted === true) {
+        // Guild is explicitly whitelisted in its config, proceed with message processing
+        logger.debug(`Guild ${message.guild.name}(${message.guild.id}) is whitelisted via guild config.`);
+
+        // Cache this result in memory for faster access
+        if (!client.guildWhitelist) client.guildWhitelist = new Map();
+        client.guildWhitelist.set(message.guild.id, true);
+      } else {
+        // Check global whitelist as fallback
+        const globalConfig = await configService.get('whitelistedGuilds');
+        const whitelistedGuilds = Array.isArray(globalConfig) ? globalConfig : [];
+
+        if (!whitelistedGuilds.includes(message.guild.id)) {
+          logger.warn(`Guild ${message.guild.name}(${message.guild.id}) is not whitelisted. Ignoring message from user ${message.author.id} - ${message.author.username}.`);
+          return;
+        }
+        logger.debug(`Guild ${message.guild.name}(${message.guild.id}) is whitelisted via global config.`);
+
+        // Cache this result in memory for faster access
+        if (!client.guildWhitelist) client.guildWhitelist = new Map();
+        client.guildWhitelist.set(message.guild.id, true);
+      }
+    } catch (error) {
+      logger.error(`Error checking whitelist status: ${error.message}`);
+      // Cache the guild whitelist status in client memory if it is whitelisted
+      if (client.guildWhitelist && client.guildWhitelist.has(message.guild.id)) {
+        logger.debug(`Guild ${message.guild.name}(${message.guild.id}) is whitelisted via client memory cache.`);
+      } else {
+        // Default to ignoring the message for safety
+        return;
+      }
+    }
+
+
     if (!(await spamControlService.shouldProcessMessage(message))) {
       return;
     }
@@ -509,7 +560,7 @@ async function main() {
         throw new Error("Failed to establish database connection after multiple attempts");
       }
     }
-    
+
     // Ensure we have a valid database connection
     const database = databaseService.getDatabase();
     if (!database) {
