@@ -254,16 +254,8 @@ async function handleSummonCommand(message, breed = false, attributes = {}) {
       await sendAvatarProfileEmbedFromObject(createdAvatar);
 
       const intro = await aiService.chat(
-        [
-          {
-            role: "system",
-            content: `You are ${createdAvatar.name}. ${createdAvatar.description} ${createdAvatar.personality}`,
-          },
-          {
-            role: "user",
-            content: guildPrompts.introduction,
-          },
-        ]
+        `You are ${createdAvatar.name}. ${createdAvatar.description} ${createdAvatar.personality}`,
+        guildPrompts.introduction
       );
 
       createdAvatar.dynamicPersonality = intro;

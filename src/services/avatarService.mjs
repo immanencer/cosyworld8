@@ -335,7 +335,7 @@ export class AvatarGenerationService {
    * @param {string} userPrompt - The user-provided prompt.
    * @returns {Object} - The generated avatar details.
    */
-  async generateAvatarDetails(userPrompt, retries = 3) {
+  async generateAvatarDetails(userPrompt, guildId = null, retries = 3) {
     try {
       if (!userPrompt || typeof userPrompt !== 'string' || userPrompt.trim().length === 0) {
         throw new Error('Invalid or empty prompt provided');
@@ -354,6 +354,17 @@ export class AvatarGenerationService {
         "emoji": "🔮"
       }`;
 
+      // Fetch guild-specific system prompt if guildId is provided
+      let systemPrompt = null;
+      if (guildId) {
+        try {
+          const guildPrompts = await this.config.getGuildPrompts(this.db, guildId);
+          systemPrompt = guildPrompts.summon;
+        } catch (error) {
+          this.logger.error(`Failed to fetch guild prompts for guild ${guildId}: ${error.message}`);
+        }
+      }
+
       const responseSchema = {
         type: "OBJECT",
         properties: {
@@ -366,17 +377,18 @@ export class AvatarGenerationService {
       };
 
       const aiResponse = await this.aiService.chat(
-        [
-          { role: "user", content: `${prompt}` }
-        ],
+        systemPrompt,
+        prompt,
         {
           maxOutputTokens: 1024,
-          temperature: 1.0, // Increased for more creativity
+          temperature: 1.0,
           topP: 0.95,
           topK: 40,
           responseSchema: responseSchema
         }
       );
+
+      console.log(aiResponse);
 
       try {
         let responseJson;
@@ -427,7 +439,7 @@ export class AvatarGenerationService {
         this.logger.warn(`Avatar generation attempt ${4 - retries}/3 failed: ${error.message}`);
         if (retries > 1) {
           this.logger.info(`Retrying avatar generation, ${retries - 1} attempts remaining`);
-          return this.generateAvatarDetails(userPrompt, retries - 1);
+          return this.generateAvatarDetails(userPrompt, guildId, retries - 1);
         }
         throw new Error('Failed to generate avatar after 3 attempts: ' + error.message);
       }
@@ -580,19 +592,30 @@ export class AvatarGenerationService {
    */
   async createAvatar(data) {
     let prompt = data.prompt;
+    let guildId = null;
+
+    // Fetch guild ID from channel ID if available
+    if (data.channelId && this.config.client) {
+      try {
+        const channel = await this.config.client.channels.fetch(data.channelId);
+        guildId = channel.guild.id;
+      } catch (error) {
+        this.logger.error(`Failed to fetch guild ID for channel ${data.channelId}: ${error.message}`);
+      }
+    }
+
     try {
       if (this.isArweaveUrl(prompt)) {
         const arweaveData = await this.fetchPrompt(prompt);
-        // Removed unused systemPrompt assignment.
         prompt = arweaveData.prompt || prompt;
       }
-      return await this._createAvatarWithPrompt(prompt, data);
+      return await this._createAvatarWithPrompt(prompt, data, guildId);
     } catch (error) {
       throw new Error(`Avatar creation failed: ${error.message}`);
     }
   }
 
-  async _createAvatarWithPrompt(prompt, data) {
+  async _createAvatarWithPrompt(prompt, data, guildId) {
     if (!this.db) {
       this.logger.error('Database is not connected. Cannot create avatar.');
       return null;
@@ -603,7 +626,8 @@ export class AvatarGenerationService {
         this.logger.warn('Daily limit reached. Cannot create more avatars today.');
         return null;
       }
-      const avatar = await this.generateAvatarDetails(prompt);
+
+      const avatar = await this.generateAvatarDetails(prompt, guildId);
       if (!avatar) {
         this.logger.error('Avatar creation aborted: avatar generation failed.');
         return null;
@@ -612,6 +636,8 @@ export class AvatarGenerationService {
         this.logger.error('Avatar creation aborted: avatar name is missing.');
         return null;
       }
+
+      console.log(JSON.stringify(avatar, null, 2));
 
       // Check if the name matches an existing avatar
       const existingAvatar = await this.db.collection(this.AVATARS_COLLECTION).findOne({ name: avatar.name });
