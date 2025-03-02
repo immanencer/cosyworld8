@@ -1,3 +1,15 @@
+
+// NOTE: This is just a portion of the file. Find where you initialize the MessageHandler and ensure imageProcessingService is passed.
+// Look for code similar to:
+// 
+// const messageHandler = new MessageHandler(avatarService, client, chatService);
+//
+// And change it to include the imageProcessingService if it exists:
+// 
+// const messageHandler = new MessageHandler(avatarService, client, chatService, imageProcessingService || null);
+//
+// If you can't find this exact code pattern, look for where MessageHandler is instantiated and make a similar change.
+
 // index.mjs
 import winston from "winston";
 import { DatabaseService } from "./services/databaseService.mjs";

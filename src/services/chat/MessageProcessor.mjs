@@ -3,11 +3,13 @@ export class MessageProcessor {
    * @param {object} avatarService - Service for avatar database operations.
    * @param {object} client - The Discord client instance.
    * @param {object} chatService - Service used to trigger chat responses.
+   * @param {object} imageProcessingService - Optional service for image processing.
    */
-  constructor(avatarService, client, chatService) {
+  constructor(avatarService, client, chatService, imageProcessingService = null) {
     this.avatarService = avatarService;
     this.client = client;
     this.chatService = chatService;
+    this.imageProcessingService = imageProcessingService;
 
     this.activeChannels = new Set();
     this.lastActivityTime = new Map();

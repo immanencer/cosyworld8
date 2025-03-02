@@ -1,8 +1,14 @@
 export class MessageHandler {
-  constructor(chatService, avatarService, logger, imageProcessingService) {
-    this.chatService = chatService;
+  /**
+   * @param {object} avatarService - Service for avatar database operations.
+   * @param {object} client - The Discord client instance.
+   * @param {object} chatService - Service used to trigger chat responses.
+   * @param {object} imageProcessingService - Optional service for processing images.
+   */
+  constructor(avatarService, client, chatService, imageProcessingService = null) {
     this.avatarService = avatarService;
-    this.logger = logger;
+    this.client = client;
+    this.chatService = chatService;
     this.imageProcessingService = imageProcessingService;
 
     // Message Queue - for processing messages in order
@@ -113,8 +119,12 @@ export class MessageHandler {
           const message = await this.chatService.getMessageById(item.messageId)
           if(message && message.attachments && message.attachments.length > 0){
             const imageUrl = message.attachments[0].url;
-            const imageAnalysis = await this.imageProcessingService.analyzeImage(imageUrl);
-            await this.chatService.respondAsAvatar(channel, avatar, !item.isBot, `Image analysis: ${JSON.stringify(imageAnalysis)}`);
+            if (this.imageProcessingService) {
+              const imageAnalysis = await this.imageProcessingService.analyzeImage(imageUrl);
+              await this.chatService.respondAsAvatar(channel, avatar, !item.isBot, `Image analysis: ${JSON.stringify(imageAnalysis)}`);
+            } else {
+              await this.chatService.respondAsAvatar(channel, avatar, !item.isBot);
+            }
           } else {
             await this.chatService.respondAsAvatar(channel, avatar, !item.isBot);
           }
