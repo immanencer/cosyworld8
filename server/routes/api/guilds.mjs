@@ -39,14 +39,39 @@ export default function(db) {
         return res.json(updatedConfig);
       }
       
-      // Otherwise create a new config
-      const result = await db.collection('guild_configs').insertOne({
-        ...guildData,
-        updatedAt: new Date()
-      });
+      // Otherwise create a new config based on a template
       
-      const newConfig = await configService.getGuildConfig(db, guildData.guildId);
-      res.status(201).json(newConfig);
+      // First, check if we have any existing guild configs to use as a template
+      const templateGuild = await db.collection('guild_configs').findOne(
+        {}, 
+        { sort: { createdAt: 1 } } // Sort by creation date to get the first one
+      );
+      
+      let newGuildConfig = {
+        ...guildData,
+        updatedAt: new Date(),
+        createdAt: new Date()
+      };
+      
+      // If we found a template guild, copy its settings
+      if (templateGuild) {
+        console.log(`Using guild ${templateGuild.guildId} as a template for new guild ${guildData.guildId}`);
+        
+        // Copy template settings but keep the new guild's ID and name
+        newGuildConfig = {
+          ...templateGuild,
+          guildId: guildData.guildId,
+          guildName: guildData.guildName || `New Guild ${guildData.guildId}`,
+          _id: undefined, // Remove MongoDB ID so it creates a new one
+          updatedAt: new Date(),
+          createdAt: new Date()
+        };
+      }
+      
+      const result = await db.collection('guild_configs').insertOne(newGuildConfig);
+      
+      const createdConfig = await configService.getGuildConfig(db, guildData.guildId);
+      res.status(201).json(createdConfig);
     } catch (error) {
       console.error('Error creating guild configuration:', error);
       res.status(500).json({ error: error.message });

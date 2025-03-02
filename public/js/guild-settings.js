@@ -40,16 +40,16 @@ class GuildSettingsManager {
 
       this.guildConfigs = await response.json();
       console.log('Loaded guild configurations:', this.guildConfigs);
-      
+
       // Also get recent logs to identify unwhitelisted guilds
       const logsResponse = await fetch('/api/audit-logs?type=guild_access&limit=50');
       if (logsResponse.ok) {
         const logs = await logsResponse.json();
-        
+
         // Extract unique guild IDs from logs that aren't in our configs
         const existingGuildIds = new Set(this.guildConfigs.map(g => g.guildId));
         const detectedGuildIds = new Map();
-        
+
         // Parse logs for "Guild X (id) is not whitelisted" entries
         logs.forEach(log => {
           if (typeof log.message === 'string') {
@@ -57,14 +57,14 @@ class GuildSettingsManager {
             if (match && match[1] && match[2]) {
               const guildName = match[1].trim();
               const guildId = match[2];
-              
+
               if (!existingGuildIds.has(guildId)) {
                 detectedGuildIds.set(guildId, guildName);
               }
             }
           }
         });
-        
+
         // Add detected guilds to our config list as placeholders
         for (const [guildId, guildName] of detectedGuildIds.entries()) {
           this.guildConfigs.push({
@@ -85,7 +85,7 @@ class GuildSettingsManager {
           });
         }
       }
-      
+
       return this.guildConfigs;
     } catch (error) {
       console.error('Error loading guild configurations:', error);
@@ -101,17 +101,17 @@ class GuildSettingsManager {
     while (selector.options.length > 1) {
       selector.remove(1);
     }
-    
+
     // Create option groups for better organization
     const whitelistedGroup = document.createElement('optgroup');
     whitelistedGroup.label = '✅ Active Servers';
-    
+
     const pendingGroup = document.createElement('optgroup');
     pendingGroup.label = '⏳ Pending Servers';
-    
+
     const detectedGroup = document.createElement('optgroup');
     detectedGroup.label = '🔍 Detected Servers';
-    
+
     let hasWhitelisted = false;
     let hasPending = false;
     let hasDetected = false;
@@ -121,7 +121,7 @@ class GuildSettingsManager {
       // First by whitelist status
       if (a.whitelisted && !b.whitelisted) return -1;
       if (!a.whitelisted && b.whitelisted) return 1;
-      
+
       // Then by name
       return (a.guildName || '').localeCompare(b.guildName || '');
     });
@@ -130,10 +130,10 @@ class GuildSettingsManager {
     sortedConfigs.forEach(config => {
       const option = document.createElement('option');
       option.value = config.guildId;
-      
+
       // Format the display text
       let displayName = config.guildName || `Server: ${config.guildId}`;
-      
+
       // Determine the group for this option
       if (config.whitelisted) {
         whitelistedGroup.appendChild(option);
@@ -146,7 +146,7 @@ class GuildSettingsManager {
         pendingGroup.appendChild(option);
         hasPending = true;
       }
-      
+
       option.textContent = displayName;
     });
 
@@ -270,7 +270,7 @@ class GuildSettingsManager {
       if (!form) {
         throw new Error('Form not found');
       }
-      
+
       const guildId = this.selectedGuildId === 'new' 
         ? form.querySelector('#guild-id').value.trim() 
         : this.selectedGuildId;
@@ -278,12 +278,12 @@ class GuildSettingsManager {
       if (!guildId) {
         throw new Error('Guild ID is required');
       }
-      
+
       // Validate guild ID format (Discord guild IDs are numeric strings)
       if (!/^\d+$/.test(guildId)) {
         throw new Error('Guild ID must be a valid Discord server ID (numbers only)');
       }
-      
+
       // Validate guild name
       const guildName = form.querySelector('#guild-name').value.trim();
       if (!guildName) {
@@ -343,7 +343,7 @@ class GuildSettingsManager {
         if (!response.ok) {
           const responseText = await response.text();
           let errorData;
-          
+
           try {
             errorData = JSON.parse(responseText);
             console.log('Server error response:', errorData);
@@ -354,14 +354,14 @@ class GuildSettingsManager {
             throw new Error(`Server returned ${response.status}: ${responseText || 'No error details provided'}`);
           }
         }
-        
+
         // Add cache-busting query param to force refresh server's cache
         await fetch(`/api/guilds/${guildId}/clear-cache`, { method: 'POST' });
       } catch (fetchError) {
         console.error('Network error:', fetchError);
         throw fetchError; // Re-throw to be caught by the outer try-catch
       }
-      
+
       const updatedSettings = await response.json();
       console.log('Settings saved successfully:', updatedSettings);
 
@@ -378,7 +378,7 @@ class GuildSettingsManager {
       this.selectedGuildId = guildId;
     } catch (error) {
       console.error('Error saving guild settings:', error);
-      
+
       // Show a more descriptive error message to the user
       let errorMessage = error.message;
       if (errorMessage.includes('fetch') || errorMessage.includes('network')) {
@@ -386,9 +386,9 @@ class GuildSettingsManager {
       } else if (errorMessage.includes('JSON')) {
         errorMessage = 'Server returned an invalid response. Please try again or contact support.';
       }
-      
+
       this.showMessage(`Error: ${errorMessage}`, 'error');
-      
+
       // Keep the form visible so the user can fix the issue
       this.toggleFormVisibility(true);
     }
@@ -430,6 +430,34 @@ class GuildSettingsManager {
       setTimeout(() => {
         messageElement.classList.add('hidden');
       }, 5000);
+    }
+  }
+  async addNewGuild(guildData) {
+    try {
+      if (!guildData.guildId) {
+        throw new Error('Guild ID is required');
+      }
+
+      // Use the base API endpoint to create a new guild (it will use template functionality)
+      const response = await fetch(`/api/guilds`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(guildData)
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error("Error response:", errorText);
+        throw new Error(`Failed to save guild settings: ${response.status}`);
+      }
+
+      const savedGuild = await response.json();
+      return savedGuild;
+    } catch (error) {
+      console.error('Error saving guild settings:', error);
+      throw error;
     }
   }
 }
