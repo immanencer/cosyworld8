@@ -102,6 +102,9 @@ export class GoogleAIService {
         systemInstruction = messages[0].content;
         messages = messages.slice(1);
       }
+      
+      // Use a non-constant variable for model selection
+      let selectedModel = options.model || this.model;
 
       // Map messages to Google's format, supporting both text and images
       const contents = messages
@@ -121,16 +124,15 @@ export class GoogleAIService {
           return { role, parts };
         });
 
-      // Model selection and fallback logic
-      let modelToUse = options.model || this.model;
-      if (!await this.modelIsAvailable(modelToUse)) {
-        console.warn(`Model ${modelToUse} unavailable, using default: ${this.model}`);
-        modelToUse = this.model;
+      // Model availability check and fallback
+      if (!await this.modelIsAvailable(selectedModel)) {
+        console.warn(`Model ${selectedModel} unavailable, using default: ${this.model}`);
+        selectedModel = this.model;
       }
 
       // Initialize generative model with system instruction
       const generativeModel = this.googleAI.getGenerativeModel({
-        model: modelToUse,
+        model: selectedModel,
         systemInstruction
       });
 
