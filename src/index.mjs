@@ -232,7 +232,6 @@ async function handleSummonCommand(message, breed = false, attributes = {}) {
   try {
     if (existingAvatar) {
       await reactToMessage(message, existingAvatar.emoji || "🔮");
-      existingAvatar.channelId = message.channel.id;
       await chatService.dungeonService.updateAvatarPosition(
         existingAvatar._id,
         message.channel.id
@@ -243,6 +242,14 @@ async function handleSummonCommand(message, breed = false, attributes = {}) {
       await avatarService.updateAvatar(existingAvatar);
       await sendAvatarProfileEmbedFromObject(existingAvatar);
       await chatService.respondAsAvatar(message.channel, existingAvatar, true);
+      return;
+    }
+
+    // Ensure we have a database connection before checking limits
+    const db = databaseService.getDatabase();
+    if (!db) {
+      logger.error("Database not available when checking summon limits");
+      await replyToMessage(message, "Service temporarily unavailable. Please try again later.");
       return;
     }
 
