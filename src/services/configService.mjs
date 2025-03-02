@@ -131,27 +131,85 @@ class ConfigService {
 
   async getGuildConfig(db, guildId) {
     try {
+      // First, check if we have a valid guild ID
       if (!guildId) {
         console.warn(`Invalid guild ID provided to getGuildConfig: ${guildId}`);
         return { guildId: null, whitelisted: false };
       }
       
-      // Use the provided DB or get from global client (assuming this.client exists and has a db property)
-      const dbToUse = db || (this.client && this.client.db) || (global.databaseService && global.databaseService.getDatabase());
+      // Check first if we have a cached version of the whitelist (in memory)
+      if (this.client && this.client.guildWhitelist && this.client.guildWhitelist.has(guildId)) {
+        const whitelisted = this.client.guildWhitelist.get(guildId);
+        console.debug(`Retrieved guild config for ${guildId} from memory cache: whitelisted=${whitelisted}`);
+        return { guildId, whitelisted };
+      }
+      
+      // Try to get a database connection, with multiple fallbacks
+      let dbToUse = null;
+      
+      // Option 1: Use the provided DB
+      if (db) {
+        dbToUse = db;
+      } 
+      // Option 2: Try to get from client
+      else if (this.client && this.client.db) {
+        dbToUse = this.client.db;
+      } 
+      // Option 3: Try to get from global database service
+      else if (global.databaseService) {
+        // First check if already connected
+        dbToUse = global.databaseService.getDatabase();
+        
+        // If not connected yet, try to connect but don't wait too long
+        if (!dbToUse) {
+          try {
+            // Attempt to get a connection with a short timeout
+            const timeoutPromise = new Promise((_, reject) => 
+              setTimeout(() => reject(new Error('Database connection timeout')), 500));
+            
+            // Race between a connection attempt and timeout
+            dbToUse = await Promise.race([
+              global.databaseService.waitForConnection(1, 300),
+              timeoutPromise
+            ]);
+          } catch (connErr) {
+            console.warn(`Could not establish database connection in time: ${connErr.message}`);
+          }
+        }
+      }
+      
+      // If we still don't have a database connection, return default
       if (!dbToUse) {
-        console.error(`No database connection available to fetch guild config for guild ${guildId}`);
+        console.warn(`No database connection available to fetch guild config for guild ${guildId}, using default`);
         return { guildId, whitelisted: false };
       }
 
-      const collection = dbToUse.collection('guild_configs');
-      const guildConfig = await collection.findOne({ guildId });
+      // Now try to fetch from database
+      try {
+        const collection = dbToUse.collection('guild_configs');
+        if (!collection) {
+          throw new Error('guild_configs collection not available');
+        }
+        
+        const guildConfig = await collection.findOne({ guildId });
 
-      // Return the found config or a default with guildId and whitelisted property
-      const result = guildConfig || { guildId, whitelisted: false };
-      console.debug(`Retrieved guild config for ${guildId}: whitelisted=${result.whitelisted}`);
-      return result;
+        // Return the found config or a default with guildId and whitelisted property
+        const result = guildConfig || { guildId, whitelisted: false };
+        console.debug(`Retrieved guild config for ${guildId} from database: whitelisted=${result.whitelisted}`);
+        
+        // Cache this result for future use
+        if (this.client) {
+          if (!this.client.guildWhitelist) this.client.guildWhitelist = new Map();
+          this.client.guildWhitelist.set(guildId, result.whitelisted);
+        }
+        
+        return result;
+      } catch (dbErr) {
+        console.error(`Error accessing guild_configs collection: ${dbErr.message}`);
+        return { guildId, whitelisted: false };
+      }
     } catch (error) {
-      console.error(`Error fetching guild config for guild ${guildId} from database:`, error);
+      console.error(`Error fetching guild config for guild ${guildId}:`, error);
       // Return a default config with whitelisted explicitly set to false
       return { guildId, whitelisted: false };
     }

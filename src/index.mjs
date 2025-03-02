@@ -417,18 +417,22 @@ client.on("messageCreate", async (message) => {
     
     // Check if guild is whitelisted
     try {
-      // Make sure database is available
-      const db = databaseService.getDatabase();
-      if (!db) {
-        // If database is not available, use memory cache or fall back to default behavior
-        if (client.guildWhitelist && client.guildWhitelist.has(message.guild.id)) {
-          logger.debug(`Guild ${message.guild.name}(${message.guild.id}) is whitelisted via client memory cache.`);
-        } else {
-          logger.warn(`Database not available for whitelist check, defaulting to allow messages.`);
-          // Consider updating this to match your security policy (allow or deny by default)
+      // First check memory cache for whitelist status (fastest path)
+      if (client.guildWhitelist && client.guildWhitelist.has(message.guild.id)) {
+        const isWhitelisted = client.guildWhitelist.get(message.guild.id);
+        logger.debug(`Guild ${message.guild.name}(${message.guild.id}) whitelist status from cache: ${isWhitelisted}`);
+        if (!isWhitelisted) {
+          logger.warn(`Guild ${message.guild.name}(${message.guild.id}) is not whitelisted. Ignoring message.`);
+          return;
         }
-        return;
-      }
+      } else {
+        // If not in cache, we need to check the database
+        // Make sure database is available
+        const db = databaseService.getDatabase();
+        if (!db) {
+          logger.warn(`Database not available for whitelist check for guild ${message.guild.id}. Using safe default.`);
+          return; // Default to ignoring messages if DB isn't available and not cached
+        }
 
       const guildConfig = await configService.getGuildConfig(db, message.guild.id);
 
@@ -556,6 +560,9 @@ async function main() {
     // Initialize client whitelist cache
     client.guildWhitelist = new Map();
     
+    // Set client in configService to enable whitelist caching
+    configService.setClient(client);
+    
     // Connect to database with retry logic
     const db = await databaseService.connect();
     if (!db) {
@@ -571,6 +578,21 @@ async function main() {
     const database = databaseService.getDatabase();
     if (!database) {
       throw new Error("Database connection not available");
+    }
+    
+    // After connecting, pre-load guild whitelist settings
+    try {
+      logger.info("Pre-loading guild whitelist settings...");
+      const guildConfigs = await database.collection('guild_configs').find({}).toArray();
+      for (const config of guildConfigs) {
+        if (config.guildId && config.whitelisted === true) {
+          client.guildWhitelist.set(config.guildId, true);
+          logger.debug(`Pre-loaded whitelist setting for guild ${config.guildId}: ${config.whitelisted}`);
+        }
+      }
+      logger.info(`Pre-loaded whitelist settings for ${client.guildWhitelist.size} guilds`);
+    } catch (err) {
+      logger.error(`Failed to pre-load guild whitelist settings: ${err.message}`);
     }
 
     avatarService = new AvatarGenerationService(database, configService);
