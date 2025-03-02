@@ -166,6 +166,8 @@ async function checkDailySummonLimit(userId) {
   } catch (error) {
     logger.error(`Error checking summon limit: ${error.message}`);
     return false;
+  } finally {
+    //Optional cleanup here if needed.
   }
 }
 
@@ -226,41 +228,45 @@ async function handleSummonCommand(message, breed = false, attributes = {}) {
         throw new Error("Avatar is missing required attributes");
       }
 
-    createdAvatar.summoner = `${message.author.username}@${message.author.id}`;
-    createdAvatar.model = createdAvatar.model || (await aiService.selectRandomModel());
-    createdAvatar.stats = await chatService.dungeonService.getAvatarStats(createdAvatar._id);
-    await avatarService.updateAvatar(createdAvatar);
-    await sendAvatarProfileEmbedFromObject(createdAvatar);
+      createdAvatar.summoner = `${message.author.username}@${message.author.id}`;
+      createdAvatar.model = createdAvatar.model || (await aiService.selectRandomModel());
+      createdAvatar.stats = await chatService.dungeonService.getAvatarStats(createdAvatar._id);
+      await avatarService.updateAvatar(createdAvatar);
+      await sendAvatarProfileEmbedFromObject(createdAvatar);
 
-    const intro = await aiService.chat(
-      [
-        {
-          role: "system",
-          content: `You are ${createdAvatar.name}. ${createdAvatar.description} ${createdAvatar.personality}`,
-        },
-        {
-          role: "user",
-          content: configService.config.prompt.introduction ||
-            "You've just arrived. Introduce yourself.",
-        },
-      ],
-      { model: createdAvatar.model }
-    );
+      const intro = await aiService.chat(
+        [
+          {
+            role: "system",
+            content: `You are ${createdAvatar.name}. ${createdAvatar.description} ${createdAvatar.personality}`,
+          },
+          {
+            role: "user",
+            content: configService.config.prompt.introduction ||
+              "You've just arrived. Introduce yourself.",
+          },
+        ],
+        { model: createdAvatar.model }
+      );
 
-    createdAvatar.dynamicPersonality = intro;
-    createdAvatar.channelId = message.channel.id;
-    createdAvatar.attributes = attributes;
-    await avatarService.updateAvatar(createdAvatar);
+      createdAvatar.dynamicPersonality = intro;
+      createdAvatar.channelId = message.channel.id;
+      createdAvatar.attributes = attributes;
+      await avatarService.updateAvatar(createdAvatar);
 
-    await sendAsWebhook(message.channel.id, intro, createdAvatar);
-    await chatService.dungeonService.initializeAvatar(createdAvatar._id, message.channel.id);
-    await reactToMessage(message, createdAvatar.emoji || "🎉");
-    if (!breed) await trackSummon(message.author.id);
-    await chatService.respondAsAvatar(message.channel, createdAvatar, true);
+      await sendAsWebhook(message.channel.id, intro, createdAvatar);
+      await chatService.dungeonService.initializeAvatar(createdAvatar._id, message.channel.id);
+      await reactToMessage(message, createdAvatar.emoji || "🎉");
+      if (!breed) await trackSummon(message.author.id);
+      await chatService.respondAsAvatar(message.channel, createdAvatar, true);
+    } catch (error) {
+      logger.error(`Summon error: ${error.message}`);
+      await reactToMessage(message, "❌");
+      throw error;
+    }
   } catch (error) {
-    logger.error(`Summon error: ${error.message}`);
+    logger.error(`Error processing summon command: ${error.stack}`);
     await reactToMessage(message, "❌");
-    throw error;
   }
 }
 
