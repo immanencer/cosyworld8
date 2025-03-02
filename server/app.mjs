@@ -3,6 +3,7 @@ import cors from 'cors';
 import { MongoClient } from 'mongodb';
 import process from 'process';
 import adminRoutes from './routes/adminRoutes.mjs';
+import auditLogsRoutes from './routes/audit-logs.js'; // Import audit logs routes
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -71,7 +72,7 @@ async function initializeApp() {
     app.use('/api/claims', (await import('./routes/claims.mjs')).default(db));
     app.use('/api/guilds', (await import('./routes/api/guilds.mjs')).default(db));
     app.use('/api/admin', adminRoutes(db)); //Added admin routes
-
+    app.use('/api/audit-logs', auditLogsRoutes); //Added audit logs route
 
     // Removed duplicate API router import for /api/v1
 

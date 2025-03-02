@@ -457,7 +457,22 @@ client.on("messageCreate", async (message) => {
         const globalConfig = await configService.get("whitelistedGuilds");
         const whitelistedGuilds = Array.isArray(globalConfig) ? globalConfig : [];
         if (!whitelistedGuilds.includes(message.guild.id)) {
-          logger.warn(`Guild ${message.guild.name} (${message.guild.id}) is not whitelisted. Ignoring message.`);
+          const logMessage = `Guild ${message.guild.name} (${message.guild.id}) is not whitelisted. Ignoring message.`;
+          logger.warn(logMessage);
+          
+          // Save to application_logs collection for audit purposes
+          try {
+            await db.collection('application_logs').insertOne({
+              type: 'guild_access',
+              message: logMessage,
+              guildId: message.guild.id,
+              guildName: message.guild.name,
+              timestamp: new Date()
+            });
+          } catch (logError) {
+            logger.error(`Failed to log guild access: ${logError.message}`);
+          }
+          
           return;
         }
         client.guildWhitelist = client.guildWhitelist || new Map();

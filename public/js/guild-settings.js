@@ -32,6 +32,7 @@ class GuildSettingsManager {
 
   async loadGuildConfigs() {
     try {
+      // Load existing guild configs
       const response = await fetch('/api/guilds');
       if (!response.ok) {
         throw new Error(`HTTP error ${response.status}`);
@@ -39,6 +40,52 @@ class GuildSettingsManager {
 
       this.guildConfigs = await response.json();
       console.log('Loaded guild configurations:', this.guildConfigs);
+      
+      // Also get recent logs to identify unwhitelisted guilds
+      const logsResponse = await fetch('/api/audit-logs?type=guild_access&limit=50');
+      if (logsResponse.ok) {
+        const logs = await logsResponse.json();
+        
+        // Extract unique guild IDs from logs that aren't in our configs
+        const existingGuildIds = new Set(this.guildConfigs.map(g => g.guildId));
+        const detectedGuildIds = new Map();
+        
+        // Parse logs for "Guild X (id) is not whitelisted" entries
+        logs.forEach(log => {
+          if (typeof log.message === 'string') {
+            const match = log.message.match(/Guild\s+([^(]+)\s+\((\d+)\)\s+is\s+not\s+whitelisted/i);
+            if (match && match[1] && match[2]) {
+              const guildName = match[1].trim();
+              const guildId = match[2];
+              
+              if (!existingGuildIds.has(guildId)) {
+                detectedGuildIds.set(guildId, guildName);
+              }
+            }
+          }
+        });
+        
+        // Add detected guilds to our config list as placeholders
+        for (const [guildId, guildName] of detectedGuildIds.entries()) {
+          this.guildConfigs.push({
+            guildId,
+            guildName,
+            whitelisted: false,
+            _detected: true, // Flag to indicate this was automatically detected
+            features: {
+              breeding: false,
+              combat: false,
+              itemCreation: false
+            },
+            prompts: {},
+            rateLimit: {
+              messages: 5,
+              interval: 60000
+            }
+          });
+        }
+      }
+      
       return this.guildConfigs;
     } catch (error) {
       console.error('Error loading guild configurations:', error);
@@ -54,14 +101,59 @@ class GuildSettingsManager {
     while (selector.options.length > 1) {
       selector.remove(1);
     }
+    
+    // Create option groups for better organization
+    const whitelistedGroup = document.createElement('optgroup');
+    whitelistedGroup.label = '✅ Active Servers';
+    
+    const pendingGroup = document.createElement('optgroup');
+    pendingGroup.label = '⏳ Pending Servers';
+    
+    const detectedGroup = document.createElement('optgroup');
+    detectedGroup.label = '🔍 Detected Servers';
+    
+    let hasWhitelisted = false;
+    let hasPending = false;
+    let hasDetected = false;
 
-    // Add options for each guild configuration
-    this.guildConfigs.forEach(config => {
+    // Sort configs by status and name
+    const sortedConfigs = [...this.guildConfigs].sort((a, b) => {
+      // First by whitelist status
+      if (a.whitelisted && !b.whitelisted) return -1;
+      if (!a.whitelisted && b.whitelisted) return 1;
+      
+      // Then by name
+      return (a.guildName || '').localeCompare(b.guildName || '');
+    });
+
+    // Add options for each guild configuration with proper styling
+    sortedConfigs.forEach(config => {
       const option = document.createElement('option');
       option.value = config.guildId;
-      option.textContent = config.guildName || `Server: ${config.guildId}`;
-      selector.appendChild(option);
+      
+      // Format the display text
+      let displayName = config.guildName || `Server: ${config.guildId}`;
+      
+      // Determine the group for this option
+      if (config.whitelisted) {
+        whitelistedGroup.appendChild(option);
+        hasWhitelisted = true;
+      } else if (config._detected) {
+        detectedGroup.appendChild(option);
+        displayName = `${displayName} (Detected)`;
+        hasDetected = true;
+      } else {
+        pendingGroup.appendChild(option);
+        hasPending = true;
+      }
+      
+      option.textContent = displayName;
     });
+
+    // Add the groups to the selector
+    if (hasWhitelisted) selector.appendChild(whitelistedGroup);
+    if (hasPending) selector.appendChild(pendingGroup);
+    if (hasDetected) selector.appendChild(detectedGroup);
 
     // Add an option to create a new guild configuration
     const newOption = document.createElement('option');
