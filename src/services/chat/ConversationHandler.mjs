@@ -551,22 +551,34 @@ Based on all of the above context, share an updated personality that reflects yo
           `${msg.authorUsername || 'User'}: ${msg.content || '[No content]'}${msg.hasImages ? ' [has image]' : ''}`
         ).join('\n');
 
-        // Construct the full textual context including channel history
+        // Get image descriptions from context messages
+        const imageDescriptions = channelHistory
+          .filter(msg => msg.imageDescription)
+          .map(msg => `[Image: ${msg.imageDescription}]`);
+          
+        // Add image descriptions to the contextual prompt
+        const imageContext = imageDescriptions.length > 0 
+          ? `\nRecent images:\n${imageDescriptions.join('\n')}\n` 
+          : '';
+
+        // Construct the full textual context including channel history and image descriptions
         const contextualPrompt = `
           Channel: #${context.channelName} in ${context.guildName}
 
           Actions Available:
           ${dungeonPrompt}
-
+          ${imageContext}
           Recent conversation history:
           ${channelContextText}
 
           Reply in character as ${avatar.name} with a single short message that responds to the context.
-          Comment on the image appropriately as part of your response.
+          ${imageDescriptions.length > 0 ? 'Comment on the described images appropriately as part of your response.' : ''}
         `.trim();
 
-        // Combine images with the contextual text prompt
-        const userMessageParts = [...imagePromptParts, { text: contextualPrompt }];
+        // If there are recent images in the prompt, don't need to send image data again
+        const userMessageParts = imageDescriptions.length > 0 
+          ? [{ text: contextualPrompt }]  // Just use text with descriptions
+          : [...imagePromptParts, { text: contextualPrompt }];  // Fall back to sending images if no descriptions
 
         this.logger.info(`Sending image message with ${imagePromptParts.length} images and ${channelHistory.length} context messages`);
 

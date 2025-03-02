@@ -321,14 +321,67 @@ export class MessageHandler {
     }
   }
 
+  constructor(avatarService, client, chatService, imageProcessingService, logger) {
+    this.avatarService = avatarService;
+    this.client = client;
+    this.chatService = chatService;
+    this.imageProcessingService = imageProcessingService;
+    this.logger = logger || console;
+    this.imageDescriptionCache = new Map(); // Cache for storing image descriptions
+  }
+
   async processUserAndBotMessages(channel) {
     try {
       // Get latest messages including those with images
       const recentMessages = await this.getChannelContext(channel.id, 15);
 
-      // Log message processing with image detection
-      if (recentMessages.some(msg => msg.hasImages)) {
+      // Process images and store descriptions if needed
+      if (recentMessages.some(msg => msg.hasImages) && this.imageProcessingService) {
         this.logger.info(`Processing channel ${channel.id} with ${recentMessages.length} messages including images`);
+        
+        // Find messages with images that don't have descriptions yet
+        for (const msg of recentMessages) {
+          if (msg.hasImages && !msg.imageDescription) {
+            // Check cache first
+            if (!this.imageDescriptionCache.has(msg.messageId)) {
+              try {
+                // Get message from Discord to extract images
+                const discordMsg = await channel.messages.fetch(msg.messageId);
+                if (discordMsg) {
+                  const extractedImages = await this.imageProcessingService.extractImagesFromMessage(discordMsg);
+                  
+                  if (extractedImages && extractedImages.length > 0) {
+                    // Get description for the first image only
+                    const imageDesc = await this.imageProcessingService.getImageDescription(
+                      extractedImages[0].base64, 
+                      extractedImages[0].mimeType
+                    );
+                    
+                    // Store in cache and update the message object
+                    this.imageDescriptionCache.set(msg.messageId, imageDesc);
+                    msg.imageDescription = imageDesc;
+                    
+                    // Update the database with the description
+                    const db = await this.getDb();
+                    if (db) {
+                      await db.collection("messages").updateOne(
+                        { messageId: msg.messageId },
+                        { $set: { imageDescription: imageDesc } }
+                      );
+                    }
+                    
+                    this.logger.info(`Added image description for message ${msg.messageId}`);
+                  }
+                }
+              } catch (error) {
+                this.logger.error(`Error processing image for message ${msg.messageId}: ${error.message}`);
+              }
+            } else {
+              // Use cached description
+              msg.imageDescription = this.imageDescriptionCache.get(msg.messageId);
+            }
+          }
+        }
       }
 
       // Continue with existing processing...

@@ -42,6 +42,30 @@ export class ImageProcessingService {
    * @param {Object} message - The Discord message
    * @returns {Promise<Array<{url: string, base64: string, mimeType: string}>>} - Array of image data
    */
+  async getImageDescription(imageBase64, mimeType) {
+    try {
+      // Use AI service to get a description of the image
+      const response = await this.aiService.chat([
+        {
+          role: "system",
+          content: "You are an AI that provides concise, detailed descriptions of images. Focus on the main subjects, actions, setting, and important visual elements. Keep descriptions under 100 words."
+        },
+        {
+          role: "user",
+          content: [
+            { type: "text", text: "Describe this image in detail:" },
+            { type: "image_url", image_url: { url: `data:${mimeType};base64,${imageBase64}` } }
+          ]
+        }
+      ]);
+      
+      return response || "No description available";
+    } catch (error) {
+      this.logger.error(`Failed to get image description: ${error.message}`);
+      return "Error generating image description";
+    }
+  }
+
   async extractImagesFromMessage(message) {
     const images = [];
     

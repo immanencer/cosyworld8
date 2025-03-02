@@ -1,4 +1,3 @@
-
 import { MongoClient } from 'mongodb';
 
 export class DatabaseService {
@@ -47,7 +46,7 @@ export class DatabaseService {
           this.logger.error(`Error closing MongoDB connection: ${closeError.message}`);
         }
       }
-      
+
       // Set up reconnection with exponential backoff
       const reconnectDelay = Math.min(this.reconnectDelay * 1.5, 30000); // Maximum 30 seconds
       this.logger.info(`Will attempt to reconnect in ${reconnectDelay/1000} seconds...`);
@@ -64,14 +63,14 @@ export class DatabaseService {
       this.connect().catch(err => {
         this.logger.error(`Failed to reconnect to database: ${err.message}`);
       });
-      
+
       // Return the database object even if not fully initialized yet
       // This helps avoid null reference errors in some cases
       return this.db || null;
     }
     return this.db;
   }
-  
+
   /**
    * Waits for database connection to be established
    * @param {number} maxRetries - Maximum number of retries
@@ -80,17 +79,17 @@ export class DatabaseService {
    */
   async waitForConnection(maxRetries = 5, delay = 1000) {
     let retries = 0;
-    
+
     while (retries < maxRetries) {
       if (this.connected && this.db) {
         return this.db;
       }
-      
+
       this.logger.info(`Waiting for database connection... (attempt ${retries + 1}/${maxRetries})`);
       await new Promise(resolve => setTimeout(resolve, delay));
       retries++;
     }
-    
+
     this.logger.error(`Failed to establish database connection after ${maxRetries} attempts`);
     return null;
   }
@@ -130,7 +129,9 @@ export class DatabaseService {
           { key: { timestamp: -1 }, background: true },
           { key: { actor: 1 }, background: true },
           { key: { target: 1 }, background: true },
-        ])
+        ]),
+        db.collection('messages').createIndex({ hasImages: 1 }),
+        db.collection('messages').createIndex({ imageDescription: 1 })
       ]);
       this.logger.info('Database indexes created successfully');
     } catch (error) {
