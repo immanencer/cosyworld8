@@ -295,6 +295,64 @@ Based on all of the above context, share an updated personality that reflects yo
   }
 
   /**
+   * Fetches recent messages from a channel to provide conversation context
+   * @param {string} channelId - The ID of the channel
+   * @param {number} limit - Maximum number of messages to retrieve
+   * @returns {Promise<Array>} Array of message objects
+   */
+  async getChannelContext(channelId, limit = 10) {
+    try {
+      this.logger.info(`Fetching channel context for channel ${channelId}`);
+
+      // First try to fetch from database
+      if (this.db) {
+        try {
+          const messagesCollection = this.db.collection('messages');
+          const messages = await messagesCollection
+            .find({ channelId })
+            .sort({ timestamp: -1 })
+            .limit(limit)
+            .toArray();
+
+          if (messages && messages.length > 0) {
+            this.logger.debug(`Retrieved ${messages.length} messages from database for channel ${channelId}`);
+            return messages.reverse(); // Return in chronological order
+          }
+        } catch (dbError) {
+          this.logger.error(`Database error fetching messages: ${dbError.message}`);
+        }
+      }
+
+      // Fallback to Discord API if DB fetch fails or returns no results
+      const channel = await this.client.channels.fetch(channelId);
+      if (!channel) {
+        this.logger.warn(`Channel ${channelId} not found`);
+        return [];
+      }
+
+      const discordMessages = await channel.messages.fetch({ limit });
+      const formattedMessages = Array.from(discordMessages.values())
+        .map(msg => ({
+          messageId: msg.id,
+          channelId: msg.channel.id,
+          authorId: msg.author.id,
+          authorUsername: msg.author.username,
+          content: msg.content,
+          hasImages: msg.attachments.some(a => a.contentType?.startsWith('image/')) ||
+            msg.embeds.some(e => e.image || e.thumbnail),
+          timestamp: msg.createdTimestamp
+        }))
+        .sort((a, b) => a.timestamp - b.timestamp); // Sort chronologically
+
+      this.logger.debug(`Retrieved ${formattedMessages.length} messages from Discord API for channel ${channelId}`);
+      return formattedMessages;
+    } catch (error) {
+      this.logger.error(`Error fetching channel context for channel ${channelId}: ${error.message}`);
+      return [];
+    }
+  }
+
+  /**
    * Updates the avatar's narrative history and optionally posts an update
    * to the avatar's inner monologue channel.
    * @param {*} avatar 
@@ -488,8 +546,37 @@ Based on all of the above context, share an updated personality that reflects yo
         const systemMessage = { role: 'system', content: systemPrompt };
         const assistantMessage = { role: 'assistant', content: lastNarrative?.content || 'No previous reflection' };
         
+        // First fetch the channel context/history
+        let channelHistory = [];
+        try {
+          const channelContext = await this.getChannelContext(channel.id, 10);
+          if (channelContext && channelContext.length > 0) {
+            channelHistory = channelContext.map(msg => 
+              `${msg.authorUsername || 'User'}: ${msg.content || '[No content]'}`
+            ).join('\n');
+            this.logger.info(`Retrieved ${channelContext.length} messages for channel history context`);
+          } else {
+            this.logger.warn(`Failed to fetch message history for channel ${channel.id}`);
+          }
+        } catch (error) {
+          this.logger.error(`Error fetching channel context: ${error.message}`);
+        }
+        
         // Create a proper user message that includes both text content and images
-        const userMessageParts = [...imagePromptParts, { text: textPrompt }];
+        const enrichedTextPrompt = `
+          Channel: #${context.channelName} in ${context.guildName}
+          
+          Actions Available:
+          ${dungeonPrompt}
+          
+          Recent channel history:
+          ${channelHistory}
+          
+          Reply in character as ${avatar.name} with a single short, casual message, suitable for this discord channel.
+          If there are images in the conversation, comment on them as appropriate.
+        `.trim();
+        
+        const userMessageParts = [...imagePromptParts, { text: enrichedTextPrompt }];
         
         // Make the complete chat request
         response = await this.aiService.chat(

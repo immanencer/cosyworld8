@@ -163,6 +163,14 @@ export class GoogleAIService {
       
       // Log the input parameters for debugging
       console.log(`Chat inputs: systemPrompt type=${typeof systemPrompt}, userPrompt type=${typeof userPrompt}, hasImages=${Array.isArray(userPrompt) && userPrompt.some(part => part.inlineData)}`);
+      
+      // Enhanced debugging for text content
+      if (Array.isArray(userPrompt)) {
+        const textParts = userPrompt.filter(part => part.text).map(part => part.text?.substring(0, 50) + '...');
+        if (textParts.length > 0) {
+          console.log(`Text parts in prompt: ${textParts.length}, first part preview: ${textParts[0]}`);
+        }
+      }
 
       // Prepare content parts for the API
       const parts = [];

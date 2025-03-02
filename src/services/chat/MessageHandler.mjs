@@ -264,11 +264,15 @@ export class MessageHandler {
           .limit(limit)
           .toArray();
 
-        this.logger.debug(`Retrieved ${messages.length} messages from database for channel ${channelId}`);
-        return messages.reverse();  // Chronological order
+        if (messages && messages.length > 0) {
+          this.logger.debug(`Retrieved ${messages.length} messages from database for channel ${channelId}`);
+          return messages.reverse();  // Chronological order
+        } else {
+          this.logger.debug(`No messages found in database for channel ${channelId}, falling back to Discord API`);
+        }
       }
 
-      // If db lookup fails, try to fetch from Discord API
+      // If db lookup fails or returns no results, try to fetch from Discord API
       const channel = await this.client.channels.fetch(channelId);
       if (!channel) {
         this.logger.warn(`Channel ${channelId} not found`);
@@ -276,6 +280,11 @@ export class MessageHandler {
       }
 
       const discordMessages = await channel.messages.fetch({ limit });
+      if (!discordMessages || discordMessages.size === 0) {
+        this.logger.warn(`No messages found in Discord API for channel ${channelId}`);
+        return [];
+      }
+
       const formattedMessages = Array.from(discordMessages.values())
         .map(msg => ({
           messageId: msg.id,
@@ -290,6 +299,21 @@ export class MessageHandler {
         .sort((a, b) => a.timestamp - b.timestamp);
 
       this.logger.debug(`Retrieved ${formattedMessages.length} messages from Discord API for channel ${channelId}`);
+      
+      // Save these messages to the database for future use if we have a DB connection
+      if (db && formattedMessages.length > 0) {
+        try {
+          await db.collection('messages').insertMany(
+            formattedMessages.map(msg => ({...msg, _id: msg.messageId})),
+            { ordered: false } // Continue even if some inserts fail due to duplicates
+          );
+          this.logger.debug(`Saved ${formattedMessages.length} messages from Discord API to database`);
+        } catch (saveError) {
+          // This might fail due to duplicate keys, which is fine
+          this.logger.debug(`Some messages may already exist in database: ${saveError.message}`);
+        }
+      }
+      
       return formattedMessages;
     } catch (error) {
       this.logger.error(`Error fetching channel context for channel ${channelId}:`, error);
