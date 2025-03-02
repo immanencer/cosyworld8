@@ -26,6 +26,7 @@ export class MessageHandler {
     this.processingMessages = new Set();
     this.responseQueue = new Map(); // channelId -> {queue: [], processing: number}
     this.channelTimeMap = new Map();
+    this.imageDescriptionCache = new Map(); // Cache for storing image descriptions
     this.startProcessing();
   }
 
@@ -58,66 +59,22 @@ export class MessageHandler {
         return;
       }
 
-      // Try to get recent messages from the database first
-      let messageHistory = [];
-      try {
-        if (this.chatService && this.chatService.db) {
-          const dbMessages = await this.chatService.db.collection('messages')
-            .find({ channelId })
-            .sort({ timestamp: -1 })
-            .limit(10)
-            .toArray();
-
-          if (dbMessages && dbMessages.length > 0) {
-            messageHistory = dbMessages;
-            this.logger.info(`Retrieved ${dbMessages.length} messages from database for channel ${channelId}`);
-          }
-        }
-      } catch (dbError) {
-        this.logger.error(`Error retrieving messages from database: ${dbError.message}`);
-      }
-
-      // If no messages from database, fall back to Discord API
-      let latestMessage = null;
-      if (messageHistory.length > 0) {
-        latestMessage = {
-          id: messageHistory[0].messageId,
-          content: messageHistory[0].content,
-          author: {
-            id: messageHistory[0].authorId,
-            username: messageHistory[0].authorUsername,
-            bot: messageHistory[0].author?.bot || false
-          }
-        };
-      } else {
-        const messages = await channel.messages.fetch({ limit: 10 });
-        if (messages.size === 0) {
-          this.logger.info(`No messages in channel ${channelId}.`);
-          return;
-        }
-        latestMessage = messages.first();
-        messageHistory = Array.from(messages.values()).map(m => ({
-          messageId: m.id,
-          content: m.content,
-          authorId: m.author.id,
-          authorUsername: m.author.username,
-          timestamp: m.createdTimestamp
-        }));
-      }
-
-      if (!latestMessage) {
-        this.logger.info(`No latest message found in channel ${channelId}.`);
+      // Get recent messages from the database or Discord API
+      const messageHistory = await this.getChannelContext(channelId, 10);
+      if (messageHistory.length === 0) {
+        this.logger.info(`No messages in channel ${channelId}.`);
         return;
       }
 
-      if (latestMessage.author.id === this.client.user.id) {
+      const latestMessage = messageHistory[messageHistory.length - 1];
+
+      if (latestMessage.authorId === this.client.user.id) {
         this.logger.debug(`Latest message in channel ${channelId} is from the bot. Skipping.`);
         return;
       }
 
       const avatarsInChannel = await this.avatarService.getAvatarsInChannel(channelId);
       if (!avatarsInChannel.length) return;
-
 
       const recentAvatars = await this.chatService.getLastMentionedAvatars(messageHistory, avatarsInChannel);
       const latestAvatars = await this.chatService.getLastMentionedAvatars([latestMessage], avatarsInChannel);
@@ -152,7 +109,8 @@ export class MessageHandler {
         const queueItem = {
           avatarId,
           processingKey,
-          isBot: latestMessage.author.bot
+          isBot: latestMessage.authorIsBot || false,
+          messageId: latestMessage.messageId
         };
 
         const channelQueue = this.responseQueue.get(channelId);
@@ -180,6 +138,7 @@ export class MessageHandler {
         if (avatar) {
           const channel = await this.chatService.client.channels.fetch(channelId);
           const message = await this.chatService.getMessageById(item.messageId);
+
           if (message && message.attachments && message.attachments.length > 0) {
             const imageUrl = message.attachments[0].url;
             if (this.imageProcessingService) {
@@ -321,15 +280,6 @@ export class MessageHandler {
     }
   }
 
-  constructor(avatarService, client, chatService, imageProcessingService, logger) {
-    this.avatarService = avatarService;
-    this.client = client;
-    this.chatService = chatService;
-    this.imageProcessingService = imageProcessingService;
-    this.logger = logger || console;
-    this.imageDescriptionCache = new Map(); // Cache for storing image descriptions
-  }
-
   async processUserAndBotMessages(channel) {
     try {
       // Get latest messages including those with images
@@ -338,7 +288,7 @@ export class MessageHandler {
       // Process images and store descriptions if needed
       if (recentMessages.some(msg => msg.hasImages) && this.imageProcessingService) {
         this.logger.info(`Processing channel ${channel.id} with ${recentMessages.length} messages including images`);
-        
+
         // Find messages with images that don't have descriptions yet
         for (const msg of recentMessages) {
           if (msg.hasImages && !msg.imageDescription) {
@@ -349,18 +299,18 @@ export class MessageHandler {
                 const discordMsg = await channel.messages.fetch(msg.messageId);
                 if (discordMsg) {
                   const extractedImages = await this.imageProcessingService.extractImagesFromMessage(discordMsg);
-                  
+
                   if (extractedImages && extractedImages.length > 0) {
                     // Get description for the first image only
                     const imageDesc = await this.imageProcessingService.getImageDescription(
-                      extractedImages[0].base64, 
+                      extractedImages[0].base64,
                       extractedImages[0].mimeType
                     );
-                    
+
                     // Store in cache and update the message object
                     this.imageDescriptionCache.set(msg.messageId, imageDesc);
                     msg.imageDescription = imageDesc;
-                    
+
                     // Update the database with the description
                     const db = await this.getDb();
                     if (db) {
@@ -369,7 +319,7 @@ export class MessageHandler {
                         { $set: { imageDescription: imageDesc } }
                       );
                     }
-                    
+
                     this.logger.info(`Added image description for message ${msg.messageId}`);
                   }
                 }
@@ -384,7 +334,6 @@ export class MessageHandler {
         }
       }
 
-      // Continue with existing processing...
       return recentMessages;
     } catch (error) {
       this.logger.error(`Error processing channel messages: ${error.message}`);
@@ -395,5 +344,4 @@ export class MessageHandler {
   async getDb() {
     return this.db;
   }
-
 }

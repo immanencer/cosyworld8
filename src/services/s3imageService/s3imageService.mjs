@@ -64,8 +64,6 @@ export async function uploadImage(filePath) {
         res.on('end', () => {
           if (res.statusCode === 200) {
             try {
-              // Log raw response for debugging
-              console.log('Raw S3 response:', data);
               
               const result = JSON.parse(data);
               // Parse the nested body if it exists
