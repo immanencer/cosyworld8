@@ -377,8 +377,8 @@ export class AvatarGenerationService {
       };
 
       const aiResponse = await this.aiService.chat(
-        systemPrompt,
-        prompt,
+        [{ role: 'system', content: systemPrompt },
+         { role: 'user', content: prompt }],
         {
           maxOutputTokens: 1024,
           temperature: 1.0,

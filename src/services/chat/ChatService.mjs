@@ -305,7 +305,7 @@ export class ChatService {
           }
           await this.conversationHandler.sendResponse(channel, avatar);
         } catch (error) {
-          this.logger.error(`Error sending response for ${avatar.name}: ${error.message}`);
+          this.logger.error(`CHAT: Error sending response for ${avatar.name}: ${error.message}`);
         }
       }
     } catch (error) {

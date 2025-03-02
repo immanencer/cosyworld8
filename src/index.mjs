@@ -262,9 +262,7 @@ async function handleSummonCommand(message, breed = false, attributes = {}) {
         role: "user",
         content: guildPrompts.introduction,
         }
-      ]
-        
-      );;
+      ]);;
 
       createdAvatar.dynamicPersonality = intro;
       createdAvatar.channelId = message.channel.id;

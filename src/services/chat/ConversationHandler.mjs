@@ -484,7 +484,7 @@ Based on all of the above context, share an updated personality that reflects yo
         }
 
         // Generate response via AI service
-        const response = await this.aiService.chat([
+        let response = await this.aiService.chat([
           { role: 'system', content: systemPrompt },
           { role: 'assistant', content: lastNarrative?.content || 'No previous reflection' },
           { role: 'user', content: userContent }
@@ -562,7 +562,7 @@ Based on all of the above context, share an updated personality that reflects yo
 
       return response;
     } catch (error) {
-      this.logger.error(`Error sending response for ${avatar.name}: ${error.message}`);
+      this.logger.error(`CONVERSATION: Error sending response for ${avatar.name}: ${error.message}`);
       return null;
     }
   }
