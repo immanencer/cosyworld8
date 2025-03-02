@@ -77,7 +77,17 @@ export class GoogleAIService {
         console.log(`Model ${model} not found in configuration`);
         return false;
       }
-      return true; // Simplified since API check was unreliable
+      
+      // Additional check: try to fetch the model capabilities to ensure it's actually available
+      try {
+        const generativeModel = this.googleAI.getGenerativeModel({ model });
+        // We don't need to do anything with the model, just see if we can create it
+        return true;
+      } catch (modelError) {
+        // If there's an error creating the model, it's likely not available
+        console.log(`Model ${model} exists in configuration but is not accessible: ${modelError.message}`);
+        return false;
+      }
     } catch (error) {
       console.error(`Error checking model availability: ${error.message}`);
       return false;
@@ -87,8 +97,26 @@ export class GoogleAIService {
   async chat(systemPrompt, userPrompt, options = {}) {
     try {
       const model = options.model || this.model;
+      // Check if the requested model is available
       if (!await this.modelIsAvailable(model)) {
-        throw new Error(`Model ${model} is not available`);
+        console.warn(`Model ${model} is not available, attempting to find a fallback model...`);
+        
+        // Try to find a similar model variant
+        const modelBase = model.split('-')[0]; // e.g., "gemini" from "gemini-1.0-pro"
+        const similarModels = this.modelConfig.filter(m => 
+          m.model.startsWith(modelBase) && m.model !== model
+        );
+        
+        // If we found similar models, use the first one
+        if (similarModels.length > 0) {
+          const fallbackModel = similarModels[0].model;
+          console.info(`Falling back to similar model: ${fallbackModel}`);
+          model = fallbackModel;
+        } else {
+          // Otherwise use the default model
+          console.info(`No similar models found, falling back to default model: ${this.model}`);
+          model = this.model;
+        }
       }
 
       const generativeModel = this.googleAI.getGenerativeModel({

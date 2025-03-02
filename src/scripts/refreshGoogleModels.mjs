@@ -33,11 +33,8 @@ const defaultModels = [
   {
     "model": "gemini-1.5-flash",
     "rarity": "common"
-  },
-  {
-    "model": "gemini-1.0-pro",
-    "rarity": "uncommon"
   }
+  // Removed gemini-1.0-pro as it's no longer available
 ];
 
 /**
