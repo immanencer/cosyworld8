@@ -9,7 +9,8 @@ export class GoogleAIService {
     });
 
     // Default model - can be overridden
-    this.model = process.env.GOOGLE_AI_MODEL || 'gemini-2.0-flash';
+    this.model = process.env.GOOGLE_AI_MODEL || 'gemini-1.5-flash';
+    console.log(`Initialized GoogleAIService with default model: ${this.model}`);
 
     // Initialize model list
     this.modelConfig = [];
@@ -86,12 +87,17 @@ export class GoogleAIService {
   modelIsAvailable(model) {
     // If models haven't been loaded yet, we need to load them first
     if (this.modelConfig.length === 0) {
-      this.fetchModels().then(() => {
-        return this.modelConfig.some(m => m.model === model);
+      console.log(`Fetching models before checking availability of ${model}`);
+      return this.fetchModels().then(() => {
+        const isAvailable = this.modelConfig.some(m => m.model === model);
+        console.log(`Model ${model} availability check: ${isAvailable}`);
+        return isAvailable;
       });
     }
 
-    return this.modelConfig.some(m => m.model === model);
+    const isAvailable = this.modelConfig.some(m => m.model === model);
+    console.log(`Model ${model} availability check with loaded models: ${isAvailable}`);
+    return isAvailable;
   }
 
   async generateCompletion(prompt, options = {}) {
@@ -146,6 +152,14 @@ export class GoogleAIService {
     if (!this.modelIsAvailable(mergedOptions.model)) {
       console.error('Invalid model provided to chat:', mergedOptions.model);
       mergedOptions.model = this.model;
+    }
+
+    // Format the model correctly for the API request - Google models don't need prefixes
+    if (mergedOptions.model && !mergedOptions.model.startsWith('google/')) {
+      // Only add 'google/' prefix to Gemini models
+      if (mergedOptions.model.startsWith('gemini-')) {
+        mergedOptions.model = `google/${mergedOptions.model}`;
+      }
     }
 
     try {
