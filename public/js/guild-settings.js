@@ -94,27 +94,9 @@ class GuildSettingsManager {
   }
 
   initializeGuildSelector() {
-    const selector = document.getElementById('guild-selector');
-    if (!selector) return;
-
-    // Clear existing options (except the placeholder)
-    while (selector.options.length > 1) {
-      selector.remove(1);
-    }
-
-    // Create option groups for better organization
-    const whitelistedGroup = document.createElement('optgroup');
-    whitelistedGroup.label = '✅ Active Servers';
-
-    const pendingGroup = document.createElement('optgroup');
-    pendingGroup.label = '⏳ Pending Servers';
-
-    const detectedGroup = document.createElement('optgroup');
-    detectedGroup.label = '🔍 Detected Servers';
-
-    let hasWhitelisted = false;
-    let hasPending = false;
-    let hasDetected = false;
+    const guildList = document.getElementById('guild-list');
+    if (!guildList) return;
+    guildList.innerHTML = ''; // Clear existing guilds
 
     // Sort configs by status and name
     const sortedConfigs = [...this.guildConfigs].sort((a, b) => {
@@ -126,43 +108,25 @@ class GuildSettingsManager {
       return (a.guildName || '').localeCompare(b.guildName || '');
     });
 
-    // Add options for each guild configuration with proper styling
     sortedConfigs.forEach(config => {
-      const option = document.createElement('option');
-      option.value = config.guildId;
-
-      // Format the display text
-      let displayName = config.guildName || `Server: ${config.guildId}`;
-
-      // Determine the group for this option
-      if (config.whitelisted) {
-        whitelistedGroup.appendChild(option);
-        hasWhitelisted = true;
-      } else if (config._detected) {
-        detectedGroup.appendChild(option);
-        displayName = `${displayName} (Detected)`;
-        hasDetected = true;
-      } else {
-        pendingGroup.appendChild(option);
-        hasPending = true;
-      }
-
-      option.textContent = displayName;
+      const card = document.createElement('div');
+      card.setAttribute('data-guild-id', config.guildId);
+      card.classList.add('card', 'm-2', 'p-4', 'cursor-pointer');
+      card.innerHTML = `
+        <h3>${config.guildName || `Server: ${config.guildId}`}</h3>
+        <p>Whitelisted: ${config.whitelisted ? 'Yes' : 'No'}</p>
+      `;
+      card.addEventListener('click', () => this.handleGuildSelection(config.guildId));
+      guildList.appendChild(card);
     });
 
-    // Add the groups to the selector
-    if (hasWhitelisted) selector.appendChild(whitelistedGroup);
-    if (hasPending) selector.appendChild(pendingGroup);
-    if (hasDetected) selector.appendChild(detectedGroup);
 
     // Add an option to create a new guild configuration
-    const newOption = document.createElement('option');
-    newOption.value = 'new';
-    newOption.textContent = '➕ Add New Server Configuration';
-    selector.appendChild(newOption);
-
-    // Set up change event handler
-    selector.onchange = () => this.handleGuildSelection(selector.value);
+    const newCard = document.createElement('div');
+    newCard.classList.add('card', 'm-2', 'p-4', 'cursor-pointer');
+    newCard.textContent = '➕ Add New Server Configuration';
+    newCard.addEventListener('click', () => this.handleGuildSelection('new'));
+    guildList.appendChild(newCard);
   }
 
   initializeFormHandlers() {
@@ -190,36 +154,43 @@ class GuildSettingsManager {
   }
 
   handleGuildSelection(guildId) {
-    if (!guildId || guildId === '') {
-      this.selectedGuildId = null;
-      this.resetForm();
+    if (!guildId) {
       this.toggleFormVisibility(false);
+      document.getElementById('no-server-selected').classList.remove('hidden');
       return;
     }
 
-    if (guildId === 'new') {
-      this.selectedGuildId = 'new';
-      this.resetForm();
-      this.toggleFormVisibility(true);
-      document.getElementById('guild-id').removeAttribute('readonly');
-      document.getElementById('guild-id').focus();
-    } else {
-      this.selectedGuildId = guildId;
-      this.loadGuildSettings(guildId);
+    // Find the selected guild configuration
+    const selectedConfig = this.guildConfigs.find(config => config.guildId === guildId);
+    if (!selectedConfig) {
+      this.showMessage(`Guild configuration not found for ID: ${guildId}`, 'error');
+      return;
     }
+
+    // Highlight the selected card
+    const cards = document.querySelectorAll('[data-guild-id]');
+    cards.forEach(card => {
+      if (card.getAttribute('data-guild-id') === guildId) {
+        card.classList.add('ring-2', 'ring-indigo-500');
+      } else {
+        card.classList.remove('ring-2', 'ring-indigo-500');
+      }
+    });
+
+    // Set the selected guild ID
+    this.selectedGuildId = guildId;
+
+    // Populate the form with the selected guild's configuration
+    this.populateSettingsForm(selectedConfig);
+
+    // Show the settings form and hide the no-server message
+    this.toggleFormVisibility(true);
+    document.getElementById('no-server-selected').classList.add('hidden');
   }
 
-  loadGuildSettings(guildId) {
-    const config = this.guildConfigs.find(c => c.guildId === guildId);
-    if (!config) {
-      this.showMessage(`Could not find configuration for server ID: ${guildId}`, 'error');
-      return;
-    }
-
-    this.toggleFormVisibility(true);
-
-    // Populate form fields
+  populateSettingsForm(config) {
     const form = document.getElementById('guild-settings-form');
+    if (!form) return;
 
     // Basic information
     form.querySelector('#guild-id').value = config.guildId;
@@ -271,8 +242,8 @@ class GuildSettingsManager {
         throw new Error('Form not found');
       }
 
-      const guildId = this.selectedGuildId === 'new' 
-        ? form.querySelector('#guild-id').value.trim() 
+      const guildId = this.selectedGuildId === 'new'
+        ? form.querySelector('#guild-id').value.trim()
         : this.selectedGuildId;
 
       if (!guildId) {
@@ -325,8 +296,8 @@ class GuildSettingsManager {
       };
 
       // Save settings to server
-      const url = this.selectedGuildId === 'new' 
-        ? '/api/guilds' 
+      const url = this.selectedGuildId === 'new'
+        ? '/api/guilds'
         : `/api/guilds/${guildId}`;
 
       const method = this.selectedGuildId === 'new' ? 'POST' : 'PATCH';

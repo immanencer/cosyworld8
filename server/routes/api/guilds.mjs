@@ -59,6 +59,34 @@ export default function(db) {
           updatedAt: new Date(),
           createdAt: new Date()
         };
+        
+        // Ensure all prompts and settings are properly copied
+        if (templateGuild.prompts) {
+          newGuildConfig.prompts = { ...templateGuild.prompts };
+        }
+        
+        if (templateGuild.features) {
+          newGuildConfig.features = { ...templateGuild.features };
+        }
+        
+        if (templateGuild.rateLimit) {
+          newGuildConfig.rateLimit = { ...templateGuild.rateLimit };
+        }
+        
+        if (templateGuild.toolEmojis) {
+          newGuildConfig.toolEmojis = { ...templateGuild.toolEmojis };
+        }
+        
+        // Also copy admin roles and other settings
+        if (templateGuild.adminRoles) {
+          newGuildConfig.adminRoles = [...templateGuild.adminRoles];
+        }
+        
+        // Copy summon emoji
+        newGuildConfig.summonEmoji = templateGuild.summonEmoji;
+        
+        // New guilds start as not whitelisted by default for safety
+        newGuildConfig.whitelisted = false;
       }
 
       const result = await db.collection('guild_configs').insertOne(newGuildConfig);

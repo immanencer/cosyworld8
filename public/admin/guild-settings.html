@@ -67,11 +67,14 @@
               <div id="settings-message" class="settings-message hidden"></div>
 
               <div class="mb-6">
-                <label for="guild-selector" class="block text-sm font-medium text-gray-700">Select Discord Server</label>
-                <select id="guild-selector" class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md">
-                  <option value="">Select Discord Server</option>
-                  <!-- Options will be populated by JavaScript -->
-                </select>
+                <h3 class="block text-sm font-medium text-gray-700 mb-3">Discord Servers</h3>
+                <div id="guild-cards-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  <!-- Guild cards will be populated by JavaScript -->
+                </div>
+                <p class="mt-2 text-sm text-gray-400">Note: New servers will inherit settings from the first configured server as a template</p>
+                <button id="add-new-guild-button" class="mt-4 inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                  ➕ Add New Server Configuration
+                </button>
               </div>
 
               <div id="no-server-selected" class="py-4 text-center text-gray-500">
