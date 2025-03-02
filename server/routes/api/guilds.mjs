@@ -1,12 +1,5 @@
 import express from 'express';
-import { ObjectId } from 'mongodb';
 import configService from '../../../src/services/configService.mjs';
-
-const router = express.Router();
-
-// Wrap async route handlers to catch errors
-import express from 'express';
-import * as configService from '../../services/configService.mjs';
 
 const router = express.Router();
 
@@ -19,44 +12,44 @@ export default function(db) {
     const guildConfigs = await configService.getAllGuildConfigs(db);
     res.json(guildConfigs);
   }));
-  
+
   // Create a new guild configuration
   router.post('/', asyncHandler(async (req, res) => {
     const guildData = req.body;
-    
+
     if (!guildData || !guildData.guildId) {
       return res.status(400).json({ error: 'Guild ID is required' });
     }
-    
+
     try {
       // Check if guild config already exists
       const existingConfig = await configService.getGuildConfig(db, guildData.guildId);
-      
+
       // If it exists, update it
       if (existingConfig) {
         const result = await configService.updateGuildConfig(db, guildData.guildId, guildData);
         const updatedConfig = await configService.getGuildConfig(db, guildData.guildId);
         return res.json(updatedConfig);
       }
-      
+
       // Otherwise create a new config based on a template
-      
+
       // First, check if we have any existing guild configs to use as a template
       const templateGuild = await db.collection('guild_configs').findOne(
-        {}, 
+        {},
         { sort: { createdAt: 1 } } // Sort by creation date to get the first one
       );
-      
+
       let newGuildConfig = {
         ...guildData,
         updatedAt: new Date(),
         createdAt: new Date()
       };
-      
+
       // If we found a template guild, copy its settings
       if (templateGuild) {
         console.log(`Using guild ${templateGuild.guildId} as a template for new guild ${guildData.guildId}`);
-        
+
         // Copy template settings but keep the new guild's ID and name
         newGuildConfig = {
           ...templateGuild,
@@ -67,9 +60,9 @@ export default function(db) {
           createdAt: new Date()
         };
       }
-      
+
       const result = await db.collection('guild_configs').insertOne(newGuildConfig);
-      
+
       const createdConfig = await configService.getGuildConfig(db, guildData.guildId);
       res.status(201).json(createdConfig);
     } catch (error) {
