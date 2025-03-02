@@ -1,8 +1,13 @@
 export class MessageHandler {
-  constructor(chatService, avatarService, logger) {
+  constructor(chatService, avatarService, logger, imageProcessingService) {
     this.chatService = chatService;
     this.avatarService = avatarService;
     this.logger = logger;
+    this.imageProcessingService = imageProcessingService;
+
+    // Message Queue - for processing messages in order
+    this.messageQueue = new Map(); // channelId -> array of messages
+    this.processingStatus = new Map(); // channelId -> boolean (is processing)
     this.RECENT_MESSAGES_CHECK = 10;
     this.PROCESS_INTERVAL = 5 * 60 * 1000;
     this.ACTIVE_CHANNEL_WINDOW = 5 * 60 * 1000;
@@ -104,7 +109,16 @@ export class MessageHandler {
         const avatar = await this.avatarService.getAvatarById(item.avatarId);
         if (avatar) {
           const channel = await this.chatService.client.channels.fetch(channelId);
-          await this.chatService.respondAsAvatar(channel, avatar, !item.isBot);
+          //Added basic image processing here.  Needs significant expansion for real-world use.
+          const message = await this.chatService.getMessageById(item.messageId)
+          if(message && message.attachments && message.attachments.length > 0){
+            const imageUrl = message.attachments[0].url;
+            const imageAnalysis = await this.imageProcessingService.analyzeImage(imageUrl);
+            await this.chatService.respondAsAvatar(channel, avatar, !item.isBot, `Image analysis: ${JSON.stringify(imageAnalysis)}`);
+          } else {
+            await this.chatService.respondAsAvatar(channel, avatar, !item.isBot);
+          }
+
           await new Promise(resolve => setTimeout(resolve, this.RESPONSE_DELAY));
         }
       } catch (error) {

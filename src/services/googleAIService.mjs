@@ -161,31 +161,115 @@ export class GoogleAIService {
         topP: options.topP || 0.95,
         topK: options.topK || 40
       };
-
-      // Prepare content for the model
-      // Format messages according to Gemini API requirements
       
-      // Ensure proper serialization of objects
-      const formattedSystemPrompt = typeof systemPrompt === 'object' 
-        ? JSON.stringify(systemPrompt, null, 2) 
-        : systemPrompt;
-        
-      const formattedUserPrompt = typeof userPrompt === 'object' 
-        ? JSON.stringify(userPrompt, null, 2) 
-        : userPrompt;
+      // Prepare content parts for the API
+      const parts = [];
       
-      const chatParams = {
-        contents: [
-          { 
-            role: 'user', 
-            parts: [{ text: `${formattedSystemPrompt}\n\n${formattedUserPrompt}` }] 
+      // Add system prompt if present
+      if (systemPrompt) {
+        if (typeof systemPrompt === 'string') {
+          parts.push({ text: systemPrompt });
+        } else if (Array.isArray(systemPrompt)) {
+          // Handle array of messages (like OpenAI format)
+          for (const message of systemPrompt) {
+            if (message.content) {
+              if (typeof message.content === 'string') {
+                parts.push({ text: message.content });
+              } else if (Array.isArray(message.content)) {
+                // Handle multimodal content array (text and images)
+                for (const content of message.content) {
+                  if (content.type === 'text') {
+                    parts.push({ text: content.text });
+                  } else if (content.type === 'image_url' && content.image_url) {
+                    // Handle image URLs that might be in base64 format
+                    if (content.image_url.startsWith('data:image')) {
+                      const base64Data = content.image_url.split(',')[1];
+                      parts.push({
+                        inlineData: {
+                          data: base64Data,
+                          mimeType: content.image_url.split(';')[0].split(':')[1]
+                        }
+                      });
+                    } else {
+                      // Fetch image URL (implementation would be elsewhere)
+                      console.log(`Image URL in prompt: ${content.image_url}`);
+                      // This would normally fetch and convert to base64
+                    }
+                  }
+                }
+              }
+            }
           }
-        ],
+        } else if (systemPrompt.inlineData) {
+          // Handle image data directly
+          parts.push({
+            inlineData: {
+              data: systemPrompt.inlineData.data,
+              mimeType: systemPrompt.inlineData.mimeType
+            }
+          });
+        }
+      }
+      
+      // Add user prompt if it's a string
+      if (typeof userPrompt === 'string') {
+        parts.push({ text: userPrompt });
+      } else if (Array.isArray(userPrompt)) {
+        // Handle array of content parts (could be mix of text and images)
+        for (const part of userPrompt) {
+          if (typeof part === 'string') {
+            parts.push({ text: part });
+          } else if (part.inlineData) {
+            // For base64 encoded images
+            parts.push({
+              inlineData: {
+                data: part.inlineData.data,
+                mimeType: part.inlineData.mimeType
+              }
+            });
+          } else if (part.text) {
+            parts.push({ text: part.text });
+          }
+        }
+      } else if (userPrompt && typeof userPrompt === 'object') {
+        // Handle object with text field
+        if (userPrompt.text) {
+          parts.push({ text: userPrompt.text });
+        }
+        // Handle object with inlineData for images
+        if (userPrompt.inlineData) {
+          parts.push({
+            inlineData: {
+              data: userPrompt.inlineData.data,
+              mimeType: userPrompt.inlineData.mimeType
+            }
+          });
+        }
+      }
+      
+      // Prepare the request
+      const chatParams = {
+        contents: [{ role: 'user', parts }],
         generationConfig
       };
 
-      // Log request parameters for debugging
-      console.log("Gemini API request parameters:", JSON.stringify(chatParams, null, 2));
+      // Log request parameters for debugging (but truncate base64 data)
+      const logParams = JSON.parse(JSON.stringify(chatParams));
+      if (logParams.contents[0].parts) {
+        logParams.contents[0].parts = logParams.contents[0].parts.map(part => {
+          if (part.inlineData && part.inlineData.data) {
+            return {
+              ...part,
+              inlineData: {
+                ...part.inlineData,
+                data: part.inlineData.data.substring(0, 50) + '... [truncated]'
+              }
+            };
+          }
+          return part;
+        });
+      }
+      console.log("Gemini API request parameters:", JSON.stringify(logParams, null, 2));
       
       // Generate content using the correct method
       const result = await generativeModel.generateContent(chatParams);
@@ -203,6 +287,51 @@ export class GoogleAIService {
         stack: error.stack,
         details: error.details || 'No details available'
       }, null, 2));
+      throw error;
+    }
+  }
+  
+  /**
+   * Process an image and generate a text response
+   * @param {string} imageBase64 - Base64 encoded image data
+   * @param {string} mimeType - The MIME type of the image
+   * @param {string} prompt - The prompt to send along with the image
+   * @param {Object} options - Additional options for the model
+   * @returns {Promise<string>} - The text response from the model
+   */
+  async analyzeImage(imageBase64, mimeType, prompt, options = {}) {
+    try {
+      const modelName = options.model || this.model;
+      const generativeModel = this.googleAI.getGenerativeModel({ model: modelName });
+      
+      // Prepare generation config
+      const generationConfig = {
+        temperature: options.temperature || 0.7,
+        maxOutputTokens: options.maxOutputTokens || 1024,
+        topP: options.topP || 0.95,
+        topK: options.topK || 40
+      };
+      
+      // Create the prompt parts
+      const parts = [
+        {
+          inlineData: {
+            data: imageBase64,
+            mimeType: mimeType
+          }
+        },
+        { text: prompt }
+      ];
+      
+      // Generate content
+      const result = await generativeModel.generateContent({
+        contents: [{ role: 'user', parts }],
+        generationConfig
+      });
+      
+      return result.response.text();
+    } catch (error) {
+      console.error("Error analyzing image:", error);
       throw error;
     }
   }

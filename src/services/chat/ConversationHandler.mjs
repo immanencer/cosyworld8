@@ -384,11 +384,53 @@ Based on all of the above context, share an updated personality that reflects yo
     try {
       // Fetch recent channel messages
       const messages = await channel.messages.fetch({ limit: 50 });
+      
+      // Extract images from the most recent message with images
+      const imagePromptParts = [];
+      let recentImageMessage = null;
+      
+      for (const msg of Array.from(messages.values()).reverse()) {
+        // Skip messages from this avatar
+        if (msg.author.id === avatar._id) continue;
+        
+        // Check for attachments or embeds with images
+        const hasImages = msg.attachments.some(a => a.contentType?.startsWith('image/')) || 
+                         msg.embeds.some(e => e.image || e.thumbnail);
+        
+        if (hasImages) {
+          recentImageMessage = msg;
+          break;
+        }
+      }
+      
+      // If we found an image message, extract the images
+      if (recentImageMessage && this.chatService.imageProcessingService) {
+        try {
+          const extractedImages = await this.chatService.imageProcessingService.extractImagesFromMessage(recentImageMessage);
+          
+          // Add up to 3 images (to stay within token limits)
+          for (let i = 0; i < Math.min(extractedImages.length, 3); i++) {
+            imagePromptParts.push({
+              inlineData: {
+                data: extractedImages[i].base64,
+                mimeType: extractedImages[i].mimeType
+              }
+            });
+          }
+          
+          this.logger.info(`Found ${extractedImages.length} images in message, using ${imagePromptParts.length}`);
+        } catch (error) {
+          this.logger.error(`Error extracting images: ${error.message}`);
+        }
+      }
+      
       const messageHistory = messages
         .reverse()
         .map(msg => ({
           author: msg.author.username,
           content: msg.content,
+          hasImages: msg.attachments.some(a => a.contentType?.startsWith('image/')) || 
+                    msg.embeds.some(e => e.image || e.thumbnail),
           timestamp: msg.createdTimestamp
         }));
 
@@ -420,27 +462,44 @@ Based on all of the above context, share an updated personality that reflects yo
       const systemPrompt = await this.buildSystemPrompt(avatar);
       const dungeonPrompt = await this.buildDungeonPrompt(avatar);
 
-      const prompt = `
+      // Create a text prompt that includes whether there are images
+      const textPrompt = `
         Channel: #${context.channelName} in ${context.guildName}
 
         Actions Available:
         ${dungeonPrompt}
 
         Recent messages:
-        ${context.recentMessages.map(m => `${m.author}: ${m.content}`).join('\n')}
+        ${context.recentMessages.map(m => {
+          let msgText = `${m.author}: ${m.content}`;
+          if (m.hasImages) msgText += " [includes image(s)]";
+          return msgText;
+        }).join('\n')}
+        ${imagePromptParts.length > 0 ? '\nNote: The most recent images are included in this prompt.' : ''}
 
         Reply in character as ${avatar.name} with a single short, casual message, suitable for this discord channel.
-                  `.trim();
+        ${imagePromptParts.length > 0 ? 'If there are images in the conversation, comment on them as appropriate.' : ''}
+      `.trim();
+
+      // Prepare the prompt parts, including any images
+      const promptParts = [...imagePromptParts, { text: textPrompt }];
 
       // Generate response via AI service
-      let response = await this.aiService.chat([
-        { role: 'system', content: systemPrompt },
-        { role: 'assistant', content: lastNarrative?.content || 'No previous reflection' },
-        {
-          role: 'user',
-          content: prompt
-        }
-      ], { model: avatar.model, max_tokens: 200 });
+      let response;
+      if (imagePromptParts.length > 0) {
+        // With images
+        response = await this.aiService.chat([
+          { role: 'system', content: systemPrompt },
+          { role: 'assistant', content: lastNarrative?.content || 'No previous reflection' }
+        ], promptParts, { model: avatar.model, max_tokens: 200 });
+      } else {
+        // Without images
+        response = await this.aiService.chat([
+          { role: 'system', content: systemPrompt },
+          { role: 'assistant', content: lastNarrative?.content || 'No previous reflection' },
+          { role: 'user', content: textPrompt }
+        ], { model: avatar.model, max_tokens: 200 });
+      }
 
       if (!response) {
         this.logger.error(`Empty response generated for ${avatar.name}`);

@@ -4,6 +4,7 @@ import { DatabaseService } from "./services/databaseService.mjs";
 import { SpamControlService } from "./services/spamControlService.mjs";
 import { GoogleAIService as AIService } from "./services/googleAIService.mjs";
 import { AvatarGenerationService } from "./services/avatarService.mjs";
+import { ImageProcessingService } from "./services/imageProcessingService.mjs";
 import configService from "./services/configService.mjs";
 import {
   client,
@@ -355,6 +356,39 @@ async function saveMessageToDatabase(message) {
   const db = databaseService.getDatabase();
   if (!db) return;
   const messagesCollection = db.collection("messages");
+  
+  // Extract attachment URLs if present
+  const attachments = Array.from(message.attachments.values()).map(attachment => ({
+    id: attachment.id,
+    url: attachment.url,
+    proxyURL: attachment.proxyURL,
+    filename: attachment.name,
+    contentType: attachment.contentType,
+    size: attachment.size,
+    height: attachment.height,
+    width: attachment.width
+  }));
+  
+  // Extract embed data if present
+  const embeds = message.embeds.map(embed => ({
+    type: embed.type,
+    title: embed.title,
+    description: embed.description,
+    url: embed.url,
+    image: embed.image ? {
+      url: embed.image.url,
+      proxyURL: embed.image.proxyURL,
+      height: embed.image.height,
+      width: embed.image.width
+    } : null,
+    thumbnail: embed.thumbnail ? {
+      url: embed.thumbnail.url,
+      proxyURL: embed.thumbnail.proxyURL,
+      height: embed.thumbnail.height,
+      width: embed.thumbnail.width
+    } : null
+  }));
+  
   const messageData = {
     messageId: message.id,
     channelId: message.channel.id,
@@ -368,6 +402,10 @@ async function saveMessageToDatabase(message) {
       avatar: message.author.avatar,
     },
     content: message.content,
+    attachments: attachments,
+    embeds: embeds,
+    hasImages: attachments.some(a => a.contentType?.startsWith('image/')) || 
+               embeds.some(e => e.image || e.thumbnail),
     timestamp: message.createdTimestamp,
   };
 
@@ -486,6 +524,9 @@ async function main() {
 
     await loadGuildWhitelist(database);
 
+    aiService = new AIService();
+    const imageProcessingService = new ImageProcessingService(logger, aiService);
+    
     avatarService = new AvatarGenerationService(database, configService);
     logger.info("✅ Connected to MongoDB successfully");
 
@@ -493,8 +534,15 @@ async function main() {
     logger.info("✅ Arweave prompts updated successfully");
 
     spamControlService = new SpamControlService(database, logger);
-    chatService = new ChatService(client, database, { logger, avatarService, aiService, handleSummonCommand, handleBreedCommand });
-    messageHandler = new MessageHandler(chatService, avatarService, logger);
+    chatService = new ChatService(client, database, { 
+      logger, 
+      avatarService, 
+      aiService, 
+      imageProcessingService,
+      handleSummonCommand, 
+      handleBreedCommand 
+    });
+    messageHandler = new MessageHandler(chatService, avatarService, logger, imageProcessingService);
 
     await client.login(DISCORD_BOT_TOKEN);
     logger.info("✅ Logged into Discord successfully");

@@ -40,7 +40,8 @@ export class ChatService {
       options.aiService,
       this.logger,
       options.avatarService,
-      this.dungeonService
+      this.dungeonService,
+      options.imageProcessingService // Added imageProcessingService
     );
     this.decisionMaker = new DecisionMaker(options.aiService, this.logger);
     this.messageProcessor = new MessageProcessor(options.avatarService);
@@ -68,9 +69,10 @@ export class ChatService {
     // Store services from options
     this.avatarService = options.avatarService;
     this.aiService = options.aiService;
+    this.imageProcessingService = options.imageProcessingService; // Added imageProcessingService
 
-    if (!this.avatarService || !this.aiService) {
-      throw new Error('avatarService and aiService are required');
+    if (!this.avatarService || !this.aiService || !this.imageProcessingService) { // Added imageProcessingService check
+      throw new Error('avatarService, aiService, and imageProcessingService are required');
     }
 
     this.responseQueue = new Map(); // channelId -> Set of avatarIds to respond
