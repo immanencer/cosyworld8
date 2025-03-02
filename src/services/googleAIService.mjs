@@ -150,8 +150,31 @@ export class GoogleAIService {
 
       console.log(`Model ${model} availability check: true`);
 
-      // Get the generative model instance first
-      const generativeModel = this.googleAI.getGenerativeModel({ model });
+      // Extract system instruction from systemPrompt
+      let systemInstruction = null;
+      if (systemPrompt) {
+        if (typeof systemPrompt === 'string') {
+          systemInstruction = systemPrompt;
+        } else if (systemPrompt.role === 'system' && systemPrompt.content) {
+          systemInstruction = systemPrompt.content;
+        } else if (Array.isArray(systemPrompt)) {
+          // If it's an array, we'll use the first message with 'system' role
+          const systemMessage = systemPrompt.find(msg => msg.role === 'system');
+          if (systemMessage && systemMessage.content) {
+            systemInstruction = typeof systemMessage.content === 'string' 
+              ? systemMessage.content 
+              : JSON.stringify(systemMessage.content);
+          }
+        } else if (typeof systemPrompt === 'object') {
+          systemInstruction = systemPrompt.content || JSON.stringify(systemPrompt);
+        }
+      }
+
+      // Get the generative model instance with system instruction
+      const generativeModel = this.googleAI.getGenerativeModel({ 
+        model,
+        systemInstruction: systemInstruction // This is the key change
+      });
 
       // Build generation config
       const generationConfig = {
@@ -199,47 +222,6 @@ export class GoogleAIService {
         }
       };
 
-      // Build the content for Gemini API
-      const contents = [];
-      
-      // Process system prompt - this should go first as a "system" role
-      if (systemPrompt) {
-        const systemParts = [];
-        
-        // Handle different formats of system prompt
-        if (typeof systemPrompt === 'string') {
-          systemParts.push({ text: systemPrompt });
-        } else if (systemPrompt.role === 'system' && systemPrompt.content) {
-          // Handle object with role/content format
-          systemParts.push({ text: systemPrompt.content });
-        } else if (Array.isArray(systemPrompt)) {
-          // If it's an array, we'll use the first message with 'system' role
-          const systemMessage = systemPrompt.find(msg => msg.role === 'system');
-          if (systemMessage && systemMessage.content) {
-            if (typeof systemMessage.content === 'string') {
-              systemParts.push({ text: systemMessage.content });
-            } else if (Array.isArray(systemMessage.content)) {
-              // Handle array of content parts
-              for (const contentItem of systemMessage.content) {
-                if (typeof contentItem === 'string') {
-                  systemParts.push({ text: contentItem });
-                } else if (contentItem.type === 'text') {
-                  systemParts.push({ text: contentItem.text });
-                }
-                // We skip image parts in system prompts as they're not typically supported
-              }
-            }
-          }
-        }
-        
-        if (systemParts.length > 0) {
-          contents.push({
-            role: 'system',
-            parts: systemParts
-          });
-        }
-      }
-      
       // Process user prompt parts
       const userParts = [];
       
@@ -292,14 +274,12 @@ export class GoogleAIService {
         }
       }
       
-      if (userParts.length > 0) {
-        contents.push({
-          role: 'user',
-          parts: userParts
-        });
-      }
-      
-      // Prepare the request with proper structure
+      // Prepare the request with proper structure - now only with user contents
+      const contents = [{
+        role: 'user',
+        parts: userParts
+      }];
+
       const chatParams = {
         contents,
         generationConfig
