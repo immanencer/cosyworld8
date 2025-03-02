@@ -128,32 +128,32 @@ export class GoogleAIService {
           } else if (part?.text) {
             parts.push({ text: part.text.trim() || "Empty text" });
           } else if (part?.inlineData?.data && part.inlineData.mimeType) {
-            parts.push({
-              inlineData: {
-                data: part.inlineData.data,
-                mimeType: part.inlineData.mimeType
-              }
-            });
+            // parts.push({
+            //   inlineData: {
+            //     data: part.inlineData.data,
+            //     mimeType: part.inlineData.mimeType
+            //   }
+            // });
           } else if (part?.type === 'image_url' && part.image_url) {
-            try {
-              const response = await fetch(part.image_url);
-              if (!response.ok) throw new Error('Failed to fetch image');
-              const blob = await response.blob();
-              const base64 = await new Promise((resolve) => {
-                const reader = new FileReader();
-                reader.onloadend = () => resolve(reader.result.split(',')[1]);
-                reader.readAsDataURL(blob);
-              });
-              parts.push({
-                inlineData: {
-                  data: base64,
-                  mimeType: blob.type
-                }
-              });
-            } catch (error) {
-              console.error('Error processing image:', error);
-              parts.push({ text: '[Image unavailable]' });
-            }
+            // try {
+            //   const response = await fetch(part.image_url);
+            //   if (!response.ok) throw new Error('Failed to fetch image');
+            //   const blob = await response.blob();
+            //   const base64 = await new Promise((resolve) => {
+            //     const reader = new FileReader();
+            //     reader.onloadend = () => resolve(reader.result.split(',')[1]);
+            //     reader.readAsDataURL(blob);
+            //   });
+            //   parts.push({
+            //     inlineData: {
+            //       data: base64,
+            //       mimeType: blob.type
+            //     }
+            //   });
+            // } catch (error) {
+            //   console.error('Error processing image:', error);
+            //   parts.push({ text: '[Image unavailable]' });
+            // }
           } else {
             // Handle any unexpected part format
             parts.push({ text: '[Invalid content part]' });
@@ -175,7 +175,6 @@ export class GoogleAIService {
         throw new Error('Invalid content parts structure');
       }
 
-      console.log(JSON.stringify(contents, null, 2));
       const result = await generativeModel.generateContent({
         contents,
         generationConfig
