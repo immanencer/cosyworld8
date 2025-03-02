@@ -216,10 +216,15 @@ async function handleSummonCommand(message, breed = false, attributes = {}) {
       avatarData.arweave_prompt = summonPrompt;
     }
 
-    const createdAvatar = await avatarService.createAvatar(avatarData);
-    if (!createdAvatar || !createdAvatar.name) {
-      throw new Error(`Avatar creation failed: ${JSON.stringify(createdAvatar)}`);
-    }
+    try {
+      const createdAvatar = await avatarService.createAvatar(avatarData);
+      if (!createdAvatar) {
+        throw new Error("Avatar creation returned null response");
+      }
+      if (!createdAvatar.name) {
+        logger.warn(`Created avatar is missing name: ${JSON.stringify(createdAvatar)}`);
+        throw new Error("Avatar is missing required attributes");
+      }
 
     createdAvatar.summoner = `${message.author.username}@${message.author.id}`;
     createdAvatar.model = createdAvatar.model || (await aiService.selectRandomModel());

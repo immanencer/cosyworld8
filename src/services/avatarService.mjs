@@ -850,21 +850,43 @@ export class AvatarGenerationService {
       return null;
     }
   }
-  async extractAvatarDetails(response) {
+  extractAvatarDetails(text) {
     try {
-      const data = JSON.parse(response);
-      if (!data.name || !data.description || !data.personality || !data.emoji) {
-        throw new Error("Missing avatar details");
+      // First try our improved JSON extraction
+      const jsonString = extractJSON(text);
+      const avatar = JSON.parse(jsonString);
+
+      // Validate the essential fields
+      if (!avatar.name) {
+        throw new Error('Avatar is missing required name field');
       }
-      return {
-        name: data.name,
-        description: data.description,
-        personality: data.personality,
-        emoji: data.emoji
-      };
+
+      return avatar;
     } catch (error) {
-      this.logger.error("Error extracting avatar details:", error);
-      throw new Error("Failed to extract avatar details");
+      // Log detailed error for debugging
+      console.error('Error extracting avatar details:', error.message);
+      console.debug('Raw response text:', text);
+
+      // If JSON extraction fails, try to extract the basic fields using regex patterns
+      try {
+        const nameMatch = text.match(/name["']?\s*:\s*["']([^"']+)["']/i);
+        const descMatch = text.match(/description["']?\s*:\s*["']([^"']+)["']/i);
+        const personalityMatch = text.match(/personality["']?\s*:\s*["']([^"']+)["']/i);
+        const emojiMatch = text.match(/emoji["']?\s*:\s*["']([^"']+)["']/i);
+
+        if (nameMatch) {
+          return {
+            name: nameMatch[1],
+            description: descMatch ? descMatch[1] : "A mysterious avatar",
+            personality: personalityMatch ? personalityMatch[1] : "Enigmatic and reserved",
+            emoji: emojiMatch ? emojiMatch[1] : "✨"
+          };
+        }
+      } catch (regexError) {
+        console.error('Regex extraction fallback failed:', regexError);
+      }
+
+      return null;
     }
   }
 
