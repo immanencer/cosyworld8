@@ -465,6 +465,7 @@ export class AvatarGenerationService {
       const replicateConfig = aiConfig.replicate || {};
       const trigger = replicateConfig.loraTriggerWord || '';
       const model = replicateConfig.model;
+      const style = replicateConfig.style;
 
       if (!model) {
         this.logger.error('Replicate model not configured');
@@ -475,18 +476,18 @@ export class AvatarGenerationService {
         model,
         {
           input: {
-            prompt: `${trigger} ${prompt} ${trigger}`,
-            model: "dev",
-            lora_scale: 1,
-            num_outputs: 1,
-            aspect_ratio: "1:1",
-            output_format: "png",
-            guidance_scale: 3.5,
-            output_quality: 90,
-            prompt_strength: 0.8,
-            extra_lora_scale: 1,
-            num_inference_steps: 28,
-            disable_safety_checker: true,
+            prompt: `${trigger} ${prompt} ${trigger}\n\n${style}`,
+            "go_fast": true,
+            "guidance": 3,
+            "lora_scale": 1,
+            "megapixels": "1",
+            "num_outputs": 1,
+            "aspect_ratio": "1:1",
+            "lora_weights": replicateConfig.lora_weights,
+            "output_format": "webp",
+            "output_quality": 80,
+            "prompt_strength": 0.8,
+            "num_inference_steps": 28
           }
         }
       );

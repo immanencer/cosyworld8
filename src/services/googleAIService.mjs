@@ -94,96 +94,68 @@ export class GoogleAIService {
     }
   }
 
-  async chat(systemPrompt, userPrompt, options = {}) {
+  async chat(messages, options = {}) {
     try {
-      const model = options.model || this.model;
-      // Check if the requested model is available
-      if (!await this.modelIsAvailable(model)) {
-        console.warn(`Model ${model} is not available, attempting to find a fallback model...`);
-        
-        // Try to find a similar model variant
-        const modelBase = model.split('-')[0]; // e.g., "gemini" from "gemini-1.0-pro"
-        const similarModels = this.modelConfig.filter(m => 
-          m.model.startsWith(modelBase) && m.model !== model
-        );
-        
-        // If we found similar models, use the first one
-        if (similarModels.length > 0) {
-          const fallbackModel = similarModels[0].model;
-          console.info(`Falling back to similar model: ${fallbackModel}`);
-          model = fallbackModel;
-        } else {
-          // Otherwise use the default model
-          console.info(`No similar models found, falling back to default model: ${this.model}`);
-          model = this.model;
-        }
+      // Extract system instruction if present
+      let systemInstruction;
+      if (messages[0]?.role === 'system') {
+        systemInstruction = messages[0].content;
+        messages = messages.slice(1);
       }
 
+      // Map messages to Google's format, supporting both text and images
+      const contents = messages
+        .filter(msg => msg.content)
+        .map(msg => {
+          const role = msg.role === 'assistant' ? 'model' : msg.role;
+          if (role !== 'user' && role !== 'model') {
+            throw new Error(`Invalid role: ${msg.role}`);
+          }
+          const parts = Array.isArray(msg.content)
+            ? msg.content.map(part => {
+                if (part.text) return { text: part.text };
+                if (part.inlineData) return { inlineData: part.inlineData };
+                return part; // Fallback for unexpected part formats
+              })
+            : [{ text: msg.content }];
+          return { role, parts };
+        });
+
+      // Model selection and fallback logic
+      const model = options.model || this.model;
+      if (!await this.modelIsAvailable(model)) {
+        console.warn(`Model ${model} unavailable, using default: ${this.model}`);
+        options.model = this.model;
+      }
+
+      // Initialize generative model with system instruction
       const generativeModel = this.googleAI.getGenerativeModel({
-        model,
-        systemInstruction: typeof systemPrompt === 'string' ? systemPrompt : undefined
+        model: options.model,
+        systemInstruction
       });
 
+      // Configure generation options
       const generationConfig = {
         temperature: options.temperature || 0.7,
-        maxOutputTokens: options.maxOutputTokens || 1024,
-        topP: options.topP || 0.95,
-        topK: options.topK || 40,
-        candidateCount: 3, // Request 3 candidates
-        ...(options.responseSchema ? {
-          responseMimeType: "application/json",
-          responseSchema: options.responseSchema
-        } : {})
+        maxOutputTokens: options.max_tokens || 1024,
+        topP: options.top_p || 0.95,
+        topK: options.top_k || 40
       };
 
-      const processPrompt = async (prompt) => {
-        if (!prompt) {
-          return [{ text: "Please provide a prompt" }];
-        }
-        if (typeof prompt === 'string') {
-          return prompt.trim() ? [{ text: prompt.trim() }] : [{ text: "No content provided" }];
-        }
-        if (!Array.isArray(prompt)) {
-          return [{ text: typeof prompt === 'object' ? JSON.stringify(prompt) : String(prompt) }];
-        }
-        const parts = [];
-        for (const part of prompt) {
-          if (typeof part === 'string') {
-            parts.push({ text: part.trim() || "Empty string" });
-          } else if (part?.text) {
-            parts.push({ text: part.text.trim() || "Empty text" });
-          } else {
-            parts.push({ text: '[Invalid content part]' });
-          }
-        }
-        return parts.length > 0 ? parts : [{ text: "No valid content provided" }];
-      };
-
-      const userParts = await processPrompt(userPrompt);
-      const contents = [{ role: 'user', parts: userParts }];
-
-      if (!contents[0].parts.every(part => part.text && typeof part.text === 'string')) {
-        throw new Error('Invalid content parts structure');
-      }
-
+      // Generate response
       const result = await generativeModel.generateContent({
         contents,
         generationConfig
       });
 
+      // Extract and return the response text
       const candidates = result.response.candidates;
       if (candidates && candidates.length > 0) {
-        const randomIndex = Math.floor(Math.random() * candidates.length);
-        const selectedCandidate = candidates[randomIndex];
-        return selectedCandidate.content.parts[0].text;
-      } else {
-        throw new Error('No candidates returned');
+        return candidates[0].content.parts[0].text;
       }
+      throw new Error('No candidates returned');
     } catch (error) {
       console.error('Chat error:', error);
-      if (options.fallbackOnError && options.fallbackResponse) {
-        return options.fallbackResponse;
-      }
       throw error;
     }
   }

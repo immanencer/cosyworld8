@@ -411,34 +411,26 @@ Based on all of the above context, share an updated personality that reflects yo
       return null;
     }
 
-    try {
-      // Fetch recent channel messages
-      const messages = await channel.messages.fetch({ limit: 50 });
+      try {
+        // Fetch recent channel messages
+        const messages = await channel.messages.fetch({ limit: 50 });
 
-      // Extract images from the most recent message with images
-      const imagePromptParts = [];
-      let recentImageMessage = null;
+        // Extract images from the most recent message with images
+        const imagePromptParts = [];
+        let recentImageMessage = null;
 
-      for (const msg of Array.from(messages.values()).reverse()) {
-        // Skip messages from this avatar
-        if (msg.author.id === avatar._id) continue;
-
-        // Check for attachments or embeds with images
-        const hasImages = msg.attachments.some(a => a.contentType?.startsWith('image/')) ||
-          msg.embeds.some(e => e.image || e.thumbnail);
-
-        if (hasImages) {
-          recentImageMessage = msg;
-          break;
+        for (const msg of Array.from(messages.values()).reverse()) {
+          if (msg.author.id === avatar._id) continue;
+          const hasImages = msg.attachments.some(a => a.contentType?.startsWith('image/')) ||
+            msg.embeds.some(e => e.image || e.thumbnail);
+          if (hasImages) {
+            recentImageMessage = msg;
+            break;
+          }
         }
-      }
 
-      // If we found an image message, extract the images
-      if (recentImageMessage && this.imageProcessingService) {
-        try {
+        if (recentImageMessage && this.imageProcessingService) {
           const extractedImages = await this.imageProcessingService.extractImagesFromMessage(recentImageMessage);
-
-          // Add up to 3 images (to stay within token limits)
           for (let i = 0; i < Math.min(extractedImages.length, 3); i++) {
             imagePromptParts.push({
               inlineData: {
@@ -447,99 +439,32 @@ Based on all of the above context, share an updated personality that reflects yo
               }
             });
           }
-
-          this.logger.info(`Found ${extractedImages.length} images in message, using ${imagePromptParts.length}`);
-        } catch (error) {
-          this.logger.error(`Error extracting images: ${error.message}`);
+          this.logger.info(`Found ${extractedImages.length} images, using ${imagePromptParts.length}`);
         }
-      }
 
-      const messageHistory = messages
-        .reverse()
-        .map(msg => ({
-          author: msg.author.username,
-          content: msg.content,
-          hasImages: msg.attachments.some(a => a.contentType?.startsWith('image/')) ||
-            msg.embeds.some(e => e.image || e.thumbnail),
-          timestamp: msg.createdTimestamp
-        }));
-
-      // If the last message was from this avatar, skip responding
-      if (messageHistory[messageHistory.length - 1]?.author === avatar.name) {
-        return null;
-      }
-
-      // Retrieve last narrative for context
-      const lastNarrative = await this.getLastNarrative(avatar._id);
-
-      // Build context for the AI
-      const context = {
-        recentMessages: messageHistory,
-        lastReflection: lastNarrative?.content || 'No previous reflection',
-        channelName: channel.name,
-        guildName: channel.guild?.name || 'Unknown Guild'
-      };
-
-      // Ensure avatar has a model
-      if (!avatar.model || typeof avatar.model !== 'string') {
-        avatar.model = await this.aiService.selectRandomModel();
-        await this.avatarService.updateAvatar(avatar);
-      }
-
-      avatar.channelName = channel.name;
-
-      // Build system and dungeon prompts
-      const systemPrompt = await this.buildSystemPrompt(avatar);
-      const dungeonPrompt = await this.buildDungeonPrompt(avatar);
-
-      // Create a text prompt that includes whether there are images
-      const textPrompt = `
-        Channel: #${context.channelName} in ${context.guildName}
-
-        Actions Available:
-        ${dungeonPrompt}
-
-        Recent messages:
-        ${context.recentMessages.map(m => {
-        let msgText = `${m.author}: ${m.content}`;
-        if (m.hasImages) msgText += " [includes image(s)]";
-        return msgText;
-      }).join('\n')}
-        ${imagePromptParts.length > 0 ? '\nNote: The most recent images are included in this prompt.' : ''}
-
-        Reply in character as ${avatar.name} with a single short, casual message, suitable for this discord channel.
-        ${imagePromptParts.length > 0 ? 'If there are images in the conversation, comment on them as appropriate.' : ''}
-      `.trim();
-
-      // Generate response via AI service
-      let response;
-      if (imagePromptParts.length > 0) {
-        // With images - create a structured prompt that includes system and context
-        // Pass system prompt directly as the first parameter
-
-        // First fetch the channel context/history - crucial for providing context with images
+        // Build channel context and image descriptions
         const channelHistory = await this.getChannelContext(channel.id, 15);
         const channelContextText = channelHistory.map(msg =>
           `${msg.authorUsername || 'User'}: ${msg.content || '[No content]'}${msg.hasImages ? ' [has image]' : ''}`
         ).join('\n');
-
-        // Get image descriptions from context messages
         const imageDescriptions = channelHistory
           .filter(msg => msg.imageDescription)
           .map(msg => `[Image: ${msg.imageDescription}]`);
 
-        // Add image descriptions to the contextual prompt
-        const imageContext = imageDescriptions.length > 0
-          ? `\nRecent images:\n${imageDescriptions.join('\n')}\n`
-          : '';
+        // Build contextual prompt
+        const context = {
+          channelName: channel.name,
+          guildName: channel.guild?.name || 'Unknown Guild'
+        };
+        const systemPrompt = await this.buildSystemPrompt(avatar);
+        const dungeonPrompt = await this.buildDungeonPrompt(avatar);
+        const lastNarrative = await this.getLastNarrative(avatar._id);
 
-        // Construct the full textual context including channel history and image descriptions
         const contextualPrompt = `
           Channel: #${context.channelName} in ${context.guildName}
 
           Actions Available:
           ${dungeonPrompt}
-          ${imageContext}
           Recent conversation history:
           ${channelContextText}
 
@@ -547,34 +472,28 @@ Based on all of the above context, share an updated personality that reflects yo
           ${imageDescriptions.length > 0 ? 'Comment on the described images appropriately as part of your response.' : ''}
         `.trim();
 
-        // If there are recent images in the prompt, don't need to send image data again
-        const userMessageParts = imageDescriptions.length > 0
-          ? [{ text: contextualPrompt }]  // Just use text with descriptions
-          : [...imagePromptParts, { text: contextualPrompt }];  // Fall back to sending images if no descriptions
+        // Determine userContent based on multimodal support
+        let userContent;
+        if (this.aiService.supportsMultimodal && imagePromptParts.length > 0) {
+          userContent = [...imagePromptParts, { text: contextualPrompt }];
+        } else {
+          const imageContext = imageDescriptions.length > 0
+            ? `\nRecent images:\n${imageDescriptions.join('\n')}\n`
+            : '';
+          userContent = `${imageContext}${contextualPrompt}`;
+        }
 
-        this.logger.info(`Sending image message with ${imagePromptParts.length} images and ${channelHistory.length} context messages`);
-
-        // Make the complete chat request with system prompt as the first parameter
-        response = await this.aiService.chat(
-          systemPrompt,
-          userMessageParts,
-          { model: avatar.model, max_tokens: 200 }
-        );
-
-        this.logger.info(`Generated response with images for ${avatar.name}`);
-      } else {
-        // Without images - standard approach
-        response = await this.aiService.chat([
+        // Generate response via AI service
+        const response = await this.aiService.chat([
           { role: 'system', content: systemPrompt },
           { role: 'assistant', content: lastNarrative?.content || 'No previous reflection' },
-          { role: 'user', content: textPrompt }
+          { role: 'user', content: userContent }
         ], { model: avatar.model, max_tokens: 200 });
-      }
 
-      if (!response) {
-        this.logger.error(`Empty response generated for ${avatar.name}`);
-        return null;
-      }
+        if (!response) {
+          this.logger.error(`Empty response generated for ${avatar.name}`);
+          return null;
+        }
 
       // Remove leading "AvatarName:" if present
       response = this.removeAvatarPrefix(response, avatar);

@@ -22,7 +22,9 @@ class ConfigService {
         replicate: {
           apiToken: process.env.REPLICATE_API_TOKEN,
           model: process.env.REPLICATE_MODEL,
-          loraTriggerWord: process.env.REPLICATE_LORA_TRIGGER
+          lora_weights: process.env.REPLICATE_LORA_WEIGHTS,
+          loraTriggerWord: process.env.REPLICATE_LORA_TRIGGER,
+          style: "Cyberpunk, Manga, Anime, Watercolor, Experimental, Digital, 8K, High Resolution, Masterpiece, Fantasy, Futuristic, Variations,"
         },
         aiProvider: {
           apiKey: process.env.GOOGLE_API_KEY,

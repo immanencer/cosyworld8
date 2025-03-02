@@ -1,4 +1,4 @@
-const defaultModels = [
+export default [
   {
     "model": "gemini-2.0-flash",
     "rarity": "uncommon"
@@ -22,10 +22,5 @@ const defaultModels = [
   {
     "model": "gemini-1.5-flash",
     "rarity": "common"
-  },
-  {
-    "model": "gemini-1.0-pro",
-    "rarity": "uncommon"
   }
 ];
-export default defaultModels;
