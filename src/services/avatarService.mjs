@@ -442,6 +442,8 @@ export class AvatarGenerationService {
           throw new Error('Unexpected response type from AI service');
         }
 
+        console.log(JSON.stringify(responseJson, null, 2));
+
         // Validate the avatar details
         if (!responseJson.name || !responseJson.description || !responseJson.personality) {
           throw new Error('Required avatar fields are missing from AI response.');

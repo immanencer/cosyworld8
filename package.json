@@ -9,7 +9,7 @@
     "build:client": "webpack --config webpack.config.js",
     "wiki": "npm run build:wiki",
     "serve": "node server/app.mjs",
-    "build": "npm run build:css && node src/scripts/build-checkout.mjs",
+    "build": "npm run build:css",
     "build:css": "tailwindcss -i ./src/tailwind.css -o ./public/css/tailwind.css --minify"
   },
   "keywords": [
