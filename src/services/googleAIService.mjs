@@ -77,7 +77,7 @@ export class GoogleAIService {
         console.log(`Model ${model} not found in configuration`);
         return false;
       }
-      
+
       // Additional check: try to fetch the model capabilities to ensure it's actually available
       try {
         const generativeModel = this.googleAI.getGenerativeModel({ model });
@@ -122,15 +122,15 @@ export class GoogleAIService {
         });
 
       // Model selection and fallback logic
-      const model = options.model || this.model;
-      if (!await this.modelIsAvailable(model)) {
-        console.warn(`Model ${model} unavailable, using default: ${this.model}`);
-        options.model = this.model;
+      let modelToUse = options.model || this.model;
+      if (!await this.modelIsAvailable(modelToUse)) {
+        console.warn(`Model ${modelToUse} unavailable, using default: ${this.model}`);
+        modelToUse = this.model;
       }
 
       // Initialize generative model with system instruction
       const generativeModel = this.googleAI.getGenerativeModel({
-        model: options.model,
+        model: modelToUse,
         systemInstruction
       });
 
