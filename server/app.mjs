@@ -21,6 +21,10 @@ app.get('/admin/guild-settings', (req, res) => {
   res.sendFile('admin/guild-settings.html', { root: 'public' });
 });
 
+app.get('/admin/avatar-management', (req, res) => {
+  res.sendFile('admin/avatar-management.html', { root: 'public' });
+});
+
 // MongoDB Setup
 const mongoUri = process.env.MONGO_URI || 'mongodb://localhost:27017';
 const mongoDbName = process.env.MONGO_DB_NAME || 'cosyworld';

@@ -113,7 +113,59 @@ export default function adminRoutes(db) {
     }
   });
 
-  // Delete an avatar
+  // Update an avatar
+  router.put('/avatars/:id', async (req, res) => {
+    try {
+      const { id } = req.params;
+      const {
+        name,
+        description,
+        personality,
+        emoji,
+        imageUrl,
+        status,
+        model
+      } = req.body;
+      
+      // Validate required fields
+      if (!name) {
+        return res.status(400).json({ error: 'Name is required' });
+      }
+      
+      // Create update object
+      const updateData = {
+        $set: {
+          name,
+          description: description || '',
+          personality: personality || '',
+          emoji: emoji || '✨',
+          imageUrl: imageUrl || '',
+          status: status || 'active',
+          model: model || 'gpt-4',
+          updatedAt: new Date()
+        }
+      };
+      
+      const result = await db.collection('avatars').updateOne(
+        { _id: new ObjectId(id) },
+        updateData
+      );
+      
+      if (result.matchedCount === 0) {
+        return res.status(404).json({ error: 'Avatar not found' });
+      }
+      
+      res.json({ 
+        success: true, 
+        message: 'Avatar updated successfully'
+      });
+    } catch (error) {
+      console.error('Error updating avatar:', error);
+      res.status(500).json({ error: 'Failed to update avatar' });
+    }
+  });
+
+// Delete an avatar
   router.delete('/avatars/:id', async (req, res) => {
     try {
       const { id } = req.params;
