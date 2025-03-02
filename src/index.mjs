@@ -60,6 +60,11 @@ let chatService;
 let messageHandler;
 let spamControlService;
 
+// Ensure database connection is ready
+process.on('unhandledRejection', (reason, promise) => {
+  logger.error(`Unhandled Rejection at: ${promise} reason: ${reason}`);
+});
+
 /**
  * -----------------------
  * Environment Variables
@@ -202,12 +207,23 @@ async function handleBreedCommand(message, args, commandLine) {
 const DAILY_SUMMON_LIMIT = 16;
 
 async function checkDailySummonLimit(userId) {
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const summonCount = await databaseService.db
-    .collection("daily_summons")
-    .countDocuments({ userId, timestamp: { $gte: today } });
-  return summonCount < DAILY_SUMMON_LIMIT;
+  const db = databaseService.getDatabase();
+  if (!db) {
+    logger.error("Database not available when checking summon limits");
+    return false; // Fail closed - if we can't check, don't allow
+  }
+  
+  try {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const summonCount = await db
+      .collection("daily_summons")
+      .countDocuments({ userId, timestamp: { $gte: today } });
+    return summonCount < DAILY_SUMMON_LIMIT;
+  } catch (error) {
+    logger.error(`Error checking summon limit: ${error.message}`);
+    return false; // Fail closed on errors
+  }
 }
 
 async function trackSummon(userId) {
@@ -483,17 +499,31 @@ async function shutdown(signal) {
  */
 async function main() {
   try {
+    // Connect to database with retry logic
     const db = await databaseService.connect();
-    if (!db) throw new Error("Failed to connect to the database");
+    if (!db) {
+      logger.warn("Initial database connection failed, will retry");
+      // Wait for database connection with retry logic
+      const dbConnection = await databaseService.waitForConnection(10, 2000);
+      if (!dbConnection) {
+        throw new Error("Failed to establish database connection after multiple attempts");
+      }
+    }
+    
+    // Ensure we have a valid database connection
+    const database = databaseService.getDatabase();
+    if (!database) {
+      throw new Error("Database connection not available");
+    }
 
-    avatarService = new AvatarGenerationService(db, configService);
+    avatarService = new AvatarGenerationService(database, configService);
     logger.info("✅ Connected to MongoDB successfully");
 
     await avatarService.updateAllArweavePrompts();
     logger.info("✅ Arweave prompts updated successfully");
 
-    spamControlService = new SpamControlService(db, logger);
-    chatService = new ChatService(client, db, { logger, avatarService, aiService, handleSummonCommand, handleBreedCommand });
+    spamControlService = new SpamControlService(database, logger);
+    chatService = new ChatService(client, database, { logger, avatarService, aiService, handleSummonCommand, handleBreedCommand });
     messageHandler = new MessageHandler(chatService, avatarService, logger);
 
     await client.login(DISCORD_BOT_TOKEN);
