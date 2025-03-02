@@ -128,78 +128,24 @@ export class GoogleAIService {
   }
 
   async chat(messages, options = {}) {
-    const modelId = options.model || this.model;
-
-    if (!this.modelIsAvailable(modelId)) {
-      console.log(`Model ${modelId} availability check with loaded models: ${this.modelIsAvailable(modelId)}`);
-      throw new Error(`Model ${modelId} is not available`);
-    }
-
-    console.log(`Model ${modelId} availability check with loaded models: ${this.modelIsAvailable(modelId)}`);
-
     try {
-      // Add validation for messages format
-      if (!Array.isArray(messages) || messages.length === 0) {
-        throw new Error("Invalid messages format: must be a non-empty array");
-      }
+      // Check if a model is specified
+      const model = options.model || await this.selectRandomModel();
 
-      // Validate each message has required fields
-      messages.forEach((msg, index) => {
-        if (!msg.role || !msg.content) {
-          throw new Error(`Invalid message at index ${index}: missing role or content`);
-        }
-      });
+      // Ensure messages have the expected format
+      const formattedMessages = messages.map(message => ({
+        role: message.role,
+        content: message.content
+      }));
 
-      const mergedOptions = {
-        ...this.defaultChatOptions,
-        ...options,
-        model: modelId,
-        messages: messages,
-
-      };
-
-      // Format the model correctly for the API request - Google models don't need prefixes
-      if (mergedOptions.model && !mergedOptions.model.startsWith('google/')) {
-        // Only add 'google/' prefix to Gemini models
-        if (mergedOptions.model.startsWith('gemini-')) {
-          mergedOptions.model = `google/${mergedOptions.model}`;
-        }
-      }
-      const response = await this.openai.chat.completions.create(mergedOptions);
-
-      if (!response || !response.choices || !response.choices[0] || !response.choices[0].message) {
-        throw new Error("Invalid response format from API");
-      }
-
-      const result = response.choices[0].message;
-
-      // If response is meant to be structured JSON, preserve it
-      if (mergedOptions.response_format?.type === 'json_object') {
-        return result.content;
-      }
-
-      // Handle function/tool calls if present
-      if (result.function_call || result.tool_calls) {
-        return result;
-      }
-
-      return result.content.trim() || '...';
+      return await this._chatWithModel(model, formattedMessages, options);
     } catch (error) {
-      console.log("Error while chatting with Google AI:", error);
+      console.error(`Error while chatting with Google AI: ${error}`);
 
-      // Add more detailed error logging
-      if (error.response && error.response.status === 400) {
-        console.log("BadRequest details:", {
-          messages: JSON.stringify(messages.map(m => ({role: m.role, contentLength: m.content?.length || 0}))),
-          modelId,
-          error: error.response.data || "No error details provided"
-        });
-      }
-
-      // Return a fallback response instead of crashing
+      // Provide a fallback response instead of throwing
       if (options.fallbackOnError) {
-        console.log("Using fallback response due to API error");
-        return options.fallbackResponse || "I apologize, but I'm unable to process this request right now.";
+        console.log(`Using fallback for model ${options.model || "unknown"}`);
+        return options.fallbackResponse || "I'm having trouble connecting to my knowledge base right now.";
       }
 
       throw error;
