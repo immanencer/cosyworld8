@@ -272,8 +272,35 @@ class ConfigService {
     return this.config.solana;
   }
 
-  getPromptConfig() {
-    return this.config.prompts;
+  // Add method to get guild-specific prompts
+  async getGuildPrompts(db, guildId) {
+    if (!guildId) return this.config.prompt;
+
+    const guildConfig = await this.getGuildConfig(db, guildId);
+    return {
+      summon: guildConfig?.prompts?.summon || this.config.prompt.summon,
+      introduction: guildConfig?.prompts?.introduction || this.config.prompt.introduction
+    };
+  }
+
+  // Add method to update guild-specific prompts
+  async updateGuildPrompts(db, guildId, promptType, value) {
+    if (!db || !guildId) throw new Error('Database and guildId are required');
+    if (!['summon', 'introduction'].includes(promptType)) throw new Error('Invalid prompt type');
+
+    const updates = {
+      prompts: {
+        [promptType]: value
+      }
+    };
+
+    return await this.updateGuildConfig(db, guildId, updates);
+  }
+
+  // Modify existing getPromptConfig to be guild-aware
+  async getPromptConfig(db, guildId) {
+    if (!guildId) return this.config.prompt;
+    return await this.getGuildPrompts(db, guildId);
   }
 
   validate() {

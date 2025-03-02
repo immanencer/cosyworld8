@@ -213,6 +213,9 @@ async function handleSummonCommand(message, breed = false, attributes = {}) {
       await replyToMessage(message, "Service temporarily unavailable. Please try again later.");
       return;
     }
+    const guildId = message.guild?.id;
+    // Get guild-specific prompts
+    const guildPrompts = await configService.getGuildPrompts(db, guildId);
 
     const canSummon = message.author.id === "1175877613017895032" ||
       (await checkDailySummonLimit(message.author.id));
@@ -220,9 +223,7 @@ async function handleSummonCommand(message, breed = false, attributes = {}) {
       await replyToMessage(message, `Daily summon limit of ${DAILY_SUMMON_LIMIT} reached. Try again tomorrow!`);
       return;
     }
-
-    const summonPrompt = configService.config.prompt.summon ||
-      "Create a twisted avatar, a servant of darkness.";
+    const summonPrompt = guildPrompts.summon;
     const avatarData = {
       prompt: sanitizeInput(`${summonPrompt}\n\nSummon an avatar inspired by this concept:\n\n${content}`),
       channelId: message.channel.id,
@@ -232,6 +233,7 @@ async function handleSummonCommand(message, breed = false, attributes = {}) {
     }
 
     try {
+      console.log(avatarData.prompt);
       const createdAvatar = await avatarService.createAvatar(avatarData);
       if (!createdAvatar) {
         throw new Error("Avatar creation returned null response");
@@ -255,11 +257,9 @@ async function handleSummonCommand(message, breed = false, attributes = {}) {
           },
           {
             role: "user",
-            content: configService.config.prompt.introduction ||
-              "You've just arrived. Introduce yourself.",
+            content: guildPrompts.introduction,
           },
-        ],
-        { model: createdAvatar.model }
+        ]
       );
 
       createdAvatar.dynamicPersonality = intro;
@@ -368,7 +368,7 @@ async function saveMessageToDatabase(message) {
   const db = databaseService.getDatabase();
   if (!db) return;
   const messagesCollection = db.collection("messages");
-  
+
   // Extract attachment URLs if present
   const attachments = Array.from(message.attachments.values()).map(attachment => ({
     id: attachment.id,
@@ -380,7 +380,7 @@ async function saveMessageToDatabase(message) {
     height: attachment.height,
     width: attachment.width
   }));
-  
+
   // Extract embed data if present
   const embeds = message.embeds.map(embed => ({
     type: embed.type,
@@ -400,7 +400,7 @@ async function saveMessageToDatabase(message) {
       width: embed.thumbnail.width
     } : null
   }));
-  
+
   const messageData = {
     messageId: message.id,
     channelId: message.channel.id,
@@ -416,8 +416,8 @@ async function saveMessageToDatabase(message) {
     content: message.content,
     attachments: attachments,
     embeds: embeds,
-    hasImages: attachments.some(a => a.contentType?.startsWith('image/')) || 
-               embeds.some(e => e.image || e.thumbnail),
+    hasImages: attachments.some(a => a.contentType?.startsWith('image/')) ||
+      embeds.some(e => e.image || e.thumbnail),
     timestamp: message.createdTimestamp,
   };
 
@@ -538,7 +538,7 @@ async function main() {
 
     aiService = new AIService();
     const imageProcessingService = new ImageProcessingService(logger, aiService);
-    
+
     avatarService = new AvatarGenerationService(database, configService);
     logger.info("✅ Connected to MongoDB successfully");
 
@@ -546,13 +546,13 @@ async function main() {
     logger.info("✅ Arweave prompts updated successfully");
 
     spamControlService = new SpamControlService(database, logger);
-    chatService = new ChatService(client, database, { 
-      logger, 
-      avatarService, 
-      aiService, 
+    chatService = new ChatService(client, database, {
+      logger,
+      avatarService,
+      aiService,
       imageProcessingService,
-      handleSummonCommand, 
-      handleBreedCommand 
+      handleSummonCommand,
+      handleBreedCommand
     });
     messageHandler = new MessageHandler(avatarService, client, chatService, imageProcessingService, logger);
 
