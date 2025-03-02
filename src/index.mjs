@@ -309,7 +309,7 @@ async function handleCommands(message) {
 
   if (content.startsWith(summonEmoji)) {
     const member = message.guild?.members?.cache?.get(message.author.id);
-    const requiredRole = process.env.SUMMONER_ROLE || (guildId ? await configService.getGuildConfig(databaseService.getDatabase(), guildId)?.summonerRole : null) || "💼";
+    const requiredRole = (guildId ? await configService.getGuildConfig(databaseService.getDatabase(), guildId)?.summonerRole : process.env.SUMMONER_ROLE) || "💼";
     if (!message.author.bot && member && !member.roles.cache.some(
       (role) => role.id === requiredRole || role.name === requiredRole
     )) {
