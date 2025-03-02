@@ -2,40 +2,22 @@ import OpenAI from 'openai';
 import defaultModels from '../models.config.mjs';
 
 export class GoogleAIService {
-  constructor(apiKey) {
-    this.openai = new OpenAI({
-      apiKey: apiKey || process.env.GOOGLE_AI_API_KEY,
-      baseURL: 'https://generativelanguage.googleapis.com/v1beta/openai/',
-    });
-
-    // Default model - can be overridden
-    this.model = process.env.GOOGLE_AI_MODEL || 'gemini-1.5-flash';
-    console.log(`Initialized GoogleAIService with default model: ${this.model}`);
-
-    // Initialize model list
+  constructor(config = {}) {
     this.modelConfig = [];
-    this.lastModelFetchTime = 0;
-    this.modelRefreshInterval = 1000 * 60 * 60; // Refresh every hour
-
-    // Default options
-    this.defaultChatOptions = {
-      model: this.model,
-      temperature: 0.7,
-      max_tokens: 1000,
-      top_p: 1.0,
-      frequency_penalty: 0,
-      presence_penalty: 0,
-    };
-        // Placeholder for Google AI client.  Replace with actual implementation.
-    this.googleAI = {
-      chat: (model) => ({
-        sendMessage: async (chatParams) => {
-          // Replace with actual API call to Google AI
-          console.log("Placeholder Google AI API call:", model, chatParams);
-          return { response: { text: "This is a placeholder response from Google AI." } };
+    this.model = config.defaultModel || 'gemini-1.5-flash';
+    this.apiKey = process.env.GOOGLE_AI_API_KEY;
+    this.googleAI = new GoogleGenerativeAI(this.apiKey);
+    console.log(`Initialized GoogleAIService with default model: ${this.model}`);
+    this.fetchModels().then(() => {
+      // Make sure default model exists in configuration, or set to an available one
+      if (!this.modelIsAvailable(this.model)) {
+        const availableModel = this.modelConfig.find(m => m.model.startsWith('gemini-'));
+        if (availableModel) {
+          console.log(`Default model ${this.model} not available, switching to ${availableModel.model}`);
+          this.model = availableModel.model;
         }
-      })
-    };
+      }
+    });
   }
 
   /**
@@ -101,7 +83,7 @@ export class GoogleAIService {
         await this.fetchModels();
       }
 
-      const modelExists = this.modelConfig.some(m => m.id === model);
+      const modelExists = this.modelConfig.some(m => m.model === model); // Corrected to use 'model' field
 
       if (!modelExists) {
         console.log(`Model ${model} not found in configuration.`);
