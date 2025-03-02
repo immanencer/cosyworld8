@@ -252,15 +252,20 @@ export class ChatService {
     setTimeout(() => this.UpdateActiveAvatars(), this.AMBIENT_CHECK_INTERVAL);
   }
 
-  async respondAsAvatar(channel, avatar, force = false) {
-    // Validate channel and avatar
-    if (!channel?.id) {
-      this.logger.error('Invalid channel or avatar provided to respondAsAvatar');
-      return;
-    }
-
+  async respondAsAvatar(channel, avatar, forceResponse = false) {
     try {
-      this.logger.info(`Attempting to respond as avatar ${avatar.name} in channel ${channel.id} (force: ${force})`);
+      if (!channel) {
+        this.logger.error(`Invalid channel provided to respondAsAvatar`);
+        return;
+      }
+
+      if (!this.imageProcessingService) {
+        this.logger.error(`imageProcessingService is not initialized`);
+        // Set a default value if available through constructor
+        this.imageProcessingService = this.options?.imageProcessingService || null;
+      }
+
+      this.logger.info(`Attempting to respond as avatar ${avatar?.name} in channel ${channel.id} (force: ${forceResponse})`);
       let decision = true;
       try {
 
@@ -314,7 +319,7 @@ export class ChatService {
           }
           avatar = await this.avatarService.updateAvatar(avatar);
         }
-        decision = force || await this.decisionMaker.shouldRespond(channel, avatar, this.client, this.avatarService);
+        decision = forceResponse || await this.decisionMaker.shouldRespond(channel, avatar, this.client, this.avatarService);
       } catch (error) {
         this.logger.error(`Error in decision maker: ${error.message}`);
       }
@@ -420,7 +425,7 @@ export class ChatService {
   updateLastMessageTime() {
     this.lastMessageTime = Date.now();
   }
-  
+
   /**
    * Get a Discord message by ID from a specific channel
    * @param {string} channelId - The Discord channel ID

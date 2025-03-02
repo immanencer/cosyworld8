@@ -1,11 +1,26 @@
-
 import { ObjectId } from 'mongodb';
 
 export class StatGenerationService {
   generateStatsFromDate(creationDate) {
+    // Ensure creationDate is a proper Date object
+    if (typeof creationDate === 'string') {
+        creationDate = new Date(creationDate);
+    }
+
+    // Handle invalid or missing dates
+    if (!creationDate || isNaN(creationDate.getTime())) {
+        console.warn("Invalid creation date provided, using current date as fallback");
+        creationDate = new Date();
+    }
+
+    // Ensure each avatar gets consistent stats based on creation date
+    const seed = creationDate.getMonth() + (creationDate.getDate() * 100) + (creationDate.getFullYear() * 10000);
+    const rng = this.seededRandom(seed);
+
+
     const month = creationDate.getMonth() + 1;
     const day = creationDate.getDate();
-    
+
     // Deterministic base stats by zodiac sign and element
     let baseStats;
     if ((month === 3 && day >= 21) || (month === 4 && day <= 19)) { // Aries (Fire)
@@ -49,9 +64,16 @@ export class StatGenerationService {
     return stats;
   }
 
+  seededRandom(seed) {
+    return () => {
+      seed = (seed * 9301 + 49297) % 233280;
+      return seed / 233280;
+    };
+  }
+
   validateStats(stats) {
     if (!stats) return false;
-    
+
     const requiredStats = ['strength', 'dexterity', 'constitution', 'intelligence', 'wisdom', 'charisma', 'hp'];
     return requiredStats.every(stat => 
       typeof stats[stat] === 'number' && 

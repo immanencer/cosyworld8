@@ -148,6 +148,66 @@
                 <textarea id="avatar-description" name="description" rows="3" class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"></textarea>
               </div>
               
+
+<script>
+  // Error handling function for avatar details loading
+  function handleAvatarDetailsError(avatarId) {
+    console.log('Retrying avatar details load for:', avatarId);
+    setTimeout(() => {
+      fetchAvatarDetails(avatarId)
+        .catch(err => {
+          console.error('Failed to load avatar details after retry:', err);
+          document.getElementById('avatar-details-container').innerHTML = `
+            <div class="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 mb-4">
+              <p>Error loading avatar details. Please try again.</p>
+              <button onclick="handleAvatarDetailsError('${avatarId}')" class="mt-2 bg-red-500 text-white px-3 py-1 rounded">
+                Retry
+              </button>
+            </div>
+          `;
+        });
+    }, 1000);
+  }
+  
+  // Enhanced fetchAvatarDetails function with better error handling
+  async function fetchAvatarDetails(avatarId) {
+    try {
+      document.getElementById('avatar-details-container').innerHTML = `
+        <div class="flex justify-center items-center p-8">
+          <div class="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-gray-900"></div>
+          <span class="ml-2">Loading avatar details...</span>
+        </div>
+      `;
+      
+      const response = await fetch(`/api/avatars/${avatarId}`);
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error ${response.status}`);
+      }
+      
+      const avatar = await response.json();
+      
+      // Verify avatar has required data
+      if (!avatar || !avatar.name) {
+        throw new Error('Invalid avatar data received');
+      }
+      
+      // Render avatar details
+      renderAvatarDetails(avatar);
+    } catch (error) {
+      console.error('Error loading avatar details:', error);
+      document.getElementById('avatar-details-container').innerHTML = `
+        <div class="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 mb-4">
+          <p>Failed to load avatar details: ${error.message}</p>
+          <button onclick="handleAvatarDetailsError('${avatarId}')" class="mt-2 bg-red-500 text-white px-3 py-1 rounded">
+            Retry
+          </button>
+        </div>
+      `;
+    }
+  }
+</script>
+
               <div>
                 <label for="avatar-personality" class="block text-sm font-medium text-gray-700">Personality</label>
                 <textarea id="avatar-personality" name="personality" rows="3" class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"></textarea>
