@@ -94,9 +94,14 @@ class GuildSettingsManager {
   }
 
   initializeGuildSelector() {
-    const guildList = document.getElementById('guild-list');
-    if (!guildList) return;
+    const guildList = document.getElementById('guild-cards-container');
+    if (!guildList) {
+      console.error('Guild cards container not found');
+      return;
+    }
     guildList.innerHTML = ''; // Clear existing guilds
+    
+    console.log('Rendering guild configs:', this.guildConfigs.length);
 
     // Sort configs by status and name
     const sortedConfigs = [...this.guildConfigs].sort((a, b) => {
@@ -108,25 +113,44 @@ class GuildSettingsManager {
       return (a.guildName || '').localeCompare(b.guildName || '');
     });
 
+    if (sortedConfigs.length === 0) {
+      const emptyMessage = document.createElement('div');
+      emptyMessage.classList.add('col-span-full', 'text-center', 'p-4', 'text-gray-500');
+      emptyMessage.textContent = 'No guild configurations found';
+      guildList.appendChild(emptyMessage);
+    }
+
     sortedConfigs.forEach(config => {
       const card = document.createElement('div');
       card.setAttribute('data-guild-id', config.guildId);
-      card.classList.add('card', 'm-2', 'p-4', 'cursor-pointer');
+      card.classList.add('bg-white', 'shadow', 'rounded-lg', 'p-4', 'cursor-pointer', 'hover:shadow-md', 'transition');
+      
+      // Add a border color based on whitelist status
+      if (config.whitelisted) {
+        card.classList.add('border-l-4', 'border-green-500');
+      } else {
+        card.classList.add('border-l-4', 'border-yellow-500');
+      }
+      
       card.innerHTML = `
-        <h3>${config.guildName || `Server: ${config.guildId}`}</h3>
-        <p>Whitelisted: ${config.whitelisted ? 'Yes' : 'No'}</p>
+        <h3 class="text-lg font-semibold">${config.guildName || `Server: ${config.guildId}`}</h3>
+        <div class="mt-2 flex items-center">
+          <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${config.whitelisted ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'}">
+            ${config.whitelisted ? 'Whitelisted' : 'Not Whitelisted'}
+          </span>
+          ${config._detected ? '<span class="ml-2 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">Auto-detected</span>' : ''}
+        </div>
+        <p class="text-sm text-gray-500 mt-1">ID: ${config.guildId}</p>
       `;
       card.addEventListener('click', () => this.handleGuildSelection(config.guildId));
       guildList.appendChild(card);
     });
 
-
-    // Add an option to create a new guild configuration
-    const newCard = document.createElement('div');
-    newCard.classList.add('card', 'm-2', 'p-4', 'cursor-pointer');
-    newCard.textContent = '➕ Add New Server Configuration';
-    newCard.addEventListener('click', () => this.handleGuildSelection('new'));
-    guildList.appendChild(newCard);
+    // Add event handler for the add new guild button (which is now outside the container)
+    const addNewButton = document.getElementById('add-new-guild-button');
+    if (addNewButton) {
+      addNewButton.addEventListener('click', () => this.handleGuildSelection('new'));
+    }
   }
 
   initializeFormHandlers() {
@@ -160,13 +184,6 @@ class GuildSettingsManager {
       return;
     }
 
-    // Find the selected guild configuration
-    const selectedConfig = this.guildConfigs.find(config => config.guildId === guildId);
-    if (!selectedConfig) {
-      this.showMessage(`Guild configuration not found for ID: ${guildId}`, 'error');
-      return;
-    }
-
     // Highlight the selected card
     const cards = document.querySelectorAll('[data-guild-id]');
     cards.forEach(card => {
@@ -180,8 +197,56 @@ class GuildSettingsManager {
     // Set the selected guild ID
     this.selectedGuildId = guildId;
 
-    // Populate the form with the selected guild's configuration
-    this.populateSettingsForm(selectedConfig);
+    // Handle new guild case
+    if (guildId === 'new') {
+      // Create a blank config template
+      const newConfig = {
+        guildId: '',
+        guildName: '',
+        whitelisted: false,
+        features: {
+          breeding: false,
+          combat: false,
+          itemCreation: false
+        },
+        prompts: {
+          introduction: '',
+          summon: '',
+          attack: '',
+          defend: '',
+          breed: ''
+        },
+        rateLimit: {
+          messages: 5,
+          interval: 60000
+        },
+        adminRoles: [],
+        summonEmoji: '✨',
+        toolEmojis: {
+          summon: '💼',
+          breed: '🏹',
+          attack: '⚔️',
+          defend: '🛡️'
+        }
+      };
+      
+      this.populateSettingsForm(newConfig);
+      
+      // Enable the guild ID field for new guild
+      const guildIdField = document.getElementById('guild-id');
+      if (guildIdField) guildIdField.removeAttribute('readonly');
+      
+    } else {
+      // Find the selected guild configuration
+      const selectedConfig = this.guildConfigs.find(config => config.guildId === guildId);
+      if (!selectedConfig) {
+        this.showMessage(`Guild configuration not found for ID: ${guildId}`, 'error');
+        return;
+      }
+      
+      // Populate the form with the selected guild's configuration
+      this.populateSettingsForm(selectedConfig);
+    }
 
     // Show the settings form and hide the no-server message
     this.toggleFormVisibility(true);
@@ -380,21 +445,34 @@ class GuildSettingsManager {
 
   showMessage(message, type = 'info') {
     const messageElement = document.getElementById('settings-message');
-    if (!messageElement) return;
+    if (!messageElement) {
+      console.error('Message element not found');
+      return;
+    }
 
+    // Remove hidden class
+    messageElement.classList.remove('hidden');
+    
+    // Set message content
     messageElement.textContent = message;
-    messageElement.classList.remove('hidden', 'message-success', 'message-error', 'message-info');
-
+    
+    // Reset all style classes
+    messageElement.classList.remove('bg-blue-100', 'text-blue-800', 'bg-green-100', 'text-green-800', 'bg-red-100', 'text-red-800');
+    
+    // Apply appropriate styles based on message type
     switch (type) {
       case 'success':
-        messageElement.classList.add('message-success');
+        messageElement.classList.add('bg-green-100', 'text-green-800');
         break;
       case 'error':
-        messageElement.classList.add('message-error');
+        messageElement.classList.add('bg-red-100', 'text-red-800');
         break;
       default:
-        messageElement.classList.add('message-info');
+        messageElement.classList.add('bg-blue-100', 'text-blue-800');
     }
+    
+    // Make sure the message is visible
+    messageElement.classList.add('p-4', 'rounded', 'mb-4');
 
     // Auto-hide success messages after 5 seconds
     if (type === 'success') {
