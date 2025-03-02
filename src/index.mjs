@@ -4,12 +4,7 @@ import { DatabaseService } from "./services/databaseService.mjs";
 import { SpamControlService } from "./services/spamControlService.mjs";
 import { GoogleAIService as AIService } from "./services/googleAIService.mjs";
 import { AvatarGenerationService } from "./services/avatarService.mjs";
-
-// Load and validate configuration
 import configService from "./services/configService.mjs";
-configService.validate();
-const aiConfig = configService.getAIConfig();
-
 import {
   client,
   reactToMessage,
@@ -20,13 +15,12 @@ import {
 import { ChatService } from "./services/chat/ChatService.mjs";
 import { MessageHandler } from "./services/chat/MessageHandler.mjs";
 
-/**
- * ----------------------
- * Logging Configuration
- * ----------------------
- * Configures Winston logger with console and file transports.
- * In production, consider adding log aggregation (e.g., ELK stack).
- */
+// --------------------------
+// Configuration & Setup
+// --------------------------
+configService.validate();
+const aiConfig = configService.getAIConfig();
+
 const logger = winston.createLogger({
   level: process.env.LOG_LEVEL || "info",
   format: winston.format.combine(
@@ -50,81 +44,46 @@ const logger = winston.createLogger({
   ],
 });
 
-// Initialize core services
-const databaseService = new DatabaseService(logger);
-// Make database service globally available for components that need it
+// Initialize global services
+let databaseService = new DatabaseService(logger);
 global.databaseService = databaseService;
-const aiService = new AIService();
+let aiService = new AIService();
 let avatarService = null;
-let chatService;
-let messageHandler;
-let spamControlService;
+let chatService = null;
+let messageHandler = null;
+let spamControlService = null;
 
-// Ensure database connection is ready
-process.on('unhandledRejection', (reason, promise) => {
-  logger.error(`Unhandled Rejection at: ${promise} reason: ${reason}`);
-});
-
-/**
- * -----------------------
- * Environment Variables
- * -----------------------
- * Validates essential environment variables.
- * Use a library like 'envalid' in production for stricter validation.
- */
-const MONGO_URI = process.env.MONGO_URI;
-const MONGO_DB_NAME = process.env.MONGO_DB_NAME || "discord-bot";
-const DISCORD_BOT_TOKEN = process.env.DISCORD_BOT_TOKEN;
-const DISCORD_CLIENT_ID = process.env.DISCORD_CLIENT_ID;
-
-if (!MONGO_URI) {
-  logger.error("MONGO_URI is not defined in the environment variables.");
-  process.exit(1);
-}
-if (!DISCORD_BOT_TOKEN) {
-  logger.error("DISCORD_BOT_TOKEN is not defined in the environment variables.");
+// Validate essential environment variables
+const { MONGO_URI, MONGO_DB_NAME = "discord-bot", DISCORD_BOT_TOKEN, DISCORD_CLIENT_ID } = process.env;
+if (!MONGO_URI || !DISCORD_BOT_TOKEN) {
+  logger.error("Essential environment variables (MONGO_URI or DISCORD_BOT_TOKEN) are missing. Exiting.");
   process.exit(1);
 }
 if (!DISCORD_CLIENT_ID) {
-  logger.warn(
-    "DISCORD_CLIENT_ID is not defined. Slash commands registration might fail."
-  );
+  logger.warn("DISCORD_CLIENT_ID is not defined. Slash commands registration might fail.");
 }
 
-/**
- * Sanitizes user input to prevent injection attacks or malformed data.
- * @param {string} input - The user-provided input.
- * @returns {string} - Sanitized input.
- */
-function sanitizeInput(input) {
-  return input.replace(/[^\p{L}\p{N}\s\p{Emoji}]/gu, "").trim();
-}
+// --------------------------
+// Utility Functions
+// --------------------------
+const sanitizeInput = (input) =>
+  input.replace(/[^\p{L}\p{N}\s\p{Emoji}]/gu, "").trim();
 
-/**
- * Finds an avatar by name in a list of avatars.
- * @param {string} name - The name to search for.
- * @param {Array} avatars - List of avatar objects.
- * @returns {Object|null} - The matching avatar or null.
- */
 async function findAvatarByName(name, avatars) {
   const sanitizedName = sanitizeInput(name.toLowerCase());
   return (
     avatars
-      .filter(
-        (avatar) =>
-          avatar.name.toLowerCase() === sanitizedName ||
-          sanitizeInput(avatar.name.toLowerCase()) === sanitizedName
+      .filter((avatar) =>
+        avatar.name.toLowerCase() === sanitizedName ||
+        sanitizeInput(avatar.name.toLowerCase()) === sanitizedName
       )
       .sort(() => Math.random() - 0.5)[0] || null
   );
 }
 
-/**
- * Handles the breed command to create a new avatar from two existing ones.
- * @param {Message} message - Discord message object.
- * @param {Array} args - Command arguments.
- * @param {string} commandLine - Full command text.
- */
+// --------------------------
+// Command Handlers
+// --------------------------
 async function handleBreedCommand(message, args, commandLine) {
   const avatars = await avatarService.getAvatarsInChannel(message.channel.id);
   const mentionedAvatars = Array.from(
@@ -144,85 +103,69 @@ async function handleBreedCommand(message, args, commandLine) {
     return;
   }
 
-  const breedingDate1 = await avatarService.getLastBredDate(avatar1._id.toString());
-  if (breedingDate1 && Date.now() - new Date(breedingDate1) < 24 * 60 * 60 * 1000) {
-    await replyToMessage(
-      message,
-      `${avatar1.name} has already been bred in the last 24 hours.`
-    );
+  // Check if either avatar was bred within the last 24 hours
+  const checkRecentBreed = async (avatar) => {
+    const lastBred = await avatarService.getLastBredDate(avatar._id.toString());
+    return lastBred && (Date.now() - new Date(lastBred) < 24 * 60 * 60 * 1000);
+  };
+
+  if (await checkRecentBreed(avatar1)) {
+    await replyToMessage(message, `${avatar1.name} has already been bred in the last 24 hours.`);
     return;
   }
-
-  const breedingDate2 = await avatarService.getLastBredDate(avatar2._id.toString());
-  if (breedingDate2 && Date.now() - new Date(breedingDate2) < 24 * 60 * 60 * 1000) {
-    await replyToMessage(
-      message,
-      `${avatar2.name} has already been bred in the last 24 hours.`
-    );
+  if (await checkRecentBreed(avatar2)) {
+    await replyToMessage(message, `${avatar2.name} has already been bred in the last 24 hours.`);
     return;
   }
 
   await replyToMessage(message, `Breeding ${avatar1.name} with ${avatar2.name}...`);
 
-  const memories1 = (
-    await chatService.conversationHandler.memoryService.getMemories(avatar1._id)
-  )
-    .map((m) => m.memory)
-    .join("\n");
-  const narrative1 = await chatService.conversationHandler.buildNarrativePrompt(
-    avatar1,
-    [memories1]
-  );
-  const memories2 = (
-    await chatService.conversationHandler.memoryService.getMemories(avatar2._id)
-  )
-    .map((m) => m.memory)
-    .join("\n");
-  const narrative2 = await chatService.conversationHandler.buildNarrativePrompt(
-    avatar2,
-    [memories2]
-  );
+  // Build narrative prompts for both avatars
+  const buildNarrative = async (avatar) => {
+    const memories = (await chatService.conversationHandler.memoryService.getMemories(avatar._id))
+      .map((m) => m.memory)
+      .join("\n");
+    return chatService.conversationHandler.buildNarrativePrompt(avatar, [memories]);
+  };
 
-  const prompt = `Breed the following avatars to combine them, develop a short backstory for the offspring of these two avatars and include it in the final description:\n\n` +
+  const narrative1 = await buildNarrative(avatar1);
+  const narrative2 = await buildNarrative(avatar2);
+
+  const prompt = `Breed the following avatars to combine them, develop a short backstory for the offspring:\n\n` +
     `AVATAR 1: ${avatar1.name} - ${avatar1.prompt}\n${avatar1.description}\n${avatar1.personality}\n${narrative1}\n\n` +
     `AVATAR 2: ${avatar2.name} - ${avatar2.prompt}\n${avatar2.description}\n${avatar2.personality}\n${narrative2}\n\n` +
-    `Combine their attributes creatively, avoid cosmic or mystical creatures and aim for a down to earth feel suitable for the moonstone sanctum.`;
+    `Combine their attributes creatively, avoiding cosmic or mystical elements and aiming for a down-to-earth feel suitable for the moonstone sanctum.`;
 
   logger.info(prompt);
-  // Store original content to restore after summoning
   const originalContent = message.content;
-  // Set the breeding prompt as content for the summon command
+  // Temporarily set the breeding prompt as the message content
   message.content = `🔮 ${prompt}`;
   await handleSummonCommand(message, true, {
     summoner: `${message.author.username}@${message.author.id}`,
     parents: [avatar1._id, avatar2._id],
   });
-  // Restore original content after summoning
+  // Restore original message content
   message.content = originalContent;
 }
 
-/**
- * Tracks and enforces daily summon limits.
- */
 const DAILY_SUMMON_LIMIT = 16;
-
 async function checkDailySummonLimit(userId) {
   const db = databaseService.getDatabase();
   if (!db) {
-    logger.error("Database not available when checking summon limits");
-    return false; // Fail closed - if we can't check, don't allow
+    logger.error("Database not available for summon limit check.");
+    return false;
   }
-
   try {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-    const summonCount = await db
-      .collection("daily_summons")
-      .countDocuments({ userId, timestamp: { $gte: today } });
+    const summonCount = await db.collection("daily_summons").countDocuments({
+      userId,
+      timestamp: { $gte: today },
+    });
     return summonCount < DAILY_SUMMON_LIMIT;
   } catch (error) {
     logger.error(`Error checking summon limit: ${error.message}`);
-    return false; // Fail closed on errors
+    return false;
   }
 }
 
@@ -233,62 +176,44 @@ async function trackSummon(userId) {
   });
 }
 
-/**
- * Handles the summon command to create or retrieve an avatar.
- * @param {Message} message - Discord message object.
- * @param {boolean} breed - Indicates if this is a breed operation.
- * @param {Object} attributes - Additional attributes for the avatar.
- */
 async function handleSummonCommand(message, breed = false, attributes = {}) {
   const content = message.content.trim().substring(2).trim();
-  const lines = content.split("\n");
-  const avatarName = lines[0].trim();
+  const [avatarName] = content.split("\n").map(line => line.trim());
   const existingAvatar = await avatarService.getAvatarByName(avatarName);
 
   try {
     if (existingAvatar) {
       await reactToMessage(message, existingAvatar.emoji || "🔮");
-      await chatService.dungeonService.updateAvatarPosition(
-        existingAvatar._id,
-        message.channel.id
-      );
-      existingAvatar.stats = await chatService.dungeonService.getAvatarStats(
-        existingAvatar._id
-      );
+      await chatService.dungeonService.updateAvatarPosition(existingAvatar._id, message.channel.id);
+      existingAvatar.stats = await chatService.dungeonService.getAvatarStats(existingAvatar._id);
       await avatarService.updateAvatar(existingAvatar);
       await sendAvatarProfileEmbedFromObject(existingAvatar);
       await chatService.respondAsAvatar(message.channel, existingAvatar, true);
       return;
     }
 
-    // Ensure we have a database connection before checking limits
     const db = databaseService.getDatabase();
     if (!db) {
-      logger.error("Database not available when checking summon limits");
+      logger.error("Database not available for summon command.");
       await replyToMessage(message, "Service temporarily unavailable. Please try again later.");
       return;
     }
 
-    const canSummon =
-      message.author.id === "1175877613017895032" ||
+    const canSummon = message.author.id === "1175877613017895032" ||
       (await checkDailySummonLimit(message.author.id));
     if (!canSummon) {
-      await replyToMessage(
-        message,
-        `Daily summon limit of ${DAILY_SUMMON_LIMIT} reached. Try again tomorrow!`
-      );
+      await replyToMessage(message, `Daily summon limit of ${DAILY_SUMMON_LIMIT} reached. Try again tomorrow!`);
       return;
     }
 
-    const prompt =
-      configService.config.prompt.summon ||
+    const summonPrompt = configService.config.prompt.summon ||
       "Create a twisted avatar, a servant of darkness.";
     const avatarData = {
-      prompt: sanitizeInput(`${prompt}\n\nSummon an avatar inspired by this concept:\n\n${content}`),
+      prompt: sanitizeInput(`${summonPrompt}\n\nSummon an avatar inspired by this concept:\n\n${content}`),
       channelId: message.channel.id,
     };
-    if (prompt.match(/^(https:\/\/.*\.arweave\.net\/|ar:\/\/)/)) {
-      avatarData.arweave_prompt = prompt;
+    if (summonPrompt.match(/^(https:\/\/.*\.arweave\.net\/|ar:\/\/)/)) {
+      avatarData.arweave_prompt = summonPrompt;
     }
 
     const createdAvatar = await avatarService.createAvatar(avatarData);
@@ -310,8 +235,7 @@ async function handleSummonCommand(message, breed = false, attributes = {}) {
         },
         {
           role: "user",
-          content:
-            configService.config.prompt.introduction ||
+          content: configService.config.prompt.introduction ||
             "You've just arrived. Introduce yourself.",
         },
       ],
@@ -335,11 +259,6 @@ async function handleSummonCommand(message, breed = false, attributes = {}) {
   }
 }
 
-/**
- * Handles the attack command.
- * @param {Message} message - Discord message object.
- * @param {Array} args - Command arguments.
- */
 async function handleAttackCommand(message, args) {
   if (!args.length) {
     await replyToMessage(message, "Mention an avatar to attack.");
@@ -352,42 +271,34 @@ async function handleAttackCommand(message, args) {
     await replyToMessage(message, `Avatar "${targetName}" not found.`);
     return;
   }
-  const attackResult = await chatService.dungeonService.tools
-    .get("attack")
-    .execute(message, [targetAvatar.name], targetAvatar);
+  const attackResult = await chatService.dungeonService.tools.get("attack").execute(
+    message,
+    [targetAvatar.name],
+    targetAvatar
+  );
   await reactToMessage(message, "⚔️");
   await replyToMessage(message, `🔥 **${attackResult}**`);
 }
 
-/**
- * Processes commands starting with specific emojis.
- * @param {Message} message - Discord message object.
- */
 async function handleCommands(message) {
   const content = message.content;
-
   if (content.startsWith("!summon")) {
     await replyToMessage(message, "Command Deprecated. Use 🔮 instead.");
     return;
   }
-
   if (content.startsWith("🔮")) {
     const member = message.guild?.members?.cache?.get(message.author.id);
     const requiredRole = process.env.SUMMONER_ROLE || "🔮";
-    if (
-      !message.author.bot &&
-      member &&
-      !member.roles.cache.some(
-        (role) => role.id === requiredRole || role.name === requiredRole
-      )
-    ) {
+    if (!message.author.bot && member && !member.roles.cache.some(
+      (role) => role.id === requiredRole || role.name === requiredRole
+    )) {
       await replyToMessage(message, "You lack the required role to summon.");
       return;
     }
     await reactToMessage(message, "🔮");
     await handleSummonCommand(message, false, {});
+    return;
   }
-
   if (content.startsWith("⚔️")) {
     if (!message.author.bot) {
       await replyToMessage(message, "❌ Sword of violence not found.");
@@ -397,118 +308,23 @@ async function handleCommands(message) {
     await reactToMessage(message, "⚔️");
     await handleAttackCommand(message, attackArgs);
     await reactToMessage(message, "✅");
+    return;
   }
-
   if (content.startsWith("🏹")) {
     const breedArgs = content.slice(2).trim().split(" ");
     await reactToMessage(message, "🏹");
     await handleBreedCommand(message, breedArgs, content);
     await reactToMessage(message, "✅");
+    return;
   }
 }
 
-/**
- * Discord message event handler.
- */
-client.on("messageCreate", async (message) => {
-  try {
-    // Ignore DMs and messages without a guild
-    if (!message.guild) return;
-    
-    // Check if guild is whitelisted
-    try {
-      // First check memory cache for whitelist status (fastest path)
-      if (client.guildWhitelist && client.guildWhitelist.has(message.guild.id)) {
-        const isWhitelisted = client.guildWhitelist.get(message.guild.id);
-        logger.debug(`Guild ${message.guild.name}(${message.guild.id}) whitelist status from cache: ${isWhitelisted}`);
-        if (!isWhitelisted) {
-          logger.warn(`Guild ${message.guild.name}(${message.guild.id}) is not whitelisted. Ignoring message.`);
-          return;
-        }
-      } else {
-        // If not in cache, we need to check the database
-        // Make sure database is available
-        const db = databaseService.getDatabase();
-        if (!db) {
-          logger.warn(`Database not available for whitelist check for guild ${message.guild.id}. Using safe default.`);
-          return; // Default to ignoring messages if DB isn't available and not cached
-        }
-
-      const guildConfig = await configService.getGuildConfig(db, message.guild.id);
-
-      if (guildConfig && guildConfig.whitelisted === true) {
-        // Guild is explicitly whitelisted in its config, proceed with message processing
-        logger.debug(`Guild ${message.guild.name}(${message.guild.id}) is whitelisted via guild config.`);
-
-        // Cache this result in memory for faster access
-        if (!client.guildWhitelist) client.guildWhitelist = new Map();
-        client.guildWhitelist.set(message.guild.id, true);
-      } else {
-        // Check global whitelist as fallback
-        const globalConfig = await configService.get('whitelistedGuilds');
-        const whitelistedGuilds = Array.isArray(globalConfig) ? globalConfig : [];
-
-        if (!whitelistedGuilds.includes(message.guild.id)) {
-          logger.warn(`Guild ${message.guild.name}(${message.guild.id}) is not whitelisted. Ignoring message from user ${message.author.id} - ${message.author.username}.`);
-          return;
-        }
-        logger.debug(`Guild ${message.guild.name}(${message.guild.id}) is whitelisted via global config.`);
-
-        // Cache this result in memory for faster access
-        if (!client.guildWhitelist) client.guildWhitelist = new Map();
-        client.guildWhitelist.set(message.guild.id, true);
-      }
-    } catch (error) {
-      logger.error(`Error checking whitelist status: ${error.message}`);
-      // Cache the guild whitelist status in client memory if it is whitelisted
-      if (client.guildWhitelist && client.guildWhitelist.has(message.guild.id)) {
-        logger.debug(`Guild ${message.guild.name}(${message.guild.id}) is whitelisted via client memory cache.`);
-      } else {
-        // Default to ignoring the message for safety
-        return;
-      }
-    }
-
-
-    if (!(await spamControlService.shouldProcessMessage(message))) {
-      return;
-    }
-
-    await saveMessageToDatabase(message);
-    await handleCommands(message);
-
-    if (message.author.bot) return;
-
-    await messageHandler.processChannel(message.channel.id);
-
-    const result = await avatarService.getOrCreateUniqueAvatarForUser(
-      message.author.id,
-      `A unique avatar for ${message.author.username} (${message.author.displayName})`,
-      message.channel.id
-    );
-
-    if (result.new) {
-      result.avatar.model = result.avatar.model || (await aiService.selectRandomModel());
-      result.avatar.stats = await chatService.dungeonService.getAvatarStats(result.avatar._id);
-      await avatarService.updateAvatar(result.avatar);
-      await sendAvatarProfileEmbedFromObject(result.avatar);
-      await chatService.respondAsAvatar(message.channel, result.avatar, true);
-    }
-
-    await messageHandler.processChannel(message.channel.id);
-  } catch (error) {
-    logger.error(`Error processing message: ${error.stack}`);
-  }
-});
-
-/**
- * Saves a message to the database.
- * @param {Message} message - Discord message object.
- */
+// --------------------------
+// Database & Message Persistence
+// --------------------------
 async function saveMessageToDatabase(message) {
   const db = databaseService.getDatabase();
   if (!db) return;
-
   const messagesCollection = db.collection("messages");
   const messageData = {
     messageId: message.id,
@@ -535,10 +351,67 @@ async function saveMessageToDatabase(message) {
   logger.debug("💾 Message saved to database");
 }
 
-/**
- * Gracefully shuts down the application.
- * @param {string} signal - The signal received.
- */
+client.on("messageCreate", async (message) => {
+  try {
+    if (!message.guild) return;
+
+    // --------------------------
+    // Guild Whitelist Check
+    // --------------------------
+    if (client.guildWhitelist?.has(message.guild.id)) {
+      if (!client.guildWhitelist.get(message.guild.id)) {
+        logger.warn(`Guild ${message.guild.name} (${message.guild.id}) is not whitelisted. Ignoring message.`);
+        return;
+      }
+    } else {
+      const db = databaseService.getDatabase();
+      if (!db) return;
+      const guildConfig = await configService.getGuildConfig(db, message.guild.id);
+      if (guildConfig?.whitelisted === true) {
+        client.guildWhitelist = client.guildWhitelist || new Map();
+        client.guildWhitelist.set(message.guild.id, true);
+      } else {
+        const globalConfig = await configService.get("whitelistedGuilds");
+        const whitelistedGuilds = Array.isArray(globalConfig) ? globalConfig : [];
+        if (!whitelistedGuilds.includes(message.guild.id)) {
+          logger.warn(`Guild ${message.guild.name} (${message.guild.id}) is not whitelisted. Ignoring message.`);
+          return;
+        }
+        client.guildWhitelist = client.guildWhitelist || new Map();
+        client.guildWhitelist.set(message.guild.id, true);
+      }
+    }
+
+    if (!(await spamControlService.shouldProcessMessage(message))) return;
+
+    await saveMessageToDatabase(message);
+    await handleCommands(message);
+
+    if (message.author.bot) return;
+
+    await messageHandler.processChannel(message.channel.id);
+
+    const result = await avatarService.getOrCreateUniqueAvatarForUser(
+      message.author.id,
+      `A unique avatar for ${message.author.username} (${message.author.displayName})`,
+      message.channel.id
+    );
+    if (result.new) {
+      result.avatar.model = result.avatar.model || (await aiService.selectRandomModel());
+      result.avatar.stats = await chatService.dungeonService.getAvatarStats(result.avatar._id);
+      await avatarService.updateAvatar(result.avatar);
+      await sendAvatarProfileEmbedFromObject(result.avatar);
+      await chatService.respondAsAvatar(message.channel, result.avatar, true);
+    }
+    await messageHandler.processChannel(message.channel.id);
+  } catch (error) {
+    logger.error(`Error processing message: ${error.stack}`);
+  }
+});
+
+// --------------------------
+// Shutdown & Startup Logic
+// --------------------------
 async function shutdown(signal) {
   logger.info(`Received ${signal}. Shutting down gracefully...`);
   await client.destroy();
@@ -552,48 +425,37 @@ async function shutdown(signal) {
   process.exit(0);
 }
 
-/**
- * Main application entry point.
- */
+async function loadGuildWhitelist(database) {
+  try {
+    logger.info("Pre-loading guild whitelist settings...");
+    const guildConfigs = await database.collection("guild_configs").find({}).toArray();
+    client.guildWhitelist = new Map();
+    for (const config of guildConfigs) {
+      if (config.guildId && config.whitelisted === true) {
+        client.guildWhitelist.set(config.guildId, true);
+        logger.debug(`Pre-loaded whitelist for guild ${config.guildId}.`);
+      }
+    }
+    logger.info(`Pre-loaded whitelist settings for ${client.guildWhitelist.size} guild(s).`);
+  } catch (err) {
+    logger.error(`Failed to pre-load guild whitelist settings: ${err.message}`);
+  }
+}
+
 async function main() {
   try {
-    // Initialize client whitelist cache
     client.guildWhitelist = new Map();
-    
-    // Set client in configService to enable whitelist caching
     configService.setClient(client);
-    
-    // Connect to database with retry logic
     const db = await databaseService.connect();
     if (!db) {
-      logger.warn("Initial database connection failed, will retry");
-      // Wait for database connection with retry logic
+      logger.warn("Initial database connection failed, will retry.");
       const dbConnection = await databaseService.waitForConnection(10, 2000);
-      if (!dbConnection) {
-        throw new Error("Failed to establish database connection after multiple attempts");
-      }
+      if (!dbConnection) throw new Error("Failed to establish database connection after multiple attempts.");
     }
-
-    // Ensure we have a valid database connection
     const database = databaseService.getDatabase();
-    if (!database) {
-      throw new Error("Database connection not available");
-    }
-    
-    // After connecting, pre-load guild whitelist settings
-    try {
-      logger.info("Pre-loading guild whitelist settings...");
-      const guildConfigs = await database.collection('guild_configs').find({}).toArray();
-      for (const config of guildConfigs) {
-        if (config.guildId && config.whitelisted === true) {
-          client.guildWhitelist.set(config.guildId, true);
-          logger.debug(`Pre-loaded whitelist setting for guild ${config.guildId}: ${config.whitelisted}`);
-        }
-      }
-      logger.info(`Pre-loaded whitelist settings for ${client.guildWhitelist.size} guilds`);
-    } catch (err) {
-      logger.error(`Failed to pre-load guild whitelist settings: ${err.message}`);
-    }
+    if (!database) throw new Error("Database connection not available.");
+
+    await loadGuildWhitelist(database);
 
     avatarService = new AvatarGenerationService(database, configService);
     logger.info("✅ Connected to MongoDB successfully");

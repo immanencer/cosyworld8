@@ -15,7 +15,7 @@ class ConfigService {
   constructor() {
     this.config = {
       prompt: {
-        summon: process.env.SUMMON_PROMPT || "Create a twisted avatar, a servant of darkness.",
+        summon: process.env.SUMMON_PROMPT || "Create a twisted avatar, a servant of dark V.A.L.I.S.",
         introduction: process.env.INTRODUCTION_PROMPT || "You've just arrived. Introduce yourself."
       },
       ai: {
@@ -24,9 +24,10 @@ class ConfigService {
           model: process.env.REPLICATE_MODEL,
           loraTriggerWord: process.env.REPLICATE_LORA_TRIGGER
         },
-        google: {
-          apiKey: process.env.GOOGLE_API_KEY
-        }
+        aiProvider: {
+          apiKey: process.env.GOOGLE_API_KEY,
+          metaModel: process.env.META_PROMPT_MODEL,
+        },
       },
       mongo: {
         uri: process.env.MONGO_URI,

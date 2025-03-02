@@ -368,7 +368,7 @@ export class AvatarGenerationService {
             { role: 'system', content: 'You are a creative and unsettling character designer.' },
             { role: 'user', content: prompt },
           ], {
-            model: this.config.getAIConfig().openrouter.metaModel,
+            model: this.config.getAIConfig().aiProvider.metaModel,
             format: "json"
           });
           if (!response) {
