@@ -1,5 +1,5 @@
-
 import OpenAI from 'openai';
+import defaultModels from '../models.config.mjs';
 
 export class GoogleAIService {
   constructor(apiKey) {
@@ -7,15 +7,15 @@ export class GoogleAIService {
       apiKey: apiKey || process.env.GOOGLE_AI_API_KEY,
       baseURL: 'https://generativelanguage.googleapis.com/v1beta/openai/',
     });
-    
+
     // Default model - can be overridden
     this.model = process.env.GOOGLE_AI_MODEL || 'gemini-2.0-flash';
-    
+
     // Initialize model list
     this.modelConfig = [];
     this.lastModelFetchTime = 0;
     this.modelRefreshInterval = 1000 * 60 * 60; // Refresh every hour
-    
+
     // Default options
     this.defaultChatOptions = {
       model: this.model,
@@ -28,53 +28,26 @@ export class GoogleAIService {
   }
 
   /**
-   * Fetches the available models from the Google API
+   * Fetches the available models from the local configuration
    * @returns {Promise<Array>} List of available models
    */
   async fetchModels() {
     try {
       const now = Date.now();
-      // Only fetch new models if enough time has passed
+      // Only initialize models if enough time has passed or not loaded yet
       if (now - this.lastModelFetchTime > this.modelRefreshInterval || this.modelConfig.length === 0) {
-        console.log('Fetching models from Google AI API');
-        const models = await this.openai.models.list();
-        
-        // Reset model config
-        this.modelConfig = [];
-        
-        // Categorize models based on naming patterns
-        for (const model of models) {
-          const modelId = model.id;
-          let rarity = 'common';
-          
-          // Determine rarity based on model name patterns
-          if (modelId.includes('gemini-2.0') || modelId.includes('imagen-3.0')) {
-            rarity = 'uncommon';
-          }
-          
-          // Detect premium models - these would typically be more powerful
-          if (modelId.includes('pro') || modelId.includes('flash-001') || modelId.includes('gemini-1.5-pro')) {
-            rarity = 'rare';
-          }
-          
-          // The most capable models would be legendary
-          if (modelId.includes('ultra') || modelId.includes('2.0-pro') || modelId.includes('vision')) {
-            rarity = 'legendary';
-          }
-          
-          this.modelConfig.push({
-            model: modelId,
-            rarity: rarity
-          });
-        }
-        
+        console.log('Loading models from local configuration');
+
+        // Use default models from configuration
+        this.modelConfig = defaultModels || [];
+
         this.lastModelFetchTime = now;
-        console.log(`Retrieved ${this.modelConfig.length} models from Google AI API`);
+        console.log(`Loaded ${this.modelConfig.length} models from configuration`);
       }
-      
+
       return this.modelConfig;
     } catch (error) {
-      console.error('Error fetching Google AI models:', error);
+      console.error('Error loading model configuration:', error);
       // Return empty array if there's an error
       return [];
     }
@@ -85,7 +58,7 @@ export class GoogleAIService {
     if (this.modelConfig.length === 0) {
       await this.fetchModels();
     }
-    
+
     const rarityRanges = [
       { rarity: 'common', min: 1, max: 12 },        // Common: 1-12 (60%)
       { rarity: 'uncommon', min: 13, max: 17 },     // Uncommon: 13-17 (25%)
@@ -117,7 +90,7 @@ export class GoogleAIService {
         return this.modelConfig.some(m => m.model === model);
       });
     }
-    
+
     return this.modelConfig.some(m => m.model === model);
   }
 
@@ -126,7 +99,7 @@ export class GoogleAIService {
     if (this.modelConfig.length === 0) {
       await this.fetchModels();
     }
-    
+
     // Merge our defaults with caller-supplied options.
     const mergedOptions = {
       model: this.model,
@@ -153,7 +126,7 @@ export class GoogleAIService {
     if (this.modelConfig.length === 0) {
       await this.fetchModels();
     }
-    
+
     // Merge our default chat options with any caller options, preserving structure
     const mergedOptions = {
       ...this.defaultChatOptions,
@@ -182,17 +155,17 @@ export class GoogleAIService {
         return null;
       }
       const result = response.choices[0].message;
-      
+
       // If response is meant to be structured JSON, preserve it
       if (mergedOptions.response_format?.type === 'json_object') {
         return result.content;
       }
-      
+
       // Handle function/tool calls if present
       if (result.function_call || result.tool_calls) {
         return result;
       }
-      
+
       return result.content.trim() || '...';
     } catch (error) {
       console.error('Error while chatting with Google AI:', error);

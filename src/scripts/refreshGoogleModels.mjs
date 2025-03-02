@@ -1,33 +1,108 @@
 
-import { GoogleAIService } from '../services/googleAIService.mjs';
 import fs from 'fs/promises';
 import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 /**
- * Refreshes the Google AI models and saves them to a backup file
+ * Default models configuration - this is used when the API is not available
+ */
+const defaultModels = [
+  {
+    "model": "gemini-2.0-flash",
+    "rarity": "uncommon"
+  },
+  {
+    "model": "gemini-2.0-flash-001",
+    "rarity": "uncommon"
+  },
+  {
+    "model": "gemini-2.0-pro",
+    "rarity": "legendary"
+  },
+  {
+    "model": "gemini-2.0-pro-001",
+    "rarity": "legendary"
+  },
+  {
+    "model": "gemini-1.5-pro",
+    "rarity": "rare"
+  },
+  {
+    "model": "gemini-1.5-flash",
+    "rarity": "common"
+  },
+  {
+    "model": "gemini-1.0-pro",
+    "rarity": "uncommon"
+  },
+  {
+    "model": "anthropic/claude-3-opus",
+    "rarity": "legendary"
+  },
+  {
+    "model": "anthropic/claude-3-sonnet",
+    "rarity": "rare"
+  },
+  {
+    "model": "anthropic/claude-3-haiku",
+    "rarity": "uncommon"
+  },
+  {
+    "model": "openai/gpt-4o",
+    "rarity": "legendary"
+  },
+  {
+    "model": "openai/gpt-4-turbo",
+    "rarity": "rare"
+  },
+  {
+    "model": "openai/gpt-4",
+    "rarity": "rare"
+  },
+  {
+    "model": "openai/gpt-3.5-turbo",
+    "rarity": "common"
+  },
+  {
+    "model": "mistralai/mistral-large",
+    "rarity": "rare"
+  },
+  {
+    "model": "mistralai/mistral-small",
+    "rarity": "common"
+  },
+  {
+    "model": "mistralai/mixtral-8x7b",
+    "rarity": "uncommon"
+  }
+];
+
+/**
+ * Creates or updates the models configuration file
  */
 async function refreshGoogleModels() {
-  console.log('[INFO] Starting Google AI model refresh...');
+  console.log('[INFO] Updating Google AI model configuration...');
   
   try {
-    const service = new GoogleAIService();
-    const models = await service.fetchModels();
+    // Get the path to the models.config.mjs file
+    const outputPath = path.join(process.cwd(), 'src', 'models.config.mjs');
     
-    if (!models || models.length === 0) {
-      console.error('[ERROR] Failed to fetch models or no models returned');
-      return;
-    }
+    // Format the models array as a JavaScript module
+    const configContent = `export default ${JSON.stringify(defaultModels, null, 2)};\n`;
     
-    console.log(`[INFO] Successfully fetched ${models.length} models`);
-    
-    // Save to backup file (optional)
-    const outputPath = path.join(process.cwd(), 'src', 'google-models.backup.mjs');
-    const configContent = `export default ${JSON.stringify(models, null, 2)};\n`;
+    // Write to the file
     await fs.writeFile(outputPath, configContent);
     
-    console.log(`[INFO] Models backup saved to ${outputPath}`);
+    console.log(`[INFO] Models configuration saved to ${outputPath}`);
+    console.log(`[INFO] Configured ${defaultModels.length} models`);
+    
+    return defaultModels;
   } catch (error) {
-    console.error('[ERROR] Failed to refresh Google AI models:', error);
+    console.error('[ERROR] Failed to update Google AI models configuration:', error);
+    return [];
   }
 }
 
