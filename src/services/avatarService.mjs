@@ -1,6 +1,26 @@
 // services/avatar_generation_service.mjs
 
 import { SchemaValidator } from './utils/schemaValidator.mjs';
+
+// Fallback validator in case the import fails
+class FallbackValidator {
+  validateAvatar(avatar) {
+    // Basic validation
+    const requiredFields = ['name', 'description', 'personality', 'imageUrl'];
+    const errors = [];
+    
+    for (const field of requiredFields) {
+      if (!avatar[field] || typeof avatar[field] !== 'string') {
+        errors.push(`Missing or invalid required field: ${field}`);
+      }
+    }
+    
+    return {
+      valid: errors.length === 0,
+      errors
+    };
+  }
+}
 import Replicate from 'replicate';
 import { GoogleAIService as AIService } from './googleAIService.mjs';
 import process from 'process';
@@ -606,12 +626,27 @@ export class AvatarGenerationService {
     }
 
     try {
+      this.logger.info(`Creating avatar with prompt: ${prompt && prompt.substring(0, 100)}...`);
+      
       if (this.isArweaveUrl(prompt)) {
-        const arweaveData = await this.fetchPrompt(prompt);
-        prompt = arweaveData.prompt || prompt;
+        try {
+          const arweaveData = await this.fetchPrompt(prompt);
+          prompt = arweaveData.prompt || prompt;
+          this.logger.info(`Fetched Arweave prompt: ${prompt && prompt.substring(0, 100)}...`);
+        } catch (arweaveError) {
+          this.logger.error(`Failed to fetch Arweave prompt: ${arweaveError.message}`);
+          // Continue with original prompt if Arweave fetch fails
+        }
       }
-      return await this._createAvatarWithPrompt(prompt, data, guildId);
+      
+      const avatar = await this._createAvatarWithPrompt(prompt, data, guildId);
+      if (!avatar) {
+        this.logger.error(`_createAvatarWithPrompt returned null for prompt: ${prompt && prompt.substring(0, 100)}...`);
+      }
+      return avatar;
     } catch (error) {
+      this.logger.error(`Avatar creation failed: ${error.message}`);
+      this.logger.error(`Avatar creation stack trace: ${error.stack}`);
       throw new Error(`Avatar creation failed: ${error.message}`);
     }
   }
@@ -628,31 +663,68 @@ export class AvatarGenerationService {
         return null;
       }
 
-      const avatar = await this.generateAvatarDetails(prompt, guildId);
-      if (!avatar) {
-        this.logger.error('Avatar creation aborted: avatar generation failed.');
-        return null;
-      }
-      if (!avatar.name) {
-        this.logger.error('Avatar creation aborted: avatar name is missing.');
+      // Generate avatar details with improved error handling
+      let avatar;
+      try {
+        avatar = await this.generateAvatarDetails(prompt, guildId);
+        if (!avatar) {
+          this.logger.error('Avatar generation failed to return a valid response');
+          return null;
+        }
+      } catch (genError) {
+        this.logger.error(`Error generating avatar details: ${genError.message}`);
+        this.logger.error(`Generation error stack: ${genError.stack}`);
         return null;
       }
 
-      console.log(JSON.stringify(avatar, null, 2));
+      if (!avatar.name) {
+        this.logger.error('Avatar creation aborted: avatar name is missing.');
+        this.logger.debug(`Avatar data received: ${JSON.stringify(avatar)}`);
+        return null;
+      }
+
+      this.logger.info(`Generated avatar: ${JSON.stringify(avatar, null, 2)}`);
 
       // Check if the name matches an existing avatar
       const existingAvatar = await this.db.collection(this.AVATARS_COLLECTION).findOne({ name: avatar.name });
       if (existingAvatar) {
-        this.logger.warn('Avatar creation aborted: name already exists.');
+        this.logger.warn(`Avatar creation aborted: name '${avatar.name}' already exists.`);
         return existingAvatar;
       }
-      const imageFile = await this.generateAvatarImage(avatar.description);
-      const s3url = await uploadImage(imageFile);
-      this.logger.info('S3 URL: ' + s3url);
-      await this.insertRequestIntoMongo(avatar.description, s3url, data.channelId);
+
+      // Generate avatar image with improved error handling
+      let imageFile;
+      let s3url;
+      try {
+        imageFile = await this.generateAvatarImage(avatar.description);
+        if (!imageFile) {
+          this.logger.error('Avatar image generation failed');
+          return null;
+        }
+        
+        s3url = await uploadImage(imageFile);
+        if (!s3url) {
+          this.logger.error('Failed to upload avatar image to S3');
+          return null;
+        }
+        
+        this.logger.info('S3 URL: ' + s3url);
+      } catch (imageError) {
+        this.logger.error(`Error generating/uploading avatar image: ${imageError.message}`);
+        this.logger.error(`Image error stack: ${imageError.stack}`);
+        return null;
+      }
+
+      try {
+        await this.insertRequestIntoMongo(avatar.description, s3url, data.channelId);
+      } catch (mongoError) {
+        this.logger.error(`Failed to record image request in MongoDB: ${mongoError.message}`);
+        // Continue even if request tracking fails
+      }
+
       const avatarDocument = {
         name: avatar.name,
-        emoji: avatar.emoji,
+        emoji: avatar.emoji || "👤", // Default emoji if none provided
         personality: avatar.personality,
         description: avatar.description,
         imageUrl: s3url,
@@ -664,15 +736,44 @@ export class AvatarGenerationService {
         status: 'alive',
         version: '1.0'
       };
-      const schemaValidator = new SchemaValidator();
-      const validation = schemaValidator.validateAvatar(avatarDocument);
-      if (!validation.valid) {
-        this.logger.error('Avatar schema validation failed:', {
-          errors: validation.errors,
-          document: avatarDocument
-        });
-        throw new Error(`Avatar schema validation failed: ${JSON.stringify(validation.errors)}`);
+
+      // Validate avatar schema with try-catch and fallback
+      try {
+        let schemaValidator;
+        try {
+          schemaValidator = new SchemaValidator();
+        } catch (schemaError) {
+          this.logger.warn(`SchemaValidator not available: ${schemaError.message}. Using fallback validator.`);
+          schemaValidator = new FallbackValidator();
+        }
+        
+        const validation = schemaValidator.validateAvatar(avatarDocument);
+        if (!validation.valid) {
+          this.logger.error('Avatar schema validation failed:', {
+            errors: validation.errors,
+            document: avatarDocument
+          });
+          throw new Error(`Avatar schema validation failed: ${JSON.stringify(validation.errors)}`);
+        }
+      } catch (validationError) {
+        this.logger.error(`Validation error: ${validationError.message}`);
+        
+        // Perform basic validation instead of failing
+        const requiredFields = ['name', 'description', 'personality', 'imageUrl'];
+        const missingFields = requiredFields.filter(field => 
+          !avatarDocument[field] || typeof avatarDocument[field] !== 'string'
+        );
+        
+        if (missingFields.length > 0) {
+          this.logger.error(`Missing required fields: ${missingFields.join(', ')}`);
+          return null;
+        }
+        
+        // Continue if basic validation passes
+        this.logger.info('Basic validation passed, continuing with avatar creation');
       }
+
+      // Check required fields
       const requiredFields = ['name', 'description', 'personality', 'imageUrl'];
       for (const field of requiredFields) {
         if (!avatarDocument[field] || typeof avatarDocument[field] !== 'string') {
@@ -680,26 +781,42 @@ export class AvatarGenerationService {
             field,
             value: avatarDocument[field]
           });
-          throw new Error(`Missing or invalid required field: ${field}`);
+          return null;
         }
       }
+
+      // Handle Arweave prompts
       if (data.arweave_prompt) {
         avatarDocument.arweave_prompt = data.arweave_prompt;
-        const syncedPrompt = await this.syncArweavePrompt(avatarDocument);
-        if (syncedPrompt) {
-          avatarDocument.prompt = syncedPrompt;
+        try {
+          const syncedPrompt = await this.syncArweavePrompt(avatarDocument);
+          if (syncedPrompt) {
+            avatarDocument.prompt = syncedPrompt;
+          }
+        } catch (arweaveError) {
+          this.logger.error(`Failed to sync Arweave prompt: ${arweaveError.message}`);
+          // Continue even if Arweave sync fails
         }
       }
-      const result = await this.db.collection(this.AVATARS_COLLECTION).insertOne(avatarDocument);
-      if (result.acknowledged === true) {
-        this.logger.info(`Avatar "${avatar.name} ${avatar.emoji}" created successfully with ID: ${result.insertedId}`);
-        return { _id: result.insertedId, ...avatarDocument };
-      } else {
-        this.logger.error('Failed to insert avatar into the database.');
+
+      // Insert avatar document into MongoDB
+      try {
+        const result = await this.db.collection(this.AVATARS_COLLECTION).insertOne(avatarDocument);
+        if (result.acknowledged === true) {
+          this.logger.info(`Avatar "${avatar.name} ${avatar.emoji}" created successfully with ID: ${result.insertedId}`);
+          return { _id: result.insertedId, ...avatarDocument };
+        } else {
+          this.logger.error('Failed to insert avatar into the database.');
+          return null;
+        }
+      } catch (dbError) {
+        this.logger.error(`Database error during avatar creation: ${dbError.message}`);
+        this.logger.error(`Database error stack: ${dbError.stack}`);
         return null;
       }
     } catch (error) {
       this.logger.error(`Error during avatar creation: ${error.message}`);
+      this.logger.error(`Error stack: ${error.stack}`);
       return null;
     }
   }

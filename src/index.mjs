@@ -237,14 +237,20 @@ async function handleSummonCommand(message, breed = false, attributes = {}) {
     }
 
     try {
-      console.log(avatarData.prompt);
+      logger.info(`Avatar generation prompt: ${avatarData.prompt}`);
       const createdAvatar = await avatarService.createAvatar(avatarData);
+      
       if (!createdAvatar) {
-        throw new Error("Avatar creation returned null response");
+        // Enhanced error handling with more information
+        logger.error(`Avatar creation failed. Input data: ${JSON.stringify(avatarData)}`);
+        await replyToMessage(message, "Failed to create avatar. Please try again with a different description.");
+        return;
       }
+      
       if (!createdAvatar.name) {
         logger.warn(`Created avatar is missing name: ${JSON.stringify(createdAvatar)}`);
-        throw new Error("Avatar is missing required attributes");
+        await replyToMessage(message, "Avatar creation resulted in an incomplete character. Please try again with a more detailed description.");
+        return;
       }
 
       createdAvatar.summoner = `${message.author.username}@${message.author.id}`;
@@ -253,23 +259,29 @@ async function handleSummonCommand(message, breed = false, attributes = {}) {
       await avatarService.updateAvatar(createdAvatar);
       await sendAvatarProfileEmbedFromObject(createdAvatar);
 
-      const intro = await aiService.chat([
-        {
-          role: "system",
-          content: `You are ${createdAvatar.name}. ${createdAvatar.description} ${createdAvatar.personality}`,
-        },
-        {
-        role: "user",
-        content: guildPrompts.introduction,
-        }
-      ]);;
+      try {
+        const intro = await aiService.chat([
+          {
+            role: "system",
+            content: `You are ${createdAvatar.name}. ${createdAvatar.description} ${createdAvatar.personality}`,
+          },
+          {
+            role: "user",
+            content: guildPrompts.introduction || "You've just arrived. Introduce yourself.",
+          }
+        ]);
 
-      createdAvatar.dynamicPersonality = intro;
-      createdAvatar.channelId = message.channel.id;
-      createdAvatar.attributes = attributes;
-      await avatarService.updateAvatar(createdAvatar);
+        createdAvatar.dynamicPersonality = intro;
+        createdAvatar.channelId = message.channel.id;
+        createdAvatar.attributes = attributes;
+        await avatarService.updateAvatar(createdAvatar);
 
-      await sendAsWebhook(message.channel.id, intro, createdAvatar);
+        await sendAsWebhook(message.channel.id, intro, createdAvatar);
+      } catch (introError) {
+        logger.error(`Error generating introduction: ${introError.message}`);
+        // Continue even if introduction generation fails
+      }
+      
       await chatService.dungeonService.initializeAvatar(createdAvatar._id, message.channel.id);
       await reactToMessage(message, createdAvatar.emoji || "🎉");
       if (!breed) await trackSummon(message.author.id);
@@ -277,11 +289,12 @@ async function handleSummonCommand(message, breed = false, attributes = {}) {
     } catch (error) {
       logger.error(`Summon error: ${error.message}`);
       await reactToMessage(message, "❌");
-      throw error;
+      await replyToMessage(message, `Failed to summon avatar: ${error.message}`);
     }
   } catch (error) {
     logger.error(`Error processing summon command: ${error.stack}`);
     await reactToMessage(message, "❌");
+    await replyToMessage(message, "An error occurred while processing your summon command. Please try again later.");
   }
 }
 
