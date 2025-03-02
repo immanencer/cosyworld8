@@ -403,6 +403,11 @@ export class GoogleAIService {
         topP: options.topP || 0.95,
         topK: options.topK || 40
       };
+      
+      // Add structured output schema if provided
+      if (options.responseSchema) {
+        generationConfig.responseSchema = options.responseSchema;
+      }
 
       // Create the prompt parts
       const parts = [

@@ -367,15 +367,55 @@ export class AvatarGenerationService {
         required: ["name", "description", "personality"]
       };
 
-      const aiResponse = await this.aiService.generateText(prompt, 1024, 0.7, 0.95, 40, responseSchema);
+      // Use chat method instead of generateText
+      const aiResponse = await this.aiService.chat(
+        [
+          {
+            role: "user",
+            content: `${prompt}\n\n${userPrompt}`
+          }
+        ],
+        { 
+          maxOutputTokens: 1024,
+          temperature: 0.7,
+          topP: 0.95,
+          topK: 40,
+          responseSchema: responseSchema
+        }
+      );
 
       try {
         let responseJson;
 
         // If the response is already an object (structured output succeeded)
         if (typeof aiResponse === 'object' && aiResponse !== null) {
-          responseJson = aiResponse;
-          this.logger.info(`Successfully received structured JSON response`);
+          // Some AI services return the structured data directly
+          if (aiResponse.name && aiResponse.description && aiResponse.personality) {
+            responseJson = aiResponse;
+            this.logger.info(`Successfully received structured JSON response`);
+          } 
+          // Check if we have a text property (common in Gemini responses)
+          else if (aiResponse.text || aiResponse.response) {
+            const responseText = aiResponse.text || aiResponse.response;
+            this.logger.info(`Received structured response with text property, attempting to extract JSON`);
+            
+            try {
+              // Try to parse as JSON directly first
+              responseJson = JSON.parse(responseText);
+              this.logger.info(`Successfully parsed JSON from response text`);
+            } catch (e) {
+              // If direct parsing fails, try to extract JSON from markdown or text
+              const jsonMatch = responseText.match(/\{[\s\S]*\}/);
+              if (jsonMatch) {
+                responseJson = JSON.parse(jsonMatch[0]);
+                this.logger.info(`Successfully extracted JSON from response text`);
+              } else {
+                throw new Error('Extracted string is not valid JSON.');
+              }
+            }
+          } else {
+            throw new Error('Structured response missing expected fields');
+          }
         } 
         // If the response is a string, try to extract JSON from it
         else if (typeof aiResponse === 'string') {
