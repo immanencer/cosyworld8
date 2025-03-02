@@ -174,11 +174,25 @@ export class GoogleAIService {
         generationConfig
       };
 
+      // Log request parameters for debugging
+      console.log("Gemini API request parameters:", JSON.stringify(chatParams, null, 2));
+      
       // Generate content using the correct method
       const result = await generativeModel.generateContent(chatParams);
+      
+      // Log response for debugging
+      console.log("Gemini API response:", JSON.stringify({
+        text: result.response.text(),
+        responseType: result.response.constructor.name
+      }, null, 2));
+      
       return result.response.text();
     } catch (error) {
-      console.log("Error while chatting with Google AI:", error);
+      console.log("Error while chatting with Google AI:", JSON.stringify({
+        message: error.message,
+        stack: error.stack,
+        details: error.details || 'No details available'
+      }, null, 2));
       throw error;
     }
   }
