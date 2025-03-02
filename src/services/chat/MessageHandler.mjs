@@ -51,16 +51,75 @@ export class MessageHandler {
   }
 
   async processChannel(channelId) {
-    if (!channelId) return;
-
     try {
+      const channel = await this.client.channels.fetch(channelId);
+      if (!channel) {
+        this.logger.error(`Channel ${channelId} not found.`);
+        return;
+      }
+
+      // Try to get recent messages from the database first
+      let messageHistory = [];
+      try {
+        if (this.chatService && this.chatService.db) {
+          const dbMessages = await this.chatService.db.collection('messages')
+            .find({ channelId })
+            .sort({ timestamp: -1 })
+            .limit(10)
+            .toArray();
+
+          if (dbMessages && dbMessages.length > 0) {
+            messageHistory = dbMessages;
+            this.logger.info(`Retrieved ${dbMessages.length} messages from database for channel ${channelId}`);
+          }
+        }
+      } catch (dbError) {
+        this.logger.error(`Error retrieving messages from database: ${dbError.message}`);
+      }
+
+      // If no messages from database, fall back to Discord API
+      let latestMessage = null;
+      if (messageHistory.length > 0) {
+        latestMessage = {
+          id: messageHistory[0].messageId,
+          content: messageHistory[0].content,
+          author: {
+            id: messageHistory[0].authorId,
+            username: messageHistory[0].authorUsername,
+            bot: messageHistory[0].author?.bot || false
+          }
+        };
+      } else {
+        const messages = await channel.messages.fetch({ limit: 10 });
+        if (messages.size === 0) {
+          this.logger.info(`No messages in channel ${channelId}.`);
+          return;
+        }
+        latestMessage = messages.first();
+        messageHistory = Array.from(messages.values()).map(m => ({
+          messageId: m.id,
+          content: m.content,
+          authorId: m.author.id,
+          authorUsername: m.author.username,
+          timestamp: m.createdTimestamp
+        }));
+      }
+
+      if (!latestMessage) {
+        this.logger.info(`No latest message found in channel ${channelId}.`);
+        return;
+      }
+
+      if (latestMessage.author.id === this.client.user.id) {
+        this.logger.debug(`Latest message in channel ${channelId} is from the bot. Skipping.`);
+        return;
+      }
+
       const avatarsInChannel = await this.avatarService.getAvatarsInChannel(channelId);
       if (!avatarsInChannel.length) return;
 
-      const messages = await this.chatService.getRecentMessagesFromDatabase(channelId);
-      const latestMessage = messages[messages.length - 1];
 
-      const recentAvatars = await this.chatService.getLastMentionedAvatars(messages, avatarsInChannel);
+      const recentAvatars = await this.chatService.getLastMentionedAvatars(messageHistory, avatarsInChannel);
       const latestAvatars = await this.chatService.getLastMentionedAvatars([latestMessage], avatarsInChannel);
 
       const shuffledRecentAvatars = recentAvatars.sort(() => Math.random() - 0.5);

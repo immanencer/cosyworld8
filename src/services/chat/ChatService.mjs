@@ -452,4 +452,86 @@ export class ChatService {
       return null;
     }
   }
+
+  async fetchMessage(channelId, messageId) {
+    try {
+      if (!channelId || !messageId) {
+        this.logger.error(`Invalid channel or message ID: ${channelId}, ${messageId}`);
+        return null;
+      }
+
+      if (this.db) {
+        // Try to find in database first
+        try {
+          const messagesCollection = this.db.collection('messages');
+          const messageDoc = await messagesCollection.findOne({
+            messageId,
+            channelId
+          });
+          if (messageDoc) {
+            this.logger.debug(`Message ${messageId} found in database cache.`);
+            return messageDoc;
+          }
+        } catch (dbError) {
+          this.logger.error(`Database error while fetching message: ${dbError.message}`);
+        }
+      }
+
+      // If not found in the DB, fallback to Discord API.
+      try {
+        const channel = await this.client.channels.fetch(channelId);
+        if (!channel) {
+          this.logger.warn(`Channel ${channelId} not found on Discord.`);
+          return null;
+        }
+        const discordMessage = await channel.messages.fetch(messageId);
+        if (discordMessage && this.db) {
+          // Construct a simplified document for caching.
+          const newMessageDoc = {
+            messageId: discordMessage.id,
+            channelId,
+            content: discordMessage.content,
+            authorId: discordMessage.author.id,
+            authorUsername: discordMessage.author.username,
+            author: {
+              id: discordMessage.author.id,
+              bot: discordMessage.author.bot,
+              username: discordMessage.author.username,
+              discriminator: discordMessage.author.discriminator,
+              avatar: discordMessage.author.avatar
+            },
+            timestamp: discordMessage.createdTimestamp,
+            attachments: Array.from(discordMessage.attachments.values()).map(a => ({
+              id: a.id,
+              url: a.url,
+              proxyURL: a.proxyURL,
+              filename: a.name,
+              contentType: a.contentType,
+              size: a.size
+            })),
+            embeds: discordMessage.embeds.map(e => ({
+              type: e.type,
+              title: e.title,
+              description: e.description,
+              url: e.url
+            }))
+          };
+
+          try {
+            await this.db.collection('messages').insertOne(newMessageDoc);
+            this.logger.info(`Message ${messageId} fetched from Discord and cached in the database.`);
+          } catch (insertError) {
+            this.logger.error(`Error caching message in database: ${insertError.message}`);
+          }
+        }
+        return discordMessage;
+      } catch (discordError) {
+        this.logger.error(`Discord API error while fetching message: ${discordError.message}`);
+        return null;
+      }
+    } catch (error) {
+      this.logger.error(`Failed to fetch message ${messageId} for channel ${channelId}: ${error.message}`);
+      return null;
+    }
+  }
 }
