@@ -341,8 +341,10 @@ export class AvatarGenerationService {
         throw new Error('Invalid or empty prompt provided');
       }
 
-      const prompt = `Generate a detailed character for a role-playing game inspired this description: "${userPrompt}". 
-      Create a unique avatar with a distinct personality, appearance, and appropriate emoji.
+      // Enhanced prompt for diversity
+      const prompt = `Generate a unique and creative character for a role-playing game based directly on this description: "${userPrompt}". 
+      Think of something unexpected and distinct from typical archetypes. 
+      Create an avatar with a detailed personality, appearance, special ability, and an appropriate emoji.
       Respond with a JSON object containing name, description, personality, and emoji fields.
       Example format:
       {
@@ -352,41 +354,24 @@ export class AvatarGenerationService {
         "emoji": "🔮"
       }`;
 
-      // Define the JSON schema for structured output
       const responseSchema = {
         type: "OBJECT",
         properties: {
-          name: {
-            type: "STRING",
-            description: "The character's name"
-          },
-          description: {
-            type: "STRING",
-            description: "A detailed physical description of the character"
-          },
-          personality: {
-            type: "STRING",
-            description: "A description of the character's personality, traits, and background"
-          },
-          emoji: {
-            type: "STRING",
-            description: "A single emoji that represents the character"
-          }
+          name: { type: "STRING", description: "The character's name" },
+          description: { type: "STRING", description: "A detailed physical description of the character" },
+          personality: { type: "STRING", description: "A description of the character's personality, traits, and background" },
+          emoji: { type: "STRING", description: "A single emoji that represents the character" }
         },
         required: ["name", "description", "personality"]
       };
 
-      // Use chat method instead of generateText
       const aiResponse = await this.aiService.chat(
         [
-          {
-            role: "user",
-            content: `${prompt}`
-          }
+          { role: "user", content: `${prompt}` }
         ],
-        { 
+        {
           maxOutputTokens: 1024,
-          temperature: 0.7,
+          temperature: 1.0, // Increased for more creativity
           topP: 0.95,
           topK: 40,
           responseSchema: responseSchema
@@ -395,25 +380,16 @@ export class AvatarGenerationService {
 
       try {
         let responseJson;
-
-        // If the response is already an object (structured output succeeded)
         if (typeof aiResponse === 'object' && aiResponse !== null) {
-          // Some AI services return the structured data directly
           if (aiResponse.name && aiResponse.description && aiResponse.personality) {
             responseJson = aiResponse;
             this.logger.info(`Successfully received structured JSON response`);
-          } 
-          // Check if we have a text property (common in Gemini responses)
-          else if (aiResponse.text || aiResponse.response) {
+          } else if (aiResponse.text || aiResponse.response) {
             const responseText = aiResponse.text || aiResponse.response;
-            this.logger.info(`Received structured response with text property, attempting to extract JSON`);
-            
             try {
-              // Try to parse as JSON directly first
               responseJson = JSON.parse(responseText);
               this.logger.info(`Successfully parsed JSON from response text`);
             } catch (e) {
-              // If direct parsing fails, try to extract JSON from markdown or text
               const jsonMatch = responseText.match(/\{[\s\S]*\}/);
               if (jsonMatch) {
                 responseJson = JSON.parse(jsonMatch[0]);
@@ -425,12 +401,8 @@ export class AvatarGenerationService {
           } else {
             throw new Error('Structured response missing expected fields');
           }
-        } 
-        // If the response is a string, try to extract JSON from it
-        else if (typeof aiResponse === 'string') {
+        } else if (typeof aiResponse === 'string') {
           this.logger.info(`Received string response, attempting to extract JSON`);
-
-          // Look for JSON in the response text
           const jsonMatch = aiResponse.match(/\{[\s\S]*\}/);
           if (jsonMatch) {
             responseJson = JSON.parse(jsonMatch[0]);
@@ -442,14 +414,10 @@ export class AvatarGenerationService {
           throw new Error('Unexpected response type from AI service');
         }
 
-        console.log(JSON.stringify(responseJson, null, 2));
-
-        // Validate the avatar details
         if (!responseJson.name || !responseJson.description || !responseJson.personality) {
           throw new Error('Required avatar fields are missing from AI response.');
         }
 
-        // If emoji is missing, add a default one
         if (!responseJson.emoji) {
           responseJson.emoji = "🧙";
         }
@@ -457,8 +425,6 @@ export class AvatarGenerationService {
         return responseJson;
       } catch (error) {
         this.logger.warn(`Avatar generation attempt ${4 - retries}/3 failed: ${error.message}`);
-
-        // Retry with different model if there are retries left
         if (retries > 1) {
           this.logger.info(`Retrying avatar generation, ${retries - 1} attempts remaining`);
           return this.generateAvatarDetails(userPrompt, retries - 1);

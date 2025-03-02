@@ -101,6 +101,7 @@ export class GoogleAIService {
         maxOutputTokens: options.maxOutputTokens || 1024,
         topP: options.topP || 0.95,
         topK: options.topK || 40,
+        candidateCount: 3, // Request 3 candidates
         ...(options.responseSchema ? {
           responseMimeType: "application/json",
           responseSchema: options.responseSchema
@@ -108,70 +109,32 @@ export class GoogleAIService {
       };
 
       const processPrompt = async (prompt) => {
-        // Handle case where prompt is undefined or null
         if (!prompt) {
           return [{ text: "Please provide a prompt" }];
         }
-
         if (typeof prompt === 'string') {
           return prompt.trim() ? [{ text: prompt.trim() }] : [{ text: "No content provided" }];
         }
-
         if (!Array.isArray(prompt)) {
           return [{ text: typeof prompt === 'object' ? JSON.stringify(prompt) : String(prompt) }];
         }
-
         const parts = [];
         for (const part of prompt) {
           if (typeof part === 'string') {
             parts.push({ text: part.trim() || "Empty string" });
           } else if (part?.text) {
             parts.push({ text: part.text.trim() || "Empty text" });
-          } else if (part?.inlineData?.data && part.inlineData.mimeType) {
-            // parts.push({
-            //   inlineData: {
-            //     data: part.inlineData.data,
-            //     mimeType: part.inlineData.mimeType
-            //   }
-            // });
-          } else if (part?.type === 'image_url' && part.image_url) {
-            // try {
-            //   const response = await fetch(part.image_url);
-            //   if (!response.ok) throw new Error('Failed to fetch image');
-            //   const blob = await response.blob();
-            //   const base64 = await new Promise((resolve) => {
-            //     const reader = new FileReader();
-            //     reader.onloadend = () => resolve(reader.result.split(',')[1]);
-            //     reader.readAsDataURL(blob);
-            //   });
-            //   parts.push({
-            //     inlineData: {
-            //       data: base64,
-            //       mimeType: blob.type
-            //     }
-            //   });
-            // } catch (error) {
-            //   console.error('Error processing image:', error);
-            //   parts.push({ text: '[Image unavailable]' });
-            // }
           } else {
-            // Handle any unexpected part format
             parts.push({ text: '[Invalid content part]' });
           }
         }
-
-        // Ensure we always have at least one valid part
         return parts.length > 0 ? parts : [{ text: "No valid content provided" }];
       };
 
       const userParts = await processPrompt(userPrompt);
       const contents = [{ role: 'user', parts: userParts }];
 
-      // Validate contents before sending
-      if (!contents[0].parts.every(part =>
-        (part.text && typeof part.text === 'string') ||
-        (part.inlineData?.data && part.inlineData?.mimeType)
-      )) {
+      if (!contents[0].parts.every(part => part.text && typeof part.text === 'string')) {
         throw new Error('Invalid content parts structure');
       }
 
@@ -180,7 +143,14 @@ export class GoogleAIService {
         generationConfig
       });
 
-      return result.response.text();
+      const candidates = result.response.candidates;
+      if (candidates && candidates.length > 0) {
+        const randomIndex = Math.floor(Math.random() * candidates.length);
+        const selectedCandidate = candidates[randomIndex];
+        return selectedCandidate.content.parts[0].text;
+      } else {
+        throw new Error('No candidates returned');
+      }
     } catch (error) {
       console.error('Chat error:', error);
       if (options.fallbackOnError && options.fallbackResponse) {
