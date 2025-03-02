@@ -131,6 +131,11 @@ class ConfigService {
 
   async getGuildConfig(db, guildId) {
     try {
+      if (!guildId) {
+        console.warn(`Invalid guild ID provided to getGuildConfig: ${guildId}`);
+        return { guildId: null, whitelisted: false };
+      }
+      
       // Use the provided DB or get from global client (assuming this.client exists and has a db property)
       const dbToUse = db || (this.client && this.client.db) || (global.databaseService && global.databaseService.getDatabase());
       if (!dbToUse) {

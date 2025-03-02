@@ -412,6 +412,9 @@ async function handleCommands(message) {
  */
 client.on("messageCreate", async (message) => {
   try {
+    // Ignore DMs and messages without a guild
+    if (!message.guild) return;
+    
     // Check if guild is whitelisted
     try {
       // Make sure database is available
@@ -550,6 +553,9 @@ async function shutdown(signal) {
  */
 async function main() {
   try {
+    // Initialize client whitelist cache
+    client.guildWhitelist = new Map();
+    
     // Connect to database with retry logic
     const db = await databaseService.connect();
     if (!db) {
