@@ -173,7 +173,12 @@ class GuildSettingsManager {
     try {
       this.showMessage('Saving settings...', 'info');
 
+      // Validate form before submission
       const form = document.getElementById('guild-settings-form');
+      if (!form) {
+        throw new Error('Form not found');
+      }
+      
       const guildId = this.selectedGuildId === 'new' 
         ? form.querySelector('#guild-id').value.trim() 
         : this.selectedGuildId;
@@ -185,6 +190,12 @@ class GuildSettingsManager {
       // Validate guild ID format (Discord guild IDs are numeric strings)
       if (!/^\d+$/.test(guildId)) {
         throw new Error('Guild ID must be a valid Discord server ID (numbers only)');
+      }
+      
+      // Validate guild name
+      const guildName = form.querySelector('#guild-name').value.trim();
+      if (!guildName) {
+        throw new Error('Guild name is required');
       }
 
       // Build settings object
@@ -228,24 +239,29 @@ class GuildSettingsManager {
 
       const method = this.selectedGuildId === 'new' ? 'POST' : 'PATCH';
 
-      const response = await fetch(url, {
-        method: method,
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(settings)
-      });
+      try {
+        const response = await fetch(url, {
+          method: method,
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(settings)
+        });
 
-      if (!response.ok) {
-        let errorMessage = 'Failed to save guild settings';
-        try {
-          const error = await response.json();
-          errorMessage = error.error || errorMessage;
-        } catch (e) {
-          console.error('Error parsing error response:', e);
+        if (!response.ok) {
+          const responseText = await response.text();
+          let errorData;
+          
+          try {
+            errorData = JSON.parse(responseText);
+            console.log('Server error response:', errorData);
+            throw new Error(errorData.error || `Server error: ${response.status}`);
+          } catch (jsonError) {
+            // If JSON parsing fails, use the raw response text
+            console.error('Error parsing JSON response:', jsonError);
+            throw new Error(`Server returned ${response.status}: ${responseText || 'No error details provided'}`);
+          }
         }
-        throw new Error(errorMessage);
-      }
 
       // Add cache-busting query param to force refresh server's cache
       await fetch(`/api/guilds/${guildId}/clear-cache`, { method: 'POST' });
@@ -266,7 +282,19 @@ class GuildSettingsManager {
       this.selectedGuildId = guildId;
     } catch (error) {
       console.error('Error saving guild settings:', error);
-      this.showMessage(`Error: ${error.message}`, 'error');
+      
+      // Show a more descriptive error message to the user
+      let errorMessage = error.message;
+      if (errorMessage.includes('fetch') || errorMessage.includes('network')) {
+        errorMessage = 'Network error: Please check your connection and try again.';
+      } else if (errorMessage.includes('JSON')) {
+        errorMessage = 'Server returned an invalid response. Please try again or contact support.';
+      }
+      
+      this.showMessage(`Error: ${errorMessage}`, 'error');
+      
+      // Keep the form visible so the user can fix the issue
+      this.toggleFormVisibility(true);
     }
   }
 
