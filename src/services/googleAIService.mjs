@@ -26,6 +26,16 @@ export class GoogleAIService {
       frequency_penalty: 0,
       presence_penalty: 0,
     };
+        // Placeholder for Google AI client.  Replace with actual implementation.
+    this.googleAI = {
+      chat: (model) => ({
+        sendMessage: async (chatParams) => {
+          // Replace with actual API call to Google AI
+          console.log("Placeholder Google AI API call:", model, chatParams);
+          return { response: { text: "This is a placeholder response from Google AI." } };
+        }
+      })
+    };
   }
 
   /**
@@ -127,27 +137,39 @@ export class GoogleAIService {
     }
   }
 
-  async chat(messages, options = {}) {
+  async chat(systemPrompt, userPrompt, options = {}) {
     try {
-      // Check if a model is specified
-      const model = options.model || await this.selectRandomModel();
+      const model = options.model || this.model; // Use this.model as default if no model is specified
 
-      // Ensure messages have the expected format
-      const formattedMessages = messages.map(message => ({
-        role: message.role,
-        content: message.content
-      }));
-
-      return await this._chatWithModel(model, formattedMessages, options);
-    } catch (error) {
-      console.error(`Error while chatting with Google AI: ${error}`);
-
-      // Provide a fallback response instead of throwing
-      if (options.fallbackOnError) {
-        console.log(`Using fallback for model ${options.model || "unknown"}`);
-        return options.fallbackResponse || "I'm having trouble connecting to my knowledge base right now.";
+      // Check if model is available before proceeding
+      const isModelAvailable = await this.modelIsAvailable(model);
+      if (!isModelAvailable) {
+        console.log(`Model ${model} availability check: false`);
+        throw new Error(`Model ${model} is not available.`);
       }
 
+      console.log(`Model ${model} availability check: true`);
+
+      // Direct implementation instead of calling a non-existent method
+      const generationConfig = {
+        temperature: options.temperature || 0.7,
+        maxOutputTokens: options.maxOutputTokens || 1024,
+        topP: options.topP || 0.95,
+        topK: options.topK || 40
+      };
+
+      const chatParams = {
+        contents: [
+          { role: 'system', parts: [{ text: systemPrompt }] },
+          { role: 'user', parts: [{ text: userPrompt }] }
+        ],
+        generationConfig
+      };
+
+      const result = await this.googleAI.chat(model).sendMessage(chatParams);
+      return result.response.text();
+    } catch (error) {
+      console.log("Error while chatting with Google AI:", error);
       throw error;
     }
   }
