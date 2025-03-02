@@ -225,7 +225,7 @@ export class GoogleAIService {
       // Process user prompt parts
       const userParts = [];
       
-      // Add user content
+      // Add user content - with default fallback text to prevent empty parts
       if (typeof userPrompt === 'string') {
         userParts.push({ text: userPrompt });
       } else if (Array.isArray(userPrompt)) {
@@ -274,11 +274,22 @@ export class GoogleAIService {
         }
       }
       
+      // Ensure we have at least one part with text to prevent API errors
+      if (userParts.length === 0) {
+        userParts.push({ text: "Request avatar information" });
+        console.log("Added default text prompt to prevent empty parts error");
+      }
+      
       // Prepare the request with proper structure - now only with user contents
       const contents = [{
         role: 'user',
         parts: userParts
       }];
+
+      // Before finalizing the request, perform validation
+      if (userParts.length === 0) {
+        throw new Error("Cannot create a request with empty parts");
+      }
 
       const chatParams = {
         contents,
@@ -289,6 +300,15 @@ export class GoogleAIService {
       const imageParts = userParts.filter(p => p.inlineData).length;
       const textParts = userParts.filter(p => p.text).length;
       console.log(`Preparing Gemini request with ${imageParts} images and ${textParts} text parts`);
+      
+      // More detailed logging for debugging
+      if (textParts === 0 && imageParts === 0) {
+        console.warn("WARNING: Request has no recognized content parts!");
+        console.log("User prompt details:", typeof userPrompt, 
+          Array.isArray(userPrompt) ? `Array length: ${userPrompt.length}` : 
+          typeof userPrompt === 'object' ? `Object keys: ${Object.keys(userPrompt).join(', ')}` : 
+          `Value: ${userPrompt}`);
+      }
 
       // Log request parameters for debugging (but truncate base64 data)
       const logParams = JSON.parse(JSON.stringify(chatParams));
