@@ -227,9 +227,9 @@ async function handleSummonCommand(message, breed = false, attributes = {}) {
     }
     const summonPrompt = guildPrompts.summon || "Create an avatar with the following description:";
     logger.info(`Using summon prompt for guild ${guildId}: ${summonPrompt}`);
-    
+
     const avatarData = {
-      prompt: sanitizeInput(`${summonPrompt}\n\nSummon an avatar inspired by this concept:\n\n${content}`),
+      prompt: sanitizeInput(`${summonPrompt}\n\nRequires you to design a creative character based on the following content:\n\n${content}`),
       channelId: message.channel.id,
     };
     if (summonPrompt && summonPrompt.match(/^(https:\/\/.*\.arweave\.net\/|ar:\/\/)/)) {

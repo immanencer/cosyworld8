@@ -341,7 +341,7 @@ export class AvatarGenerationService {
         throw new Error('Invalid or empty prompt provided');
       }
 
-      const prompt = `Generate a detailed character for a role-playing game based on this description: "${userPrompt}". 
+      const prompt = `Generate a detailed character for a role-playing game inspired this description: "${userPrompt}". 
       Create a unique avatar with a distinct personality, appearance, and appropriate emoji.
       Respond with a JSON object containing name, description, personality, and emoji fields.
       Example format:
@@ -381,7 +381,7 @@ export class AvatarGenerationService {
         [
           {
             role: "user",
-            content: `${prompt}\n\n${userPrompt}`
+            content: `${prompt}`
           }
         ],
         { 
@@ -459,11 +459,6 @@ export class AvatarGenerationService {
         // Retry with different model if there are retries left
         if (retries > 1) {
           this.logger.info(`Retrying avatar generation, ${retries - 1} attempts remaining`);
-          // Toggle between available models for the next attempt.
-          this.config.getAIConfig().aiProvider.metaModel =
-            this.config.getAIConfig().aiProvider.metaModel === "gemini-1.5-flash"
-              ? "openai/gpt-3.5-turbo"
-              : "gemini-1.5-flash";
           return this.generateAvatarDetails(userPrompt, retries - 1);
         }
         throw new Error('Failed to generate avatar after 3 attempts: ' + error.message);
