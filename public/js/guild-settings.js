@@ -366,9 +366,10 @@ class GuildSettingsManager {
         : `/api/guilds/${guildId}`;
 
       const method = this.selectedGuildId === 'new' ? 'POST' : 'PATCH';
-
+      
+      let response;
       try {
-        const response = await fetch(url, {
+        response = await fetch(url, {
           method: method,
           headers: {
             'Content-Type': 'application/json'

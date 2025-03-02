@@ -186,6 +186,20 @@ export default function(db) {
     }
   }));
 
+  // Add endpoint to clear guild config cache
+  router.post('/:guildId/clear-cache', asyncHandler(async (req, res) => {
+    try {
+      const { guildId } = req.params;
+      // Clear cache in configService if it has a cache
+      if (configService.clearCache) {
+        await configService.clearCache(guildId);
+      }
+      res.json({ success: true, message: 'Guild config cache cleared' });
+    } catch (error) {
+      console.error('Error clearing guild config cache:', error);
+      res.status(500).json({ error: 'Failed to clear cache' });
+    }
+  }));
 
   return router;
 }
