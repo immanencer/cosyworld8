@@ -554,7 +554,7 @@ async function main() {
       handleSummonCommand, 
       handleBreedCommand 
     });
-    messageHandler = new MessageHandler(avatarService, client, chatService, imageProcessingService);
+    messageHandler = new MessageHandler(avatarService, client, chatService, imageProcessingService, logger);
 
     await client.login(DISCORD_BOT_TOKEN);
     logger.info("✅ Logged into Discord successfully");

@@ -298,7 +298,14 @@ export class ChatService {
 
       if (decision) {
         this.logger.info(`${avatar.name} decided to respond in ${channel.id}`);
-        this.conversationHandler.sendResponse(channel, avatar);
+        try {
+          if (!this.conversationHandler.imageProcessingService && this.imageProcessingService) {
+            this.conversationHandler.imageProcessingService = this.imageProcessingService;
+          }
+          await this.conversationHandler.sendResponse(channel, avatar);
+        } catch (error) {
+          this.logger.error(`Error sending response for ${avatar.name}: ${error.message}`);
+        }
       }
     } catch (error) {
       this.logger.error(`Error in respondAsAvatar: ${error.message}`);
