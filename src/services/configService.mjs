@@ -135,14 +135,15 @@ class ConfigService {
       // First, check if we have a valid guild ID
       if (!guildId) {
         console.warn(`Invalid guild ID provided to getGuildConfig: ${guildId}`);
-        return { guildId: null, whitelisted: false };
+        return { guildId: null, whitelisted: false, summonerRole: "💼", summonEmoji: "💼" };
       }
       
       // Check first if we have a cached version of the whitelist (in memory)
       if (this.client && this.client.guildWhitelist && this.client.guildWhitelist.has(guildId)) {
         const whitelisted = this.client.guildWhitelist.get(guildId);
         console.debug(`Retrieved guild config for ${guildId} from memory cache: whitelisted=${whitelisted}`);
-        return { guildId, whitelisted };
+        // Note: This only returns whitelist status from cache, might need a more complete cache solution
+        return { guildId, whitelisted, summonerRole: "💼", summonEmoji: "💼" };
       }
       
       // Try to get a database connection, with multiple fallbacks

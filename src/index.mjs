@@ -293,9 +293,15 @@ async function handleCommands(message) {
   if (guildId) {
     try {
       const guildConfig = await configService.getGuildConfig(databaseService.getDatabase(), guildId);
-      if (guildConfig && guildConfig.toolEmojis && guildConfig.toolEmojis.summon) {
-        summonEmoji = guildConfig.toolEmojis.summon;
+      if (guildConfig) {
+        if (guildConfig.toolEmojis && guildConfig.toolEmojis.summon) {
+          summonEmoji = guildConfig.toolEmojis.summon;
+        } else if (guildConfig.summonEmoji) {
+          // For backwards compatibility with older config format
+          summonEmoji = guildConfig.summonEmoji;
+        }
       }
+      logger.debug(`Using summon emoji ${summonEmoji} for guild ${guildId}`);
     } catch (error) {
       logger.error(`Error getting summon emoji from config: ${error.message}`);
     }
