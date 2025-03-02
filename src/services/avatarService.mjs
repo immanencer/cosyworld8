@@ -344,13 +344,14 @@ export class AvatarGenerationService {
    * @param {string} userPrompt - The user-provided prompt.
    * @returns {Object|null} - The generated avatar details.
    */
-  async generateAvatarDetails(userPrompt) {
+  async generateAvatarDetails(userPrompt, retries = 3) {
     try {
-      const maxRetries = 3;
-      const baseDelay = 1000;
-      for (let attempt = 1; attempt <= maxRetries; attempt++) {
-        try {
-          const prompt = `Provide a detailed visual description, an appropriate emoji, and a personality description for a ${this.getRandomAlignment()} character based on the following prompt
+      // Validate prompt
+      if (!userPrompt || typeof userPrompt !== 'string' || userPrompt.trim().length === 0) {
+        throw new Error('Invalid or empty prompt provided');
+      }
+
+      const prompt = `Provide a detailed visual description, an appropriate emoji, and a personality description for a ${this.getRandomAlignment()} character based on the following prompt
 
           "${userPrompt}".
 
@@ -364,36 +365,45 @@ export class AvatarGenerationService {
             "description": "<insert a one paragraph detailed description of the character's profile picture>",
             "personality": "<generate a short unique personality description>"
           }`;
-          const response = await this.aiService.chat([
-            { role: 'system', content: 'You are a creative and unsettling character designer.' },
-            { role: 'user', content: prompt },
-          ], {
-            model: this.config.getAIConfig().aiProvider.metaModel,
-            format: "json"
-          });
-          if (!response) {
-            throw new Error('Failed to generate avatar details.');
-          }
-          console.log(response);
-          const avatarDetails = JSON.parse(extractJSON(response.trim()));
-          const { name, description, emoji, personality } = avatarDetails;
-          if (!name || !description || !personality) {
-            throw new Error('Incomplete avatar details received.');
-          }
-          return { name, description, emoji: emoji || "🤗", personality };
-        } catch (error) {
-          this.logger.warn(`Avatar generation attempt ${attempt}/${maxRetries} failed: ${error.message}`);
-          if (attempt === maxRetries) {
-            throw new Error(`Failed to generate avatar after ${maxRetries} attempts: ${error.message}`);
-          }
-          const delay = baseDelay * Math.pow(2, attempt - 1);
-          await new Promise(resolve => setTimeout(resolve, delay));
-        }
+      const response = await this.aiService.chat([
+        { role: 'system', content: 'You are a creative and unsettling character designer.' },
+        { role: 'user', content: prompt },
+      ], {
+        model: this.config.getAIConfig().aiProvider.metaModel || "gemini-2.0-flash-001", //fallback to gemini
+        format: "json",
+        fallbackOnError: retries <= 1,
+        fallbackResponse: JSON.stringify({
+          name: "Emergency Avatar",
+          description: "A mysterious entity created during a moment of uncertainty.",
+          personality: ["Mysterious", "Adaptive", "Resilient"],
+          abilities: ["Can navigate through system disruptions", "Adapts to changing environments"],
+          appearance: "A shifting form of light and shadow, representing stability during technical difficulties."
+        })
+      });
+      if (!response) {
+        throw new Error('Failed to generate avatar details.');
       }
-      return;
+      console.log(response);
+      const avatarDetails = JSON.parse(extractJSON(response.trim()));
+      const { name, description, emoji, personality } = avatarDetails;
+      if (!name || !description || !personality) {
+        throw new Error('Incomplete avatar details received.');
+      }
+      return { name, description, emoji: emoji || "🤗", personality };
     } catch (error) {
-      this.logger.error(`Error while generating avatar details: ${error.message}`);
-      return null;
+      console.log(`Avatar generation error: ${error.message || error}`);
+
+      if (retries > 1) {
+        console.log(`Retrying avatar generation, ${retries - 1} attempts remaining`);
+        // Try with an alternative model if available
+        this.config.getAIConfig().aiProvider.metaModel = 
+          this.config.getAIConfig().aiProvider.metaModel === "gemini-2.0-flash-001" ? 
+          "openai/gpt-3.5-turbo" : "gemini-2.0-flash-001";
+
+        return this.generateAvatarDetails(userPrompt, retries - 1);
+      }
+
+      throw new Error('Failed to generate avatar details.');
     }
   }
 
