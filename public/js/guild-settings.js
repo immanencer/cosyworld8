@@ -236,6 +236,9 @@ class GuildSettingsManager {
         throw new Error(error.error || 'Failed to save guild settings');
       }
 
+      // Add cache-busting query param to force refresh server's cache
+      await fetch(`/api/guilds/${guildId}/clear-cache`, { method: 'POST' });
+      
       const updatedSettings = await response.json();
       console.log('Settings saved successfully:', updatedSettings);
 

@@ -214,8 +214,9 @@ async function handleSummonCommand(message, breed = false, attributes = {}) {
       return;
     }
     const guildId = message.guild?.id;
-    // Get guild-specific prompts
-    const guildPrompts = await configService.getGuildPrompts(db, guildId);
+    // Get guild-specific prompts - Refresh from database to ensure latest settings
+    const guildConfig = await configService.getGuildConfig(db, guildId, true); // Force refresh from DB
+    const guildPrompts = guildConfig?.prompts || {};
     logger.info(`Retrieved guild prompts for ${guildId}: ${JSON.stringify(guildPrompts)}`);
 
     const canSummon = message.author.id === "1175877613017895032" ||

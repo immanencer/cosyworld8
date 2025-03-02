@@ -41,6 +41,7 @@ class ConfigService {
     };
     this.loaded = false;
     this.client = null;
+    this.guildConfigCache = new Map(); // Initialize cache for guild configs
   }
 
   setClient(client) {
@@ -130,25 +131,25 @@ class ConfigService {
     };
   }
 
-  async getGuildConfig(db, guildId) {
+  async getGuildConfig(db, guildId, forceRefresh = false) {
     try {
       // First, check if we have a valid guild ID
       if (!guildId) {
         console.warn(`Invalid guild ID provided to getGuildConfig: ${guildId}`);
         return { guildId: null, whitelisted: false, summonerRole: "💼", summonEmoji: "💼" };
       }
-      
+
       // Check first if we have a cached version of the whitelist (in memory)
-      if (this.client && this.client.guildWhitelist && this.client.guildWhitelist.has(guildId)) {
+      if (!forceRefresh && this.client && this.client.guildWhitelist && this.client.guildWhitelist.has(guildId)) {
         const whitelisted = this.client.guildWhitelist.get(guildId);
         console.debug(`Retrieved guild config for ${guildId} from memory cache: whitelisted=${whitelisted}`);
         // Note: This only returns whitelist status from cache, might need a more complete cache solution
         return { guildId, whitelisted, summonerRole: "💼", summonEmoji: "💼" };
       }
-      
+
       // Try to get a database connection, with multiple fallbacks
       let dbToUse = null;
-      
+
       // Option 1: Use the provided DB
       if (db) {
         dbToUse = db;
@@ -161,14 +162,14 @@ class ConfigService {
       else if (global.databaseService) {
         // First check if already connected
         dbToUse = global.databaseService.getDatabase();
-        
+
         // If not connected yet, try to connect but don't wait too long
         if (!dbToUse) {
           try {
             // Attempt to get a connection with a short timeout
             const timeoutPromise = new Promise((_, reject) => 
               setTimeout(() => reject(new Error('Database connection timeout')), 500));
-            
+
             // Race between a connection attempt and timeout
             dbToUse = await Promise.race([
               global.databaseService.waitForConnection(1, 300),
@@ -179,7 +180,7 @@ class ConfigService {
           }
         }
       }
-      
+
       // If we still don't have a database connection, return default
       if (!dbToUse) {
         console.warn(`No database connection available to fetch guild config for guild ${guildId}, using default`);
@@ -192,19 +193,19 @@ class ConfigService {
         if (!collection) {
           throw new Error('guild_configs collection not available');
         }
-        
+
         const guildConfig = await collection.findOne({ guildId });
 
         // Return the found config or a default with guildId and whitelisted property
         const result = guildConfig || { guildId, whitelisted: false };
         console.debug(`Retrieved guild config for ${guildId} from database: whitelisted=${result.whitelisted}`);
-        
+
         // Cache this result for future use
         if (this.client) {
           if (!this.client.guildWhitelist) this.client.guildWhitelist = new Map();
           this.client.guildWhitelist.set(guildId, result.whitelisted);
         }
-        
+
         return result;
       } catch (dbErr) {
         console.error(`Error accessing guild_configs collection: ${dbErr.message}`);
