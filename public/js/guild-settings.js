@@ -175,7 +175,7 @@ class GuildSettingsManager {
 
       const form = document.getElementById('guild-settings-form');
       const guildId = this.selectedGuildId === 'new' 
-        ? form.querySelector('#guild-id').value 
+        ? form.querySelector('#guild-id').value.trim() 
         : this.selectedGuildId;
 
       if (!guildId) {
@@ -183,23 +183,23 @@ class GuildSettingsManager {
       }
       
       // Validate guild ID format (Discord guild IDs are numeric strings)
-      if (this.selectedGuildId === 'new' && !/^\d+$/.test(guildId)) {
+      if (!/^\d+$/.test(guildId)) {
         throw new Error('Guild ID must be a valid Discord server ID (numbers only)');
       }
 
       // Build settings object
       const settings = {
         guildId: guildId,
-        guildName: form.querySelector('#guild-name').value,
-        summonerRole: form.querySelector('#summoner-role').value,
+        guildName: form.querySelector('#guild-name').value.trim(),
+        summonerRole: form.querySelector('#summoner-role').value.trim(),
         adminRoles: form.querySelector('#admin-roles').value.split(',')
           .map(role => role.trim())
           .filter(role => role),
         whitelisted: form.querySelector('#guild-whitelisted').checked,
-        summonEmoji: form.querySelector('#summon-emoji').value,
+        summonEmoji: form.querySelector('#summon-emoji').value.trim() || '✨',
         rateLimit: {
-          messages: parseInt(form.querySelector('#rate-limit-messages').value) || 5,
-          interval: (parseInt(form.querySelector('#rate-limit-interval').value) || 60) * 1000
+          messages: Math.max(1, parseInt(form.querySelector('#rate-limit-messages').value) || 5),
+          interval: Math.max(1000, (parseInt(form.querySelector('#rate-limit-interval').value) || 60) * 1000)
         },
         prompts: {
           introduction: form.querySelector('#intro-prompt').value,
@@ -209,10 +209,10 @@ class GuildSettingsManager {
           breed: form.querySelector('#breed-prompt').value
         },
         toolEmojis: {
-          summon: form.querySelector('#tool-emoji-summon').value,
-          breed: form.querySelector('#tool-emoji-breed').value,
-          attack: form.querySelector('#tool-emoji-attack').value,
-          defend: form.querySelector('#tool-emoji-defend').value
+          summon: form.querySelector('#tool-emoji-summon').value.trim() || '💼',
+          breed: form.querySelector('#tool-emoji-breed').value.trim() || '🏹',
+          attack: form.querySelector('#tool-emoji-attack').value.trim() || '⚔️',
+          defend: form.querySelector('#tool-emoji-defend').value.trim() || '🛡️'
         },
         features: {
           breeding: form.querySelector('#feature-breeding').checked,
@@ -237,8 +237,14 @@ class GuildSettingsManager {
       });
 
       if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || 'Failed to save guild settings');
+        let errorMessage = 'Failed to save guild settings';
+        try {
+          const error = await response.json();
+          errorMessage = error.error || errorMessage;
+        } catch (e) {
+          console.error('Error parsing error response:', e);
+        }
+        throw new Error(errorMessage);
       }
 
       // Add cache-busting query param to force refresh server's cache
