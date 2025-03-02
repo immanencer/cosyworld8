@@ -971,4 +971,4 @@ export default [
     "model": "gryphe/mythomax-l2-13b:free",
     "rarity": "common"
   }
-];
+].filter(x => x.model.startsWith('google/'));
