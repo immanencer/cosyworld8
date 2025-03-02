@@ -544,7 +544,6 @@ Based on all of the above context, share an updated personality that reflects yo
       if (imagePromptParts.length > 0) {
         // With images - create a structured prompt that includes system and context
         const systemMessage = { role: 'system', content: systemPrompt };
-        const assistantMessage = { role: 'assistant', content: lastNarrative?.content || 'No previous reflection' };
 
         // First fetch the channel context/history - crucial for providing context with images
         const channelHistory = await this.getChannelContext(channel.id, 15);
@@ -571,9 +570,9 @@ Based on all of the above context, share an updated personality that reflects yo
 
         this.logger.info(`Sending image message with ${imagePromptParts.length} images and ${channelHistory.length} context messages`);
 
-        // Make the complete chat request
+        // Make the complete chat request with properly formatted system message
         response = await this.aiService.chat(
-          [systemMessage, assistantMessage], 
+          systemMessage,
           userMessageParts, 
           { model: avatar.model, max_tokens: 200 }
         );
