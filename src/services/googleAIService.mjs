@@ -164,11 +164,21 @@ export class GoogleAIService {
 
       // Prepare content for the model
       // Format messages according to Gemini API requirements
+      
+      // Ensure proper serialization of objects
+      const formattedSystemPrompt = typeof systemPrompt === 'object' 
+        ? JSON.stringify(systemPrompt, null, 2) 
+        : systemPrompt;
+        
+      const formattedUserPrompt = typeof userPrompt === 'object' 
+        ? JSON.stringify(userPrompt, null, 2) 
+        : userPrompt;
+      
       const chatParams = {
         contents: [
           { 
             role: 'user', 
-            parts: [{ text: `${systemPrompt}\n\n${userPrompt}` }] 
+            parts: [{ text: `${formattedSystemPrompt}\n\n${formattedUserPrompt}` }] 
           }
         ],
         generationConfig
