@@ -14,14 +14,7 @@ app.get('/api-docs', (req, res) => {
   res.sendFile('api-docs.html', { root: 'public' });
 });
 
-// Admin routes
-app.get('/admin', (req, res) => {
-  res.sendFile('admin/index.html', { root: 'public' });
-});
-
-app.get('/admin/guild-settings', (req, res) => {
-  res.sendFile('admin/guild-settings.html', { root: 'public' });
-});
+// Admin routes removed
 
 // MongoDB Setup
 const mongoUri = process.env.MONGO_URI || 'mongodb://localhost:27017';
