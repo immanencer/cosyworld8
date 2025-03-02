@@ -664,8 +664,7 @@ Based on all of the above context, share an updated personality that reflects yo
     }
   }
 
-  /**
-   * Constructs a dungeon prompt indicatingpossible commands and current location info.
+  /**   * Constructs a dungeon prompt indicatingpossible commands and current location info.
    * @param {*} avatar 
    * @returns {string}
    */

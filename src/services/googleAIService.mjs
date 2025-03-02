@@ -179,9 +179,6 @@ export class GoogleAIService {
         }
       }
 
-      // Prepare content parts for the API
-      const parts = [];
-
       // Helper function to fetch image and convert to base64
       const fetchImageAndConvertToBase64 = async (imageUrl) => {
         try {
@@ -202,106 +199,142 @@ export class GoogleAIService {
         }
       };
 
-
-      // Function to handle adding content parts (DRY)
-      const addContentPart = async (content) => {
-        if (typeof content === 'string') {
-          parts.push({ text: content });
-        } else if (content?.type === 'text') {
-          parts.push({ text: content.text });
-        } else if (content?.type === 'image_url' && content?.image_url) {
-          // **MUST Fetch and Convert to Base64**
-          try {
-            const base64 = await fetchImageAndConvertToBase64(content.image_url);
-            const mimeType = base64.split(';')[0].split(':')[1]; // Extract mime type
-            parts.push({
+      // Build the content for Gemini API
+      const contents = [];
+      
+      // Process system prompt - this should go first as a "system" role
+      if (systemPrompt) {
+        const systemParts = [];
+        
+        // Handle different formats of system prompt
+        if (typeof systemPrompt === 'string') {
+          systemParts.push({ text: systemPrompt });
+        } else if (systemPrompt.role === 'system' && systemPrompt.content) {
+          // Handle object with role/content format
+          systemParts.push({ text: systemPrompt.content });
+        } else if (Array.isArray(systemPrompt)) {
+          // If it's an array, we'll use the first message with 'system' role
+          const systemMessage = systemPrompt.find(msg => msg.role === 'system');
+          if (systemMessage && systemMessage.content) {
+            if (typeof systemMessage.content === 'string') {
+              systemParts.push({ text: systemMessage.content });
+            } else if (Array.isArray(systemMessage.content)) {
+              // Handle array of content parts
+              for (const contentItem of systemMessage.content) {
+                if (typeof contentItem === 'string') {
+                  systemParts.push({ text: contentItem });
+                } else if (contentItem.type === 'text') {
+                  systemParts.push({ text: contentItem.text });
+                }
+                // We skip image parts in system prompts as they're not typically supported
+              }
+            }
+          }
+        }
+        
+        if (systemParts.length > 0) {
+          contents.push({
+            role: 'system',
+            parts: systemParts
+          });
+        }
+      }
+      
+      // Process user prompt parts
+      const userParts = [];
+      
+      // Add user content
+      if (typeof userPrompt === 'string') {
+        userParts.push({ text: userPrompt });
+      } else if (Array.isArray(userPrompt)) {
+        // Process array of content parts
+        for (const part of userPrompt) {
+          if (typeof part === 'string') {
+            userParts.push({ text: part });
+          } else if (part.text) {
+            userParts.push({ text: part.text });
+          } else if (part.inlineData) {
+            // Add image directly if it has inline data
+            userParts.push({
               inlineData: {
-                data: base64.split(',')[1], // Remove the data:image/xxx;base64, prefix
-                mimeType: mimeType
+                data: part.inlineData.data,
+                mimeType: part.inlineData.mimeType
               }
             });
-          } catch (error) {
-            console.error("Error processing image URL:", error);
-            // Handle the error (e.g., skip the image, or add a placeholder)
-            parts.push({ text: '[Image could not be loaded]' }); // Example placeholder
+          } else if (part.type === 'image_url' && part.image_url) {
+            try {
+              // Convert image URL to base64
+              const base64 = await fetchImageAndConvertToBase64(part.image_url);
+              const mimeType = base64.split(';')[0].split(':')[1]; // Extract mime type
+              userParts.push({
+                inlineData: {
+                  data: base64.split(',')[1], // Remove the data:image/xxx;base64, prefix
+                  mimeType: mimeType
+                }
+              });
+            } catch (error) {
+              console.error("Error processing image URL:", error);
+              userParts.push({ text: '[Image could not be loaded]' });
+            }
           }
-        } else if (content?.inlineData) {
-          // Handle inline data (base64 images) directly
-          parts.push({
+        }
+      } else if (userPrompt && typeof userPrompt === 'object') {
+        // Handle single object case
+        if (userPrompt.text) {
+          userParts.push({ text: userPrompt.text });
+        } else if (userPrompt.inlineData) {
+          userParts.push({
             inlineData: {
-              data: content.inlineData.data,
-              mimeType: content.inlineData.mimeType
+              data: userPrompt.inlineData.data,
+              mimeType: userPrompt.inlineData.mimeType
             }
           });
         }
-      };
-
-      // Process system prompt
-      if (systemPrompt) {
-        if (typeof systemPrompt === 'string') {
-          await addContentPart(systemPrompt);
-        } else if (Array.isArray(systemPrompt)) {
-          for (const message of systemPrompt) {
-            if (message.content) {
-              if (typeof message.content === 'string' || typeof message.content === 'object') {
-                if (Array.isArray(message.content)) {
-                  for (const contentItem of message.content) {
-                    await addContentPart(contentItem);
-                  }
-                } else {
-                  await addContentPart(message.content);
-                }
-              }
-            }
-          }
-        } else if (systemPrompt.inlineData) {
-          await addContentPart(systemPrompt);
-        }
       }
-
-      // Process user prompt
-      if (typeof userPrompt === 'string') {
-        await addContentPart(userPrompt);
-      } else if (Array.isArray(userPrompt)) {
-        for (const contentItem of userPrompt) {
-          await addContentPart(contentItem);
-        }
-      } else if (userPrompt && typeof userPrompt === 'object') {
-        await addContentPart(userPrompt);
+      
+      if (userParts.length > 0) {
+        contents.push({
+          role: 'user',
+          parts: userParts
+        });
       }
-
-      // Prepare the request
+      
+      // Prepare the request with proper structure
       const chatParams = {
-        contents: [{ role: 'user', parts }],
+        contents,
         generationConfig
       };
 
       // Count number of images and text parts for logging
-      const imageParts = parts.filter(p => p.inlineData).length;
-      const textParts = parts.filter(p => p.text).length;
+      const imageParts = userParts.filter(p => p.inlineData).length;
+      const textParts = userParts.filter(p => p.text).length;
       console.log(`Preparing Gemini request with ${imageParts} images and ${textParts} text parts`);
 
       // Log request parameters for debugging (but truncate base64 data)
       const logParams = JSON.parse(JSON.stringify(chatParams));
-      if (logParams.contents[0].parts) {
-        logParams.contents[0].parts = logParams.contents[0].parts.map(part => {
-          if (part.inlineData && part.inlineData.data) {
-            return {
-              ...part,
-              inlineData: {
-                ...part.inlineData,
-                data: part.inlineData.data.substring(0, 50) + '... [truncated]',
-                mimeType: part.inlineData.mimeType
+      if (logParams.contents && logParams.contents.length > 0) {
+        logParams.contents.forEach(content => {
+          if (content.parts) {
+            content.parts = content.parts.map(part => {
+              if (part.inlineData && part.inlineData.data) {
+                return {
+                  ...part,
+                  inlineData: {
+                    ...part.inlineData,
+                    data: part.inlineData.data.substring(0, 50) + '... [truncated]',
+                    mimeType: part.inlineData.mimeType
+                  }
+                };
+              } else if (part.text) {
+                return {
+                  text: part.text.length > 200 ? 
+                    part.text.substring(0, 200) + '... [truncated]' : 
+                    part.text
+                };
               }
-            };
-          } else if (part.text) {
-            return {
-              text: part.text.length > 200 ? 
-                part.text.substring(0, 200) + '... [truncated]' : 
-                part.text
-            };
+              return part;
+            });
           }
-          return part;
         });
       }
       console.log("Gemini API request parameters:", JSON.stringify(logParams, null, 2));
