@@ -1,4 +1,3 @@
-import OpenAI from 'openai';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import defaultModels from '../models.config.mjs';
 
@@ -161,92 +160,98 @@ export class GoogleAIService {
         topP: options.topP || 0.95,
         topK: options.topK || 40
       };
-      
+
       // Prepare content parts for the API
       const parts = [];
-      
-      // Add system prompt if present
+
+      // Helper function to fetch image and convert to base64
+      const fetchImageAndConvertToBase64 = async (imageUrl) => {
+        try {
+          const response = await fetch(imageUrl);
+          if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+          }
+          const blob = await response.blob();
+          return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onloadend = () => resolve(reader.result); // Contains the base64 string
+            reader.onerror = reject;
+            reader.readAsDataURL(blob); // Convert to base64
+          });
+        } catch (error) {
+          console.error("Error fetching and converting image:", error);
+          throw error; // Re-throw so the calling function can handle the error
+        }
+      };
+
+
+      // Function to handle adding content parts (DRY)
+      const addContentPart = async (content) => {
+        if (typeof content === 'string') {
+          parts.push({ text: content });
+        } else if (content?.type === 'text') {
+          parts.push({ text: content.text });
+        } else if (content?.type === 'image_url' && content?.image_url) {
+          // **MUST Fetch and Convert to Base64**
+          try {
+            const base64 = await fetchImageAndConvertToBase64(content.image_url);
+            const mimeType = base64.split(';')[0].split(':')[1]; // Extract mime type
+            parts.push({
+              inlineData: {
+                data: base64.split(',')[1], // Remove the data:image/xxx;base64, prefix
+                mimeType: mimeType
+              }
+            });
+          } catch (error) {
+            console.error("Error processing image URL:", error);
+            // Handle the error (e.g., skip the image, or add a placeholder)
+            parts.push({ text: '[Image could not be loaded]' }); // Example placeholder
+          }
+        } else if (content?.inlineData) {
+          // Handle inline data (base64 images) directly
+          parts.push({
+            inlineData: {
+              data: content.inlineData.data,
+              mimeType: content.inlineData.mimeType
+            }
+          });
+        }
+      };
+
+      // Process system prompt
       if (systemPrompt) {
         if (typeof systemPrompt === 'string') {
-          parts.push({ text: systemPrompt });
+          await addContentPart(systemPrompt);
         } else if (Array.isArray(systemPrompt)) {
-          // Handle array of messages (like OpenAI format)
           for (const message of systemPrompt) {
             if (message.content) {
-              if (typeof message.content === 'string') {
-                parts.push({ text: message.content });
-              } else if (Array.isArray(message.content)) {
-                // Handle multimodal content array (text and images)
-                for (const content of message.content) {
-                  if (content.type === 'text') {
-                    parts.push({ text: content.text });
-                  } else if (content.type === 'image_url' && content.image_url) {
-                    // Handle image URLs that might be in base64 format
-                    if (content.image_url.startsWith('data:image')) {
-                      const base64Data = content.image_url.split(',')[1];
-                      parts.push({
-                        inlineData: {
-                          data: base64Data,
-                          mimeType: content.image_url.split(';')[0].split(':')[1]
-                        }
-                      });
-                    } else {
-                      // Fetch image URL (implementation would be elsewhere)
-                      console.log(`Image URL in prompt: ${content.image_url}`);
-                      // This would normally fetch and convert to base64
-                    }
+              if (typeof message.content === 'string' || typeof message.content === 'object') {
+                if (Array.isArray(message.content)) {
+                  for (const contentItem of message.content) {
+                    await addContentPart(contentItem);
                   }
+                } else {
+                  await addContentPart(message.content);
                 }
               }
             }
           }
         } else if (systemPrompt.inlineData) {
-          // Handle image data directly
-          parts.push({
-            inlineData: {
-              data: systemPrompt.inlineData.data,
-              mimeType: systemPrompt.inlineData.mimeType
-            }
-          });
+          await addContentPart(systemPrompt);
         }
       }
-      
-      // Add user prompt if it's a string
+
+      // Process user prompt
       if (typeof userPrompt === 'string') {
-        parts.push({ text: userPrompt });
+        await addContentPart(userPrompt);
       } else if (Array.isArray(userPrompt)) {
-        // Handle array of content parts (could be mix of text and images)
-        for (const part of userPrompt) {
-          if (typeof part === 'string') {
-            parts.push({ text: part });
-          } else if (part.inlineData) {
-            // For base64 encoded images
-            parts.push({
-              inlineData: {
-                data: part.inlineData.data,
-                mimeType: part.inlineData.mimeType
-              }
-            });
-          } else if (part.text) {
-            parts.push({ text: part.text });
-          }
+        for (const contentItem of userPrompt) {
+          await addContentPart(contentItem);
         }
       } else if (userPrompt && typeof userPrompt === 'object') {
-        // Handle object with text field
-        if (userPrompt.text) {
-          parts.push({ text: userPrompt.text });
-        }
-        // Handle object with inlineData for images
-        if (userPrompt.inlineData) {
-          parts.push({
-            inlineData: {
-              data: userPrompt.inlineData.data,
-              mimeType: userPrompt.inlineData.mimeType
-            }
-          });
-        }
+        await addContentPart(userPrompt);
       }
-      
+
       // Prepare the request
       const chatParams = {
         contents: [{ role: 'user', parts }],
@@ -270,16 +275,16 @@ export class GoogleAIService {
         });
       }
       console.log("Gemini API request parameters:", JSON.stringify(logParams, null, 2));
-      
+
       // Generate content using the correct method
       const result = await generativeModel.generateContent(chatParams);
-      
+
       // Log response for debugging
       console.log("Gemini API response:", JSON.stringify({
         text: result.response.text(),
         responseType: result.response.constructor.name
       }, null, 2));
-      
+
       return result.response.text();
     } catch (error) {
       console.log("Error while chatting with Google AI:", JSON.stringify({
@@ -290,7 +295,7 @@ export class GoogleAIService {
       throw error;
     }
   }
-  
+
   /**
    * Process an image and generate a text response
    * @param {string} imageBase64 - Base64 encoded image data
@@ -303,7 +308,7 @@ export class GoogleAIService {
     try {
       const modelName = options.model || this.model;
       const generativeModel = this.googleAI.getGenerativeModel({ model: modelName });
-      
+
       // Prepare generation config
       const generationConfig = {
         temperature: options.temperature || 0.7,
@@ -311,7 +316,7 @@ export class GoogleAIService {
         topP: options.topP || 0.95,
         topK: options.topK || 40
       };
-      
+
       // Create the prompt parts
       const parts = [
         {
@@ -322,13 +327,13 @@ export class GoogleAIService {
         },
         { text: prompt }
       ];
-      
+
       // Generate content
       const result = await generativeModel.generateContent({
         contents: [{ role: 'user', parts }],
         generationConfig
       });
-      
+
       return result.response.text();
     } catch (error) {
       console.error("Error analyzing image:", error);

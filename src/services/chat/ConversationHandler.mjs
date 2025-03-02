@@ -2,17 +2,17 @@ import { MongoClient } from 'mongodb';
 
 import { sendAsWebhook } from '../discordService.mjs';
 import { MemoryService } from '../memoryService.mjs';
-import { config } from 'process';
 
 const GUILD_NAME = process.env.GUILD_NAME || 'The Guild';
 
 export class ConversationHandler {
-  constructor(client, aiService, logger, avatarService, dungeonService) {
+  constructor(client, aiService, logger, avatarService, dungeonService, imageProcessingService) {
     this.client = client;
     this.aiService = aiService;
     this.logger = logger;
     this.avatarService = avatarService;
     this.dungeonService = dungeonService;
+    this.imageProcessingService = imageProcessingService;
 
     // Memory service for storing and retrieving memories
     this.memoryService = new MemoryService(this.logger);
@@ -384,30 +384,30 @@ Based on all of the above context, share an updated personality that reflects yo
     try {
       // Fetch recent channel messages
       const messages = await channel.messages.fetch({ limit: 50 });
-      
+
       // Extract images from the most recent message with images
       const imagePromptParts = [];
       let recentImageMessage = null;
-      
+
       for (const msg of Array.from(messages.values()).reverse()) {
         // Skip messages from this avatar
         if (msg.author.id === avatar._id) continue;
-        
+
         // Check for attachments or embeds with images
-        const hasImages = msg.attachments.some(a => a.contentType?.startsWith('image/')) || 
-                         msg.embeds.some(e => e.image || e.thumbnail);
-        
+        const hasImages = msg.attachments.some(a => a.contentType?.startsWith('image/')) ||
+          msg.embeds.some(e => e.image || e.thumbnail);
+
         if (hasImages) {
           recentImageMessage = msg;
           break;
         }
       }
-      
+
       // If we found an image message, extract the images
-      if (recentImageMessage && this.chatService.imageProcessingService) {
+      if (recentImageMessage && this.imageProcessingService) {
         try {
-          const extractedImages = await this.chatService.imageProcessingService.extractImagesFromMessage(recentImageMessage);
-          
+          const extractedImages = await this.imageProcessingService.extractImagesFromMessage(recentImageMessage);
+
           // Add up to 3 images (to stay within token limits)
           for (let i = 0; i < Math.min(extractedImages.length, 3); i++) {
             imagePromptParts.push({
@@ -417,20 +417,20 @@ Based on all of the above context, share an updated personality that reflects yo
               }
             });
           }
-          
+
           this.logger.info(`Found ${extractedImages.length} images in message, using ${imagePromptParts.length}`);
         } catch (error) {
           this.logger.error(`Error extracting images: ${error.message}`);
         }
       }
-      
+
       const messageHistory = messages
         .reverse()
         .map(msg => ({
           author: msg.author.username,
           content: msg.content,
-          hasImages: msg.attachments.some(a => a.contentType?.startsWith('image/')) || 
-                    msg.embeds.some(e => e.image || e.thumbnail),
+          hasImages: msg.attachments.some(a => a.contentType?.startsWith('image/')) ||
+            msg.embeds.some(e => e.image || e.thumbnail),
           timestamp: msg.createdTimestamp
         }));
 
@@ -471,10 +471,10 @@ Based on all of the above context, share an updated personality that reflects yo
 
         Recent messages:
         ${context.recentMessages.map(m => {
-          let msgText = `${m.author}: ${m.content}`;
-          if (m.hasImages) msgText += " [includes image(s)]";
-          return msgText;
-        }).join('\n')}
+        let msgText = `${m.author}: ${m.content}`;
+        if (m.hasImages) msgText += " [includes image(s)]";
+        return msgText;
+      }).join('\n')}
         ${imagePromptParts.length > 0 ? '\nNote: The most recent images are included in this prompt.' : ''}
 
         Reply in character as ${avatar.name} with a single short, casual message, suitable for this discord channel.
@@ -590,11 +590,11 @@ Based on all of the above context, share an updated personality that reflects yo
     const locationText = location
       ? `You are currently in ${location.name}. ${location.description}`
       : `You are in ${avatar.channelName || 'a chat channel'}.`;
-    
+
     // Get guild configuration for emojis
     let summonEmoji = '💼'; // Default
     let breedEmoji = '🏹'; // Default
-    
+
     try {
       if (avatar.channelId) {
         const channel = await this.client.channels.fetch(avatar.channelId);

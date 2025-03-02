@@ -4,6 +4,7 @@ import { MessageProcessor } from './MessageProcessor.mjs';
 import { DatabaseService } from '../databaseService.mjs';
 import { sendAsWebhook } from '../discordService.mjs';
 import { DungeonService } from '../dungeon/DungeonService.mjs'; // Added import
+import { TokenTransferHookInvalidSeed } from '@solana/spl-token';
 
 const RESPONSE_RATE = parseFloat(process.env.RESPONSE_RATE) || 0.2; // 20% response rate
 const SERVER_NAME = "Project 89";
@@ -48,7 +49,7 @@ export class ChatService {
       this.logger,
       options.avatarService,
       this.dungeonService,
-      options.imageProcessingService // Added imageProcessingService
+      this.imageService
     );
     this.decisionMaker = new DecisionMaker(options.aiService, this.logger);
     this.messageProcessor = new MessageProcessor(options.avatarService);
