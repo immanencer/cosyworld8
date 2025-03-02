@@ -1418,7 +1418,7 @@ export const openApiSpec = {
                 },
                 value: {
                   type: "string",
-                  description: "The value of the trait (e.g., 'Moonstone Sanctum', 'Mystical')"
+                  description: "The value of the trait (e.g., 'Project 89', 'Mystical')"
                 }
               }
             }

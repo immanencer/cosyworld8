@@ -8,7 +8,7 @@ import { sendAsWebhook } from '../discordService.mjs'
 import { DungeonService } from '../dungeon/DungeonService.mjs'; // Added import
 
 const RESPONSE_RATE = parseFloat(process.env.RESPONSE_RATE) || 0.2; // 20% response rate
-const SERVER_NAME = "Moonstone Sanctum";
+const SERVER_NAME = "Project 89";
 
 export class ChatService {
   constructor(client, db, options = {

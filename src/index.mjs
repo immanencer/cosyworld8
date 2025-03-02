@@ -134,7 +134,7 @@ async function handleBreedCommand(message, args, commandLine) {
   const prompt = `Breed the following avatars to combine them, develop a short backstory for the offspring:\n\n` +
     `AVATAR 1: ${avatar1.name} - ${avatar1.prompt}\n${avatar1.description}\n${avatar1.personality}\n${narrative1}\n\n` +
     `AVATAR 2: ${avatar2.name} - ${avatar2.prompt}\n${avatar2.description}\n${avatar2.personality}\n${narrative2}\n\n` +
-    `Combine their attributes creatively, avoiding cosmic or mystical elements and aiming for a down-to-earth feel suitable for the moonstone sanctum.`;
+    `Combine their attributes creatively, avoiding cosmic or mystical elements and aiming for a down-to-earth feel suitable for the Project 89.`;
 
   logger.info(prompt);
   const originalContent = message.content;
@@ -307,7 +307,7 @@ async function handleCommands(message) {
     if (!message.author.bot && member && !member.roles.cache.some(
       (role) => role.id === requiredRole || role.name === requiredRole
     )) {
-      await replyToMessage(message, "You lack the required role to summon.");
+      await replyToMessage(message, `You lack the required role (${requiredRole}) to summon.`);
       return;
     }
     await reactToMessage(message, summonEmoji);
