@@ -216,6 +216,7 @@ async function handleSummonCommand(message, breed = false, attributes = {}) {
     const guildId = message.guild?.id;
     // Get guild-specific prompts
     const guildPrompts = await configService.getGuildPrompts(db, guildId);
+    logger.info(`Retrieved guild prompts for ${guildId}: ${JSON.stringify(guildPrompts)}`);
 
     const canSummon = message.author.id === "1175877613017895032" ||
       (await checkDailySummonLimit(message.author.id));
@@ -223,12 +224,14 @@ async function handleSummonCommand(message, breed = false, attributes = {}) {
       await replyToMessage(message, `Daily summon limit of ${DAILY_SUMMON_LIMIT} reached. Try again tomorrow!`);
       return;
     }
-    const summonPrompt = guildPrompts.summon;
+    const summonPrompt = guildPrompts.summon || "Create an avatar with the following description:";
+    logger.info(`Using summon prompt for guild ${guildId}: ${summonPrompt}`);
+    
     const avatarData = {
       prompt: sanitizeInput(`${summonPrompt}\n\nSummon an avatar inspired by this concept:\n\n${content}`),
       channelId: message.channel.id,
     };
-    if (summonPrompt.match(/^(https:\/\/.*\.arweave\.net\/|ar:\/\/)/)) {
+    if (summonPrompt && summonPrompt.match(/^(https:\/\/.*\.arweave\.net\/|ar:\/\/)/)) {
       avatarData.arweave_prompt = summonPrompt;
     }
 
