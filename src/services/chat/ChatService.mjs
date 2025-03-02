@@ -412,7 +412,7 @@ export class ChatService {
    * @param {string} messageId - The Discord message ID
    * @returns {Promise<Object|null>} - The message object or null if not found
    */
-  async getMessageById(channelId, messageId) {
+  async getMessageById(messageId) {
     try {
       // Ensure messagesCollection is ready
       if (!this.messagesCollection) {
@@ -420,35 +420,15 @@ export class ChatService {
       }
 
       // Attempt to fetch the message from the database.
-      const messageDoc = await this.messagesCollection.findOne({ channelId, messageId });
+      const messageDoc = await this.messagesCollection.findOne({ messageId });
       if (messageDoc) {
         this.logger.info(`Message ${messageId} retrieved from the database.`);
         return messageDoc;
       }
 
-      // If not found in the DB, fallback to Discord API.
-      const channel = await this.client.channels.fetch(channelId);
-      if (!channel) {
-        this.logger.warn(`Channel ${channelId} not found on Discord.`);
-        return null;
-      }
-      const discordMessage = await channel.messages.fetch(messageId);
-      if (discordMessage) {
-        // Construct a simplified document for caching.
-        const newMessageDoc = {
-          messageId: discordMessage.id,
-          channelId,
-          content: discordMessage.content,
-          authorId: discordMessage.author.id,
-          timestamp: discordMessage.createdTimestamp
-          // Add additional fields as needed.
-        };
-        await this.messagesCollection.insertOne(newMessageDoc);
-        this.logger.info(`Message ${messageId} fetched from Discord and cached in the database.`);
-      }
-      return discordMessage;
+      throw new Error(`Message ${messageId} not found in the database.`);
     } catch (error) {
-      this.logger.error(`Failed to fetch message ${messageId} for channel ${channelId}:`, error);
+      this.logger.error(`Failed to fetch message ${messageId}`, error);
       return null;
     }
   }

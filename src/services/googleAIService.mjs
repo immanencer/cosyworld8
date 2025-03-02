@@ -175,6 +175,7 @@ export class GoogleAIService {
         throw new Error('Invalid content parts structure');
       }
 
+      console.log(JSON.stringify(contents, null, 2));
       const result = await generativeModel.generateContent({
         contents,
         generationConfig
