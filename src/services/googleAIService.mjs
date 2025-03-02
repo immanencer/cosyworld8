@@ -94,20 +94,38 @@ export class GoogleAIService {
     return this.model;
   }
 
-  modelIsAvailable(model) {
-    // If models haven't been loaded yet, we need to load them first
-    if (this.modelConfig.length === 0) {
-      console.log(`Fetching models before checking availability of ${model}`);
-      return this.fetchModels().then(() => {
-        const isAvailable = this.modelConfig.some(m => m.model === model);
-        console.log(`Model ${model} availability check: ${isAvailable}`);
-        return isAvailable;
-      });
-    }
+  async modelIsAvailable(model) {
+    try {
+      // Check if the model exists in our configuration
+      if (!this.modelConfig || !this.modelConfig.length) {
+        await this.fetchModels();
+      }
 
-    const isAvailable = this.modelConfig.some(m => m.model === model);
-    console.log(`Model ${model} availability check with loaded models: ${isAvailable}`);
-    return isAvailable;
+      const modelExists = this.modelConfig.some(m => m.id === model);
+
+      if (!modelExists) {
+        console.log(`Model ${model} not found in configuration.`);
+        return false;
+      }
+
+      // Additional check - try to get model info from API
+      const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${model}`;
+      const response = await fetch(apiUrl, {
+        headers: {
+          'x-goog-api-key': process.env.GOOGLE_AI_API_KEY
+        }
+      });
+
+      if (!response.ok) {
+        console.log(`Model ${model} API check failed: ${response.status}`);
+        return false;
+      }
+
+      return true;
+    } catch (error) {
+      console.error(`Error checking model availability: ${error.message}`);
+      return false;
+    }
   }
 
   async generateCompletion(prompt, options = {}) {
