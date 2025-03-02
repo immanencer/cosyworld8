@@ -552,7 +552,7 @@ Based on all of the above context, share an updated personality that reflects yo
           `${msg.authorUsername || 'User'}: ${msg.content || '[No content]'}${msg.hasImages ? ' [has image]' : ''}`
         ).join('\n');
 
-        // Construct an enriched prompt that includes the channel history
+        // Construct the full textual context including channel history
         const contextualPrompt = `
           Channel: #${context.channelName} in ${context.guildName}
 
@@ -562,17 +562,16 @@ Based on all of the above context, share an updated personality that reflects yo
           Recent conversation history:
           ${channelContextText}
 
-          Reply in character as ${avatar.name} with a single short, casual message that responds to the context.
-          If there are images in the conversation, comment on them as appropriate.
+          Reply in character as ${avatar.name} with a single short message that responds to the context.
+          Comment on the image appropriately as part of your response.
         `.trim();
 
-        // Create a proper user message that includes both text content and images
+        // Combine images with the contextual text prompt
         const userMessageParts = [...imagePromptParts, { text: contextualPrompt }];
 
-        // Log what we're sending to the model
         this.logger.info(`Sending image message with ${imagePromptParts.length} images and ${channelHistory.length} context messages`);
 
-        // Make the complete chat request with the enriched context
+        // Make the complete chat request
         response = await this.aiService.chat(
           [systemMessage, assistantMessage], 
           userMessageParts, 
@@ -667,7 +666,7 @@ Based on all of the above context, share an updated personality that reflects yo
   }
 
   /**
-   * Constructs a dungeon prompt indicating possible commands and current location info.
+   * Constructs a dungeon prompt indicatingpossible commands and current location info.
    * @param {*} avatar 
    * @returns {string}
    */

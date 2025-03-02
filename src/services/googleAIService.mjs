@@ -166,9 +166,16 @@ export class GoogleAIService {
       
       // Enhanced debugging for text content
       if (Array.isArray(userPrompt)) {
-        const textParts = userPrompt.filter(part => part.text).map(part => part.text?.substring(0, 50) + '...');
+        const textParts = userPrompt.filter(part => part.text);
         if (textParts.length > 0) {
-          console.log(`Text parts in prompt: ${textParts.length}, first part preview: ${textParts[0]}`);
+          // Show more detail about text parts for debugging
+          console.log(`Text parts in prompt: ${textParts.length}, first part preview: ${textParts[0].text?.substring(0, 50) + '...'}`);
+          
+          // Log the contextual content more clearly
+          if (textParts.length === 1 && textParts[0].text?.includes('Channel:')) {
+            const contextSnippet = textParts[0].text.substring(0, 200).replace(/\n/g, ' ') + '...';
+            console.log(`Context content: ${contextSnippet}`);
+          }
         }
       }
 
