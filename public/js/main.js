@@ -307,7 +307,7 @@ async function loadLeaderboard() {
     }
 
     // Load initial data
-    const data = await fetchJSON(`${API_BASE_URL}/leaderboard?page=1&limit=12`);
+    const data = await fetchJSON(`${API_BASE_URL}/leaderboard?page=1&limit=12&include_zero=true`);
     const leaderboardItems = document.getElementById("leaderboard-items");
     const loader = document.getElementById("leaderboard-loader");
 
@@ -760,22 +760,50 @@ async function showAvatarDetails(avatarId) {
   `;
 
   try {
-    // Fetch all necessary avatar data
-    const [
-      avatarResponse,
-      xauthStatusResponse,
-      claimStatusResponse,
-      narrativesResponse,
-      actionsResponse,
-      statsResponse,
-    ] = await Promise.all([
-      fetchJSON(`/api/avatars/${avatarId}`),
-      fetchJSON(`/api/xauth/status/${avatarId}`),
-      fetchJSON(`/api/claims/status/${avatarId}`),
-      fetchJSON(`/api/avatars/${avatarId}/narratives`),
-      fetchJSON(`/api/avatars/${avatarId}/dungeon-actions`),
-      fetchJSON(`/api/avatars/${avatarId}/stats`),
-    ]);
+    // Fetch avatar data with error handling for each request
+    let avatarResponse, xauthStatusResponse, claimStatusResponse, narrativesResponse, actionsResponse, statsResponse;
+    
+    try {
+      avatarResponse = await fetchJSON(`/api/avatars/${avatarId}`);
+    } catch (error) {
+      console.error("Error fetching avatar:", error);
+      avatarResponse = { name: "Unknown Avatar", description: "Avatar details unavailable" };
+    }
+    
+    try {
+      xauthStatusResponse = await fetchJSON(`/api/xauth/status/${avatarId}`);
+    } catch (error) {
+      console.error("Error fetching X auth status:", error);
+      xauthStatusResponse = { status: "unknown" };
+    }
+    
+    try {
+      claimStatusResponse = await fetchJSON(`/api/claims/status/${avatarId}`);
+    } catch (error) {
+      console.error("Error fetching claim status:", error);
+      claimStatusResponse = { claimed: false };
+    }
+    
+    try {
+      narrativesResponse = await fetchJSON(`/api/avatars/${avatarId}/narratives`);
+    } catch (error) {
+      console.error("Error fetching narratives:", error);
+      narrativesResponse = { narratives: [] };
+    }
+    
+    try {
+      actionsResponse = await fetchJSON(`/api/avatars/${avatarId}/dungeon-actions`);
+    } catch (error) {
+      console.error("Error fetching actions:", error);
+      actionsResponse = { actions: [] };
+    }
+    
+    try {
+      statsResponse = await fetchJSON(`/api/avatars/${avatarId}/stats`);
+    } catch (error) {
+      console.error("Error fetching stats:", error);
+      statsResponse = { hp: 0, attack: 0, defense: 0 };
+    }
 
     // Combine all data into one avatar object
     const avatar = {

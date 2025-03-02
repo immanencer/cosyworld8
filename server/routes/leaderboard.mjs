@@ -55,118 +55,165 @@ export default function leaderboardRoutes(db) {
   router.get('/', async (req, res) => {
     console.log('Leaderboard request:', req.query);
     try {
-      const { tier, lastMessageCount, lastId, limit: limitStr } = req.query;
+      const { tier, lastMessageCount, lastId, limit: limitStr, includeZeroMessages } = req.query; // Added includeZeroMessages
       const limit = Math.min(parseInt(limitStr, 10) || 24, 100);
       const dayAgo = new Date(Date.now() - 1000 * 60 * 60 * 24);
 
       // Main aggregation pipeline
-      const pipeline = [
-        {
-          $group: {
-            _id: { $toLower: '$authorUsername' },
-            messageCount: { $sum: 1 },
-            lastMessage: { $max: '$timestamp' },
-            recentMessages: {
-              $push: {
-                $cond: [
-                  { $gte: ['$timestamp', dayAgo] },
-                  { content: { $substr: ['$content', 0, 200] }, timestamp: '$timestamp' },
-                  null
+      let pipeline = [];
+
+      if (includeZeroMessages) {
+        // If we want to include all avatars, even those with 0 messages
+        pipeline = [
+          {
+            $lookup: {
+              from: 'avatars',
+              pipeline: [
+                { $match: { status: { $ne: 'dead' } } }
+              ],
+              as: 'allAvatars'
+            }
+          },
+          { $unwind: '$allAvatars' },
+          {
+            $lookup: {
+              from: 'messages',
+              let: { avatarName: '$allAvatars.name' },
+              pipeline: [
+                {
+                  $match: {
+                    $expr: { $eq: ['$authorUsername', '$$avatarName'] },
+                    timestamp: { $gte: dayAgo }
+                  }
+                }
+              ],
+              as: 'messages'
+            }
+          },
+          {
+            $project: {
+              _id: '$allAvatars.name',
+              avatar: '$allAvatars',
+              messageCount: { $size: '$messages' },
+              lastMessage: { $max: '$messages.timestamp' },
+              recentMessages: { $slice: ['$messages', 10] }
+            }
+          },
+          { $sort: { messageCount: -1, lastMessage: -1 } },
+          { $skip: 0 }, //Added skip and limit to handle pagination correctly
+          { $limit: limit + 1 }
+        ];
+      } else {
+        // Original pipeline for only avatars with messages
+        pipeline = [
+          {
+            $group: {
+              _id: { $toLower: '$authorUsername' },
+              messageCount: { $sum: 1 },
+              lastMessage: { $max: '$timestamp' },
+              recentMessages: {
+                $push: {
+                  $cond: [
+                    { $gte: ['$timestamp', dayAgo] },
+                    { content: { $substr: ['$content', 0, 200] }, timestamp: '$timestamp' },
+                    null
+                  ]
+                }
+              }
+            }
+          },
+          {
+            $addFields: {
+              recentMessages: {
+                $slice: [
+                  {
+                    $sortArray: {
+                      input: {
+                        $filter: {
+                          input: '$recentMessages',
+                          cond: { $ne: ['$$this', null] }
+                        }
+                      },
+                      sortBy: { timestamp: -1 }
+                    }
+                  },
+                  5
                 ]
               }
             }
-          }
-        },
-        {
-          $addFields: {
-            recentMessages: {
-              $slice: [
+          },
+          { $sort: { messageCount: -1, _id: 1 } },
+          {
+            $lookup: {
+              from: 'avatars',
+              let: { username: '$_id' },
+              pipeline: [
                 {
-                  $sortArray: {
-                    input: {
-                      $filter: {
-                        input: '$recentMessages',
-                        cond: { $ne: ['$$this', null] }
-                      }
-                    },
-                    sortBy: { timestamp: -1 }
+                  $match: {
+                    $expr: { $eq: [{ $toLower: '$name' }, '$$username'] }
                   }
                 },
-                5
-              ]
+                { $sort: { createdAt: -1 } },
+                {
+                  $project: {
+                    _id: 1,
+                    name: 1,
+                    imageUrl: 1,
+                    emoji: 1,
+                    parents: 1,
+                    model: 1,
+                    createdAt: 1
+                  }
+                }
+              ],
+              as: 'variants'
             }
-          }
-        },
-        { $sort: { messageCount: -1, _id: 1 } },
-        {
-          $lookup: {
-            from: 'avatars',
-            let: { username: '$_id' },
-            pipeline: [
-              {
-                $match: {
-                  $expr: { $eq: [{ $toLower: '$name' }, '$$username'] }
-                }
-              },
-              { $sort: { createdAt: -1 } },
-              {
-                $project: {
-                  _id: 1,
-                  name: 1,
-                  imageUrl: 1,
-                  emoji: 1,
-                  parents: 1,
-                  model: 1,
-                  createdAt: 1
-                }
-              }
-            ],
-            as: 'variants'
-          }
-        },
-        { $match: { variants: { $ne: [] } } }
-      ];
+          },
+          { $match: { variants: { $ne: [] } } }
+        ];
 
-      // Tier filtering
-      if (tier && tier !== 'All') {
-        if (tier === 'U') {
+        // Tier filtering
+        if (tier && tier !== 'All') {
+          if (tier === 'U') {
+            pipeline.push({
+              $match: {
+                $or: [
+                  { 'variants.model': { $exists: false } },
+                  { 'variants.model': null },
+                  { 'variants.model': { $nin: models.map(m => m.model) } }
+                ]
+              }
+            });
+          } else if (tierMap[tier]) {
+            pipeline.push({
+              $match: {
+                'variants.model': { $in: tierMap[tier] }
+              }
+            });
+          }
+        }
+
+        // Pagination
+        if (lastMessageCount && lastId) {
+          const parsedCount = parseInt(lastMessageCount, 10);
           pipeline.push({
             $match: {
               $or: [
-                { 'variants.model': { $exists: false } },
-                { 'variants.model': null },
-                { 'variants.model': { $nin: models.map(m => m.model) } }
+                { messageCount: { $lt: parsedCount } },
+                { $and: [{ messageCount: parsedCount }, { _id: { $gt: lastId } }] }
               ]
             }
           });
-        } else if (tierMap[tier]) {
-          pipeline.push({
-            $match: {
-              'variants.model': { $in: tierMap[tier] }
-            }
-          });
+        } else {
+          // Page-based pagination
+          const page = parseInt(req.query.page, 10) || 1;
+          const skip = (page - 1) * limit;
+          pipeline.push({ $skip: skip });
         }
+
+        pipeline.push({ $limit: limit + 1 });
       }
 
-      // Pagination
-      if (lastMessageCount && lastId) {
-        const parsedCount = parseInt(lastMessageCount, 10);
-        pipeline.push({
-          $match: {
-            $or: [
-              { messageCount: { $lt: parsedCount } },
-              { $and: [{ messageCount: parsedCount }, { _id: { $gt: lastId } }] }
-            ]
-          }
-        });
-      } else {
-        // Page-based pagination
-        const page = parseInt(req.query.page, 10) || 1;
-        const skip = (page - 1) * limit;
-        pipeline.push({ $skip: skip });
-      }
-
-      pipeline.push({ $limit: limit + 1 });
 
       // Execute aggregation
       const results = await db.collection('messages')
@@ -177,9 +224,10 @@ export default function leaderboardRoutes(db) {
       const details = await Promise.all(
         results.map(async (result) => {
           try {
-            const primaryAvatar = result.variants[0];
+            const primaryAvatar = (includeZeroMessages) ? result.avatar : result.variants[0]; // Handle both pipeline structures
+            const variants = (includeZeroMessages) ? [result.avatar] : result.variants; // Handle both pipeline structures
             const thumbs = await Promise.all(
-              result.variants.map(v => 
+              variants.map(v =>
                 thumbnailService.generateThumbnail(v.imageUrl)
               )
             );
@@ -196,7 +244,7 @@ export default function leaderboardRoutes(db) {
 
             return {
               ...primaryAvatar,
-              variants: result.variants.map((v, i) => ({
+              variants: variants.map((v, i) => ({
                 ...v,
                 thumbnailUrl: thumbs[i]
               })),

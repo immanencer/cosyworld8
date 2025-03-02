@@ -1,6 +1,13 @@
 import express from 'express';
 import cors from 'cors';
 import { MongoClient } from 'mongodb';
+import process from 'process';
+import { fileURLToPath } from 'url';
+import { dirname, join } from 'path';
+import swaggerUI from 'swagger-ui-express';
+import YAML from 'yamljs';
+import morgan from 'morgan';
+import adminRoutes from './routes/adminRoutes.mjs';
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -47,7 +54,7 @@ async function initializeApp() {
 
     // Mount the API router
     app.use('/api', (await import('./routes/api/index.mjs')).default(db));
-    
+
     // Admin routes are already mounted in index.mjs router
 
     // Explicitly mount your original routes with database connection
@@ -64,6 +71,9 @@ async function initializeApp() {
     app.use('/api/social', (await import('./routes/social.mjs')).default(db));
     app.use('/api/claims', (await import('./routes/claims.mjs')).default(db));
     app.use('/api/guilds', (await import('./routes/api/guilds.mjs')).default(db));
+    app.use('/api/admin', adminRoutes(db)); //Added admin routes
+
+
     // Removed duplicate API router import for /api/v1
 
     // Add renounce claim route
