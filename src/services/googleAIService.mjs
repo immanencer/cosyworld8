@@ -163,10 +163,13 @@ export class GoogleAIService {
       };
 
       // Prepare content for the model
+      // Format messages according to Gemini API requirements
       const chatParams = {
         contents: [
-          { role: 'system', parts: [{ text: systemPrompt }] },
-          { role: 'user', parts: [{ text: userPrompt }] }
+          { 
+            role: 'user', 
+            parts: [{ text: `${systemPrompt}\n\n${userPrompt}` }] 
+          }
         ],
         generationConfig
       };
