@@ -252,7 +252,11 @@ export class MessageHandler {
 
   async getChannelContext(channelId, limit = 10) {
     try {
-      this.logger.info(`Fetching channel context for channel ${channelId}`);
+      // Validate channelId is provided
+      if (!channelId) {
+        this.logger.error("Channel ID is undefined or null");
+        return [];
+      }
 
       // Fetch messages from database if available
       const db = await this.getDb();
@@ -271,41 +275,46 @@ export class MessageHandler {
       }
 
       // If db lookup fails or returns no results, try to fetch from Discord API
-      const channel = await this.client.channels.fetch(channelId);
-      if (!channel) {
-        this.logger.warn(`Channel ${channelId} not found`);
+      try {
+        const channel = await this.client.channels.fetch(channelId);
+        if (!channel) {
+          this.logger.warn(`Channel ${channelId} not found`);
+          return [];
+        }
+
+        const discordMessages = await channel.messages.fetch({ limit });
+        const formattedMessages = Array.from(discordMessages.values())
+          .map(msg => {
+            // More detailed image extraction
+            const hasAttachmentImages = msg.attachments.some(a =>
+              a.contentType?.startsWith('image/') ||
+              /\.(jpg|jpeg|png|gif|webp)$/i.test(a.name || '')
+            );
+
+            const hasEmbedImages = msg.embeds.some(e =>
+              e.image || e.thumbnail ||
+              (e.type === 'image' || e.type === 'photo')
+            );
+
+            return {
+              messageId: msg.id,
+              channelId: msg.channel.id,
+              authorId: msg.author.id,
+              authorUsername: msg.author.username,
+              authorIsBot: msg.author.bot,
+              content: msg.content,
+              hasImages: hasAttachmentImages || hasEmbedImages,
+              timestamp: msg.createdTimestamp
+            };
+          })
+          .sort((a, b) => a.timestamp - b.timestamp);
+
+        this.logger.debug(`Retrieved ${formattedMessages.length} messages from Discord API for channel ${channelId}`);
+        return formattedMessages;
+      } catch (error) {
+        this.logger.error(`Error fetching messages from Discord API for channel ${channelId}:`, error);
         return [];
       }
-
-      const discordMessages = await channel.messages.fetch({ limit });
-      const formattedMessages = Array.from(discordMessages.values())
-        .map(msg => {
-          // More detailed image extraction
-          const hasAttachmentImages = msg.attachments.some(a => 
-            a.contentType?.startsWith('image/') || 
-            /\.(jpg|jpeg|png|gif|webp)$/i.test(a.name || '')
-          );
-
-          const hasEmbedImages = msg.embeds.some(e => 
-            e.image || e.thumbnail || 
-            (e.type === 'image' || e.type === 'photo')
-          );
-
-          return {
-            messageId: msg.id,
-            channelId: msg.channel.id,
-            authorId: msg.author.id,
-            authorUsername: msg.author.username,
-            authorIsBot: msg.author.bot,
-            content: msg.content,
-            hasImages: hasAttachmentImages || hasEmbedImages,
-            timestamp: msg.createdTimestamp
-          };
-        })
-        .sort((a, b) => a.timestamp - b.timestamp);
-
-      this.logger.debug(`Retrieved ${formattedMessages.length} messages from Discord API for channel ${channelId}`);
-      return formattedMessages;
     } catch (error) {
       this.logger.error(`Error fetching channel context for channel ${channelId}:`, error);
       return [];
