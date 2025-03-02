@@ -420,4 +420,21 @@ export class ChatService {
   updateLastMessageTime() {
     this.lastMessageTime = Date.now();
   }
+  
+  /**
+   * Get a Discord message by ID from a specific channel
+   * @param {string} channelId - The Discord channel ID
+   * @param {string} messageId - The Discord message ID
+   * @returns {Promise<Message|null>} - The Discord message object or null if not found
+   */
+  async getMessageById(channelId, messageId) {
+    try {
+      const channel = await this.client.channels.fetch(channelId);
+      if (!channel) return null;
+      return await channel.messages.fetch(messageId);
+    } catch (error) {
+      this.logger.error(`Failed to fetch message ${messageId} in channel ${channelId}:`, error);
+      return null;
+    }
+  }
 }
