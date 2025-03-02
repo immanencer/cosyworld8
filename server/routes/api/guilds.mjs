@@ -5,6 +5,11 @@ import configService from '../../../src/services/configService.mjs';
 const router = express.Router();
 
 // Wrap async route handlers to catch errors
+import express from 'express';
+import * as configService from '../../services/configService.mjs';
+
+const router = express.Router();
+
 const asyncHandler = (fn) => (req, res, next) =>
   Promise.resolve(fn(req, res, next)).catch(next);
 
@@ -13,6 +18,39 @@ export default function(db) {
   router.get('/', asyncHandler(async (req, res) => {
     const guildConfigs = await configService.getAllGuildConfigs(db);
     res.json(guildConfigs);
+  }));
+  
+  // Create a new guild configuration
+  router.post('/', asyncHandler(async (req, res) => {
+    const guildData = req.body;
+    
+    if (!guildData || !guildData.guildId) {
+      return res.status(400).json({ error: 'Guild ID is required' });
+    }
+    
+    try {
+      // Check if guild config already exists
+      const existingConfig = await configService.getGuildConfig(db, guildData.guildId);
+      
+      // If it exists, update it
+      if (existingConfig) {
+        const result = await configService.updateGuildConfig(db, guildData.guildId, guildData);
+        const updatedConfig = await configService.getGuildConfig(db, guildData.guildId);
+        return res.json(updatedConfig);
+      }
+      
+      // Otherwise create a new config
+      const result = await db.collection('guild_configs').insertOne({
+        ...guildData,
+        updatedAt: new Date()
+      });
+      
+      const newConfig = await configService.getGuildConfig(db, guildData.guildId);
+      res.status(201).json(newConfig);
+    } catch (error) {
+      console.error('Error creating guild configuration:', error);
+      res.status(500).json({ error: error.message });
+    }
   }));
 
   // Get a specific guild configuration
