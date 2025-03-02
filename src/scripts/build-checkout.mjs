@@ -7,7 +7,7 @@ dotenv.config();
 
 // First build the React component
 await esbuild.build({
-  entryPoints: ['src/react/CheckoutPage.jsx'],
+  entryPoints: ['src/react/Checkout.jsx'],
   bundle: true,
   outfile: 'public/js/checkout.js',
   format: 'iife',
