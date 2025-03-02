@@ -22,7 +22,7 @@ export class AvatarGenerationService {
     this.config = config;
     this.aiService = new AIService();
     this.db = db;
-    
+
     // Initialize Logger
     this.logger = winston.createLogger({
       level: 'info',
@@ -37,7 +37,7 @@ export class AvatarGenerationService {
         new winston.transports.File({ filename: 'avatarService.log' }),
       ],
     });
-    
+
     try {
       // Only initialize Replicate if configuration exists
       const aiConfig = this.config.getAIConfig();
@@ -48,7 +48,7 @@ export class AvatarGenerationService {
         this.logger.warn('Replicate configuration is missing or invalid. Image generation will be disabled.');
         this.replicate = null;
       }
-      
+
       const mongoConfig = this.config.getMongoConfig();
       this.IMAGE_URL_COLLECTION = mongoConfig?.collections?.imageUrls || 'image_urls';
       this.AVATARS_COLLECTION = mongoConfig?.collections?.avatars || 'avatars';
@@ -472,18 +472,18 @@ export class AvatarGenerationService {
       this.logger.error('Replicate service not available. Cannot generate avatar image.');
       return null;
     }
-    
+
     try {
       const aiConfig = this.config.getAIConfig() || {};
       const replicateConfig = aiConfig.replicate || {};
       const trigger = replicateConfig.loraTriggerWord || '';
       const model = replicateConfig.model;
-      
+
       if (!model) {
         this.logger.error('Replicate model not configured');
         return null;
       }
-      
+
       const [output] = await this.replicate.run(
         model,
         {
@@ -503,12 +503,12 @@ export class AvatarGenerationService {
           }
         }
       );
-      
+
       if (!output) {
         this.logger.error('No output generated from Replicate');
         return null;
       }
-      
+
       const imageUrl = output.url ? output.url() : [output];
       this.logger.info('Generated image URL: ' + imageUrl.toString());
       const imageBuffer = await this.downloadImage(imageUrl.toString());
@@ -520,7 +520,7 @@ export class AvatarGenerationService {
     } catch (error) {
       this.logger.error(`Error generating avatar image: ${error.message}`);
       return null;
-    }e;
+    }
   }
 
   /**

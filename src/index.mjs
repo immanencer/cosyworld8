@@ -52,6 +52,8 @@ const logger = winston.createLogger({
 
 // Initialize core services
 const databaseService = new DatabaseService(logger);
+// Make database service globally available for components that need it
+global.databaseService = databaseService;
 const aiService = new AIService();
 let avatarService = null;
 let chatService;

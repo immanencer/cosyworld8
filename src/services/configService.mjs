@@ -132,7 +132,7 @@ class ConfigService {
   async getGuildConfig(db, guildId) {
     try {
       // Use the provided DB or get from global client (assuming this.client exists and has a db property)
-      const dbToUse = db || (this.client && this.client.db);
+      const dbToUse = db || (this.client && this.client.db) || (global.databaseService && global.databaseService.getDatabase());
       if (!dbToUse) {
         console.error(`No database connection available to fetch guild config for guild ${guildId}`);
         return { guildId, whitelisted: false };
