@@ -1,12 +1,6 @@
-// server/services/authService.mjs
-export const authMiddleware = (req, res, next) => {
-  // Add your authentication logic here.  This is a placeholder.
-  next();
-};
-
-
 // Audit logs API endpoint to retrieve guild access logs
 import express from 'express';
+import { isAuthenticated as authMiddleware } from '../services/authService.mjs';
 import { authMiddleware } from '../services/authService.mjs';
 
 const router = express.Router();
