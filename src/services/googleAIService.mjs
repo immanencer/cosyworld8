@@ -170,11 +170,22 @@ export class GoogleAIService {
         }
       }
 
-      // Get the generative model instance with system instruction
-      const generativeModel = this.googleAI.getGenerativeModel({ 
+      // Configure the model with additional settings for JSON output if requested
+      const modelConfig = { 
         model,
-        systemInstruction: systemInstruction // This is the key change
-      });
+        systemInstruction: systemInstruction
+      };
+      
+      // Add JSON schema if provided
+      if (options.responseSchema) {
+        modelConfig.generationConfig = {
+          responseMimeType: options.responseMimeType || "application/json",
+          responseSchema: options.responseSchema
+        };
+      }
+      
+      // Get the generative model instance with proper configuration
+      const generativeModel = this.googleAI.getGenerativeModel(modelConfig);
 
       // Build generation config
       const generationConfig = {
@@ -291,9 +302,15 @@ export class GoogleAIService {
         throw new Error("Cannot create a request with empty parts");
       }
 
+      // Merge generationConfig with any options.generationConfig
+      const finalGenerationConfig = {
+        ...generationConfig,
+        ...(options.generationConfig || {})
+      };
+
       const chatParams = {
         contents,
-        generationConfig
+        generationConfig: finalGenerationConfig
       };
 
       // Count number of images and text parts for logging
@@ -355,6 +372,13 @@ export class GoogleAIService {
         stack: error.stack,
         details: error.details || 'No details available'
       }, null, 2));
+      
+      // Return fallbackResponse if it exists
+      if (options.fallbackOnError && options.fallbackResponse) {
+        console.log("Returning fallback response due to error");
+        return options.fallbackResponse;
+      }
+      
       throw error;
     }
   }

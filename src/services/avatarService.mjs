@@ -341,29 +341,45 @@ export class AvatarGenerationService {
         throw new Error('Invalid or empty prompt provided');
       }
 
-      const prompt = `Provide a detailed visual description, an appropriate emoji, and a personality description for a ${this.getRandomAlignment()} character based on the following prompt
+      // Define the response schema for structured output
+      const schema = {
+        type: "OBJECT",
+        properties: {
+          name: {
+            type: "STRING",
+            description: "A creative name for the character"
+          },
+          emoji: {
+            type: "STRING",
+            description: "A single emoji that best represents the character"
+          },
+          description: {
+            type: "STRING",
+            description: "A one paragraph detailed visual description of the character's appearance"
+          },
+          personality: {
+            type: "STRING",
+            description: "A short unique personality description"
+          }
+        },
+        required: ["name", "description", "personality"],
+        propertyOrdering: ["name", "emoji", "description", "personality"]
+      };
 
-"${userPrompt}".
+      const systemPrompt = `You are a creative and unsettling character designer. Create a ${this.getRandomAlignment()} character based on the following prompt.
+If the prompt contains non-English words, fill out ALL fields in that same language.
+Keep all responses concise, with descriptions no more than four sentences.`;
 
-Please respond in the following JSON format. ONLY provide valid JSON as a response.
-If the prompt contains any non-English words, fill out ALL fields in the non-English language.
-Creatively fill in any details without comment, keep all responses to no more than four sentences. 
-ONLY respond with a well formed JSON object in the format shown below:
-{
-  "name": "<name the character>",
-  "emoji": "<insert an emoji 🤗, (be sure to use proper JSON notation), that best represents the character>",
-  "description": "<insert a one paragraph detailed description of the character's profile picture>",
-  "personality": "<generate a short unique personality description>"
-}`;
+      const userMessage = `Create a character based on: "${userPrompt}"`;
 
       const response = await this.aiService.chat([
-        { role: 'system', content: 'You are a creative and unsettling character designer.' },
-        { role: 'user', content: prompt },
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: userMessage }
       ], {
-        model: this.config.getAIConfig().aiProvider.metaModel || "gemini-2.0-flash-001",
-        format: "json",
+        model: this.config.getAIConfig().aiProvider.metaModel || "gemini-1.5-flash",
+        responseMimeType: "application/json",
+        responseSchema: schema,
         fallbackOnError: retries <= 1,
-        // Updated fallback to match the expected JSON structure.
         fallbackResponse: JSON.stringify({
           name: "Emergency Avatar",
           emoji: "🤗",
@@ -371,15 +387,26 @@ ONLY respond with a well formed JSON object in the format shown below:
           personality: "Mysterious, Adaptive, Resilient"
         })
       });
+      
       if (!response) {
         throw new Error('Failed to generate avatar details.');
       }
-      // Use the schema validator to ensure only valid JSON is processed.
-      const avatarDetails = JSON.parse(extractJSON(response.trim()));
+      
+      // Parse the JSON response
+      let avatarDetails;
+      try {
+        avatarDetails = JSON.parse(response.trim());
+      } catch (parseError) {
+        this.logger.error(`Failed to parse JSON response: ${parseError.message}`);
+        this.logger.debug(`Raw response: ${response}`);
+        throw new Error('Invalid JSON response received from AI service');
+      }
+      
       const { name, description, emoji, personality } = avatarDetails;
       if (!name || !description || !personality) {
         throw new Error('Incomplete avatar details received.');
       }
+      
       return { name, description, emoji: emoji || "🤗", personality };
     } catch (error) {
       this.logger.error(`Avatar generation error: ${error.message}`);
@@ -387,9 +414,9 @@ ONLY respond with a well formed JSON object in the format shown below:
         this.logger.info(`Retrying avatar generation, ${retries - 1} attempts remaining`);
         // Toggle between available models for the next attempt.
         this.config.getAIConfig().aiProvider.metaModel =
-          this.config.getAIConfig().aiProvider.metaModel === "gemini-2.0-flash-001"
+          this.config.getAIConfig().aiProvider.metaModel === "gemini-1.5-flash"
             ? "openai/gpt-3.5-turbo"
-            : "gemini-2.0-flash-001";
+            : "gemini-1.5-flash";
         return this.generateAvatarDetails(userPrompt, retries - 1);
       }
       throw new Error('Failed to generate avatar details.');

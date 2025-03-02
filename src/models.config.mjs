@@ -1,30 +1,46 @@
-export default [
+const defaultModels = [
   {
-    "model": "gemini-2.0-flash",
-    "rarity": "uncommon"
+    model: 'gemini-1.5-flash',
+    type: 'gemini',
+    provider: 'google',
+    status: 'active',
+    rarity: 'common',
+    maxTokens: 8192,
+    costPerToken: 0.0000035,
+    description: 'Fast, cost-effective generative AI for text and vision tasks',
+    supportsStructuredOutput: true
   },
   {
-    "model": "gemini-2.0-flash-001",
-    "rarity": "uncommon"
+    model: 'gemini-1.5-pro',
+    type: 'gemini',
+    provider: 'google',
+    status: 'active',
+    rarity: 'uncommon',
+    maxTokens: 32000,
+    costPerToken: 0.00001,
+    description: 'Advanced model for complex reasoning and text generation',
+    supportsStructuredOutput: true
   },
   {
-    "model": "gemini-2.0-pro",
-    "rarity": "legendary"
+    model: 'gemini-2.0-flash-001',
+    type: 'gemini',
+    provider: 'google',
+    status: 'active',
+    rarity: 'common', 
+    maxTokens: 8192,
+    costPerToken: 0.0000035,
+    description: 'Fast, cost-effective generative AI for text and vision tasks',
+    supportsStructuredOutput: true
   },
   {
-    "model": "gemini-2.0-pro-001",
-    "rarity": "legendary"
+    model: 'openai/gpt-3.5-turbo',
+    type: 'chat',
+    provider: 'openai',
+    status: 'active',
+    rarity: 'common',
+    maxTokens: 4096,
+    costPerToken: 0.000001,
+    description: 'Standard OpenAI GPT-3.5 Turbo model'
   },
-  {
-    "model": "gemini-1.5-pro",
-    "rarity": "rare"
-  },
-  {
-    "model": "gemini-1.5-flash",
-    "rarity": "common"
-  },
-  {
-    "model": "gemini-1.0-pro",
-    "rarity": "uncommon"
-  }
 ];
+export default defaultModels;
