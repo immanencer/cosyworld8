@@ -151,7 +151,10 @@ export class GoogleAIService {
 
       console.log(`Model ${model} availability check: true`);
 
-      // Direct implementation instead of calling a non-existent method
+      // Get the generative model instance first
+      const generativeModel = this.googleAI.getGenerativeModel({ model });
+
+      // Build generation config
       const generationConfig = {
         temperature: options.temperature || 0.7,
         maxOutputTokens: options.maxOutputTokens || 1024,
@@ -159,6 +162,7 @@ export class GoogleAIService {
         topK: options.topK || 40
       };
 
+      // Prepare content for the model
       const chatParams = {
         contents: [
           { role: 'system', parts: [{ text: systemPrompt }] },
@@ -167,7 +171,8 @@ export class GoogleAIService {
         generationConfig
       };
 
-      const result = await this.googleAI.chat(model).sendMessage(chatParams);
+      // Generate content using the correct method
+      const result = await generativeModel.generateContent(chatParams);
       return result.response.text();
     } catch (error) {
       console.log("Error while chatting with Google AI:", error);
