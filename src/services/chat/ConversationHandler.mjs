@@ -524,19 +524,38 @@ Based on all of the above context, share an updated personality that reflects yo
    * @param {*} avatar 
    * @returns {string}
    */
-  async buildDungeonPrompt(avatar) {
+  async async buildDungeonPrompt(avatar) {
     const commandsDescription = this.dungeonService.getCommandsDescription(avatar) || '';
     const location = await this.dungeonService.getLocationDescription(avatar.channelId, avatar.channelName);
     const items = await this.dungeonService.getItemsDescription(avatar);
     const locationText = location
       ? `You are currently in ${location.name}. ${location.description}`
       : `You are in ${avatar.channelName || 'a chat channel'}.`;
+    
+    // Get guild configuration for emojis
+    let summonEmoji = '💼'; // Default
+    let breedEmoji = '🏹'; // Default
+    
+    try {
+      if (avatar.channelId) {
+        const channel = await this.client.channels.fetch(avatar.channelId);
+        if (channel && channel.guild) {
+          const guildConfig = await configService.getGuildConfig(this.db, channel.guild.id);
+          if (guildConfig && guildConfig.toolEmojis) {
+            summonEmoji = guildConfig.toolEmojis.summon || summonEmoji;
+            breedEmoji = guildConfig.toolEmojis.breed || breedEmoji;
+          }
+        }
+      }
+    } catch (error) {
+      this.logger.error(`Error getting guild config emojis: ${error.message}`);
+    }
 
     return `
 These commands are available in this location:
 
-${config.} <any concept or thing> - Summon an avatar to your location.
-${} <avatar one> <avatar two> - Breed two avatars together.
+${summonEmoji} <any concept or thing> - Summon an avatar to your location.
+${breedEmoji} <avatar one> <avatar two> - Breed two avatars together.
 
 ${commandsDescription}
 

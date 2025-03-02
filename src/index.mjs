@@ -286,16 +286,31 @@ async function handleCommands(message) {
     await replyToMessage(message, "Command Deprecated. Use 💼 instead.");
     return;
   }
-  if (content.startsWith("💼")) {
+  // Check if message starts with summon emoji from guild config
+  const guildId = message.guild?.id;
+  let summonEmoji = process.env.DEFAULT_SUMMON_EMOJI || "💼";
+
+  if (guildId) {
+    try {
+      const guildConfig = await configService.getGuildConfig(databaseService.getDatabase(), guildId);
+      if (guildConfig && guildConfig.toolEmojis && guildConfig.toolEmojis.summon) {
+        summonEmoji = guildConfig.toolEmojis.summon;
+      }
+    } catch (error) {
+      logger.error(`Error getting summon emoji from config: ${error.message}`);
+    }
+  }
+
+  if (content.startsWith(summonEmoji)) {
     const member = message.guild?.members?.cache?.get(message.author.id);
-    const requiredRole = process.env.SUMMONER_ROLE || "💼";
+    const requiredRole = process.env.SUMMONER_ROLE || (guildId ? await configService.getGuildConfig(databaseService.getDatabase(), guildId)?.summonerRole : null) || "💼";
     if (!message.author.bot && member && !member.roles.cache.some(
       (role) => role.id === requiredRole || role.name === requiredRole
     )) {
       await replyToMessage(message, "You lack the required role to summon.");
       return;
     }
-    await reactToMessage(message, "💼");
+    await reactToMessage(message, summonEmoji);
     await handleSummonCommand(message, false, {});
     return;
   }
@@ -319,9 +334,6 @@ async function handleCommands(message) {
   }
 }
 
-// --------------------------
-// Database & Message Persistence
-// --------------------------
 async function saveMessageToDatabase(message) {
   const db = databaseService.getDatabase();
   if (!db) return;
