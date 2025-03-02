@@ -1,4 +1,3 @@
-
 import express from 'express';
 import { ObjectId } from 'mongodb';
 import configService from '../../../src/services/configService.mjs';
@@ -20,11 +19,11 @@ export default function(db) {
   router.get('/:guildId', asyncHandler(async (req, res) => {
     const { guildId } = req.params;
     const guildConfig = await configService.getGuildConfig(db, guildId);
-    
+
     if (!guildConfig) {
       return res.status(404).json({ error: 'Guild configuration not found' });
     }
-    
+
     res.json(guildConfig);
   }));
 
@@ -32,7 +31,7 @@ export default function(db) {
   router.post('/:guildId', asyncHandler(async (req, res) => {
     const { guildId } = req.params;
     const updates = req.body;
-    
+
     try {
       const result = await configService.updateGuildConfig(db, guildId, updates);
       const updatedConfig = await configService.getGuildConfig(db, guildId);
@@ -46,7 +45,7 @@ export default function(db) {
   router.patch('/:guildId', asyncHandler(async (req, res) => {
     const { guildId } = req.params;
     const updates = req.body;
-    
+
     try {
       const result = await configService.updateGuildConfig(db, guildId, updates);
       const updatedConfig = await configService.getGuildConfig(db, guildId);
@@ -59,14 +58,14 @@ export default function(db) {
   // Delete a guild configuration
   router.delete('/:guildId', asyncHandler(async (req, res) => {
     const { guildId } = req.params;
-    
+
     try {
       const result = await db.collection('guild_configs').deleteOne({ guildId });
-      
+
       if (result.deletedCount === 0) {
         return res.status(404).json({ error: 'Guild configuration not found' });
       }
-      
+
       res.json({ message: 'Guild configuration deleted successfully' });
     } catch (error) {
       res.status(500).json({ error: error.message });
@@ -78,12 +77,31 @@ export default function(db) {
     try {
       // We'll need to query the Discord API or get this from our database
       const connectedGuilds = await db.collection('connected_guilds').find({}).toArray();
-      
+
       res.json(connectedGuilds);
     } catch (error) {
       res.status(500).json({ error: error.message });
     }
   }));
+
+  // Added route to handle guild config retrieval with database check
+  router.get('/config/:guildId', asyncHandler(async (req, res) => {
+    try {
+      // Check if database is initialized
+      if (!db) {
+        console.error('Database connection not available');
+        return res.status(503).json({ error: 'Database connection not available' });
+      }
+
+      const guildId = req.params.guildId;
+      const config = await db.collection('guild_configs').findOne({ guildId });
+      res.json(config || { guildId, whitelisted: false });
+    } catch (error) {
+      console.error('Error fetching guild config:', error);
+      res.status(500).json({ error: 'Internal server error' });
+    }
+  }));
+
 
   return router;
 }

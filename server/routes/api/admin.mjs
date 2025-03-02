@@ -565,6 +565,22 @@ function createRouter(db) {
   // Add admin routes to main router
   router.use('/admin', adminRouter);
 
+  const checkWhitelistStatus = async (guildId) => {
+    try {
+      // Check if database is initialized
+      if (!db) {
+        console.error('Error checking whitelist status: Database connection not available');
+        return false;
+      }
+
+      const config = await db.collection('guild_configs').findOne({ guildId });
+      return config?.whitelisted || false;
+    } catch (error) {
+      console.error('Error checking whitelist status:', error);
+      return false;
+    }
+  };
+
   return router;
 }
 
