@@ -341,85 +341,87 @@ export class AvatarGenerationService {
         throw new Error('Invalid or empty prompt provided');
       }
 
-      // Define the response schema for structured output
-      const schema = {
+      const prompt = `Generate a detailed character for a role-playing game. The character should be unique and have a distinct personality.`;
+
+      // Define the JSON schema for structured output
+      const responseSchema = {
         type: "OBJECT",
         properties: {
           name: {
             type: "STRING",
-            description: "A creative name for the character"
-          },
-          emoji: {
-            type: "STRING",
-            description: "A single emoji that best represents the character"
+            description: "The character's name"
           },
           description: {
             type: "STRING",
-            description: "A one paragraph detailed visual description of the character's appearance"
+            description: "A detailed physical description of the character"
           },
           personality: {
             type: "STRING",
-            description: "A short unique personality description"
+            description: "A description of the character's personality, traits, and background"
+          },
+          emoji: {
+            type: "STRING",
+            description: "A single emoji that represents the character"
           }
         },
-        required: ["name", "description", "personality"],
-        propertyOrdering: ["name", "emoji", "description", "personality"]
+        required: ["name", "description", "personality"]
       };
 
-      const systemPrompt = `You are a creative and unsettling character designer. Create a ${this.getRandomAlignment()} character based on the following prompt.
-If the prompt contains non-English words, fill out ALL fields in that same language.
-Keep all responses concise, with descriptions no more than four sentences.`;
+      const aiResponse = await this.aiService.generateText(prompt, 1024, 0.7, 0.95, 40, responseSchema);
 
-      const userMessage = `Create a character based on: "${userPrompt}"`;
-
-      const response = await this.aiService.chat([
-        { role: 'system', content: systemPrompt },
-        { role: 'user', content: userMessage }
-      ], {
-        model: this.config.getAIConfig().aiProvider.metaModel || "gemini-1.5-flash",
-        responseMimeType: "application/json",
-        responseSchema: schema,
-        fallbackOnError: retries <= 1,
-        fallbackResponse: JSON.stringify({
-          name: "Emergency Avatar",
-          emoji: "🤗",
-          description: "A mysterious entity created during a moment of uncertainty.",
-          personality: "Mysterious, Adaptive, Resilient"
-        })
-      });
-      
-      if (!response) {
-        throw new Error('Failed to generate avatar details.');
-      }
-      
-      // Parse the JSON response
-      let avatarDetails;
       try {
-        avatarDetails = JSON.parse(response.trim());
-      } catch (parseError) {
-        this.logger.error(`Failed to parse JSON response: ${parseError.message}`);
-        this.logger.debug(`Raw response: ${response}`);
-        throw new Error('Invalid JSON response received from AI service');
+        let responseJson;
+
+        // If the response is already an object (structured output succeeded)
+        if (typeof aiResponse === 'object' && aiResponse !== null) {
+          responseJson = aiResponse;
+          this.logger.info(`Successfully received structured JSON response`);
+        } 
+        // If the response is a string, try to extract JSON from it
+        else if (typeof aiResponse === 'string') {
+          this.logger.info(`Received string response, attempting to extract JSON`);
+
+          // Look for JSON in the response text
+          const jsonMatch = aiResponse.match(/\{[\s\S]*\}/);
+          if (jsonMatch) {
+            responseJson = JSON.parse(jsonMatch[0]);
+            this.logger.info(`Successfully extracted JSON from string response`);
+          } else {
+            throw new Error('Extracted string is not valid JSON.');
+          }
+        } else {
+          throw new Error('Unexpected response type from AI service');
+        }
+
+        // Validate the avatar details
+        if (!responseJson.name || !responseJson.description || !responseJson.personality) {
+          throw new Error('Required avatar fields are missing from AI response.');
+        }
+
+        // If emoji is missing, add a default one
+        if (!responseJson.emoji) {
+          responseJson.emoji = "🧙";
+        }
+
+        return responseJson;
+      } catch (error) {
+        this.logger.warn(`Avatar generation attempt ${4 - retries}/3 failed: ${error.message}`);
+
+        // Retry with different model if there are retries left
+        if (retries > 1) {
+          this.logger.info(`Retrying avatar generation, ${retries - 1} attempts remaining`);
+          // Toggle between available models for the next attempt.
+          this.config.getAIConfig().aiProvider.metaModel =
+            this.config.getAIConfig().aiProvider.metaModel === "gemini-1.5-flash"
+              ? "openai/gpt-3.5-turbo"
+              : "gemini-1.5-flash";
+          return this.generateAvatarDetails(userPrompt, retries - 1);
+        }
+        throw new Error('Failed to generate avatar after 3 attempts: ' + error.message);
       }
-      
-      const { name, description, emoji, personality } = avatarDetails;
-      if (!name || !description || !personality) {
-        throw new Error('Incomplete avatar details received.');
-      }
-      
-      return { name, description, emoji: emoji || "🤗", personality };
     } catch (error) {
-      this.logger.error(`Avatar generation error: ${error.message}`);
-      if (retries > 1) {
-        this.logger.info(`Retrying avatar generation, ${retries - 1} attempts remaining`);
-        // Toggle between available models for the next attempt.
-        this.config.getAIConfig().aiProvider.metaModel =
-          this.config.getAIConfig().aiProvider.metaModel === "gemini-1.5-flash"
-            ? "openai/gpt-3.5-turbo"
-            : "gemini-1.5-flash";
-        return this.generateAvatarDetails(userPrompt, retries - 1);
-      }
-      throw new Error('Failed to generate avatar details.');
+      this.logger.error(`Error while generating avatar details: ${error.message}`);
+      throw error;
     }
   }
 

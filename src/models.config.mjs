@@ -40,7 +40,8 @@ const defaultModels = [
     rarity: 'common',
     maxTokens: 4096,
     costPerToken: 0.000001,
-    description: 'Standard OpenAI GPT-3.5 Turbo model'
+    description: 'Standard OpenAI GPT-3.5 Turbo model',
+    supportsStructuredOutput: false
   },
 ];
 export default defaultModels;

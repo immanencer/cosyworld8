@@ -175,7 +175,7 @@ export class GoogleAIService {
         model,
         systemInstruction: systemInstruction
       };
-      
+
       // Add JSON schema if provided
       if (options.responseSchema) {
         modelConfig.generationConfig = {
@@ -183,7 +183,7 @@ export class GoogleAIService {
           responseSchema: options.responseSchema
         };
       }
-      
+
       // Get the generative model instance with proper configuration
       const generativeModel = this.googleAI.getGenerativeModel(modelConfig);
 
@@ -235,7 +235,7 @@ export class GoogleAIService {
 
       // Process user prompt parts
       const userParts = [];
-      
+
       // Add user content - with default fallback text to prevent empty parts
       if (typeof userPrompt === 'string') {
         userParts.push({ text: userPrompt });
@@ -284,13 +284,13 @@ export class GoogleAIService {
           });
         }
       }
-      
+
       // Ensure we have at least one part with text to prevent API errors
       if (userParts.length === 0) {
         userParts.push({ text: "Request avatar information" });
         console.log("Added default text prompt to prevent empty parts error");
       }
-      
+
       // Prepare the request with proper structure - now only with user contents
       const contents = [{
         role: 'user',
@@ -317,7 +317,7 @@ export class GoogleAIService {
       const imageParts = userParts.filter(p => p.inlineData).length;
       const textParts = userParts.filter(p => p.text).length;
       console.log(`Preparing Gemini request with ${imageParts} images and ${textParts} text parts`);
-      
+
       // More detailed logging for debugging
       if (textParts === 0 && imageParts === 0) {
         console.warn("WARNING: Request has no recognized content parts!");
@@ -372,13 +372,13 @@ export class GoogleAIService {
         stack: error.stack,
         details: error.details || 'No details available'
       }, null, 2));
-      
+
       // Return fallbackResponse if it exists
       if (options.fallbackOnError && options.fallbackResponse) {
         console.log("Returning fallback response due to error");
         return options.fallbackResponse;
       }
-      
+
       throw error;
     }
   }
