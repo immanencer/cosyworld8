@@ -1,4 +1,5 @@
 import OpenAI from 'openai';
+import { GoogleGenerativeAI } from '@google/generative-ai';
 import defaultModels from '../models.config.mjs';
 
 export class GoogleAIService {
