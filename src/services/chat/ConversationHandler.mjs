@@ -524,7 +524,7 @@ Based on all of the above context, share an updated personality that reflects yo
    * @param {*} avatar 
    * @returns {string}
    */
-  async async buildDungeonPrompt(avatar) {
+  async buildDungeonPrompt(avatar) {
     const commandsDescription = this.dungeonService.getCommandsDescription(avatar) || '';
     const location = await this.dungeonService.getLocationDescription(avatar.channelId, avatar.channelName);
     const items = await this.dungeonService.getItemsDescription(avatar);
