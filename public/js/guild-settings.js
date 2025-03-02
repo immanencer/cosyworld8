@@ -181,6 +181,11 @@ class GuildSettingsManager {
       if (!guildId) {
         throw new Error('Guild ID is required');
       }
+      
+      // Validate guild ID format (Discord guild IDs are numeric strings)
+      if (this.selectedGuildId === 'new' && !/^\d+$/.test(guildId)) {
+        throw new Error('Guild ID must be a valid Discord server ID (numbers only)');
+      }
 
       // Build settings object
       const settings = {

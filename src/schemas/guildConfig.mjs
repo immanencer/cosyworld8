@@ -2,7 +2,7 @@
 import { z } from 'zod';
 
 export const GuildConfigSchema = z.object({
-  guildId: z.string().min(1),
+  guildId: z.string().min(1).regex(/^\d+$/, "Guild ID must be a valid Discord server ID (numbers only)"),
   guildName: z.string().optional(),
   whitelisted: z.boolean().default(false),
   summonerRole: z.string().optional(),

@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -63,10 +62,10 @@
               <h3 class="text-lg leading-6 font-medium text-gray-900">Configure Discord Server Settings</h3>
               <p class="mt-1 max-w-2xl text-sm text-gray-500">Manage settings for each connected Discord server</p>
             </div>
-            
+
             <div id="guild-settings-container" class="px-4 py-5 sm:p-6">
               <div id="settings-message" class="settings-message hidden"></div>
-              
+
               <div class="mb-6">
                 <label for="guild-selector" class="block text-sm font-medium text-gray-700">Select Discord Server</label>
                 <select id="guild-selector" class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md">
@@ -74,26 +73,27 @@
                   <!-- Options will be populated by JavaScript -->
                 </select>
               </div>
-              
+
               <div id="no-server-selected" class="py-4 text-center text-gray-500">
                 Please select a Discord server to configure
               </div>
-              
+
               <form id="guild-settings-form" class="hidden space-y-6">
                 <div class="bg-gray-50 p-4 rounded-md">
                   <h4 class="text-lg font-medium text-gray-900 mb-4">Basic Settings</h4>
-                  
+
                   <div class="grid grid-cols-1 gap-y-6 gap-x-4 sm:grid-cols-6">
                     <div class="sm:col-span-3">
-                      <label for="guild-id" class="block text-sm font-medium text-gray-700">Server ID</label>
-                      <input type="text" id="guild-id" class="mt-1 focus:ring-indigo-500 focus:border-indigo-500 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md">
+                      <label for="guild-id" class="block text-sm font-medium text-gray-700">Discord Server ID</label>
+                      <input type="text" id="guild-id" class="mt-1 focus:ring-indigo-500 focus:border-indigo-500 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md" placeholder="Discord server ID (numbers only)">
+                      <p class="mt-1 text-xs text-gray-500">Enter the numeric Discord server ID. Right-click on server → Copy ID (with developer mode enabled)</p>
                     </div>
-                    
+
                     <div class="sm:col-span-3">
                       <label for="guild-name" class="block text-sm font-medium text-gray-700">Server Name</label>
                       <input type="text" id="guild-name" class="mt-1 focus:ring-indigo-500 focus:border-indigo-500 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md">
                     </div>
-                    
+
                     <div class="sm:col-span-3">
                       <label for="summoner-role" class="block text-sm font-medium text-gray-700">Summoner Role</label>
                       <input type="text" id="summoner-role" class="mt-1 focus:ring-indigo-500 focus:border-indigo-500 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md" placeholder="Role name or ID">
@@ -103,12 +103,12 @@
                       <label for="summon-emoji" class="block text-sm font-medium text-gray-700">Summon Emoji</label>
                       <input type="text" id="summon-emoji" class="mt-1 focus:ring-indigo-500 focus:border-indigo-500 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md" placeholder="✨">
                     </div>
-                    
+
                     <div class="sm:col-span-6">
                       <label for="admin-roles" class="block text-sm font-medium text-gray-700">Admin Roles (comma separated)</label>
                       <input type="text" id="admin-roles" class="mt-1 focus:ring-indigo-500 focus:border-indigo-500 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md" placeholder="Admin, Moderator">
                     </div>
-                    
+
                     <div class="sm:col-span-6">
                       <div class="flex items-start">
                         <div class="flex items-center h-5">
@@ -122,17 +122,17 @@
                     </div>
                   </div>
                 </div>
-                
+
                 <div class="bg-gray-50 p-4 rounded-md">
                   <h4 class="text-lg font-medium text-gray-900 mb-4">Rate Limiting</h4>
-                  
+
                   <div class="grid grid-cols-1 gap-y-6 gap-x-4 sm:grid-cols-6">
                     <div class="sm:col-span-3">
                       <label for="rate-limit-messages" class="block text-sm font-medium text-gray-700">Max Messages</label>
                       <input type="number" id="rate-limit-messages" min="1" max="100" class="mt-1 focus:ring-indigo-500 focus:border-indigo-500 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md" placeholder="5">
                       <p class="mt-1 text-xs text-gray-500">Maximum number of messages per interval</p>
                     </div>
-                    
+
                     <div class="sm:col-span-3">
                       <label for="rate-limit-interval" class="block text-sm font-medium text-gray-700">Interval (seconds)</label>
                       <input type="number" id="rate-limit-interval" min="1" max="3600" class="mt-1 focus:ring-indigo-500 focus:border-indigo-500 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md" placeholder="60">
@@ -143,33 +143,33 @@
 
                 <div class="bg-gray-50 p-4 rounded-md">
                   <h4 class="text-lg font-medium text-gray-900 mb-4">Tool Emojis</h4>
-                  
+
                   <div class="grid grid-cols-1 gap-y-6 gap-x-4 sm:grid-cols-6">
                     <div class="sm:col-span-3">
                       <label for="tool-emoji-summon" class="block text-sm font-medium text-gray-700">Summon Emoji</label>
                       <input type="text" id="tool-emoji-summon" class="mt-1 focus:ring-indigo-500 focus:border-indigo-500 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md" placeholder="💼">
                     </div>
-                    
+
                     <div class="sm:col-span-3">
                       <label for="tool-emoji-breed" class="block text-sm font-medium text-gray-700">Breed Emoji</label>
                       <input type="text" id="tool-emoji-breed" class="mt-1 focus:ring-indigo-500 focus:border-indigo-500 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md" placeholder="🏹">
                     </div>
-                    
+
                     <div class="sm:col-span-3">
                       <label for="tool-emoji-attack" class="block text-sm font-medium text-gray-700">Attack Emoji</label>
                       <input type="text" id="tool-emoji-attack" class="mt-1 focus:ring-indigo-500 focus:border-indigo-500 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md" placeholder="⚔️">
                     </div>
-                    
+
                     <div class="sm:col-span-3">
                       <label for="tool-emoji-defend" class="block text-sm font-medium text-gray-700">Defend Emoji</label>
                       <input type="text" id="tool-emoji-defend" class="mt-1 focus:ring-indigo-500 focus:border-indigo-500 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md" placeholder="🛡️">
                     </div>
                   </div>
                 </div>
-                
+
                 <div class="bg-gray-50 p-4 rounded-md">
                   <h4 class="text-lg font-medium text-gray-900 mb-4">Features</h4>
-                  
+
                   <div class="grid grid-cols-1 gap-y-6 gap-x-4 sm:grid-cols-3">
                     <div class="col-span-1">
                       <div class="flex items-start">
@@ -182,7 +182,7 @@
                         </div>
                       </div>
                     </div>
-                    
+
                     <div class="col-span-1">
                       <div class="flex items-start">
                         <div class="flex items-center h-5">
@@ -194,7 +194,7 @@
                         </div>
                       </div>
                     </div>
-                    
+
                     <div class="col-span-1">
                       <div class="flex items-start">
                         <div class="flex items-center h-5">
@@ -208,35 +208,35 @@
                     </div>
                   </div>
                 </div>
-                
+
                 <div class="bg-gray-50 p-4 rounded-md">
                   <h4 class="text-lg font-medium text-gray-900 mb-4">Prompts</h4>
-                  
+
                   <div class="space-y-6">
                     <div>
                       <label for="intro-prompt" class="block text-sm font-medium text-gray-700">Introduction Prompt</label>
                       <textarea id="intro-prompt" class="mt-1 focus:ring-indigo-500 focus:border-indigo-500 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md"></textarea>
                       <p class="mt-1 text-xs text-gray-500">Used when a new avatar introduces itself</p>
                     </div>
-                    
+
                     <div>
                       <label for="summon-prompt" class="block text-sm font-medium text-gray-700">Summon Prompt</label>
                       <textarea id="summon-prompt" class="mt-1 focus:ring-indigo-500 focus:border-indigo-500 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md"></textarea>
                       <p class="mt-1 text-xs text-gray-500">Used when summoning a new avatar</p>
                     </div>
-                    
+
                     <div>
                       <label for="attack-prompt" class="block text-sm font-medium text-gray-700">Attack Prompt</label>
                       <textarea id="attack-prompt" class="mt-1 focus:ring-indigo-500 focus:border-indigo-500 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md"></textarea>
                       <p class="mt-1 text-xs text-gray-500">Used for attack actions</p>
                     </div>
-                    
+
                     <div>
                       <label for="defend-prompt" class="block text-sm font-medium text-gray-700">Defend Prompt</label>
                       <textarea id="defend-prompt" class="mt-1 focus:ring-indigo-500 focus:border-indigo-500 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md"></textarea>
                       <p class="mt-1 text-xs text-gray-500">Used for defend actions</p>
                     </div>
-                    
+
                     <div>
                       <label for="breed-prompt" class="block text-sm font-medium text-gray-700">Breed Prompt</label>
                       <textarea id="breed-prompt" class="mt-1 focus:ring-indigo-500 focus:border-indigo-500 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md"></textarea>
@@ -244,7 +244,7 @@
                     </div>
                   </div>
                 </div>
-                
+
                 <div class="flex justify-end">
                   <button type="button" class="bg-white py-2 px-4 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
                     Cancel
@@ -266,7 +266,7 @@
       </div>
     </footer>
   </div>
-  
+
   <script src="/js/guild-settings.js"></script>
 </body>
 </html>
