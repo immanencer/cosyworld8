@@ -2,11 +2,6 @@ import express from 'express';
 import cors from 'cors';
 import { MongoClient } from 'mongodb';
 import process from 'process';
-import { fileURLToPath } from 'url';
-import { dirname, join } from 'path';
-import swaggerUI from 'swagger-ui-express';
-import YAML from 'yamljs';
-import morgan from 'morgan';
 import adminRoutes from './routes/adminRoutes.mjs';
 
 const app = express();
