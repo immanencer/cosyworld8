@@ -262,9 +262,13 @@ class GuildSettingsManager {
             throw new Error(`Server returned ${response.status}: ${responseText || 'No error details provided'}`);
           }
         }
-
-      // Add cache-busting query param to force refresh server's cache
-      await fetch(`/api/guilds/${guildId}/clear-cache`, { method: 'POST' });
+        
+        // Add cache-busting query param to force refresh server's cache
+        await fetch(`/api/guilds/${guildId}/clear-cache`, { method: 'POST' });
+      } catch (fetchError) {
+        console.error('Network error:', fetchError);
+        throw fetchError; // Re-throw to be caught by the outer try-catch
+      }
       
       const updatedSettings = await response.json();
       console.log('Settings saved successfully:', updatedSettings);
