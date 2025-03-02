@@ -13,8 +13,8 @@ export class MoveTool extends BaseTool {
     }
     this.locationService = dungeonService.locationService;
     this.name = 'move';
-    this.description = 'Move to the location specified';
-    this.emoji = '🧠';
+    this.description = 'Move to the location specified, creating it if it doesn not exist.';
+    this.emoji = '🏃‍♂️';
   }
 
   /**
