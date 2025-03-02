@@ -4,12 +4,14 @@ export class MessageHandler {
    * @param {object} client - The Discord client instance.
    * @param {object} chatService - Service used to trigger chat responses.
    * @param {object} imageProcessingService - Optional service for processing images.
+   * @param {object} logger - Logger instance (defaults to console)
    */
-  constructor(avatarService, client, chatService, imageProcessingService = null) {
+  constructor(avatarService, client, chatService, imageProcessingService = null, logger = console) {
     this.avatarService = avatarService;
     this.client = client;
     this.chatService = chatService;
     this.imageProcessingService = imageProcessingService;
+    this.logger = logger;
 
     // Message Queue - for processing messages in order
     this.messageQueue = new Map(); // channelId -> array of messages
@@ -49,6 +51,8 @@ export class MessageHandler {
   }
 
   async processChannel(channelId) {
+    if (!channelId) return;
+
     try {
       const avatarsInChannel = await this.avatarService.getAvatarsInChannel(channelId);
       if (!avatarsInChannel.length) return;
@@ -97,7 +101,8 @@ export class MessageHandler {
         this.processQueue(channelId);
       }
     } catch (error) {
-      this.logger.error(`Error processing channel ${channelId}:`, error);
+      const errorMessage = error ? (error.message || error.toString()) : 'Unknown error';
+      this.logger.error(`Error processing channel ${channelId}: ${errorMessage}`);
     }
   }
 
@@ -115,24 +120,24 @@ export class MessageHandler {
         const avatar = await this.avatarService.getAvatarById(item.avatarId);
         if (avatar) {
           const channel = await this.chatService.client.channels.fetch(channelId);
-          //Added basic image processing here.  Needs significant expansion for real-world use.
-          const message = await this.chatService.getMessageById(item.messageId)
-          if(message && message.attachments && message.attachments.length > 0){
+          const message = await this.chatService.getMessageById(item.messageId);
+          if (message && message.attachments && message.attachments.length > 0) {
             const imageUrl = message.attachments[0].url;
             if (this.imageProcessingService) {
               const imageAnalysis = await this.imageProcessingService.analyzeImage(imageUrl);
               await this.chatService.respondAsAvatar(channel, avatar, !item.isBot, `Image analysis: ${JSON.stringify(imageAnalysis)}`);
             } else {
+              this.logger.warn('imageProcessingService is not defined. Skipping image analysis.');
               await this.chatService.respondAsAvatar(channel, avatar, !item.isBot);
             }
           } else {
             await this.chatService.respondAsAvatar(channel, avatar, !item.isBot);
           }
-
           await new Promise(resolve => setTimeout(resolve, this.RESPONSE_DELAY));
         }
       } catch (error) {
-        this.logger.error(`Error processing avatar response: ${error.message}`);
+        const errorMessage = error ? (error.message || error.toString()) : 'Unknown error';
+        this.logger.error(`Error processing avatar response: ${errorMessage}`);
       } finally {
         channelQueue.processing--;
         this.processingMessages.delete(item.processingKey);
