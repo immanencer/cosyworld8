@@ -1,6 +1,9 @@
 import path from 'path';
 import fs from 'fs/promises';
 import { fileURLToPath } from 'url';
+import dotenv from 'dotenv';
+
+dotenv.config();
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -10,7 +13,31 @@ let clientInstance = null;
 
 class ConfigService {
   constructor() {
-    this.config = {};
+    this.config = {
+      prompt: {
+        summon: process.env.SUMMON_PROMPT || "Create a twisted avatar, a servant of darkness.",
+        introduction: process.env.INTRODUCTION_PROMPT || "You've just arrived. Introduce yourself."
+      },
+      ai: {
+        replicate: {
+          apiToken: process.env.REPLICATE_API_TOKEN,
+          model: process.env.REPLICATE_MODEL,
+          loraTriggerWord: process.env.REPLICATE_LORA_TRIGGER
+        },
+        google: {
+          apiKey: process.env.GOOGLE_API_KEY
+        }
+      },
+      mongo: {
+        uri: process.env.MONGO_URI,
+        dbName: process.env.MONGO_DB_NAME || 'discord-bot',
+        collections: {
+          avatars: 'avatars',
+          imageUrls: 'image_urls'
+        }
+      },
+      webhooks: {} // Initialize webhooks to an empty object
+    };
     this.loaded = false;
     this.client = null;
   }
@@ -35,7 +62,7 @@ class ConfigService {
         // If user config doesn't exist, create it with default values
         await fs.writeFile(
           path.join(CONFIG_DIR, 'user.config.json'),
-          JSON.stringify(this.config, null, 2) // Use this.config instead of defaultConfig
+          JSON.stringify(this.config, null, 2)
         );
         userConfig = this.config;
       }
@@ -46,6 +73,7 @@ class ConfigService {
         ...defaultConfig,
         ...userConfig
       };
+      this.loaded = true;
     } catch (error) {
       console.error('Error loading config:', error);
     }
@@ -184,18 +212,17 @@ class ConfigService {
   }
 
   validate() {
-    const required = [
-      'DISCORD_CLIENT_ID',
-      'DISCORD_BOT_TOKEN',
-      'MONGO_URI',
-      'OPENROUTER_API_TOKEN'
-    ];
-
-    const missing = required.filter(key => !process.env[key]);
-
-    if (missing.length > 0) {
-      throw new Error(`Missing required environment variables: ${missing.join(', ')}`);
+    // Basic validation to ensure critical configs exist
+    if (!this.config.mongo.uri) {
+      console.warn('MongoDB URI is not configured. Database functionality will be limited.');
     }
+
+    // Log warning but don't fail if Replicate isn't configured
+    if (!this.config.ai.replicate.apiToken) {
+      console.warn('Replicate API token is not configured. Image generation will be disabled.');
+    }
+
+    return true;
   }
 }
 

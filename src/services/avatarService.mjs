@@ -21,9 +21,8 @@ export class AvatarGenerationService {
   constructor(db, config) {
     this.config = config;
     this.aiService = new AIService();
-    this.replicate = new Replicate({ auth: this.config.getAIConfig().replicate.apiToken });
     this.db = db;
-
+    
     // Initialize Logger
     this.logger = winston.createLogger({
       level: 'info',
@@ -38,10 +37,27 @@ export class AvatarGenerationService {
         new winston.transports.File({ filename: 'avatarService.log' }),
       ],
     });
-
-    const mongoConfig = this.config.getMongoConfig();
-    this.IMAGE_URL_COLLECTION = mongoConfig.collections.imageUrls;
-    this.AVATARS_COLLECTION = mongoConfig.collections.avatars;
+    
+    try {
+      // Only initialize Replicate if configuration exists
+      const aiConfig = this.config.getAIConfig();
+      if (aiConfig && aiConfig.replicate && aiConfig.replicate.apiToken) {
+        this.replicate = new Replicate({ auth: aiConfig.replicate.apiToken });
+        this.logger.info('Replicate service initialized successfully');
+      } else {
+        this.logger.warn('Replicate configuration is missing or invalid. Image generation will be disabled.');
+        this.replicate = null;
+      }
+      
+      const mongoConfig = this.config.getMongoConfig();
+      this.IMAGE_URL_COLLECTION = mongoConfig?.collections?.imageUrls || 'image_urls';
+      this.AVATARS_COLLECTION = mongoConfig?.collections?.avatars || 'avatars';
+    } catch (error) {
+      this.logger.error(`Error initializing services: ${error.message}`);
+      this.replicate = null;
+      this.IMAGE_URL_COLLECTION = 'image_urls';
+      this.AVATARS_COLLECTION = 'avatars';
+    }
 
     this.prompts = null;
   }
@@ -452,34 +468,59 @@ export class AvatarGenerationService {
    * @returns {string|null} - The local filename of the generated image.
    */
   async generateAvatarImage(prompt) {
-    const trigger = this.config.getAIConfig().replicate.loraTriggerWord || '';
-    const [output] = await this.replicate.run(
-      this.config.getAIConfig().replicate.model,
-      {
-        input: {
-          prompt: `${trigger} ${prompt} ${trigger}`,
-          model: "dev",
-          lora_scale: 1,
-          num_outputs: 1,
-          aspect_ratio: "1:1",
-          output_format: "png",
-          guidance_scale: 3.5,
-          output_quality: 90,
-          prompt_strength: 0.8,
-          extra_lora_scale: 1,
-          num_inference_steps: 28,
-          disable_safety_checker: true,
-        }
+    if (!this.replicate) {
+      this.logger.error('Replicate service not available. Cannot generate avatar image.');
+      return null;
+    }
+    
+    try {
+      const aiConfig = this.config.getAIConfig() || {};
+      const replicateConfig = aiConfig.replicate || {};
+      const trigger = replicateConfig.loraTriggerWord || '';
+      const model = replicateConfig.model;
+      
+      if (!model) {
+        this.logger.error('Replicate model not configured');
+        return null;
       }
-    );
-    const imageUrl = output.url ? output.url() : [output];
-    this.logger.info('Generated image URL: ' + imageUrl.toString());
-    const imageBuffer = await this.downloadImage(imageUrl.toString());
-    const uuid = `avatar_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
-    const filename = `./images/${uuid}.png`;
-    await fs.mkdir('./images', { recursive: true });
-    await fs.writeFile(filename, imageBuffer);
-    return filename;
+      
+      const [output] = await this.replicate.run(
+        model,
+        {
+          input: {
+            prompt: `${trigger} ${prompt} ${trigger}`,
+            model: "dev",
+            lora_scale: 1,
+            num_outputs: 1,
+            aspect_ratio: "1:1",
+            output_format: "png",
+            guidance_scale: 3.5,
+            output_quality: 90,
+            prompt_strength: 0.8,
+            extra_lora_scale: 1,
+            num_inference_steps: 28,
+            disable_safety_checker: true,
+          }
+        }
+      );
+      
+      if (!output) {
+        this.logger.error('No output generated from Replicate');
+        return null;
+      }
+      
+      const imageUrl = output.url ? output.url() : [output];
+      this.logger.info('Generated image URL: ' + imageUrl.toString());
+      const imageBuffer = await this.downloadImage(imageUrl.toString());
+      const uuid = `avatar_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
+      const filename = `./images/${uuid}.png`;
+      await fs.mkdir('./images', { recursive: true });
+      await fs.writeFile(filename, imageBuffer);
+      return filename;
+    } catch (error) {
+      this.logger.error(`Error generating avatar image: ${error.message}`);
+      return null;
+    }e;
   }
 
   /**
