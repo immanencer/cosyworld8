@@ -195,6 +195,25 @@ export class GoogleAIService {
         topK: options.topK || 40
       };
 
+      // Add structured output schema if provided
+      if (options.responseSchema) {
+        generationConfig.responseSchema = options.responseSchema;
+
+        // When using responseSchema, set system instructions to reinforce structured output
+        if (!Array.isArray(messages)) {
+          const systemMessage = {
+            role: "system",
+            content: "Respond with the structured format specified in the schema. Do not include any additional text outside the required structure."
+          };
+          messages = [systemMessage, { role: "user", content: messages }];
+        } else if (messages[0]?.role !== "system") {
+          messages.unshift({
+            role: "system",
+            content: "Respond with the structured format specified in the schema. Do not include any additional text outside the required structure."
+          });
+        }
+      }
+
       // Log the input parameters for debugging
       console.log(`Chat inputs: systemPrompt type=${typeof systemPrompt}, userPrompt type=${typeof userPrompt}, hasImages=${Array.isArray(userPrompt) && userPrompt.some(part => part.inlineData)}`);
 
@@ -403,7 +422,7 @@ export class GoogleAIService {
         topP: options.topP || 0.95,
         topK: options.topK || 40
       };
-      
+
       // Add structured output schema if provided
       if (options.responseSchema) {
         generationConfig.responseSchema = options.responseSchema;

@@ -341,7 +341,16 @@ export class AvatarGenerationService {
         throw new Error('Invalid or empty prompt provided');
       }
 
-      const prompt = `Generate a detailed character for a role-playing game. The character should be unique and have a distinct personality.`;
+      const prompt = `Generate a detailed character for a role-playing game based on this description: "${userPrompt}". 
+      Create a unique avatar with a distinct personality, appearance, and appropriate emoji.
+      Respond with a JSON object containing name, description, personality, and emoji fields.
+      Example format:
+      {
+        "name": "Character Name",
+        "description": "Detailed physical description of the character",
+        "personality": "Description of the character's personality traits and background",
+        "emoji": "🔮"
+      }`;
 
       // Define the JSON schema for structured output
       const responseSchema = {
