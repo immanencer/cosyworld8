@@ -160,6 +160,9 @@ export class GoogleAIService {
         topP: options.topP || 0.95,
         topK: options.topK || 40
       };
+      
+      // Log the input parameters for debugging
+      console.log(`Chat inputs: systemPrompt type=${typeof systemPrompt}, userPrompt type=${typeof userPrompt}, hasImages=${Array.isArray(userPrompt) && userPrompt.some(part => part.inlineData)}`);
 
       // Prepare content parts for the API
       const parts = [];

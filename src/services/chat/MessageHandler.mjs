@@ -250,4 +250,55 @@ export class MessageHandler {
     return mentionCounts;
   }
 
+  async getChannelContext(channelId, limit = 10) {
+    try {
+      this.logger.info(`Fetching channel context for channel ${channelId}`);
+
+      // Fetch messages from database if available
+      const db = await this.getDb();
+      if (db) {
+        const messagesCollection = db.collection('messages');
+        const messages = await messagesCollection
+          .find({ channelId })
+          .sort({ timestamp: -1 })
+          .limit(limit)
+          .toArray();
+
+        this.logger.debug(`Retrieved ${messages.length} messages from database for channel ${channelId}`);
+        return messages.reverse();  // Chronological order
+      }
+
+      // If db lookup fails, try to fetch from Discord API
+      const channel = await this.client.channels.fetch(channelId);
+      if (!channel) {
+        this.logger.warn(`Channel ${channelId} not found`);
+        return [];
+      }
+
+      const discordMessages = await channel.messages.fetch({ limit });
+      const formattedMessages = Array.from(discordMessages.values())
+        .map(msg => ({
+          messageId: msg.id,
+          channelId: msg.channel.id,
+          authorId: msg.author.id,
+          authorUsername: msg.author.username,
+          content: msg.content,
+          hasImages: msg.attachments.some(a => a.contentType?.startsWith('image/')) ||
+            msg.embeds.some(e => e.image || e.thumbnail),
+          timestamp: msg.createdTimestamp
+        }))
+        .sort((a, b) => a.timestamp - b.timestamp);
+
+      this.logger.debug(`Retrieved ${formattedMessages.length} messages from Discord API for channel ${channelId}`);
+      return formattedMessages;
+    } catch (error) {
+      this.logger.error(`Error fetching channel context for channel ${channelId}:`, error);
+      return [];
+    }
+  }
+
+  async getDb() {
+    return this.db;
+  }
+
 }

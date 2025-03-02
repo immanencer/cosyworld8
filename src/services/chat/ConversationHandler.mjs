@@ -481,19 +481,26 @@ Based on all of the above context, share an updated personality that reflects yo
         ${imagePromptParts.length > 0 ? 'If there are images in the conversation, comment on them as appropriate.' : ''}
       `.trim();
 
-      // Prepare the prompt parts, including any images
-      const promptParts = [...imagePromptParts, { text: textPrompt }];
-
       // Generate response via AI service
       let response;
       if (imagePromptParts.length > 0) {
-        // With images
-        response = await this.aiService.chat([
-          { role: 'system', content: systemPrompt },
-          { role: 'assistant', content: lastNarrative?.content || 'No previous reflection' }
-        ], promptParts, { model: avatar.model, max_tokens: 200 });
+        // With images - create a structured prompt that includes system and context
+        const systemMessage = { role: 'system', content: systemPrompt };
+        const assistantMessage = { role: 'assistant', content: lastNarrative?.content || 'No previous reflection' };
+        
+        // Create a proper user message that includes both text content and images
+        const userMessageParts = [...imagePromptParts, { text: textPrompt }];
+        
+        // Make the complete chat request
+        response = await this.aiService.chat(
+          [systemMessage, assistantMessage], 
+          userMessageParts, 
+          { model: avatar.model, max_tokens: 200 }
+        );
+        
+        this.logger.info(`Generated response with images for ${avatar.name}`);
       } else {
-        // Without images
+        // Without images - standard approach
         response = await this.aiService.chat([
           { role: 'system', content: systemPrompt },
           { role: 'assistant', content: lastNarrative?.content || 'No previous reflection' },
