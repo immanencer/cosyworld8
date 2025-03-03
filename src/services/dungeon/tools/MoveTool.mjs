@@ -1,5 +1,5 @@
 import { BaseTool } from './BaseTool.mjs';
-import { sendAsWebhook } from '../../discordService.mjs';
+import { sendAsWebhook, sendAvatarProfileEmbedFromObject } from '../../../services/discordService.mjs';
 
 export class MoveTool extends BaseTool {
   /**
@@ -13,7 +13,7 @@ export class MoveTool extends BaseTool {
     }
     this.locationService = dungeonService.locationService;
     this.name = 'move';
-    this.description = 'Move to the location specified, creating it if it doesn not exist.';
+    this.description = 'Move to the location specified, creating it if it does not exist.';
     this.emoji = '🏃‍♂️';
   }
 
@@ -25,26 +25,18 @@ export class MoveTool extends BaseTool {
    * @returns {Promise<string>} A status or error message.
    */
   async execute(message, params, avatar) {
-    // 1. Basic checks
-    if (!message.channel.guild) {
-      return 'This command can only be used in a guild!';
-    }
-    if (!params || !params.length) {
-      return 'Move where? Specify a destination!';
-    }
-
-    // 2. Parse the destination name
-    let destination = params.join(' ');
-    // If starts with "to ", strip it out
-    if (destination.toLowerCase().startsWith('to ')) {
-      destination = destination.slice(3);
+    // Get the destination
+    const destination = params.join(' ');
+    if (!destination) {
+      return 'You need to specify a destination!';
     }
 
     try {
-      // 3. Get current location from the dungeonService
+      // 1. Get current location from the dungeonService
       const currentLocation = await this.dungeonService.getAvatarLocation(avatar._id);
+      const currentLocationId = currentLocation?.channel?.id;
 
-      // 4. Find or create the new location
+      // 2. Find or create the new location
       const newLocation = await this.locationService.findOrCreateLocation(
         message.channel.guild,
         destination,
@@ -54,50 +46,63 @@ export class MoveTool extends BaseTool {
         return 'Failed to find or create that location!';
       }
 
-      // 5. If the avatar is already in that location, bail early
-      if (currentLocation?.channel?.id === newLocation.channel.id) {
+      // 3. If the avatar is already in that location, bail early
+      if (currentLocationId === newLocation.channel.id) {
         return "You're already there!";
       }
 
-      // 6. Send a departure message from the old location if exists
+      // 4. Generate a departure message for display to the user
+      let userFacingDepartureMessage = '';
       if (currentLocation?.channel) {
         try {
-          const departureMessage = await this.locationService.generateDepartureMessage(
+          userFacingDepartureMessage = await this.locationService.generateDepartureMessage(
             avatar,
             currentLocation,
             newLocation
           );
-          // Return the departure text so the user sees the atmospheric message
-          return departureMessage;
         } catch (error) {
           console.error('Error generating departure message:', error);
-          // Continue on; we can still move even if departure message fails
+          userFacingDepartureMessage = `${avatar.name} sets off to ${newLocation.name}...`;
         }
       }
 
-      // 7. Update the avatar's position in the new location
-      await this.dungeonService.updateAvatarPosition(avatar._id, newLocation.channel.id);
+      // 5. Update the avatar's position in the database
+      // Note: We don't send profile here, but handle it in step 7
+      const updatedAvatar = await this.dungeonService.updateAvatarPosition(
+        avatar._id, 
+        newLocation.channel.id,
+        currentLocationId,
+        false // Don't send profile as part of position update
+      );
 
-      // 8. Generate an arrival message
+      if (!updatedAvatar) {
+        return `Failed to move: Avatar location update failed.`;
+      }
+
+      // 6. Send avatar profile to the new location
       try {
-        const arrivalMessage = await this.locationService.generateAvatarResponse(avatar, newLocation);
+        await sendAvatarProfileEmbedFromObject(updatedAvatar, newLocation.channel.id);
+      } catch (error) {
+        console.error('Error sending avatar profile:', error);
+        // Continue even if profile fails
+      }
+
+      // 7. Generate an arrival message
+      try {
+        const arrivalMessage = await this.locationService.generateAvatarResponse(updatedAvatar, newLocation);
         // Post to the new location channel via webhook
         await sendAsWebhook(
           newLocation.channel.id,
           arrivalMessage,
-          avatar
+          updatedAvatar
         );
-
-        // 9. Update the avatar object in the database
-        avatar.channelId = newLocation.channel.id;
-        await this.dungeonService.avatarService.updateAvatar(avatar);
       } catch (error) {
         console.error('Error sending arrival message:', error);
         // We still consider the move successful, even if arrival message fails
       }
 
-      // 10. Return success message
-      return `${avatar.name} moved to ${newLocation.channel.name}!`;
+      // 8. Return success message with atmospheric departure text for user feedback
+      return userFacingDepartureMessage || `${avatar.name} moved to ${newLocation.channel.name}!`;
     } catch (error) {
       console.error('Error in MoveTool execute:', error);
       return `Failed to move: ${error.message}`;

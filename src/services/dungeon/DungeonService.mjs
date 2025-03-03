@@ -351,19 +351,50 @@ export class DungeonService {
   }
 
   /**
-   * Updates an avatar’s position in the dungeon.
+   * Updates an avatar's position in the dungeon.
    * @param {string} avatarId
    * @param {string} newLocationId
+   * @param {string} [oldLocationId] - Previous location ID for departure notification
+   * @param {boolean} [sendProfile=false] - Whether to send profile embed in new location
+   * @returns {Promise<object|null>} Updated avatar object or null
    */
-  async updateAvatarPosition(avatarId, newLocationId) {
+  async updateAvatarPosition(avatarId, newLocationId, oldLocationId, sendProfile = false) {
     if (!avatarId || !newLocationId) {
-      return;
+      return null;
     }
 
     try {
       const db = this.ensureDb();
       const dungeonStatsCollection = db.collection('dungeon_stats');
 
+      // Get the avatar before updating
+      const avatar = await this.avatarService?.getAvatarById(avatarId);
+      if (!avatar) {
+        this.logger.error(`Avatar ${avatarId} not found when updating position`);
+        return null;
+      }
+
+      // If oldLocationId isn't provided, use the current one
+      const previousLocationId = oldLocationId || avatar.channelId;
+
+      // Send departure message to previous location if it exists and is different
+      if (previousLocationId && previousLocationId !== newLocationId) {
+        try {
+          // Import services on demand to avoid circular dependencies
+          const { sendAsWebhook } = await import('../../services/discordService.mjs');
+          // Simple departure message
+          await sendAsWebhook(
+            previousLocationId,
+            `*${avatar.name} has moved to <#${newLocationId}>*`,
+            avatar
+          );
+        } catch (error) {
+          this.logger.warn(`Failed to send departure message: ${error.message}`);
+          // Continue even if departure message fails
+        }
+      }
+
+      // Update database position
       await dungeonStatsCollection.updateOne(
         { avatarId },
         { $set: { locationId: newLocationId, lastMoved: new Date() } },
@@ -376,26 +407,29 @@ export class DungeonService {
         actorId: avatarId,
         locationId: newLocationId,
         timestamp: new Date(),
-        description: `moved to a new location`
+        description: `moved to <#${newLocationId}>`
       });
 
-      // Also update avatar's channelId in the database
+      // Update avatar's channelId in the database
       await db.collection('avatars').updateOne(
         { _id: avatarId },
         { $set: { channelId: newLocationId } }
       );
 
-      // Fetch the avatar to display its profile in the new location
-      const avatar = await this.avatarService?.getAvatarById(avatarId);
-      if (avatar && this.avatarService) {
-        // Import and use the sendAvatarProfileEmbedFromObject function with the new location
+      // Update the avatar object in memory
+      avatar.channelId = newLocationId;
+
+      // Send profile only if explicitly requested (MoveTool will handle this separately)
+      if (sendProfile && avatar) {
         const { sendAvatarProfileEmbedFromObject } = await import('../../services/discordService.mjs');
         await sendAvatarProfileEmbedFromObject(avatar, newLocationId);
       }
 
       this.logger.debug(`Avatar ${avatarId} moved to location ${newLocationId}`);
+      return avatar;
     } catch (error) {
       this.logger.error(`Error updating avatar position: ${error.message}`);
+      return null;
     }
   }
 
