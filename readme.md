@@ -1,6 +1,6 @@
-# Project 89 - AI Avatar Discord Bot
+# CosyWorld - AI Avatar Discord Bot
 
-## 0.0.9 Project 89 Update 🌟
+## 0.0.89 Project 89 Update 🌟
 
 An advanced Discord bot that creates AI-powered avatars with persistent memory, combat mechanics, and cross-platform capabilities.
 
