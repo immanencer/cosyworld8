@@ -201,9 +201,10 @@ async function handleSummonCommand(message, breed = false, attributes = {}) {
       await reactToMessage(message, existingAvatar.emoji || "💼");
       await chatService.dungeonService.updateAvatarPosition(existingAvatar._id, message.channel.id);
       existingAvatar.stats = await chatService.dungeonService.getAvatarStats(existingAvatar._id);
-      await avatarService.updateAvatar(existingAvatar);
-      await sendAvatarProfileEmbedFromObject(existingAvatar);
-      await chatService.respondAsAvatar(message.channel, existingAvatar, true);
+      const updatedAvatar = await avatarService.updateAvatar(existingAvatar);
+      
+      await sendAvatarProfileEmbedFromObject(updatedAvatar);
+      await chatService.respondAsAvatar(message.channel, updatedAvatar, true);
       return;
     }
 

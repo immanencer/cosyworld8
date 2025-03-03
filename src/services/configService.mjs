@@ -24,7 +24,7 @@ class ConfigService {
           model: process.env.REPLICATE_MODEL,
           lora_weights: process.env.REPLICATE_LORA_WEIGHTS,
           loraTriggerWord: process.env.REPLICATE_LORA_TRIGGER,
-          style: "Cyberpunk, Manga, Anime, Watercolor, Experimental, Digital, 8K, High Resolution, Masterpiece, Fantasy, Futuristic, Variations."
+          style: "Cyberpunk, Manga, Anime, Watercolor, Experimental."
         },
         aiProvider: {
           apiKey: process.env.GOOGLE_API_KEY,
