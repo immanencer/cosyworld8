@@ -1,5 +1,6 @@
 import { BaseTool } from './BaseTool.mjs';
 import { sendAsWebhook, sendAvatarProfileEmbedFromObject } from '../../../services/discordService.mjs';
+import { EmbedBuilder } from 'discord.js';
 
 export class MoveTool extends BaseTool {
   /**
@@ -15,6 +16,68 @@ export class MoveTool extends BaseTool {
     this.name = 'move';
     this.description = 'Move to the location specified, creating it if it does not exist.';
     this.emoji = '🏃‍♂️';
+  }
+
+  /**
+   * Sends a mini avatar card to the specified channel
+   * @param {Object} avatar - The avatar object
+   * @param {string} channelId - The channel ID to send the mini card to
+   * @param {string} message - Optional message to include with the mini card
+   * @returns {Promise<void>}
+   */
+  async sendMiniAvatarCard(avatar, channelId, message = '') {
+    try {
+      const channel = await this.dungeonService.client.channels.fetch(channelId);
+      if (!channel) return;
+
+      const embed = new EmbedBuilder()
+        .setColor('#3498db') // Blue color for movement
+        .setAuthor({
+          name: avatar.name,
+          iconURL: avatar.imageUrl
+        })
+        .setThumbnail(avatar.imageUrl)
+        .setDescription(message || `${avatar.name} is on the move!`);
+
+      // Send the mini card via webhook
+      const webhook = await this.getOrCreateWebhook(channel);
+      if (webhook) {
+        await webhook.send({
+          embeds: [embed],
+          username: avatar.name,
+          avatarURL: avatar.imageUrl
+        });
+      } else {
+        // Fallback to regular channel send if webhook fails
+        await channel.send({ embeds: [embed] });
+      }
+    } catch (error) {
+      this.logger.error(`Error sending mini avatar card: ${error.message}`);
+    }
+  }
+
+  /**
+   * Gets or creates a webhook for a channel
+   * @param {Object} channel - The Discord channel
+   * @returns {Promise<Object|null>} - Webhook object or null
+   */
+  async getOrCreateWebhook(channel) {
+    try {
+      const webhooks = await channel.fetchWebhooks();
+      let webhook = webhooks.find(wh => wh.owner.id === this.dungeonService.client.user.id);
+
+      if (!webhook) {
+        webhook = await channel.createWebhook({
+          name: 'Movement Webhook',
+          avatar: this.dungeonService.client.user.displayAvatarURL()
+        });
+      }
+
+      return webhook;
+    } catch (error) {
+      this.logger.error(`Error getting/creating webhook: ${error.message}`);
+      return null;
+    }
   }
 
   /**
@@ -34,7 +97,7 @@ export class MoveTool extends BaseTool {
     try {
       // 1. Get current location from the dungeonService
       const currentLocation = await this.dungeonService.getAvatarLocation(avatar._id);
-      const currentLocationId = currentLocation?.channel?.id;
+      const currentLocationId = currentLocation?.channel?.id || avatar.channelId;
 
       // 2. Find or create the new location
       const newLocation = await this.locationService.findOrCreateLocation(
@@ -78,8 +141,19 @@ export class MoveTool extends BaseTool {
       if (!updatedAvatar) {
         return `Failed to move: Avatar location update failed.`
       }
-      
-      // 6. Now send the profile to the new location
+
+      // 6. Send a mini card to the departure channel if we have one
+      if (currentLocationId) {
+        try {
+          const departureMessage = `${avatar.name} has departed to <#${newLocation.channel.id}>`;
+          await this.sendMiniAvatarCard(avatar, currentLocationId, departureMessage);
+          this.logger.debug(`Sent mini card for ${avatar.name} to departure location ${currentLocationId}`);
+        } catch (miniCardError) {
+          this.logger.error(`Error sending mini card: ${miniCardError.message}`);
+        }
+      }
+
+      // 7. Send the full profile to the new location
       try {
         const { sendAvatarProfileEmbedFromObject } = await import('../../../services/discordService.mjs');
         await sendAvatarProfileEmbedFromObject(updatedAvatar, newLocation.channel.id);
@@ -87,9 +161,9 @@ export class MoveTool extends BaseTool {
       } catch (profileError) {
         this.logger.error(`Error sending profile after movement: ${profileError.message}`);
         // Continue even if profile send fails
-      }Position
+      }
 
-      // 7. Generate an arrival message
+      // 8. Generate an arrival message
       try {
         const arrivalMessage = await this.locationService.generateAvatarResponse(updatedAvatar, newLocation);
         // Post to the new location channel via webhook
@@ -103,7 +177,7 @@ export class MoveTool extends BaseTool {
         // We still consider the move successful, even if arrival message fails
       }
 
-      // 8. Return success message with atmospheric departure text for user feedback
+      // 9. Return success message with atmospheric departure text for user feedback
       return userFacingDepartureMessage || `${avatar.name} moved to ${newLocation.channel.name}!`;
     } catch (error) {
       console.error('Error in MoveTool execute:', error);
