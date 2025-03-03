@@ -324,20 +324,6 @@ export class AvatarGenerationService {
     }
   }
 
-  async getAvatar(name) {
-    try {
-      const collection = this.db.collection(this.AVATARS_COLLECTION);
-      const avatar = await collection.findOne({ name });
-      if (!avatar) {
-        throw new Error(`Avatar with name "${name}" not found.`);
-      }
-      return avatar;
-    } catch (error) {
-      this.logger.error(`Error fetching avatar: ${error.message}`);
-      return null;
-    }
-  }
-
   getRandomAlignment() {
     const alignments = ['neutral', 'good', 'evil'];
     const randomIndex = Math.floor(Math.random() * alignments.length);

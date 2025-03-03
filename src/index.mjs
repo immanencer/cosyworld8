@@ -194,17 +194,18 @@ async function trackSummon(userId) {
 async function handleSummonCommand(message, breed = false, attributes = {}) {
   const content = message.content.trim().substring(2).trim();
   const [avatarName] = content.split("\n").map(line => line.trim());
-  const existingAvatar = await avatarService.getAvatarByName(avatarName);
+  let existingAvatar = await avatarService.getAvatarByName(avatarName);
 
   try {
     if (existingAvatar) {
       await reactToMessage(message, existingAvatar.emoji || "💼");
-      await chatService.dungeonService.updateAvatarPosition(existingAvatar._id, message.channel.id);
+
+      existingAvatar = await chatService.dungeonService.updateAvatarPosition(existingAvatar._id, message.channel.id);
       existingAvatar.stats = await chatService.dungeonService.getAvatarStats(existingAvatar._id);
-      const updatedAvatar = await avatarService.updateAvatar(existingAvatar);
-      
-      await sendAvatarProfileEmbedFromObject(updatedAvatar);
-      await chatService.respondAsAvatar(message.channel, updatedAvatar, true);
+      await avatarService.updateAvatar(existingAvatar);
+
+      await sendAvatarProfileEmbedFromObject(existingAvatar);
+      await chatService.respondAsAvatar(message.channel, existingAvatar, true);
       return;
     }
 
@@ -240,14 +241,14 @@ async function handleSummonCommand(message, breed = false, attributes = {}) {
     try {
       logger.info(`Avatar generation prompt: ${avatarData.prompt}`);
       const createdAvatar = await avatarService.createAvatar(avatarData);
-      
+
       if (!createdAvatar) {
         // Enhanced error handling with more information
         logger.error(`Avatar creation failed. Input data: ${JSON.stringify(avatarData)}`);
         await replyToMessage(message, "Failed to create avatar. Please try again with a different description.");
         return;
       }
-      
+
       if (!createdAvatar.name) {
         logger.warn(`Created avatar is missing name: ${JSON.stringify(createdAvatar)}`);
         await replyToMessage(message, "Avatar creation resulted in an incomplete character. Please try again with a more detailed description.");
@@ -282,7 +283,7 @@ async function handleSummonCommand(message, breed = false, attributes = {}) {
         logger.error(`Error generating introduction: ${introError.message}`);
         // Continue even if introduction generation fails
       }
-      
+
       await chatService.dungeonService.initializeAvatar(createdAvatar._id, message.channel.id);
       await reactToMessage(message, createdAvatar.emoji || "🎉");
       if (!breed) await trackSummon(message.author.id);
@@ -471,7 +472,7 @@ client.on("messageCreate", async (message) => {
         if (!whitelistedGuilds.includes(message.guild.id)) {
           const logMessage = `Guild ${message.guild.name} (${message.guild.id}) is not whitelisted. Ignoring message.`;
           logger.warn(logMessage);
-          
+
           // Save to application_logs collection for audit purposes
           try {
             await db.collection('application_logs').insertOne({
@@ -484,7 +485,7 @@ client.on("messageCreate", async (message) => {
           } catch (logError) {
             logger.error(`Failed to log guild access: ${logError.message}`);
           }
-          
+
           return;
         }
         client.guildWhitelist = client.guildWhitelist || new Map();
@@ -585,7 +586,7 @@ async function main() {
       handleSummonCommand,
       handleBreedCommand
     });
-    
+
     // Make sure DungeonService has a proper reference to avatarService
     if (chatService.dungeonService) {
       chatService.dungeonService.avatarService = avatarService;
