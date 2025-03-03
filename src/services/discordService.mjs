@@ -227,6 +227,11 @@ export async function sendAvatarProfileEmbedFromObject(avatar, targetChannelId) 
   if (!channelId || typeof channelId !== 'string') {
     throw new Error('Invalid channel ID in avatar object');
   }
+  
+  // Log the override if it's happening
+  if (targetChannelId && targetChannelId !== avatar.channelId) {
+    logger.debug(`Overriding avatar ${avatar.name}'s channelId ${avatar.channelId} with ${targetChannelId} for profile embed`);
+  }
 
   if (!client.db) {
     logger.error('Database not connected, cannot send avatar profile');

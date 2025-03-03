@@ -586,9 +586,12 @@ async function main() {
       handleBreedCommand
     });
     
-    // Make sure DungeonService has a reference to avatarService
+    // Make sure DungeonService has a proper reference to avatarService
     if (chatService.dungeonService) {
       chatService.dungeonService.avatarService = avatarService;
+      logger.info(`Set avatarService reference in DungeonService`);
+    } else {
+      logger.warn(`Cannot set avatarService in DungeonService: dungeonService not found in chatService`);
     }
     messageHandler = new MessageHandler(avatarService, client, chatService, imageProcessingService, logger);
 

@@ -67,19 +67,27 @@ export class MoveTool extends BaseTool {
       }
 
       // 5. Update the avatar's position in the database
-      // Let the DungeonService handle profile sending
+      // Don't send profile yet - we'll do it separately below
       const updatedAvatar = await this.dungeonService.updateAvatarPosition(
         avatar._id, 
         newLocation.channel.id,
         currentLocationId,
-        true // Send profile as part of position update
+        false // Don't send profile in updateAvatarPosition, we'll do it here
       );
 
       if (!updatedAvatar) {
         return `Failed to move: Avatar location update failed.`
       }
-
-      // Profile is now sent by DungeonService.updateAvatarPosition
+      
+      // 6. Now send the profile to the new location
+      try {
+        const { sendAvatarProfileEmbedFromObject } = await import('../../../services/discordService.mjs');
+        await sendAvatarProfileEmbedFromObject(updatedAvatar, newLocation.channel.id);
+        this.logger.debug(`Sent profile for ${updatedAvatar.name} to new location ${newLocation.channel.id}`);
+      } catch (profileError) {
+        this.logger.error(`Error sending profile after movement: ${profileError.message}`);
+        // Continue even if profile send fails
+      }Position
 
       // 7. Generate an arrival message
       try {

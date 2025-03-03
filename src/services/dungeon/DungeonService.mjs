@@ -360,15 +360,39 @@ export class DungeonService {
    */
   async updateAvatarPosition(avatarId, newLocationId, previousLocationId = null, sendProfile = true) {
     if (!avatarId || !newLocationId) {
+      this.logger.warn(`Invalid parameters for updateAvatarPosition: avatarId=${avatarId}, newLocationId=${newLocationId}`);
       return null;
+    }
+
+    // If we're moving to the same location, do nothing
+    if (previousLocationId && previousLocationId === newLocationId) {
+      this.logger.debug(`Avatar ${avatarId} is already at location ${newLocationId}, skipping update`);
+      const existingAvatar = await this.avatarService?.getAvatarById(avatarId);
+      return existingAvatar;
     }
 
     try {
       const db = this.ensureDb();
-      const dungeonStatsCollection = db.collection('dungeon_stats');
+      
+      // Get current avatar data before update to verify actual movement
+      const currentAvatar = await this.avatarService?.getAvatarById(avatarId);
+      if (!currentAvatar) {
+        throw new Error(`Avatar ${avatarId} not found`);
+      }
+      
+      // If previousLocationId wasn't explicitly provided, use the avatar's current channelId
+      const actualPreviousLocationId = previousLocationId || currentAvatar.channelId;
+      
+      // Only proceed if we're actually changing locations
+      if (actualPreviousLocationId === newLocationId) {
+        this.logger.debug(`Avatar ${avatarId} is already at location ${newLocationId}, skipping update`);
+        return currentAvatar;
+      }
+      
+      this.logger.info(`Moving avatar ${avatarId} from ${actualPreviousLocationId} to ${newLocationId}`);
 
       // Update the position in dungeon stats
-      await dungeonStatsCollection.updateOne(
+      await db.collection('dungeon_stats').updateOne(
         { avatarId },
         { $set: { locationId: newLocationId, lastMoved: new Date() } },
         { upsert: true }
@@ -390,48 +414,47 @@ export class DungeonService {
       );
 
       // Send departure message to previous location if it exists and is different
-      if (previousLocationId && previousLocationId !== newLocationId) {
+      if (actualPreviousLocationId && actualPreviousLocationId !== newLocationId) {
         try {
           // Import services on demand to avoid circular dependencies
           const { sendAsWebhook } = await import('../../services/discordService.mjs');
 
-          // Get avatar for departure message
-          const avatar = await this.avatarService?.getAvatarById(avatarId);
-          if (avatar) {
-            // Simple departure message
-            await sendAsWebhook(
-              previousLocationId,
-              `*${avatar.name} has moved to <#${newLocationId}>*`,
-              avatar
-            );
-          }
+          // Send departure message using current avatar data (before updating references)
+          await sendAsWebhook(
+            actualPreviousLocationId,
+            `*${currentAvatar.name} has moved to <#${newLocationId}>*`,
+            currentAvatar
+          );
         } catch (error) {
           this.logger.warn(`Failed to send departure message: ${error.message}`);
           // Continue even if departure message fails
         }
       }
 
-      // Fetch updated avatar to return
+      // Fetch updated avatar with new location
       const updatedAvatar = await this.avatarService?.getAvatarById(avatarId);
-
-      // Send profile to new location if requested
-      if (sendProfile && updatedAvatar) {
-        try {
-          const { sendAvatarProfileEmbedFromObject } = await import('../../services/discordService.mjs');
-          await sendAvatarProfileEmbedFromObject(updatedAvatar, newLocationId);
-        } catch (profileError) {
-          this.logger.error(`Error sending profile after movement: ${profileError.message}`);
-        }
+      
+      // Make sure the location update actually took effect
+      if (!updatedAvatar) {
+        throw new Error(`Failed to retrieve updated avatar ${avatarId}`);
+      }
+      
+      if (updatedAvatar.channelId !== newLocationId) {
+        this.logger.warn(`Avatar channelId mismatch after update. Expected: ${newLocationId}, Got: ${updatedAvatar.channelId}`);
+        // Force the correct channelId
+        updatedAvatar.channelId = newLocationId;
+        await this.avatarService.updateAvatar(updatedAvatar);
       }
 
       // Emit an event so that other parts of the system can react
       this.client.emit('avatarMoved', {
         avatarId,
+        previousChannelId: actualPreviousLocationId,
         newChannelId: newLocationId,
         temporary: false
       });
 
-      this.logger.debug(`Avatar ${avatarId} moved to location ${newLocationId}`);
+      this.logger.debug(`Avatar ${avatarId} successfully moved to location ${newLocationId}`);
       return updatedAvatar;
     } catch (error) {
       this.logger.error(`Error updating avatar position: ${error.message}`);
