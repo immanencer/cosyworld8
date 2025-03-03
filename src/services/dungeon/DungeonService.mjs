@@ -356,23 +356,47 @@ export class DungeonService {
    * @param {string} newLocationId
    */
   async updateAvatarPosition(avatarId, newLocationId) {
-    const db = this.ensureDb();
-    await db.collection('dungeon_positions').updateOne(
-      { avatarId: avatarId },
-      {
-        $set: {
-          locationId: newLocationId,
-          lastUpdated: new Date()
-        }
-      },
-      { upsert: true }
-    );
-    // Emit an event so that other parts of the system can react.
-    this.client.emit('avatarMoved', {
-      avatarId,
-      newChannelId: newLocationId,
-      temporary: false
-    });
+    if (!avatarId || !newLocationId) {
+      return;
+    }
+
+    try {
+      const db = this.ensureDb();
+      const dungeonStatsCollection = db.collection('dungeon_stats');
+
+      await dungeonStatsCollection.updateOne(
+        { avatarId },
+        { $set: { locationId: newLocationId, lastMoved: new Date() } },
+        { upsert: true }
+      );
+
+      // Log the movement event
+      await this.dungeonLog.logAction({
+        action: 'move',
+        actorId: avatarId,
+        locationId: newLocationId,
+        timestamp: new Date(),
+        description: `moved to a new location`
+      });
+
+      // Also update avatar's channelId in the database
+      await db.collection('avatars').updateOne(
+        { _id: avatarId },
+        { $set: { channelId: newLocationId } }
+      );
+
+      // Fetch the avatar to display its profile in the new location
+      const avatar = await this.avatarService?.getAvatarById(avatarId);
+      if (avatar && this.avatarService) {
+        // Import and use the sendAvatarProfileEmbedFromObject function with the new location
+        const { sendAvatarProfileEmbedFromObject } = await import('../../services/discordService.mjs');
+        await sendAvatarProfileEmbedFromObject(avatar, newLocationId);
+      }
+
+      this.logger.debug(`Avatar ${avatarId} moved to location ${newLocationId}`);
+    } catch (error) {
+      this.logger.error(`Error updating avatar position: ${error.message}`);
+    }
   }
 
   /**

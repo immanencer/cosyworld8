@@ -585,6 +585,11 @@ async function main() {
       handleSummonCommand,
       handleBreedCommand
     });
+    
+    // Make sure DungeonService has a reference to avatarService
+    if (chatService.dungeonService) {
+      chatService.dungeonService.avatarService = avatarService;
+    }
     messageHandler = new MessageHandler(avatarService, client, chatService, imageProcessingService, logger);
 
     await client.login(DISCORD_BOT_TOKEN);

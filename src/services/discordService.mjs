@@ -218,11 +218,12 @@ export async function sendAsWebhook(channelId, content, avatar) {
 /**
  * Sends an avatar profile embed
  * @param {Object} avatar - The avatar object
+ * @param {string} [targetChannelId] - Optional channel ID to override the avatar's stored channelId
  * @returns {Promise<void>}
  */
-export async function sendAvatarProfileEmbedFromObject(avatar) {
+export async function sendAvatarProfileEmbedFromObject(avatar, targetChannelId) {
   validateAvatar(avatar);
-  const { channelId } = avatar;
+  const channelId = targetChannelId || avatar.channelId;
   if (!channelId || typeof channelId !== 'string') {
     throw new Error('Invalid channel ID in avatar object');
   }
