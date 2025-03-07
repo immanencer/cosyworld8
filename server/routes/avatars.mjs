@@ -516,9 +516,7 @@ export default function avatarRoutes(db) {
   router.get('/:avatarId/stats', async (req, res) => {
     try {
       const { avatarId } = req.params;
-      const avatar = await db.collection('avatars').findOne({
-        _id: new ObjectId(avatarId)
-      });
+      const avatar = await db.collection('avatars').findOne({ _id: new ObjectId(avatarId) });
 
       if (!avatar) {
         return res.status(404).json({ error: 'Avatar not found' });
@@ -526,26 +524,24 @@ export default function avatarRoutes(db) {
 
       const statService = new StatGenerationService();
 
-      // Try to get existing stats first
-      let stats = await db.collection('dungeon_stats').findOne({
-        avatarId: new ObjectId(avatarId)
-      });
+      // Check if createdAt exists and is valid
+      if (!avatar.createdAt) {
+        console.warn(`Avatar ${avatarId} does not have a createdAt date, using current date`);
+        avatar.createdAt = new Date().toISOString();
 
-      // Generate new stats if none exist or if current stats are invalid
-      if (!stats || !statService.validateStats(stats)) {
-        stats = statService.generateStatsFromDate(avatar.createdAt || new Date());
-        // Save generated stats
-        await db.collection('dungeon_stats').updateOne(
-          { avatarId: new ObjectId(avatarId) },
-          { $set: stats },
-          { upsert: true }
+        // Update the avatar with a createdAt date
+        await db.collection('avatars').updateOne(
+          { _id: new ObjectId(avatarId) },
+          { $set: { createdAt: avatar.createdAt } }
         );
       }
+
+      const stats = statService.generateStatsFromDate(avatar.createdAt);
 
       res.json(stats);
     } catch (error) {
       console.error('Error getting avatar stats:', error);
-      res.status(500).json({ error: error.message });
+      res.status(500).json({ error: 'Could not generate avatar stats' });
     }
   });
 

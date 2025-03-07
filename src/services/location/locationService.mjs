@@ -1,5 +1,5 @@
 import Fuse from 'fuse.js';
-import { OpenRouterService } from '../openrouterService.mjs';
+import { GoogleAIService as AIService } from '../googleAIService.mjs';
 import { uploadImage } from '../s3imageService/s3imageService.mjs';
 import { sendAsWebhook } from '../discordService.mjs';
 import { ObjectId } from 'mongodb';
@@ -20,7 +20,7 @@ export class LocationService {
     }
 
     this.client = discordClient;
-    this.aiService = aiService || new OpenRouterService(); // Allow injection or create a new one
+    this.aiService = aiService || new AIService(); // Allow injection or create a new one
 
     // Fuzzy-search config
     this.fuseOptions = {
@@ -82,7 +82,7 @@ export class LocationService {
   async generateLocationImage(locationName, description) {
     this.ensureDbConnection();
 
-    const trigger = process.env.LORA_TRIGGER_WORD || '';
+    const trigger = process.env.REPLICATE_LORA_TRIGGER || '';
 
     try {
       // 1. Use Replicate to generate an image

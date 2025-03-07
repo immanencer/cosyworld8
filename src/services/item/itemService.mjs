@@ -50,7 +50,7 @@ export class ItemService {
 
   async generateItemImage(itemName, description) {
     this.ensureDbConnection();
-    const trigger = process.env.LORA_TRIGGER_WORD || '';
+    const trigger = process.env.REPLICATE_LORA_TRIGGER || '';
 
     try {
       const [output] = await this.replicate.run(

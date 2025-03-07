@@ -2,26 +2,16 @@ import { ConversationHandler } from './ConversationHandler.mjs';
 import { DecisionMaker } from './DecisionMaker.mjs';
 import { MessageProcessor } from './MessageProcessor.mjs';
 import { DatabaseService } from '../databaseService.mjs';
-
-import { sendAsWebhook } from '../discordService.mjs'
-
+import { sendAsWebhook } from '../discordService.mjs';
 import { DungeonService } from '../dungeon/DungeonService.mjs'; // Added import
+import { TokenTransferHookInvalidSeed } from '@solana/spl-token';
 
 const RESPONSE_RATE = parseFloat(process.env.RESPONSE_RATE) || 0.2; // 20% response rate
-const SERVER_NAME = "Moonstone Sanctum";
+const SERVER_NAME = "Project 89";
 
 export class ChatService {
-  constructor(client, db, options = {
-  }) {
-    const dbService = new DatabaseService(this.logger);
-    this.db = db || dbService.getDatabase();
-    this.avatarService = options.avatarService;
-    if (!client) {
-      throw new Error('Discord client is required');
-    }
-
-    this.client = client;
-    // Ensure logger exists, create no-op logger if not provided
+  constructor(client, db, options = {}) {
+    // Ensure logger exists; initialize early for subsequent services.
     this.logger = options.logger || {
       info: () => { },
       error: () => { },
@@ -29,18 +19,37 @@ export class ChatService {
       debug: () => { }
     };
 
+    // Initialize the database service with the logger.
+    const dbService = new DatabaseService(this.logger);
+    this.db = db || dbService.getDatabase();
+
+    if (!client) {
+      throw new Error('Discord client is required');
+    }
+    this.client = client;
+    this.avatarService = options.avatarService;
+    this.aiService = options.aiService;
+    this.imageProcessingService = options.imageProcessingService; // Added imageProcessingService check
+
+    if (!this.avatarService || !this.aiService || !this.imageProcessingService) {
+      throw new Error('avatarService, aiService, and imageProcessingService are required');
+    }
+
     // Initialize core services with logger
     this.dungeonService = new DungeonService(
-      client, this.logger, this.avatarService, this.db, {
-      summon: options.handleSummonCommand
-    }
-    ); // Added initialization
+      client,
+      this.logger,
+      this.avatarService,
+      this.db,
+      { summon: options.handleSummonCommand }
+    );
     this.conversationHandler = new ConversationHandler(
       client,
       options.aiService,
       this.logger,
       options.avatarService,
-      this.dungeonService
+      this.dungeonService,
+      this.imageService
     );
     this.decisionMaker = new DecisionMaker(options.aiService, this.logger);
     this.messageProcessor = new MessageProcessor(options.avatarService);
@@ -51,7 +60,6 @@ export class ChatService {
     // Track initialization state
     this.setupComplete = false;
     this.isConnected = false;
-
 
     this.REFLECTION_INTERVAL = 1 * 3600000; // 1 hour
     this.reflectionTimer = 0;
@@ -65,14 +73,7 @@ export class ChatService {
     // Bind the method to this instance
     this.updateLastMessageTime = this.updateLastMessageTime.bind(this);
 
-    // Store services from options
-    this.avatarService = options.avatarService;
-    this.aiService = options.aiService;
-
-    if (!this.avatarService || !this.aiService) {
-      throw new Error('avatarService and aiService are required');
-    }
-
+    // Store services from options (already set above)
     this.responseQueue = new Map(); // channelId -> Set of avatarIds to respond
     this.responseTimeout = null;
     this.RESPONSE_DELAY = 3000; // Wait 3 seconds before processing responses
@@ -107,7 +108,7 @@ export class ChatService {
   async setup() {
     try {
       await this.setupAvatarChannelsAcrossGuilds();
-      await this.dungeonService.initializeDatabase(); // Add this line
+      await this.dungeonService.initializeDatabase(); // Added initialization
       await this.setupDatabase(); // Ensure database setup
       this.setupReflectionInterval();
       // update active avatars
@@ -116,7 +117,6 @@ export class ChatService {
       this.logger.info('ChatService setup completed');
       this.setupComplete = true;
       this.isConnected = true;
-
     } catch (error) {
       this.logger.error('Setup failed:', error);
       throw error;
@@ -146,7 +146,7 @@ export class ChatService {
     return [...mentionedAvatars];
   }
 
-  // find the 12 most mentioned 
+  // Find the 12 most mentioned avatars
   async getTopMentions(messages, avatars) {
     const avatarMentions = new Map();
     for (const avatar of avatars) {
@@ -162,10 +162,10 @@ export class ChatService {
     }
 
     const sortedAvatars = [...avatarMentions.entries()].sort((a, b) => b[1] - a[1]);
-    return sortedAvatars.map(([avatarId, count]) => avatars.find(a => a._id === avatarId));
+    return sortedAvatars.map(([avatarId]) => avatars.find(a => a._id === avatarId));
   }
 
-  // get the most recent limit messages prior to timestamp if provided or now
+  // Get the most recent limit messages prior to timestamp if provided or now
   async getRecentMessagesFromDatabase(channelId = null, limit = 100, timestamp = null) {
     try {
       const query = { channelId: channelId || { $exists: true } };
@@ -246,22 +246,26 @@ export class ChatService {
       }
     }
 
-    // schedule the next update
+    // Schedule the next update
     setTimeout(() => this.UpdateActiveAvatars(), this.AMBIENT_CHECK_INTERVAL);
   }
 
-  async respondAsAvatar(channel, avatar, force = false) {
-    // Validate channel and avatar
-    if (!channel?.id) {
-      this.logger.error('Invalid channel or avatar provided to respondAsAvatar');
-      return;
-    }
-
+  async respondAsAvatar(channel, avatar, forceResponse = false) {
     try {
-      this.logger.info(`Attempting to respond as avatar ${avatar.name} in channel ${channel.id} (force: ${force})`);
+      if (!channel) {
+        this.logger.error(`Invalid channel provided to respondAsAvatar`);
+        return;
+      }
+
+      if (!this.imageProcessingService) {
+        this.logger.error(`imageProcessingService is not initialized`);
+        // Set a default value if available through constructor
+        this.imageProcessingService = this.options?.imageProcessingService || null;
+      }
+
+      this.logger.info(`Attempting to respond as avatar ${avatar?.name} in channel ${channel.id} (force: ${forceResponse})`);
       let decision = true;
       try {
-
         if (!avatar.innerMonologueChannel) {
           // Find #avatars channel
           const avatarsChannel = channel.guild.channels.cache.find(c => c.name === 'avatars');
@@ -270,9 +274,8 @@ export class ChatService {
             const innerMonologueChannel = avatarsChannel.threads.cache.find(t => t.name === `${avatar.name} Narratives`);
             if (innerMonologueChannel) {
               avatar.innerMonologueChannel = innerMonologueChannel.id;
-            }
-            // Otherwise create a new thread
-            else {
+            } else {
+              // Otherwise create a new thread
               const newThread = await avatarsChannel.threads.create({
                 name: `${avatar.name} Narratives`,
                 autoArchiveDuration: 60,
@@ -280,48 +283,31 @@ export class ChatService {
               });
               avatar.innerMonologueChannel = newThread.id;
 
-              // Post the avatar's image to the inner monologue channel
-              sendAsWebhook(
-                avatar.innerMonologueChannel,
-                avatar.imageUrl,
-                avatar
-              );
-
-              // Post the avatar's description to the inner monologue channel
-              sendAsWebhook(
-                avatar.innerMonologueChannel,
-                `📖 Description: ${avatar.description}`,
-                avatar
-              );
-
-              // Post the avatar's personality to the inner monologue channel
-              sendAsWebhook(
-                avatar.innerMonologueChannel,
-                `🎭 Personality: ${avatar.personality}`,
-                avatar
-              );
-
-              // Post the avatar's dynamic personality to the inner monologue channel
-              sendAsWebhook(
-                avatar.innerMonologueChannel,
-                `🌪️ Dynamic Personality: ${avatar.dynamicPersonality}`,
-                avatar
-              );
-
+              // Post the avatar's image, description, personality, and dynamic personality to the inner monologue channel
+              sendAsWebhook(avatar.innerMonologueChannel, avatar.imageUrl, avatar);
+              sendAsWebhook(avatar.innerMonologueChannel, `📖 Description: ${avatar.description}`, avatar);
+              sendAsWebhook(avatar.innerMonologueChannel, `🎭 Personality: ${avatar.personality}`, avatar);
+              sendAsWebhook(avatar.innerMonologueChannel, `🌪️ Dynamic Personality: ${avatar.dynamicPersonality}`, avatar);
             }
           }
           avatar = await this.avatarService.updateAvatar(avatar);
         }
-        decision = force || await this.decisionMaker.shouldRespond(channel, avatar, this.client, this.avatarService);
+        decision = forceResponse || await this.decisionMaker.shouldRespond(channel, avatar, this.client, this.avatarService);
       } catch (error) {
         this.logger.error(`Error in decision maker: ${error.message}`);
       }
 
       if (decision) {
         this.logger.info(`${avatar.name} decided to respond in ${channel.id}`);
-        this.conversationHandler.sendResponse(channel, avatar);
+        try {
+          if (!this.conversationHandler.imageProcessingService && this.imageProcessingService) {
+            this.conversationHandler.imageProcessingService = this.imageProcessingService;
+          }
+          await this.conversationHandler.sendResponse(channel, avatar);
+        } catch (error) {
+          this.logger.error(`CHAT: Error sending response for ${avatar.name}: ${error.message}`);
+        }
       }
-
     } catch (error) {
       this.logger.error(`Error in respondAsAvatar: ${error.message}`);
       this.logger.error('Avatar data:', avatar);
@@ -417,5 +403,115 @@ export class ChatService {
 
   updateLastMessageTime() {
     this.lastMessageTime = Date.now();
+  }
+
+  /**
+   * Retrieve a Discord message by ID using the database as the primary source.
+   * If not found, it falls back to fetching from Discord and caches the result.
+   * @param {string} channelId - The Discord channel ID
+   * @param {string} messageId - The Discord message ID
+   * @returns {Promise<Object|null>} - The message object or null if not found
+   */
+  async getMessageById(messageId) {
+    try {
+      // Ensure messagesCollection is ready
+      if (!this.messagesCollection) {
+        await this.setupDatabase();
+      }
+
+      // Attempt to fetch the message from the database.
+      const messageDoc = await this.messagesCollection.findOne({ messageId });
+      if (messageDoc) {
+        this.logger.info(`Message ${messageId} retrieved from the database.`);
+        return messageDoc;
+      }
+
+      throw new Error(`Message ${messageId} not found in the database.`);
+    } catch (error) {
+      this.logger.error(`Failed to fetch message ${messageId}`, error);
+      return null;
+    }
+  }
+
+  async fetchMessage(channelId, messageId) {
+    try {
+      if (!channelId || !messageId) {
+        this.logger.error(`Invalid channel or message ID: ${channelId}, ${messageId}`);
+        return null;
+      }
+
+      if (this.db) {
+        // Try to find in database first
+        try {
+          const messagesCollection = this.db.collection('messages');
+          const messageDoc = await messagesCollection.findOne({
+            messageId,
+            channelId
+          });
+          if (messageDoc) {
+            this.logger.debug(`Message ${messageId} found in database cache.`);
+            return messageDoc;
+          }
+        } catch (dbError) {
+          this.logger.error(`Database error while fetching message: ${dbError.message}`);
+        }
+      }
+
+      // If not found in the DB, fallback to Discord API.
+      try {
+        const channel = await this.client.channels.fetch(channelId);
+        if (!channel) {
+          this.logger.warn(`Channel ${channelId} not found on Discord.`);
+          return null;
+        }
+        const discordMessage = await channel.messages.fetch(messageId);
+        if (discordMessage && this.db) {
+          // Construct a simplified document for caching.
+          const newMessageDoc = {
+            messageId: discordMessage.id,
+            channelId,
+            content: discordMessage.content,
+            authorId: discordMessage.author.id,
+            authorUsername: discordMessage.author.username,
+            author: {
+              id: discordMessage.author.id,
+              bot: discordMessage.author.bot,
+              username: discordMessage.author.username,
+              discriminator: discordMessage.author.discriminator,
+              avatar: discordMessage.author.avatar
+            },
+            timestamp: discordMessage.createdTimestamp,
+            attachments: Array.from(discordMessage.attachments.values()).map(a => ({
+              id: a.id,
+              url: a.url,
+              proxyURL: a.proxyURL,
+              filename: a.name,
+              contentType: a.contentType,
+              size: a.size
+            })),
+            embeds: discordMessage.embeds.map(e => ({
+              type: e.type,
+              title: e.title,
+              description: e.description,
+              url: e.url
+            }))
+          };
+
+          try {
+            await this.db.collection('messages').insertOne(newMessageDoc);
+            this.logger.info(`Message ${messageId} fetched from Discord and cached in the database.`);
+          } catch (insertError) {
+            this.logger.error(`Error caching message in database: ${insertError.message}`);
+          }
+        }
+        return discordMessage;
+      } catch (discordError) {
+        this.logger.error(`Discord API error while fetching message: ${discordError.message}`);
+        return null;
+      }
+    } catch (error) {
+      this.logger.error(`Failed to fetch message ${messageId} for channel ${channelId}: ${error.message}`);
+      return null;
+    }
   }
 }

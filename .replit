@@ -8,6 +8,11 @@ channel = "stable-24_05"
 [deployment]
 run = ["sh", "-c", "npm run start"]
 deploymentTarget = "gce"
+build = ["sh", "-c", "npm run build"]
+
+[[ports]]
+localPort = 3001
+externalPort = 3001
 
 [[ports]]
 localPort = 3080

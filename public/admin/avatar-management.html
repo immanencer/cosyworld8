@@ -1,0 +1,974 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Avatar Management - Admin Dashboard</title>
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+</head>
+<body class="bg-gray-100">
+  <div class="min-h-screen flex flex-col">
+    <nav class="bg-gray-800 text-white shadow-lg">
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="flex items-center justify-between h-16">
+          <div class="flex items-center">
+            <div class="flex-shrink-0">
+              <h1 class="text-xl font-bold">ARGOS Admin Panel</h1>
+            </div>
+            <div class="ml-10 flex items-baseline space-x-4">
+              <a href="/admin" class="px-3 py-2 rounded-md text-sm font-medium text-gray-300 hover:text-white hover:bg-gray-700">Dashboard</a>
+              <a href="/admin/guild-settings" class="px-3 py-2 rounded-md text-sm font-medium text-gray-300 hover:text-white hover:bg-gray-700">Guild Settings</a>
+              <a href="/admin/avatar-management" class="px-3 py-2 rounded-md text-sm font-medium text-white bg-gray-700">Avatar Management</a>
+            </div>
+          </div>
+        </div>
+      </div>
+    </nav>
+
+    <main class="flex-grow">
+      <div class="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
+        <div class="px-4 py-6 sm:px-0">
+          <div class="bg-white shadow overflow-hidden sm:rounded-lg">
+            <div class="px-4 py-5 sm:px-6 flex justify-between items-center">
+              <div>
+                <h2 class="text-lg leading-6 font-medium text-gray-900">Avatar Management</h2>
+                <p class="mt-1 max-w-2xl text-sm text-gray-500">View and manage all avatars in the system</p>
+              </div>
+              <div class="flex space-x-2">
+                <input 
+                  id="avatar-search"
+                  type="text" 
+                  placeholder="Search avatars..."
+                  class="px-3 py-1 border border-gray-300 rounded shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                >
+                <select 
+                  id="avatar-filter"
+                  class="px-3 py-1 border border-gray-300 rounded shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                >
+                  <option value="all">All Avatars</option>
+                  <option value="active">Active</option>
+                  <option value="inactive">Inactive</option>
+                </select>
+              </div>
+            </div>
+            
+            <div class="border-t border-gray-200 px-4 py-5 sm:p-6">
+              <div id="avatars-table" class="overflow-x-auto">
+                <table class="min-w-full divide-y divide-gray-200">
+                  <thead class="bg-gray-50">
+                    <tr>
+                      <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Avatar</th>
+                      <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
+                      <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ID</th>
+                      <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                      <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Model</th>
+                      <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Created</th>
+                      <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody id="avatars-body" class="bg-white divide-y divide-gray-200">
+                    <!-- Avatar rows will be loaded here -->
+                    <tr>
+                      <td colspan="7" class="px-6 py-4 whitespace-nowrap text-center text-sm text-gray-500">
+                        Loading avatars...
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+              
+              <div class="mt-4 flex justify-between items-center">
+                <div id="pagination-info" class="text-sm text-gray-500">
+                  Showing 1-20 of 0 avatars
+                </div>
+                <div class="flex space-x-2">
+                  <button id="prev-page" class="px-3 py-1 border border-gray-300 rounded shadow-sm bg-white text-gray-700 disabled:opacity-50 disabled:cursor-not-allowed">
+                    Previous
+                  </button>
+                  <button id="next-page" class="px-3 py-1 border border-gray-300 rounded shadow-sm bg-white text-gray-700 disabled:opacity-50 disabled:cursor-not-allowed">
+                    Next
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </main>
+
+    <!-- Avatar Edit Modal -->
+    <div id="avatar-modal" class="fixed inset-0 bg-gray-600 bg-opacity-75 hidden flex items-center justify-center">
+      <div class="bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-screen overflow-y-auto">
+        <div class="px-6 py-4 bg-gray-100 border-b flex justify-between items-center">
+          <h3 class="text-lg font-medium text-gray-900" id="modal-title">Edit Avatar</h3>
+          <button id="close-modal" class="text-gray-400 hover:text-gray-500">
+            <svg class="h-6 w-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+        <form id="avatar-form" class="px-6 py-4">
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div class="space-y-4">
+              <div>
+                <label for="avatar-name" class="block text-sm font-medium text-gray-700">Name</label>
+                <input type="text" id="avatar-name" name="name" class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
+              </div>
+              
+              <div>
+                <label for="avatar-status" class="block text-sm font-medium text-gray-700">Status</label>
+                <select id="avatar-status" name="status" class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
+                  <option value="alive">Alive</option>
+                  <option value="dead">Dead</option>
+                  <option value="inactive">Inactive</option>
+                </select>
+              </div>
+              
+              <div>
+                <label for="avatar-model" class="block text-sm font-medium text-gray-700">AI Model</label>
+                <select id="avatar-model" name="model" class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
+                  <option value="gemini-2.0-flash">gemini-2.0-flash</option>
+                  <option value="gemini-2.0-flash-001">gemini-2.0-flash-001</option>
+                  <option value="gemini-2.0-pro">gemini-2.0-pro</option>
+                  <option value="gemini-1.5-pro">gemini-1.5-pro</option>
+                  <option value="gemini-1.5-flash">gemini-1.5-flash</option>
+                </select>
+              </div>
+              
+              <div>
+                <label for="avatar-emoji" class="block text-sm font-medium text-gray-700">Emoji</label>
+                <input type="text" id="avatar-emoji" name="emoji" class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
+              </div>
+            </div>
+            
+            <div class="space-y-4">
+              <div>
+                <label for="avatar-description" class="block text-sm font-medium text-gray-700">Description</label>
+                <textarea id="avatar-description" name="description" rows="3" class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"></textarea>
+              </div>
+              
+
+<script>
+  // Error handling function for avatar details loading
+  function handleAvatarDetailsError(avatarId) {
+    console.log('Retrying avatar details load for:', avatarId);
+    setTimeout(() => {
+      fetchAvatarDetails(avatarId)
+        .catch(err => {
+          console.error('Failed to load avatar details after retry:', err);
+          document.getElementById('avatar-details-container').innerHTML = `
+            <div class="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 mb-4">
+              <p>Error loading avatar details. Please try again.</p>
+              <button onclick="handleAvatarDetailsError('${avatarId}')" class="mt-2 bg-red-500 text-white px-3 py-1 rounded">
+                Retry
+              </button>
+            </div>
+          `;
+        });
+    }, 1000);
+  }
+  
+  // Enhanced fetchAvatarDetails function with better error handling
+  async function fetchAvatarDetails(avatarId) {
+    try {
+      document.getElementById('avatar-details-container').innerHTML = `
+        <div class="flex justify-center items-center p-8">
+          <div class="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-gray-900"></div>
+          <span class="ml-2">Loading avatar details...</span>
+        </div>
+      `;
+      
+      const response = await fetch(`/api/avatars/${avatarId}`);
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error ${response.status}`);
+      }
+      
+      const avatar = await response.json();
+      
+      // Verify avatar has required data
+      if (!avatar || !avatar.name) {
+        throw new Error('Invalid avatar data received');
+      }
+      
+      // Render avatar details
+      renderAvatarDetails(avatar);
+    } catch (error) {
+      console.error('Error loading avatar details:', error);
+      document.getElementById('avatar-details-container').innerHTML = `
+        <div class="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 mb-4">
+          <p>Failed to load avatar details: ${error.message}</p>
+          <button onclick="handleAvatarDetailsError('${avatarId}')" class="mt-2 bg-red-500 text-white px-3 py-1 rounded">
+            Retry
+          </button>
+        </div>
+      `;
+    }
+  }
+</script>
+
+              <div>
+                <label for="avatar-personality" class="block text-sm font-medium text-gray-700">Personality</label>
+                <textarea id="avatar-personality" name="personality" rows="3" class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"></textarea>
+              </div>
+              
+              <div>
+                <label for="avatar-image" class="block text-sm font-medium text-gray-700">Avatar Image</label>
+                <div class="mt-1 flex items-center">
+                  <img id="avatar-image-preview" src="" alt="Avatar" class="h-32 w-32 rounded-full object-cover border border-gray-300">
+                  <input type="hidden" id="avatar-image-url" name="imageUrl">
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <div class="mt-6 flex justify-end space-x-3">
+            <button type="button" id="cancel-edit" class="inline-flex justify-center py-2 px-4 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+              Cancel
+            </button>
+            <button type="submit" class="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+              Save Changes
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <footer class="bg-white">
+      <div class="max-w-7xl mx-auto py-4 px-4 sm:px-6 lg:px-8">
+        <p class="text-center text-sm text-gray-500">ARGOS Admin Panel © 2024</p>
+      </div>
+    </footer>
+  </div>
+  
+  <script>
+    document.addEventListener('DOMContentLoaded', function() {
+      // Variables
+      let currentPage = 1;
+      let pageSize = 20;
+      let totalAvatars = 0;
+      let currentFilter = 'all';
+      let currentSearch = '';
+      
+      // DOM Elements
+      const avatarsBody = document.getElementById('avatars-body');
+      const paginationInfo = document.getElementById('pagination-info');
+      const prevPageBtn = document.getElementById('prev-page');
+      const nextPageBtn = document.getElementById('next-page');
+      const avatarFilter = document.getElementById('avatar-filter');
+      const avatarSearch = document.getElementById('avatar-search');
+      const avatarModal = document.getElementById('avatar-modal');
+      const closeModal = document.getElementById('close-modal');
+      const cancelEdit = document.getElementById('cancel-edit');
+      const avatarForm = document.getElementById('avatar-form');
+      
+      // Load avatars
+      loadAvatars();
+      
+      // Event Listeners
+      prevPageBtn.addEventListener('click', () => {
+        if (currentPage > 1) {
+          currentPage--;
+          loadAvatars();
+        }
+      });
+      
+      nextPageBtn.addEventListener('click', () => {
+        if (currentPage * pageSize < totalAvatars) {
+          currentPage++;
+          loadAvatars();
+        }
+      });
+      
+      avatarFilter.addEventListener('change', () => {
+        currentFilter = avatarFilter.value;
+        currentPage = 1;
+        loadAvatars();
+      });
+      
+      avatarSearch.addEventListener('input', debounce(() => {
+        currentSearch = avatarSearch.value;
+        currentPage = 1;
+        loadAvatars();
+      }, 300));
+      
+      closeModal.addEventListener('click', () => {
+        avatarModal.classList.add('hidden');
+      });
+      
+      cancelEdit.addEventListener('click', () => {
+        avatarModal.classList.add('hidden');
+      });
+      
+      avatarForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const formData = new FormData(avatarForm);
+        const avatarId = avatarForm.dataset.avatarId;
+        
+        try {
+          const response = await fetch(`/api/admin/avatars/${avatarId}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(Object.fromEntries(formData))
+          });
+          
+          if (!response.ok) {
+            throw new Error(`HTTP error ${response.status}`);
+          }
+          
+          avatarModal.classList.add('hidden');
+          loadAvatars();
+          showNotification('Avatar updated successfully');
+        } catch (error) {
+          console.error('Error updating avatar:', error);
+          showNotification('Failed to update avatar', 'error');
+        }
+      });
+      
+      // Functions
+      async function loadAvatars() {
+        try {
+          avatarsBody.innerHTML = `
+            <tr>
+              <td colspan="7" class="px-6 py-4 whitespace-nowrap text-center text-sm text-gray-500">
+                <div class="flex justify-center">
+                  <svg class="animate-spin h-5 w-5 text-indigo-500" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                </div>
+              </td>
+            </tr>
+          `;
+          
+          const params = new URLSearchParams({
+            page: currentPage,
+            limit: pageSize,
+            filter: currentFilter,
+            search: currentSearch
+          });
+          
+          const response = await fetch(`/api/admin/avatars?${params}`);
+          
+          if (!response.ok) {
+            throw new Error(`HTTP error ${response.status}`);
+          }
+          
+          const data = await response.json();
+          totalAvatars = data.total || 0;
+          
+          renderAvatars(data.avatars || []);
+          updatePagination();
+        } catch (error) {
+          console.error('Error loading avatars:', error);
+          avatarsBody.innerHTML = `
+            <tr>
+              <td colspan="7" class="px-6 py-4 whitespace-nowrap text-center text-sm text-red-500">
+                Error loading avatars: ${error.message}
+              </td>
+            </tr>
+          `;
+        }
+      }
+      
+      function renderAvatars(avatars) {
+        if (avatars.length === 0) {
+          avatarsBody.innerHTML = `
+            <tr>
+              <td colspan="7" class="px-6 py-4 whitespace-nowrap text-center text-sm text-gray-500">
+                No avatars found
+              </td>
+            </tr>
+          `;
+          return;
+        }
+        
+        avatarsBody.innerHTML = avatars.map(avatar => `
+          <tr>
+            <td class="px-6 py-4 whitespace-nowrap">
+              <div class="flex items-center">
+                <div class="h-10 w-10 flex-shrink-0">
+                  <img class="h-10 w-10 rounded-full object-cover" src="${avatar.thumbnailUrl || avatar.imageUrl}" alt="${avatar.name}">
+                </div>
+              </div>
+            </td>
+            <td class="px-6 py-4 whitespace-nowrap">
+              <div class="text-sm font-medium text-gray-900">
+                ${avatar.name || 'Unnamed'} ${avatar.emoji || ''}
+              </div>
+            </td>
+            <td class="px-6 py-4 whitespace-nowrap">
+              <div class="text-sm text-gray-500">${avatar._id}</div>
+            </td>
+            <td class="px-6 py-4 whitespace-nowrap">
+              <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusColor(avatar.status)}">
+                ${avatar.status || 'Unknown'}
+              </span>
+            </td>
+            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+              ${avatar.model || 'Not specified'}
+            </td>
+            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+              ${formatDate(avatar.createdAt)}
+            </td>
+            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+              <div class="flex space-x-2">
+                <button 
+                  data-avatar-id="${avatar._id}"
+                  class="edit-avatar text-indigo-600 hover:text-indigo-900"
+                >
+                  Edit
+                </button>
+                <button 
+                  data-avatar-id="${avatar._id}"
+                  class="delete-avatar text-red-600 hover:text-red-900"
+                >
+                  Delete
+                </button>
+              </div>
+            </td>
+          </tr>
+        `).join('');
+        
+        // Add event listeners to edit buttons
+        document.querySelectorAll('.edit-avatar').forEach(button => {
+          button.addEventListener('click', () => {
+            const avatarId = button.dataset.avatarId;
+            editAvatar(avatarId);
+          });
+        });
+        
+        // Add event listeners to delete buttons
+        document.querySelectorAll('.delete-avatar').forEach(button => {
+          button.addEventListener('click', () => {
+            const avatarId = button.dataset.avatarId;
+            if (confirm('Are you sure you want to delete this avatar?')) {
+              deleteAvatar(avatarId);
+            }
+          });
+        });
+      }
+      
+      function updatePagination() {
+        const start = (currentPage - 1) * pageSize + 1;
+        const end = Math.min(currentPage * pageSize, totalAvatars);
+        
+        paginationInfo.textContent = `Showing ${start}-${end} of ${totalAvatars} avatars`;
+        
+        prevPageBtn.disabled = currentPage === 1;
+        nextPageBtn.disabled = end >= totalAvatars;
+      }
+      
+      async function editAvatar(avatarId) {
+        try {
+          // Show loading in modal
+          avatarModal.classList.remove('hidden');
+          document.getElementById('modal-title').textContent = 'Loading Avatar Data...';
+          
+          // Fetch avatar details
+          const response = await fetch(`/api/admin/avatars/${avatarId}`);
+          
+          if (!response.ok) {
+            throw new Error(`HTTP error ${response.status}`);
+          }
+          
+          const avatar = await response.json();
+          
+          // Update modal title
+          document.getElementById('modal-title').textContent = `Edit Avatar: ${avatar.name}`;
+          
+          // Fill form with avatar data
+          avatarForm.dataset.avatarId = avatarId;
+          document.getElementById('avatar-name').value = avatar.name || '';
+          document.getElementById('avatar-status').value = avatar.status || 'alive';
+          document.getElementById('avatar-model').value = avatar.model || 'gemini-2.0-flash';
+          document.getElementById('avatar-emoji').value = avatar.emoji || '';
+          document.getElementById('avatar-description').value = avatar.description || '';
+          document.getElementById('avatar-personality').value = avatar.personality || '';
+          document.getElementById('avatar-image-preview').src = avatar.imageUrl || '';
+          document.getElementById('avatar-image-url').value = avatar.imageUrl || '';
+          
+        } catch (error) {
+          console.error('Error fetching avatar details:', error);
+          avatarModal.classList.add('hidden');
+          showNotification('Failed to load avatar details', 'error');
+        }
+      }
+      
+      async function deleteAvatar(avatarId) {
+        try {
+          const response = await fetch(`/api/admin/avatars/${avatarId}`, {
+            method: 'DELETE'
+          });
+          
+          if (!response.ok) {
+            throw new Error(`HTTP error ${response.status}`);
+          }
+          
+          loadAvatars();
+          showNotification('Avatar deleted successfully');
+        } catch (error) {
+          console.error('Error deleting avatar:', error);
+          showNotification('Failed to delete avatar', 'error');
+        }
+      }
+      
+      function showNotification(message, type = 'success') {
+        // Check if notification container exists, create if not
+        let container = document.getElementById('notification-container');
+        
+        if (!container) {
+          container = document.createElement('div');
+          container.id = 'notification-container';
+          container.className = 'fixed bottom-4 right-4 z-50';
+          document.body.appendChild(container);
+        }
+        
+        // Create notification element
+        const notification = document.createElement('div');
+        notification.className = `mb-2 p-3 rounded shadow-lg ${type === 'success' ? 'bg-green-500' : 'bg-red-500'} text-white`;
+        notification.textContent = message;
+        
+        // Add to container
+        container.appendChild(notification);
+        
+        // Remove after 3 seconds
+        setTimeout(() => {
+          notification.remove();
+        }, 3000);
+      }
+      
+      // Helper functions
+      function getStatusColor(status) {
+        switch (status) {
+          case 'alive': return 'bg-green-100 text-green-800';
+          case 'dead': return 'bg-red-100 text-red-800';
+          case 'inactive': return 'bg-gray-100 text-gray-800';
+          default: return 'bg-gray-100 text-gray-800';
+        }
+      }
+      
+      function formatDate(dateString) {
+        if (!dateString) return 'Unknown';
+        
+        const date = new Date(dateString);
+        
+        if (isNaN(date.getTime())) {
+          return 'Invalid date';
+        }
+        
+        return date.toLocaleDateString('en-US', {
+          year: 'numeric',
+          month: 'short',
+          day: 'numeric'
+        });
+      }
+      
+      function debounce(func, wait) {
+        let timeout;
+        return function() {
+          const context = this;
+          const args = arguments;
+          clearTimeout(timeout);
+          timeout = setTimeout(() => {
+            func.apply(context, args);
+          }, wait);
+        };
+      }
+    });
+  </script>
+</body>
+</html>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Avatar Management</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            primary: '#4f46e5',
+          }
+        }
+      }
+    }
+  </script>
+</head>
+<body class="bg-gray-100">
+  <div class="container mx-auto p-4">
+    <h1 class="text-3xl font-bold mb-6">Avatar Management</h1>
+    
+    <div class="bg-white rounded-lg shadow p-6 mb-6">
+      <h2 class="text-xl font-semibold mb-4">Search & Filter</h2>
+      <div class="flex flex-wrap gap-4 mb-4">
+        <div class="w-full md:w-64">
+          <label class="block text-sm font-medium text-gray-700 mb-1">Search</label>
+          <input type="text" id="search-input" class="w-full px-3 py-2 border border-gray-300 rounded-md" placeholder="Name, ID, or description...">
+        </div>
+        <div class="w-full md:w-48">
+          <label class="block text-sm font-medium text-gray-700 mb-1">Filter</label>
+          <select id="filter-select" class="w-full px-3 py-2 border border-gray-300 rounded-md">
+            <option value="all">All Avatars</option>
+            <option value="active">Active Only</option>
+            <option value="inactive">Inactive Only</option>
+          </select>
+        </div>
+        <div class="w-full md:w-auto self-end">
+          <button id="search-button" class="px-4 py-2 bg-primary text-white rounded-md hover:bg-indigo-700">Search</button>
+        </div>
+      </div>
+    </div>
+    
+    <div class="bg-white rounded-lg shadow">
+      <div class="p-4 border-b border-gray-200 flex justify-between items-center">
+        <h2 class="text-xl font-semibold">Avatars</h2>
+        <button id="new-avatar-button" class="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700">New Avatar</button>
+      </div>
+      
+      <div class="overflow-x-auto">
+        <table class="min-w-full divide-y divide-gray-200">
+          <thead class="bg-gray-50">
+            <tr>
+              <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Avatar</th>
+              <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
+              <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Created</th>
+              <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+              <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+            </tr>
+          </thead>
+          <tbody id="avatars-table-body" class="bg-white divide-y divide-gray-200">
+            <!-- Avatar rows will be inserted here -->
+          </tbody>
+        </table>
+      </div>
+      
+      <div class="p-4 flex items-center justify-between border-t border-gray-200 bg-gray-50">
+        <div>
+          <p class="text-sm text-gray-700">
+            Showing <span id="shown-count">0</span> of <span id="total-count">0</span> avatars
+          </p>
+        </div>
+        <div class="flex items-center space-x-2">
+          <button id="prev-page" class="px-3 py-1 border border-gray-300 rounded-md text-sm disabled:opacity-50">Previous</button>
+          <span id="current-page" class="text-sm">Page 1</span>
+          <button id="next-page" class="px-3 py-1 border border-gray-300 rounded-md text-sm disabled:opacity-50">Next</button>
+        </div>
+      </div>
+    </div>
+  </div>
+  
+  <!-- Avatar Edit Modal -->
+  <div id="avatar-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center hidden">
+    <div class="bg-white rounded-lg max-w-2xl w-full max-h-screen overflow-y-auto">
+      <div class="p-6">
+        <div class="flex justify-between items-center mb-4">
+          <h3 class="text-2xl font-bold" id="modal-title">Edit Avatar</h3>
+          <button id="close-modal" class="text-gray-500 hover:text-gray-700">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+        
+        <form id="avatar-form">
+          <input type="hidden" id="avatar-id">
+          
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Name</label>
+              <input type="text" id="avatar-name" class="w-full px-3 py-2 border border-gray-300 rounded-md" required>
+            </div>
+            
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Emoji</label>
+              <input type="text" id="avatar-emoji" class="w-full px-3 py-2 border border-gray-300 rounded-md" placeholder="✨">
+            </div>
+            
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Status</label>
+              <select id="avatar-status" class="w-full px-3 py-2 border border-gray-300 rounded-md">
+                <option value="active">Active</option>
+                <option value="inactive">Inactive</option>
+              </select>
+            </div>
+            
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Model</label>
+              <select id="avatar-model" class="w-full px-3 py-2 border border-gray-300 rounded-md">
+                <option value="gpt-4">GPT-4</option>
+                <option value="gpt-3.5-turbo">GPT-3.5 Turbo</option>
+                <option value="gemini-pro">Gemini Pro</option>
+              </select>
+            </div>
+            
+            <div class="md:col-span-2">
+              <label class="block text-sm font-medium text-gray-700 mb-1">Image URL</label>
+              <input type="text" id="avatar-image" class="w-full px-3 py-2 border border-gray-300 rounded-md">
+            </div>
+            
+            <div class="md:col-span-2">
+              <label class="block text-sm font-medium text-gray-700 mb-1">Description</label>
+              <textarea id="avatar-description" rows="2" class="w-full px-3 py-2 border border-gray-300 rounded-md"></textarea>
+            </div>
+            
+            <div class="md:col-span-2">
+              <label class="block text-sm font-medium text-gray-700 mb-1">Personality</label>
+              <textarea id="avatar-personality" rows="3" class="w-full px-3 py-2 border border-gray-300 rounded-md"></textarea>
+            </div>
+          </div>
+          
+          <div class="flex justify-end space-x-3">
+            <button type="button" id="delete-avatar" class="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700">Delete</button>
+            <button type="submit" class="px-4 py-2 bg-primary text-white rounded-md hover:bg-indigo-700">Save Avatar</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      let currentPage = 1;
+      const pageSize = 20;
+      let currentFilter = 'all';
+      let currentSearch = '';
+      let avatars = [];
+      let totalAvatars = 0;
+      
+      const fetchAvatars = async () => {
+        try {
+          const response = await fetch(`/api/admin/avatars?page=${currentPage}&limit=${pageSize}&filter=${currentFilter}&search=${encodeURIComponent(currentSearch)}`);
+          const data = await response.json();
+          
+          if (response.ok) {
+            avatars = data.avatars;
+            totalAvatars = data.total;
+            renderAvatars();
+            updatePagination();
+          } else {
+            console.error('Error fetching avatars:', data.error);
+          }
+        } catch (error) {
+          console.error('Error fetching avatars:', error);
+        }
+      };
+      
+      const renderAvatars = () => {
+        const tableBody = document.getElementById('avatars-table-body');
+        tableBody.innerHTML = '';
+        
+        if (avatars.length === 0) {
+          const row = document.createElement('tr');
+          row.innerHTML = `
+            <td colspan="5" class="px-6 py-4 text-center text-gray-500">
+              No avatars found
+            </td>
+          `;
+          tableBody.appendChild(row);
+          return;
+        }
+        
+        avatars.forEach(avatar => {
+          const row = document.createElement('tr');
+          row.className = 'hover:bg-gray-50';
+          
+          const createdDate = new Date(avatar.createdAt).toLocaleString();
+          const statusClass = avatar.status === 'active' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800';
+          
+          row.innerHTML = `
+            <td class="px-6 py-4 whitespace-nowrap">
+              <div class="flex items-center">
+                <img src="${avatar.imageUrl || '/images/default-avatar.png'}" class="h-10 w-10 rounded-full object-cover" alt="${avatar.name}">
+              </div>
+            </td>
+            <td class="px-6 py-4 whitespace-nowrap">
+              <div class="flex items-center">
+                <span class="mr-2">${avatar.emoji || '✨'}</span>
+                <span class="font-medium">${avatar.name}</span>
+              </div>
+            </td>
+            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+              ${createdDate}
+            </td>
+            <td class="px-6 py-4 whitespace-nowrap">
+              <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${statusClass}">
+                ${avatar.status || 'active'}
+              </span>
+            </td>
+            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+              <button class="text-indigo-600 hover:text-indigo-900 edit-avatar" data-id="${avatar._id}">Edit</button>
+            </td>
+          `;
+          
+          tableBody.appendChild(row);
+        });
+        
+        // Add event listeners to edit buttons
+        document.querySelectorAll('.edit-avatar').forEach(button => {
+          button.addEventListener('click', () => {
+            const avatarId = button.getAttribute('data-id');
+            openEditModal(avatarId);
+          });
+        });
+        
+        // Update counts
+        document.getElementById('shown-count').textContent = avatars.length;
+        document.getElementById('total-count').textContent = totalAvatars;
+      };
+      
+      const updatePagination = () => {
+        const totalPages = Math.ceil(totalAvatars / pageSize);
+        document.getElementById('current-page').textContent = `Page ${currentPage} of ${totalPages}`;
+        
+        document.getElementById('prev-page').disabled = currentPage <= 1;
+        document.getElementById('next-page').disabled = currentPage >= totalPages;
+      };
+      
+      const openEditModal = (avatarId) => {
+        const modal = document.getElementById('avatar-modal');
+        const form = document.getElementById('avatar-form');
+        const titleEl = document.getElementById('modal-title');
+        const deleteBtn = document.getElementById('delete-avatar');
+        
+        // Reset form
+        form.reset();
+        
+        if (avatarId) {
+          // Edit existing avatar
+          titleEl.textContent = 'Edit Avatar';
+          deleteBtn.classList.remove('hidden');
+          
+          const avatar = avatars.find(a => a._id === avatarId);
+          if (avatar) {
+            document.getElementById('avatar-id').value = avatar._id;
+            document.getElementById('avatar-name').value = avatar.name || '';
+            document.getElementById('avatar-emoji').value = avatar.emoji || '';
+            document.getElementById('avatar-status').value = avatar.status || 'active';
+            document.getElementById('avatar-model').value = avatar.model || 'gpt-4';
+            document.getElementById('avatar-image').value = avatar.imageUrl || '';
+            document.getElementById('avatar-description').value = avatar.description || '';
+            document.getElementById('avatar-personality').value = avatar.personality || '';
+          }
+        } else {
+          // Create new avatar
+          titleEl.textContent = 'Create New Avatar';
+          deleteBtn.classList.add('hidden');
+          document.getElementById('avatar-id').value = '';
+        }
+        
+        modal.classList.remove('hidden');
+      };
+      
+      const closeModal = () => {
+        document.getElementById('avatar-modal').classList.add('hidden');
+      };
+      
+      // Initialize event listeners
+      document.getElementById('new-avatar-button').addEventListener('click', () => openEditModal());
+      document.getElementById('close-modal').addEventListener('click', closeModal);
+      
+      document.getElementById('search-button').addEventListener('click', () => {
+        currentSearch = document.getElementById('search-input').value;
+        currentFilter = document.getElementById('filter-select').value;
+        currentPage = 1;
+        fetchAvatars();
+      });
+      
+      document.getElementById('prev-page').addEventListener('click', () => {
+        if (currentPage > 1) {
+          currentPage--;
+          fetchAvatars();
+        }
+      });
+      
+      document.getElementById('next-page').addEventListener('click', () => {
+        const totalPages = Math.ceil(totalAvatars / pageSize);
+        if (currentPage < totalPages) {
+          currentPage++;
+          fetchAvatars();
+        }
+      });
+      
+      document.getElementById('avatar-form').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        
+        const avatarId = document.getElementById('avatar-id').value;
+        const formData = {
+          name: document.getElementById('avatar-name').value,
+          emoji: document.getElementById('avatar-emoji').value,
+          status: document.getElementById('avatar-status').value,
+          model: document.getElementById('avatar-model').value,
+          imageUrl: document.getElementById('avatar-image').value,
+          description: document.getElementById('avatar-description').value,
+          personality: document.getElementById('avatar-personality').value
+        };
+        
+        try {
+          let response;
+          
+          if (avatarId) {
+            // Update existing avatar
+            response = await fetch(`/api/admin/avatars/${avatarId}`, {
+              method: 'PUT',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(formData)
+            });
+          } else {
+            // Create new avatar
+            response = await fetch('/api/admin/avatars', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(formData)
+            });
+          }
+          
+          const data = await response.json();
+          
+          if (response.ok) {
+            closeModal();
+            fetchAvatars();
+          } else {
+            alert(`Error: ${data.error || 'Unknown error occurred'}`);
+          }
+        } catch (error) {
+          console.error('Error saving avatar:', error);
+          alert('An error occurred while saving the avatar');
+        }
+      });
+      
+      document.getElementById('delete-avatar').addEventListener('click', async () => {
+        const avatarId = document.getElementById('avatar-id').value;
+        if (!avatarId) return;
+        
+        if (confirm('Are you sure you want to delete this avatar? This action cannot be undone.')) {
+          try {
+            const response = await fetch(`/api/admin/avatars/${avatarId}`, {
+              method: 'DELETE'
+            });
+            
+            const data = await response.json();
+            
+            if (response.ok) {
+              closeModal();
+              fetchAvatars();
+            } else {
+              alert(`Error: ${data.error || 'Unknown error occurred'}`);
+            }
+          } catch (error) {
+            console.error('Error deleting avatar:', error);
+            alert('An error occurred while deleting the avatar');
+          }
+        }
+      });
+      
+      // Initial load
+      fetchAvatars();
+    });
+  </script>
+</body>
+</html>

@@ -16,7 +16,7 @@ The Intelligence System drives avatar consciousness through a sophisticated netw
 - **Models**: Eva-Qwen-2.5-72B, Llama-3.1-LumiMaid-70B
 - **Use**: Combat strategy and social dynamics
 
-### 🔮 Uncommon Intelligence
+### 💼 Uncommon Intelligence
 - **Primary**: Balanced performance across tasks
 - **Models**: Mistral-Large, Qwen-32B, Mythalion-13B
 - **Use**: General interaction and decision making

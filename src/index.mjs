@@ -1,15 +1,23 @@
+
+// NOTE: This is just a portion of the file. Find where you initialize the MessageHandler and ensure imageProcessingService is passed.
+// Look for code similar to:
+// 
+// const messageHandler = new MessageHandler(avatarService, client, chatService);
+//
+// And change it to include the imageProcessingService if it exists:
+// 
+// const messageHandler = new MessageHandler(avatarService, client, chatService, imageProcessingService || null);
+//
+// If you can't find this exact code pattern, look for where MessageHandler is instantiated and make a similar change.
+
 // index.mjs
 import winston from "winston";
 import { DatabaseService } from "./services/databaseService.mjs";
 import { SpamControlService } from "./services/spamControlService.mjs";
-import { OpenRouterService as AIService } from "./services/openrouterService.mjs";
+import { GoogleAIService as AIService } from "./services/googleAIService.mjs";
 import { AvatarGenerationService } from "./services/avatarService.mjs";
-
-// Load and validate configuration
+import { ImageProcessingService } from "./services/imageProcessingService.mjs";
 import configService from "./services/configService.mjs";
-configService.validate();
-const aiConfig = configService.getAIConfig();
-
 import {
   client,
   reactToMessage,
@@ -20,13 +28,12 @@ import {
 import { ChatService } from "./services/chat/ChatService.mjs";
 import { MessageHandler } from "./services/chat/MessageHandler.mjs";
 
-/**
- * ----------------------
- * Logging Configuration
- * ----------------------
- * Configures Winston logger with console and file transports.
- * In production, consider adding log aggregation (e.g., ELK stack).
- */
+// --------------------------
+// Configuration & Setup
+// --------------------------
+configService.validate();
+
+
 const logger = winston.createLogger({
   level: process.env.LOG_LEVEL || "info",
   format: winston.format.combine(
@@ -50,74 +57,46 @@ const logger = winston.createLogger({
   ],
 });
 
-// Initialize core services
-const databaseService = new DatabaseService(logger);
-const aiService = new AIService();
+// Initialize global services
+let databaseService = new DatabaseService(logger);
+global.databaseService = databaseService;
+let aiService = new AIService();
 let avatarService = null;
-let chatService;
-let messageHandler;
-let spamControlService;
+let chatService = null;
+let messageHandler = null;
+let spamControlService = null;
 
-/**
- * -----------------------
- * Environment Variables
- * -----------------------
- * Validates essential environment variables.
- * Use a library like 'envalid' in production for stricter validation.
- */
-const MONGO_URI = process.env.MONGO_URI;
-const MONGO_DB_NAME = process.env.MONGO_DB_NAME || "discord-bot";
-const DISCORD_BOT_TOKEN = process.env.DISCORD_BOT_TOKEN;
-const DISCORD_CLIENT_ID = process.env.DISCORD_CLIENT_ID;
-
-if (!MONGO_URI) {
-  logger.error("MONGO_URI is not defined in the environment variables.");
-  process.exit(1);
-}
-if (!DISCORD_BOT_TOKEN) {
-  logger.error("DISCORD_BOT_TOKEN is not defined in the environment variables.");
+// Validate essential environment variables
+const { MONGO_URI, MONGO_DB_NAME = "discord-bot", DISCORD_BOT_TOKEN, DISCORD_CLIENT_ID } = process.env;
+if (!MONGO_URI || !DISCORD_BOT_TOKEN) {
+  logger.error("Essential environment variables (MONGO_URI or DISCORD_BOT_TOKEN) are missing. Exiting.");
   process.exit(1);
 }
 if (!DISCORD_CLIENT_ID) {
-  logger.warn(
-    "DISCORD_CLIENT_ID is not defined. Slash commands registration might fail."
-  );
+  logger.warn("DISCORD_CLIENT_ID is not defined. Slash commands registration might fail.");
 }
 
-/**
- * Sanitizes user input to prevent injection attacks or malformed data.
- * @param {string} input - The user-provided input.
- * @returns {string} - Sanitized input.
- */
-function sanitizeInput(input) {
-  return input.replace(/[^\p{L}\p{N}\s\p{Emoji}]/gu, "").trim();
-}
+// --------------------------
+// Utility Functions
+// --------------------------
+const sanitizeInput = (input) =>
+  input.replace(/[^\p{L}\p{N}\s\p{Emoji}]/gu, "").trim();
 
-/**
- * Finds an avatar by name in a list of avatars.
- * @param {string} name - The name to search for.
- * @param {Array} avatars - List of avatar objects.
- * @returns {Object|null} - The matching avatar or null.
- */
 async function findAvatarByName(name, avatars) {
   const sanitizedName = sanitizeInput(name.toLowerCase());
   return (
     avatars
-      .filter(
-        (avatar) =>
-          avatar.name.toLowerCase() === sanitizedName ||
-          sanitizeInput(avatar.name.toLowerCase()) === sanitizedName
+      .filter((avatar) =>
+        avatar.name.toLowerCase() === sanitizedName ||
+        sanitizeInput(avatar.name.toLowerCase()) === sanitizedName
       )
       .sort(() => Math.random() - 0.5)[0] || null
   );
 }
 
-/**
- * Handles the breed command to create a new avatar from two existing ones.
- * @param {Message} message - Discord message object.
- * @param {Array} args - Command arguments.
- * @param {string} commandLine - Full command text.
- */
+// --------------------------
+// Command Handlers
+// --------------------------
 async function handleBreedCommand(message, args, commandLine) {
   const avatars = await avatarService.getAvatarsInChannel(message.channel.id);
   const mentionedAvatars = Array.from(
@@ -137,75 +116,72 @@ async function handleBreedCommand(message, args, commandLine) {
     return;
   }
 
-  const breedingDate1 = await avatarService.getLastBredDate(avatar1._id.toString());
-  if (breedingDate1 && Date.now() - new Date(breedingDate1) < 24 * 60 * 60 * 1000) {
-    await replyToMessage(
-      message,
-      `${avatar1.name} has already been bred in the last 24 hours.`
-    );
+  // Check if either avatar was bred within the last 24 hours
+  const checkRecentBreed = async (avatar) => {
+    const lastBred = await avatarService.getLastBredDate(avatar._id.toString());
+    return lastBred && (Date.now() - new Date(lastBred) < 24 * 60 * 60 * 1000);
+  };
+
+  if (await checkRecentBreed(avatar1)) {
+    await replyToMessage(message, `${avatar1.name} has already been bred in the last 24 hours.`);
     return;
   }
-
-  const breedingDate2 = await avatarService.getLastBredDate(avatar2._id.toString());
-  if (breedingDate2 && Date.now() - new Date(breedingDate2) < 24 * 60 * 60 * 1000) {
-    await replyToMessage(
-      message,
-      `${avatar2.name} has already been bred in the last 24 hours.`
-    );
+  if (await checkRecentBreed(avatar2)) {
+    await replyToMessage(message, `${avatar2.name} has already been bred in the last 24 hours.`);
     return;
   }
 
   await replyToMessage(message, `Breeding ${avatar1.name} with ${avatar2.name}...`);
 
-  const memories1 = (
-    await chatService.conversationHandler.memoryService.getMemories(avatar1._id)
-  )
-    .map((m) => m.memory)
-    .join("\n");
-  const narrative1 = await chatService.conversationHandler.buildNarrativePrompt(
-    avatar1,
-    [memories1]
-  );
-  const memories2 = (
-    await chatService.conversationHandler.memoryService.getMemories(avatar2._id)
-  )
-    .map((m) => m.memory)
-    .join("\n");
-  const narrative2 = await chatService.conversationHandler.buildNarrativePrompt(
-    avatar2,
-    [memories2]
-  );
+  // Build narrative prompts for both avatars
+  const buildNarrative = async (avatar) => {
+    const memories = (await chatService.conversationHandler.memoryService.getMemories(avatar._id))
+      .map((m) => m.memory)
+      .join("\n");
+    return chatService.conversationHandler.buildNarrativePrompt(avatar, [memories]);
+  };
 
-  const prompt = `Breed the following avatars to combine them, develop a short backstory for the offspring of these two avatars and include it in the final description:\n\n` +
+  const narrative1 = await buildNarrative(avatar1);
+  const narrative2 = await buildNarrative(avatar2);
+
+  const prompt = `Breed the following avatars to combine them, develop a short backstory for the offspring:\n\n` +
     `AVATAR 1: ${avatar1.name} - ${avatar1.prompt}\n${avatar1.description}\n${avatar1.personality}\n${narrative1}\n\n` +
     `AVATAR 2: ${avatar2.name} - ${avatar2.prompt}\n${avatar2.description}\n${avatar2.personality}\n${narrative2}\n\n` +
-    `Combine their attributes creatively, avoid cosmic or mystical creatures and aim for a down to earth feel suitable for the moonstone sanctum.`;
+    `Combine their attributes creatively, avoiding cosmic or mystical elements and aiming for a down-to-earth feel suitable for the Project 89.`;
 
   logger.info(prompt);
-  // Store original content to restore after summoning
   const originalContent = message.content;
-  // Set the breeding prompt as content for the summon command
-  message.content = `🔮 ${prompt}`;
+  // Temporarily set the breeding prompt as the message content
+  message.content = `💼 ${prompt}`;
   await handleSummonCommand(message, true, {
     summoner: `${message.author.username}@${message.author.id}`,
     parents: [avatar1._id, avatar2._id],
   });
-  // Restore original content after summoning
+  // Restore original message content
   message.content = originalContent;
 }
 
-/**
- * Tracks and enforces daily summon limits.
- */
 const DAILY_SUMMON_LIMIT = 16;
-
 async function checkDailySummonLimit(userId) {
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const summonCount = await databaseService.db
-    .collection("daily_summons")
-    .countDocuments({ userId, timestamp: { $gte: today } });
-  return summonCount < DAILY_SUMMON_LIMIT;
+  const db = databaseService.getDatabase();
+  if (!db) {
+    logger.error("Database not available for summon limit check.");
+    return false;
+  }
+  try {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const summonCount = await db.collection("daily_summons").countDocuments({
+      userId,
+      timestamp: { $gte: today },
+    });
+    return summonCount < DAILY_SUMMON_LIMIT;
+  } catch (error) {
+    logger.error(`Error checking summon limit: ${error.message}`);
+    return false;
+  } finally {
+    //Optional cleanup here if needed.
+  }
 }
 
 async function trackSummon(userId) {
@@ -215,106 +191,115 @@ async function trackSummon(userId) {
   });
 }
 
-/**
- * Handles the summon command to create or retrieve an avatar.
- * @param {Message} message - Discord message object.
- * @param {boolean} breed - Indicates if this is a breed operation.
- * @param {Object} attributes - Additional attributes for the avatar.
- */
 async function handleSummonCommand(message, breed = false, attributes = {}) {
   const content = message.content.trim().substring(2).trim();
-  const lines = content.split("\n");
-  const avatarName = lines[0].trim();
-  const existingAvatar = await avatarService.getAvatarByName(avatarName);
+  const [avatarName] = content.split("\n").map(line => line.trim());
+  let existingAvatar = await avatarService.getAvatarByName(avatarName);
 
   try {
     if (existingAvatar) {
-      await reactToMessage(message, existingAvatar.emoji || "🔮");
-      existingAvatar.channelId = message.channel.id;
-      await chatService.dungeonService.updateAvatarPosition(
-        existingAvatar._id,
-        message.channel.id
-      );
-      existingAvatar.stats = await chatService.dungeonService.getAvatarStats(
-        existingAvatar._id
-      );
+      await reactToMessage(message, existingAvatar.emoji || "💼");
+
+      existingAvatar = await chatService.dungeonService.updateAvatarPosition(existingAvatar._id, message.channel.id);
+      existingAvatar.stats = await chatService.dungeonService.getAvatarStats(existingAvatar._id);
       await avatarService.updateAvatar(existingAvatar);
+
       await sendAvatarProfileEmbedFromObject(existingAvatar);
       await chatService.respondAsAvatar(message.channel, existingAvatar, true);
       return;
     }
 
-    const canSummon =
-      message.author.id === "1175877613017895032" ||
-      (await checkDailySummonLimit(message.author.id));
-    if (!canSummon) {
-      await replyToMessage(
-        message,
-        `Daily summon limit of ${DAILY_SUMMON_LIMIT} reached. Try again tomorrow!`
-      );
+    const db = databaseService.getDatabase();
+    if (!db) {
+      logger.error("Database not available for summon command.");
+      await replyToMessage(message, "Service temporarily unavailable. Please try again later.");
       return;
     }
+    const guildId = message.guild?.id;
+    // Get guild-specific prompts - Refresh from database to ensure latest settings
+    const guildConfig = await configService.getGuildConfig(db, guildId, true); // Force refresh from DB
+    const guildPrompts = guildConfig?.prompts || {};
+    logger.info(`Retrieved guild prompts for ${guildId}: ${JSON.stringify(guildPrompts)}`);
 
-    const prompt =
-      configService.config.prompt.summon ||
-      "Create a twisted avatar, a servant of darkness.";
+    const canSummon = message.author.id === "1175877613017895032" ||
+      (await checkDailySummonLimit(message.author.id));
+    if (!canSummon) {
+      await replyToMessage(message, `Daily summon limit of ${DAILY_SUMMON_LIMIT} reached. Try again tomorrow!`);
+      return;
+    }
+    const summonPrompt = guildPrompts.summon || "Create an avatar with the following description:";
+    logger.info(`Using summon prompt for guild ${guildId}: ${summonPrompt}`);
+
     const avatarData = {
-      prompt: sanitizeInput(`${prompt}\n\nSummon an avatar inspired by this concept:\n\n${content}`),
+      prompt: sanitizeInput(`${summonPrompt}\n\nRequires you to design a creative character based on the following content:\n\n${content}`),
       channelId: message.channel.id,
     };
-    if (prompt.match(/^(https:\/\/.*\.arweave\.net\/|ar:\/\/)/)) {
-      avatarData.arweave_prompt = prompt;
+    if (summonPrompt && summonPrompt.match(/^(https:\/\/.*\.arweave\.net\/|ar:\/\/)/)) {
+      avatarData.arweave_prompt = summonPrompt;
     }
 
-    const createdAvatar = await avatarService.createAvatar(avatarData);
-    if (!createdAvatar || !createdAvatar.name) {
-      throw new Error(`Avatar creation failed: ${JSON.stringify(createdAvatar)}`);
+    try {
+      logger.info(`Avatar generation prompt: ${avatarData.prompt}`);
+      const createdAvatar = await avatarService.createAvatar(avatarData);
+
+      if (!createdAvatar) {
+        // Enhanced error handling with more information
+        logger.error(`Avatar creation failed. Input data: ${JSON.stringify(avatarData)}`);
+        await replyToMessage(message, "Failed to create avatar. Please try again with a different description.");
+        return;
+      }
+
+      if (!createdAvatar.name) {
+        logger.warn(`Created avatar is missing name: ${JSON.stringify(createdAvatar)}`);
+        await replyToMessage(message, "Avatar creation resulted in an incomplete character. Please try again with a more detailed description.");
+        return;
+      }
+
+      createdAvatar.summoner = `${message.author.username}@${message.author.id}`;
+      createdAvatar.model = createdAvatar.model || (await aiService.selectRandomModel());
+      createdAvatar.stats = await chatService.dungeonService.getAvatarStats(createdAvatar._id);
+      await avatarService.updateAvatar(createdAvatar);
+      await sendAvatarProfileEmbedFromObject(createdAvatar);
+
+      try {
+        const intro = await aiService.chat([
+          {
+            role: "system",
+            content: `You are ${createdAvatar.name}. ${createdAvatar.description} ${createdAvatar.personality}`,
+          },
+          {
+            role: "user",
+            content: guildPrompts.introduction || "You've just arrived. Introduce yourself.",
+          }
+        ]);
+
+        createdAvatar.dynamicPersonality = intro;
+        createdAvatar.channelId = message.channel.id;
+        createdAvatar.attributes = attributes;
+        await avatarService.updateAvatar(createdAvatar);
+
+        await sendAsWebhook(message.channel.id, intro, createdAvatar);
+      } catch (introError) {
+        logger.error(`Error generating introduction: ${introError.message}`);
+        // Continue even if introduction generation fails
+      }
+
+      await chatService.dungeonService.initializeAvatar(createdAvatar._id, message.channel.id);
+      await reactToMessage(message, createdAvatar.emoji || "🎉");
+      if (!breed) await trackSummon(message.author.id);
+      await chatService.respondAsAvatar(message.channel, createdAvatar, true);
+    } catch (error) {
+      logger.error(`Summon error: ${error.message}`);
+      await reactToMessage(message, "❌");
+      await replyToMessage(message, `Failed to summon avatar: ${error.message}`);
     }
-
-    createdAvatar.summoner = `${message.author.username}@${message.author.id}`;
-    createdAvatar.model = createdAvatar.model || (await aiService.selectRandomModel());
-    createdAvatar.stats = await chatService.dungeonService.getAvatarStats(createdAvatar._id);
-    await avatarService.updateAvatar(createdAvatar);
-    await sendAvatarProfileEmbedFromObject(createdAvatar);
-
-    const intro = await aiService.chat(
-      [
-        {
-          role: "system",
-          content: `You are ${createdAvatar.name}. ${createdAvatar.description} ${createdAvatar.personality}`,
-        },
-        {
-          role: "user",
-          content:
-            configService.config.prompt.introduction ||
-            "You've just arrived. Introduce yourself.",
-        },
-      ],
-      { model: createdAvatar.model }
-    );
-
-    createdAvatar.dynamicPersonality = intro;
-    createdAvatar.channelId = message.channel.id;
-    createdAvatar.attributes = attributes;
-    await avatarService.updateAvatar(createdAvatar);
-
-    await sendAsWebhook(message.channel.id, intro, createdAvatar);
-    await chatService.dungeonService.initializeAvatar(createdAvatar._id, message.channel.id);
-    await reactToMessage(message, createdAvatar.emoji || "🎉");
-    if (!breed) await trackSummon(message.author.id);
-    await chatService.respondAsAvatar(message.channel, createdAvatar, true);
   } catch (error) {
-    logger.error(`Summon error: ${error.message}`);
+    logger.error(`Error processing summon command: ${error.stack}`);
     await reactToMessage(message, "❌");
-    throw error;
+    await replyToMessage(message, "An error occurred while processing your summon command. Please try again later.");
   }
 }
 
-/**
- * Handles the attack command.
- * @param {Message} message - Discord message object.
- * @param {Array} args - Command arguments.
- */
 async function handleAttackCommand(message, args) {
   if (!args.length) {
     await replyToMessage(message, "Mention an avatar to attack.");
@@ -327,42 +312,55 @@ async function handleAttackCommand(message, args) {
     await replyToMessage(message, `Avatar "${targetName}" not found.`);
     return;
   }
-  const attackResult = await chatService.dungeonService.tools
-    .get("attack")
-    .execute(message, [targetAvatar.name], targetAvatar);
+  const attackResult = await chatService.dungeonService.tools.get("attack").execute(
+    message,
+    [targetAvatar.name],
+    targetAvatar
+  );
   await reactToMessage(message, "⚔️");
   await replyToMessage(message, `🔥 **${attackResult}**`);
 }
 
-/**
- * Processes commands starting with specific emojis.
- * @param {Message} message - Discord message object.
- */
 async function handleCommands(message) {
   const content = message.content;
-
   if (content.startsWith("!summon")) {
-    await replyToMessage(message, "Command Deprecated. Use 🔮 instead.");
+    await replyToMessage(message, "Command Deprecated. Use 💼 instead.");
     return;
   }
+  // Check if message starts with summon emoji from guild config
+  const guildId = message.guild?.id;
+  let summonEmoji = process.env.DEFAULT_SUMMON_EMOJI || "💼";
 
-  if (content.startsWith("🔮")) {
-    const member = message.guild?.members?.cache?.get(message.author.id);
-    const requiredRole = process.env.SUMMONER_ROLE || "🔮";
-    if (
-      !message.author.bot &&
-      member &&
-      !member.roles.cache.some(
-        (role) => role.id === requiredRole || role.name === requiredRole
-      )
-    ) {
-      await replyToMessage(message, "You lack the required role to summon.");
-      return;
+  if (guildId) {
+    try {
+      const guildConfig = await configService.getGuildConfig(databaseService.getDatabase(), guildId);
+      if (guildConfig) {
+        if (guildConfig.toolEmojis && guildConfig.toolEmojis.summon) {
+          summonEmoji = guildConfig.toolEmojis.summon;
+        } else if (guildConfig.summonEmoji) {
+          // For backwards compatibility with older config format
+          summonEmoji = guildConfig.summonEmoji;
+        }
+      }
+      logger.debug(`Using summon emoji ${summonEmoji} for guild ${guildId}`);
+    } catch (error) {
+      logger.error(`Error getting summon emoji from config: ${error.message}`);
     }
-    await reactToMessage(message, "🔮");
-    await handleSummonCommand(message, false, {});
   }
 
+  if (content.startsWith(summonEmoji)) {
+    const member = message.guild?.members?.cache?.get(message.author.id);
+    const requiredRole = (guildId ? await configService.getGuildConfig(databaseService.getDatabase(), guildId)?.summonerRole : process.env.SUMMONER_ROLE) || "💼";
+    if (!message.author.bot && member && !member.roles.cache.some(
+      (role) => role.id === requiredRole || role.name === requiredRole
+    )) {
+      await replyToMessage(message, `You lack the required role (${requiredRole}) to summon.`);
+      return;
+    }
+    await reactToMessage(message, summonEmoji);
+    await handleSummonCommand(message, false, {});
+    return;
+  }
   if (content.startsWith("⚔️")) {
     if (!message.author.bot) {
       await replyToMessage(message, "❌ Sword of violence not found.");
@@ -372,61 +370,54 @@ async function handleCommands(message) {
     await reactToMessage(message, "⚔️");
     await handleAttackCommand(message, attackArgs);
     await reactToMessage(message, "✅");
+    return;
   }
-
   if (content.startsWith("🏹")) {
     const breedArgs = content.slice(2).trim().split(" ");
     await reactToMessage(message, "🏹");
     await handleBreedCommand(message, breedArgs, content);
     await reactToMessage(message, "✅");
+    return;
   }
 }
 
-/**
- * Discord message event handler.
- */
-client.on("messageCreate", async (message) => {
-  try {
-    if (!(await spamControlService.shouldProcessMessage(message))) {
-      return;
-    }
-
-    await saveMessageToDatabase(message);
-    await handleCommands(message);
-
-    if (message.author.bot) return;
-
-    await messageHandler.processChannel(message.channel.id);
-
-    const result = await avatarService.getOrCreateUniqueAvatarForUser(
-      message.author.id,
-      `A unique avatar for ${message.author.username} (${message.author.displayName})`,
-      message.channel.id
-    );
-
-    if (result.new) {
-      result.avatar.model = result.avatar.model || (await aiService.selectRandomModel());
-      result.avatar.stats = await chatService.dungeonService.getAvatarStats(result.avatar._id);
-      await avatarService.updateAvatar(result.avatar);
-      await sendAvatarProfileEmbedFromObject(result.avatar);
-      await chatService.respondAsAvatar(message.channel, result.avatar, true);
-    }
-
-    await messageHandler.processChannel(message.channel.id);
-  } catch (error) {
-    logger.error(`Error processing message: ${error.stack}`);
-  }
-});
-
-/**
- * Saves a message to the database.
- * @param {Message} message - Discord message object.
- */
 async function saveMessageToDatabase(message) {
   const db = databaseService.getDatabase();
   if (!db) return;
-
   const messagesCollection = db.collection("messages");
+
+  // Extract attachment URLs if present
+  const attachments = Array.from(message.attachments.values()).map(attachment => ({
+    id: attachment.id,
+    url: attachment.url,
+    proxyURL: attachment.proxyURL,
+    filename: attachment.name,
+    contentType: attachment.contentType,
+    size: attachment.size,
+    height: attachment.height,
+    width: attachment.width
+  }));
+
+  // Extract embed data if present
+  const embeds = message.embeds.map(embed => ({
+    type: embed.type,
+    title: embed.title,
+    description: embed.description,
+    url: embed.url,
+    image: embed.image ? {
+      url: embed.image.url,
+      proxyURL: embed.image.proxyURL,
+      height: embed.image.height,
+      width: embed.image.width
+    } : null,
+    thumbnail: embed.thumbnail ? {
+      url: embed.thumbnail.url,
+      proxyURL: embed.thumbnail.proxyURL,
+      height: embed.thumbnail.height,
+      width: embed.thumbnail.width
+    } : null
+  }));
+
   const messageData = {
     messageId: message.id,
     channelId: message.channel.id,
@@ -440,6 +431,10 @@ async function saveMessageToDatabase(message) {
       avatar: message.author.avatar,
     },
     content: message.content,
+    attachments: attachments,
+    embeds: embeds,
+    hasImages: attachments.some(a => a.contentType?.startsWith('image/')) ||
+      embeds.some(e => e.image || e.thumbnail),
     timestamp: message.createdTimestamp,
   };
 
@@ -452,10 +447,82 @@ async function saveMessageToDatabase(message) {
   logger.debug("💾 Message saved to database");
 }
 
-/**
- * Gracefully shuts down the application.
- * @param {string} signal - The signal received.
- */
+client.on("messageCreate", async (message) => {
+  try {
+    if (!message.guild) return;
+
+    // --------------------------
+    // Guild Whitelist Check
+    // --------------------------
+    if (client.guildWhitelist?.has(message.guild.id)) {
+      if (!client.guildWhitelist.get(message.guild.id)) {
+        logger.warn(`Guild ${message.guild.name} (${message.guild.id}) is not whitelisted. Ignoring message.`);
+        return;
+      }
+    } else {
+      const db = databaseService.getDatabase();
+      if (!db) return;
+      const guildConfig = await configService.getGuildConfig(db, message.guild.id);
+      if (guildConfig?.whitelisted === true) {
+        client.guildWhitelist = client.guildWhitelist || new Map();
+        client.guildWhitelist.set(message.guild.id, true);
+      } else {
+        const globalConfig = await configService.get("whitelistedGuilds");
+        const whitelistedGuilds = Array.isArray(globalConfig) ? globalConfig : [];
+        if (!whitelistedGuilds.includes(message.guild.id)) {
+          const logMessage = `Guild ${message.guild.name} (${message.guild.id}) is not whitelisted. Ignoring message.`;
+          logger.warn(logMessage);
+
+          // Save to application_logs collection for audit purposes
+          try {
+            await db.collection('application_logs').insertOne({
+              type: 'guild_access',
+              message: logMessage,
+              guildId: message.guild.id,
+              guildName: message.guild.name,
+              timestamp: new Date()
+            });
+          } catch (logError) {
+            logger.error(`Failed to log guild access: ${logError.message}`);
+          }
+
+          return;
+        }
+        client.guildWhitelist = client.guildWhitelist || new Map();
+        client.guildWhitelist.set(message.guild.id, true);
+      }
+    }
+
+    if (!(await spamControlService.shouldProcessMessage(message))) return;
+
+    await saveMessageToDatabase(message);
+    await handleCommands(message);
+
+    if (message.author.bot) return;
+
+    await messageHandler.processChannel(message.channel.id);
+
+    const result = await avatarService.getOrCreateUniqueAvatarForUser(
+      message.author.id,
+      `A unique avatar for ${message.author.username} (${message.author.displayName})`,
+      message.channel.id
+    );
+    if (result.new) {
+      result.avatar.model = result.avatar.model || (await aiService.selectRandomModel());
+      result.avatar.stats = await chatService.dungeonService.getAvatarStats(result.avatar._id);
+      await avatarService.updateAvatar(result.avatar);
+      await sendAvatarProfileEmbedFromObject(result.avatar);
+      await chatService.respondAsAvatar(message.channel, result.avatar, true);
+    }
+    await messageHandler.processChannel(message.channel.id);
+  } catch (error) {
+    logger.error(`Error processing message: ${error.stack}`);
+  }
+});
+
+// --------------------------
+// Shutdown & Startup Logic
+// --------------------------
 async function shutdown(signal) {
   logger.info(`Received ${signal}. Shutting down gracefully...`);
   await client.destroy();
@@ -469,23 +536,65 @@ async function shutdown(signal) {
   process.exit(0);
 }
 
-/**
- * Main application entry point.
- */
+async function loadGuildWhitelist(database) {
+  try {
+    logger.info("Pre-loading guild whitelist settings...");
+    const guildConfigs = await database.collection("guild_configs").find({}).toArray();
+    client.guildWhitelist = new Map();
+    for (const config of guildConfigs) {
+      if (config.guildId && config.whitelisted === true) {
+        client.guildWhitelist.set(config.guildId, true);
+        logger.debug(`Pre-loaded whitelist for guild ${config.guildId}.`);
+      }
+    }
+    logger.info(`Pre-loaded whitelist settings for ${client.guildWhitelist.size} guild(s).`);
+  } catch (err) {
+    logger.error(`Failed to pre-load guild whitelist settings: ${err.message}`);
+  }
+}
+
 async function main() {
   try {
+    client.guildWhitelist = new Map();
+    configService.setClient(client);
     const db = await databaseService.connect();
-    if (!db) throw new Error("Failed to connect to the database");
+    if (!db) {
+      logger.warn("Initial database connection failed, will retry.");
+      const dbConnection = await databaseService.waitForConnection(10, 2000);
+      if (!dbConnection) throw new Error("Failed to establish database connection after multiple attempts.");
+    }
+    const database = databaseService.getDatabase();
+    if (!database) throw new Error("Database connection not available.");
 
-    avatarService = new AvatarGenerationService(db, configService);
+    await loadGuildWhitelist(database);
+
+    aiService = new AIService();
+    const imageProcessingService = new ImageProcessingService(logger, aiService);
+
+    avatarService = new AvatarGenerationService(database, configService);
     logger.info("✅ Connected to MongoDB successfully");
 
     await avatarService.updateAllArweavePrompts();
     logger.info("✅ Arweave prompts updated successfully");
 
-    spamControlService = new SpamControlService(db, logger);
-    chatService = new ChatService(client, db, { logger, avatarService, aiService, handleSummonCommand, handleBreedCommand });
-    messageHandler = new MessageHandler(chatService, avatarService, logger);
+    spamControlService = new SpamControlService(database, logger);
+    chatService = new ChatService(client, database, {
+      logger,
+      avatarService,
+      aiService,
+      imageProcessingService,
+      handleSummonCommand,
+      handleBreedCommand
+    });
+
+    // Make sure DungeonService has a proper reference to avatarService
+    if (chatService.dungeonService) {
+      chatService.dungeonService.avatarService = avatarService;
+      logger.info(`Set avatarService reference in DungeonService`);
+    } else {
+      logger.warn(`Cannot set avatarService in DungeonService: dungeonService not found in chatService`);
+    }
+    messageHandler = new MessageHandler(avatarService, client, chatService, imageProcessingService, logger);
 
     await client.login(DISCORD_BOT_TOKEN);
     logger.info("✅ Logged into Discord successfully");

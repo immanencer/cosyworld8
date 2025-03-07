@@ -1,7 +1,7 @@
 import express from 'express';
 import { ObjectId } from 'mongodb';
 import openApiRouter from './openapi.mjs';
-import templatesRoutes from './templates.mjs';
+import adminRouterFactory from './admin.mjs';
 
 const router = express.Router();
 
@@ -13,6 +13,8 @@ const asyncHandler = (fn) => (req, res, next) =>
   Promise.resolve(fn(req, res, next)).catch(next);
 
 export default function(db) {
+  // Mount admin routes
+  router.use('/admin', adminRouterFactory(db));
   // Avatars endpoints
   router.get('/avatars', asyncHandler(async (req, res) => {
     const limit = parseInt(req.query.limit) || 20;
@@ -52,8 +54,8 @@ export default function(db) {
 
   router.get('/avatars/name/:name', asyncHandler(async (req, res) => {
     const name = req.params.name;
-    const avatar = await db.avatars.findOne({ 
-      name: { $regex: new RegExp(`^${name}$`, 'i') } 
+    const avatar = await db.avatars.findOne({
+      name: { $regex: new RegExp(`^${name}$`, 'i') }
     });
 
     if (!avatar) {
@@ -166,7 +168,7 @@ export default function(db) {
     }
 
     // Get avatars in this location
-    const avatars = await db.avatars.find({ 
+    const avatars = await db.avatars.find({
       locationId: id.toString(),
       status: { $ne: 'dead' }
     }).toArray();
@@ -189,7 +191,7 @@ export default function(db) {
     }
 
     // Get unowned items in this location
-    const items = await db.collection('items').find({ 
+    const items = await db.collection('items').find({
       locationId: id.toString(),
       owner: null
     }).toArray();

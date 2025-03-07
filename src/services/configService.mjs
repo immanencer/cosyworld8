@@ -1,67 +1,54 @@
-
-import fs from 'fs/promises';
 import path from 'path';
+import fs from 'fs/promises';
 import { fileURLToPath } from 'url';
+import dotenv from 'dotenv';
 
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const CONFIG_DIR = path.join(__dirname, '..', 'config');
+dotenv.config();
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const CONFIG_DIR = path.resolve(__dirname, '../config');
+
+let clientInstance = null;
 
 class ConfigService {
   constructor() {
     this.config = {
       prompt: {
-        introduction: 'You have been summoned to this realm. This is your one chance to impress me, and save yourself from Elimination. Good luck, and DONT fuck it up.',
-        summon: 'Create a unique avatar with a special ability.',
-      },
-      discord: {
-        clientId: process.env.DISCORD_CLIENT_ID,
-        botToken: process.env.DISCORD_BOT_TOKEN,
-        summonerRole: process.env.SUMMONER_ROLE || '🔮'
-      },
-      mongo: {
-        uri: process.env.MONGO_URI || 'mongodb://127.0.0.1:27017',
-        dbName: process.env.MONGO_DB_NAME || 'cosyworld8',
-        collections: {
-          imageUrls: process.env.IMAGE_URL_COLLECTION || 'imageUrls',
-          avatars: process.env.AVATARS_COLLECTION || 'avatars'
-        }
-      },
-      solana: {
-        creatorWallet: process.env.CREATOR_SOLANA_WALLET
+        summon: process.env.SUMMON_PROMPT || "Create a twisted avatar, a servant of dark V.A.L.I.S.",
+        introduction: process.env.INTRODUCTION_PROMPT || "You've just arrived. Introduce yourself."
       },
       ai: {
         replicate: {
           apiToken: process.env.REPLICATE_API_TOKEN,
           model: process.env.REPLICATE_MODEL,
-          loraTriggerWord: process.env.LORA_TRIGGER_WORD
+          lora_weights: process.env.REPLICATE_LORA_WEIGHTS,
+          loraTriggerWord: process.env.REPLICATE_LORA_TRIGGER,
+          style: "Cyberpunk, Manga, Anime, Watercolor, Experimental."
         },
-        openrouter: {
-          apiToken: process.env.OPENROUTER_API_TOKEN,
-          model: process.env.OPENROUTER_MODEL,
-          metaModel: process.env.META_PROMPT_MODEL || 'anthropic/claude-3-haiku'
+        aiProvider: {
+          apiKey: process.env.GOOGLE_API_KEY,
+          metaModel: process.env.META_PROMPT_MODEL,
         },
-        ollama: {
-          model: process.env.OLLAMA_MODEL
+      },
+      mongo: {
+        uri: process.env.MONGO_URI,
+        dbName: process.env.MONGO_DB_NAME || 'discord-bot',
+        collections: {
+          avatars: 'avatars',
+          imageUrls: 'image_urls'
         }
       },
-      storage: {
-        s3: {
-          endpoint: process.env.S3_API_ENDPOINT,
-          apiKey: process.env.S3_API_KEY,
-          cloudfront: process.env.CLOUDFRONT_DOMAIN
-        }
-      },
-      x: {
-        callbackUrl: process.env.X_CALLBACK_URL,
-        apiKey: process.env.X_API_KEY,
-        apiSecret: process.env.X_API_SECRET,
-        accessToken: process.env.X_ACCESS_TOKEN,
-        accessTokenSecret: process.env.X_ACCESS_TOKEN_SECRET,
-        clientId: process.env.X_CLIENT_ID,
-        clientSecret: process.env.X_CLIENT_SECRET
-      }
+      webhooks: {} // Initialize webhooks to an empty object
     };
-    this.loadConfig();
+    this.loaded = false;
+    this.client = null;
+    this.guildConfigCache = new Map(); // Initialize cache for guild configs
+  }
+
+  setClient(client) {
+    this.client = client;
+    clientInstance = client;
   }
 
   async loadConfig() {
@@ -79,9 +66,9 @@ class ConfigService {
         // If user config doesn't exist, create it with default values
         await fs.writeFile(
           path.join(CONFIG_DIR, 'user.config.json'),
-          JSON.stringify(defaultConfig, null, 2)
+          JSON.stringify(this.config, null, 2)
         );
-        userConfig = defaultConfig;
+        userConfig = this.config;
       }
 
       // Merge configs with user config taking precedence
@@ -90,6 +77,7 @@ class ConfigService {
         ...defaultConfig,
         ...userConfig
       };
+      this.loaded = true;
     } catch (error) {
       console.error('Error loading config:', error);
     }
@@ -125,16 +113,146 @@ class ConfigService {
     }
   }
 
-  get(path) {
-    return path.split('.').reduce((obj, key) => obj?.[key], this.config);
-  }
-
-  getPromptConfig() {
-    return this.config.prompts;
+  async get(key) {
+    if (key.includes('mongo')) {
+      return this.config.mongo;
+    }
+    return this.config[key];
   }
 
   getDiscordConfig() {
-    return this.config.discord;
+    // Check if environment variables are present
+    if (!process.env.DISCORD_BOT_TOKEN) {
+      console.warn('Warning: DISCORD_BOT_TOKEN not found in environment variables');
+    }
+
+    return {
+      botToken: process.env.DISCORD_BOT_TOKEN,
+      clientId: process.env.DISCORD_CLIENT_ID,
+      webhooks: this.config.webhooks || {}
+    };
+  }
+
+  async getGuildConfig(db, guildId, forceRefresh = false) {
+    try {
+      // First, check if we have a valid guild ID
+      if (!guildId) {
+        console.warn(`Invalid guild ID provided to getGuildConfig: ${guildId}`);
+        return { guildId: null, whitelisted: false, summonerRole: "💼", summonEmoji: "💼" };
+      }
+
+      // Check first if we have a cached version of the whitelist (in memory)
+      if (!forceRefresh && this.client && this.client.guildWhitelist && this.client.guildWhitelist.has(guildId)) {
+        const whitelisted = this.client.guildWhitelist.get(guildId);
+        console.debug(`Retrieved guild config for ${guildId} from memory cache: whitelisted=${whitelisted}`);
+        // Note: This only returns whitelist status from cache, might need a more complete cache solution
+        return { guildId, whitelisted, summonerRole: "💼", summonEmoji: "💼" };
+      }
+
+      // Try to get a database connection, with multiple fallbacks
+      let dbToUse = null;
+
+      // Option 1: Use the provided DB
+      if (db) {
+        dbToUse = db;
+      } 
+      // Option 2: Try to get from client
+      else if (this.client && this.client.db) {
+        dbToUse = this.client.db;
+      } 
+      // Option 3: Try to get from global database service
+      else if (global.databaseService) {
+        // First check if already connected
+        dbToUse = global.databaseService.getDatabase();
+
+        // If not connected yet, try to connect but don't wait too long
+        if (!dbToUse) {
+          try {
+            // Attempt to get a connection with a short timeout
+            const timeoutPromise = new Promise((_, reject) => 
+              setTimeout(() => reject(new Error('Database connection timeout')), 500));
+
+            // Race between a connection attempt and timeout
+            dbToUse = await Promise.race([
+              global.databaseService.waitForConnection(1, 300),
+              timeoutPromise
+            ]);
+          } catch (connErr) {
+            console.warn(`Could not establish database connection in time: ${connErr.message}`);
+          }
+        }
+      }
+
+      // If we still don't have a database connection, return default
+      if (!dbToUse) {
+        console.warn(`No database connection available to fetch guild config for guild ${guildId}, using default`);
+        return { guildId, whitelisted: false };
+      }
+
+      // Now try to fetch from database
+      try {
+        const collection = dbToUse.collection('guild_configs');
+        if (!collection) {
+          throw new Error('guild_configs collection not available');
+        }
+
+        const guildConfig = await collection.findOne({ guildId });
+
+        // Return the found config or a default with guildId and whitelisted property
+        const result = guildConfig || { guildId, whitelisted: false };
+        console.debug(`Retrieved guild config for ${guildId} from database: whitelisted=${result.whitelisted}`);
+
+        // Cache this result for future use
+        if (this.client) {
+          if (!this.client.guildWhitelist) this.client.guildWhitelist = new Map();
+          this.client.guildWhitelist.set(guildId, result.whitelisted);
+        }
+
+        return result;
+      } catch (dbErr) {
+        console.error(`Error accessing guild_configs collection: ${dbErr.message}`);
+        return { guildId, whitelisted: false };
+      }
+    } catch (error) {
+      console.error(`Error fetching guild config for guild ${guildId}:`, error);
+      // Return a default config with whitelisted explicitly set to false
+      return { guildId, whitelisted: false };
+    }
+  }
+
+  async updateGuildConfig(db, guildId, updates) {
+    if (!db || !guildId) throw new Error('Database and guildId are required');
+
+    try {
+      const updatedConfig = {
+        ...updates,
+        guildId,
+        updatedAt: new Date()
+      };
+
+      // Upsert the guild config
+      const result = await db.collection('guild_configs').updateOne(
+        { guildId },
+        { $set: updatedConfig },
+        { upsert: true }
+      );
+
+      return result;
+    } catch (error) {
+      console.error(`Error updating guild config for ${guildId}:`, error);
+      throw error;
+    }
+  }
+
+  async getAllGuildConfigs(db) {
+    if (!db) throw new Error('Database is required');
+
+    try {
+      return await db.collection('guild_configs').find({}).toArray();
+    } catch (error) {
+      console.error('Error getting all guild configs:', error);
+      throw error;
+    }
   }
 
   getMongoConfig() {
@@ -157,23 +275,49 @@ class ConfigService {
     return this.config.solana;
   }
 
-  getPromptConfig() {
-    return this.config.prompts;
+  // Add method to get guild-specific prompts
+  async getGuildPrompts(db, guildId) {
+    if (!guildId) return this.config.prompt;
+
+    const guildConfig = await this.getGuildConfig(db, guildId);
+    return {
+      summon: guildConfig?.prompts?.summon || this.config.prompt.summon,
+      introduction: guildConfig?.prompts?.introduction || this.config.prompt.introduction
+    };
+  }
+
+  // Add method to update guild-specific prompts
+  async updateGuildPrompts(db, guildId, promptType, value) {
+    if (!db || !guildId) throw new Error('Database and guildId are required');
+    if (!['summon', 'introduction'].includes(promptType)) throw new Error('Invalid prompt type');
+
+    const updates = {
+      prompts: {
+        [promptType]: value
+      }
+    };
+
+    return await this.updateGuildConfig(db, guildId, updates);
+  }
+
+  // Modify existing getPromptConfig to be guild-aware
+  async getPromptConfig(db, guildId) {
+    if (!guildId) return this.config.prompt;
+    return await this.getGuildPrompts(db, guildId);
   }
 
   validate() {
-    const required = [
-      'DISCORD_CLIENT_ID',
-      'DISCORD_BOT_TOKEN',
-      'MONGO_URI',
-      'OPENROUTER_API_TOKEN'
-    ];
-
-    const missing = required.filter(key => !process.env[key]);
-
-    if (missing.length > 0) {
-      throw new Error(`Missing required environment variables: ${missing.join(', ')}`);
+    // Basic validation to ensure critical configs exist
+    if (!this.config.mongo.uri) {
+      console.warn('MongoDB URI is not configured. Database functionality will be limited.');
     }
+
+    // Log warning but don't fail if Replicate isn't configured
+    if (!this.config.ai.replicate.apiToken) {
+      console.warn('Replicate API token is not configured. Image generation will be disabled.');
+    }
+
+    return true;
   }
 }
 

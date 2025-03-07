@@ -1,17 +1,17 @@
 
 import { MemoryService } from '../../memoryService.mjs';
-import { OpenRouterService } from '../../openrouterService.mjs';
+import { GoogleAIService as AIService } from '../../googleAIService.mjs';
 import { BaseTool } from './BaseTool.mjs';
 import { sendAsWebhook } from '../../discordService.mjs';
 
 export class RememberTool extends BaseTool {
   constructor(dungeonService) {
     super(dungeonService);
-    this.aiService = new OpenRouterService();
+    this.aiService = new AIService();
     this.name = 'remember';
     this.description = 'Generates a memory from the current context.';
     this.emoji = '🧠';
-    this.aiService = new OpenRouterService();
+    this.aiService = new AIService();
   }
 
   async getChannelContext(channel) {

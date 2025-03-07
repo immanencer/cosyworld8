@@ -1,6 +1,6 @@
 
 import { BaseTool } from './BaseTool.mjs';
-import { OpenRouterService } from '../../openrouterService.mjs';
+import { GoogleAIService as AIService } from '../../googleAIService.mjs';
 
 export class RespondTool extends BaseTool {
   constructor(dungeonService) {
@@ -8,7 +8,7 @@ export class RespondTool extends BaseTool {
     this.name = 'respond';
     this.description = 'Generates an in-character response';
     this.emoji = '💭';
-    this.aiService = new OpenRouterService();
+    this.aiService = new AIService();
   }
 
   getDescription() {
