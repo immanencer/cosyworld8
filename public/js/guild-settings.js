@@ -575,17 +575,38 @@ async function checkForDetectedServers() {
         if (!response.ok) return;
         const detectedGuilds = await response.json();
         const nonWhitelisted = detectedGuilds.filter(guild => !guild.whitelisted);
+        
+        const detectedSection = document.getElementById('detected-guilds-section');
+        const detectedContainer = document.getElementById('detected-guilds-container');
+        const detectedCount = document.getElementById('detected-guilds-count');
+        const detectedHeader = document.getElementById('detected-guilds-header');
+        const detectedContent = document.getElementById('detected-guilds-content');
+        const detectedChevron = document.getElementById('detected-guilds-chevron');
+        
+        if (!detectedSection || !detectedContainer) return;
+        
+        // Set up the collapsible functionality if not already done
+        if (detectedHeader && !detectedHeader.hasInitialized) {
+            detectedHeader.addEventListener('click', () => {
+                detectedContent.classList.toggle('hidden');
+                detectedChevron.classList.toggle('rotate-180');
+            });
+            detectedHeader.hasInitialized = true;
+        }
+        
         if (nonWhitelisted.length > 0) {
-            const detectedSection = document.getElementById('detected-guilds-section');
-            const detectedContainer = document.getElementById('detected-guilds-container');
-            if (detectedSection && detectedContainer) {
-                detectedSection.classList.remove('hidden');
-                detectedContainer.innerHTML = '';
-                nonWhitelisted.forEach(guild => {
-                    const card = window.guildSettingsManager.createDetectedGuildCard(guild);
-                    detectedContainer.appendChild(card);
-                });
-            }
+            // Show the section and update count
+            detectedSection.classList.remove('hidden');
+            if (detectedCount) detectedCount.textContent = nonWhitelisted.length.toString();
+            
+            // Clear and populate container
+            detectedContainer.innerHTML = '';
+            nonWhitelisted.forEach(guild => {
+                const card = window.guildSettingsManager.createDetectedGuildCard(guild);
+                detectedContainer.appendChild(card);
+            });
+        } else {
+            detectedSection.classList.add('hidden');
         }
     } catch (error) {
         console.error('Failed to check for detected non-whitelisted guilds:', error);
@@ -595,6 +616,83 @@ async function checkForDetectedServers() {
 
 // Initialize when DOM is ready
 document.addEventListener('DOMContentLoaded', () => {
-  new GuildSettingsManager();
+  window.guildSettingsManager = new GuildSettingsManager();
+  
+  // Add createDetectedGuildCard method to GuildSettingsManager prototype
+  GuildSettingsManager.prototype.createDetectedGuildCard = function(guild) {
+    const card = document.createElement('div');
+    card.className = 'border rounded-md p-4 bg-white shadow-sm flex justify-between items-center';
+    card.dataset.guildId = guild.id;
+
+    const iconUrl = guild.icon ? `https://cdn.discordapp.com/icons/${guild.id}/${guild.icon}.png` : 'https://cdn.discordapp.com/embed/avatars/0.png';
+
+    let date = 'Unknown date';
+    try {
+      date = new Date(guild.detectedAt).toLocaleString();
+    } catch (e) {}
+
+    card.innerHTML = `
+      <div class="flex items-center space-x-3">
+        <img src="${iconUrl}" alt="${guild.name}" class="w-8 h-8 rounded-full" onerror="this.src='https://cdn.discordapp.com/embed/avatars/0.png'">
+        <div>
+          <h4 class="font-medium">${guild.name}</h4>
+          <p class="text-sm text-gray-500">ID: ${guild.id}</p>
+          <p class="text-xs text-gray-400">First detected: ${date}</p>
+        </div>
+      </div>
+      <button class="whitelist-guild-btn px-3 py-1 bg-green-600 text-white text-sm rounded hover:bg-green-700 transition-colors">
+        Whitelist
+      </button>
+    `;
+
+    const whitelistBtn = card.querySelector('.whitelist-guild-btn');
+    if (whitelistBtn) {
+      whitelistBtn.addEventListener('click', async () => {
+        try {
+          const response = await fetch('/api/guilds/whitelist', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              guildId: guild.id,
+              guildName: guild.name,
+            }),
+          });
+
+          if (response.ok) {
+            // Remove the card
+            card.remove();
+            
+            // Decrement the count
+            const countElement = document.getElementById('detected-guilds-count');
+            if (countElement) {
+              const currentCount = parseInt(countElement.textContent, 10);
+              if (!isNaN(currentCount) && currentCount > 0) {
+                countElement.textContent = (currentCount - 1).toString();
+              }
+            }
+            
+            // Check if container is now empty
+            const container = document.getElementById('detected-guilds-container');
+            if (container && container.children.length === 0) {
+              document.getElementById('detected-guilds-section').classList.add('hidden');
+            }
+            
+            // Refresh guild settings
+            await this.loadGuildConfigs();
+            this.initializeGuildSelector();
+          } else {
+            console.error('Failed to whitelist guild:', await response.text());
+          }
+        } catch (error) {
+          console.error('Error whitelisting guild:', error);
+        }
+      });
+    }
+
+    return card;
+  };
+}();
   checkForDetectedServers();
 });
