@@ -1,5 +1,5 @@
 import { BaseTool } from './BaseTool.mjs';
-import { GoogleAIService as AIService } from '../../googleAIService.mjs';
+import { OpenRouterService as AIService } from '../../openrouterService.mjs';
 
 export class CreationTool extends BaseTool {
   constructor(dungeonService) {

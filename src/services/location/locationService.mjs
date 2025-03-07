@@ -1,5 +1,6 @@
 import Fuse from 'fuse.js';
-import { GoogleAIService as AIService } from '../googleAIService.mjs';
+import { OpenRouterService as AIService } from "../openrouterService.mjs";
+// import { OpenRouterService as AIService } from "../openrouterService.mjs";
 import { uploadImage } from '../s3imageService/s3imageService.mjs';
 import { sendAsWebhook } from '../discordService.mjs';
 import { ObjectId } from 'mongodb';

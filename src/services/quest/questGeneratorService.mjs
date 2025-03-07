@@ -1,5 +1,6 @@
 
-import { GoogleAIService as AIService } from '../googleAIService.mjs';
+import { OpenRouterService as AIService } from "../openrouterService.mjs";
+// import { OpenRouterService as AIService } from "../openrouterService.mjs";
 
 export class QuestGeneratorService {
   constructor(db, itemService, aiService = null) {

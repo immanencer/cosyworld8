@@ -14,7 +14,8 @@
 import winston from "winston";
 import { DatabaseService } from "./services/databaseService.mjs";
 import { SpamControlService } from "./services/spamControlService.mjs";
-import { GoogleAIService as AIService } from "./services/googleAIService.mjs";
+import { OpenRouterService as AIService } from "./services/openrouterService.mjs";
+// import { OpenRouterService as AIService } from "./services/openrouterService.mjs";
 import { AvatarGenerationService } from "./services/avatarService.mjs";
 import { ImageProcessingService } from "./services/imageProcessingService.mjs";
 import configService from "./services/configService.mjs";

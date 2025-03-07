@@ -22,7 +22,7 @@ class FallbackValidator {
   }
 }
 import Replicate from 'replicate';
-import { GoogleAIService as AIService } from './googleAIService.mjs';
+import { OpenRouterService as AIService } from './openrouterService.mjs';
 import process from 'process';
 import winston from 'winston';
 import { extractJSON } from './utils.mjs';

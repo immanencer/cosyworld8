@@ -1,5 +1,6 @@
 import { ObjectId } from 'mongodb';
-import { GoogleAIService as AIService } from '../googleAIService.mjs';
+import { OpenRouterService as AIService } from "../openrouterService.mjs";
+// import { OpenRouterService as AIService } from "../openrouterService.mjs";
 
 import { DungeonLog } from './DungeonLog.mjs';
 import { AttackTool } from './tools/AttackTool.mjs';
