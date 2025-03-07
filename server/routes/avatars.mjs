@@ -127,6 +127,17 @@ export default function avatarRoutes(db) {
       // Attach the inventory to the avatar object
       avatar.inventory = itemsWithThumbs;
 
+      // Check if this avatar has a Crossmint template
+      const crossmintData = await db.collection('crossmint_dev').findOne({ 
+        avatarId: avatar._id.toString(),
+        chain: 'base' // Only look for Base chain mints
+      });
+
+      if (crossmintData) {
+        avatar.templateId = crossmintData.templateId;
+        avatar.collectionId = crossmintData.collectionId;
+      }
+
       res.json(avatar);
     } catch (error) {
       console.error('Error fetching avatar details:', error);
@@ -207,8 +218,40 @@ export default function avatarRoutes(db) {
         })
       );
 
+      // Get Crossmint template IDs for these avatars
+      const avatarIds = avatarsWithThumbs.map(avatar => avatar._id.toString());
+      const crossmintData = await db.collection('crossmint_dev')
+        .find({ 
+          avatarId: { $in: avatarIds },
+          chain: 'base'
+        })
+        .toArray();
+
+      // Create a lookup map for faster access
+      const templateMap = {};
+      crossmintData.forEach(item => {
+        templateMap[item.avatarId] = {
+          templateId: item.templateId,
+          collectionId: item.collectionId
+        };
+      });
+
+      // Add template info to avatars
+      const avatarsWithTemplates = avatarsWithThumbs.map(avatar => {
+        const templateInfo = templateMap[avatar._id.toString()];
+        if (templateInfo) {
+          return {
+            ...avatar,
+            templateId: templateInfo.templateId,
+            collectionId: templateInfo.collectionId
+          };
+        }
+        return avatar;
+      });
+
+
       res.json({
-        avatars: avatarsWithThumbs,
+        avatars: avatarsWithTemplates,
         total,
         page,
         totalPages: Math.ceil(total / limit),
@@ -626,6 +669,17 @@ export default function avatarRoutes(db) {
       if (!avatar) {
         console.error(`Avatar not found for identifier: ${identifier}`);
         return res.status(404).json({ error: '404: Avatar details not found' });
+      }
+
+      // Check if this avatar has a Crossmint template
+      const crossmintData = await db.collection('crossmint_dev').findOne({ 
+        avatarId: avatar._id.toString(),
+        chain: 'base' // Only look for Base chain mints
+      });
+
+      if (crossmintData) {
+        avatar.templateId = crossmintData.templateId;
+        avatar.collectionId = crossmintData.collectionId;
       }
 
       res.json(avatar);

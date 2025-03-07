@@ -1,0 +1,255 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Moonstone Sanctum - Mint Avatar</title>
+  
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Crimson+Text:wght@400;600;700&display=swap" rel="stylesheet">
+  
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            primary: {
+              50: '#eef2ff',
+              100: '#e0e7ff',
+              200: '#c7d2fe',
+              300: '#a5b4fc',
+              400: '#818cf8',
+              500: '#6366f1',
+              600: '#4f46e5',
+              700: '#4338ca',
+              800: '#3730a3',
+              900: '#312e81',
+              950: '#1e1b4b',
+            },
+            surface: {
+              50: '#f8fafc',
+              100: '#f1f5f9',
+              200: '#e2e8f0',
+              300: '#cbd5e1',
+              400: '#94a3b8',
+              500: '#64748b',
+              600: '#475569',
+              700: '#334155',
+              800: '#1e293b',
+              900: '#0f172a',
+              950: '#020617',
+            },
+          },
+          fontFamily: {
+            sans: ['Inter', 'ui-sans-serif', 'system-ui', 'sans-serif'],
+            serif: ['Crimson Text', 'ui-serif', 'Georgia', 'serif'],
+          },
+        },
+      },
+    }
+  </script>
+  
+  <!-- Custom Styles -->
+  <style>
+    body {
+      background-color: #0f172a;
+      color: #f8fafc;
+      font-family: 'Inter', sans-serif;
+    }
+    
+    .loading-skeleton {
+      background: linear-gradient(90deg, #1e293b 25%, #334155 50%, #1e293b 75%);
+      background-size: 200% 100%;
+      animation: skeleton-loading 1.5s infinite;
+    }
+    
+    @keyframes skeleton-loading {
+      0% { background-position: 200% 0; }
+      100% { background-position: -200% 0; }
+    }
+  </style>
+  
+  <!-- Crossmint SDK -->
+  <script src="https://unpkg.com/@crossmint/client-sdk-react-ui@1.1.0/dist/umd/index.js"></script>
+</head>
+<body class="min-h-screen flex flex-col">
+  <!-- Header -->
+  <header class="bg-surface-900 border-b border-surface-800 py-3">
+    <div class="container mx-auto px-4 flex justify-between items-center">
+      <div class="flex items-center space-x-2">
+        <a href="/" class="flex items-center space-x-2">
+          <div class="w-10 h-10 bg-primary-600 rounded-full flex items-center justify-center">
+            <span class="text-white text-xl font-bold">MS</span>
+          </div>
+          <h1 class="text-xl font-bold text-white hidden sm:block">Moonstone Sanctum</h1>
+        </a>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main content wrapper -->
+  <div class="flex-1 flex flex-col py-8">
+    <main class="container mx-auto px-4 max-w-4xl">
+      <div class="bg-surface-800 border border-surface-700 rounded-lg p-6 mb-8">
+        <h2 class="text-2xl font-bold mb-4">Mint Your Avatar</h2>
+        <p class="text-surface-300 mb-6">You're about to mint a unique avatar NFT from the Moonstone Sanctum collection on Base.</p>
+        
+        <div id="avatar-details" class="flex flex-col md:flex-row gap-6 mb-8">
+          <div class="w-full md:w-1/3 flex-shrink-0">
+            <div id="avatar-image-container" class="bg-surface-700 rounded-lg aspect-square flex items-center justify-center overflow-hidden">
+              <div class="loading-skeleton w-full h-full"></div>
+            </div>
+          </div>
+          
+          <div class="flex-1">
+            <div id="avatar-name" class="text-xl font-bold mb-2 h-8 w-3/4 loading-skeleton rounded"></div>
+            <div id="avatar-description" class="text-surface-300 mb-4">
+              <div class="h-4 w-full loading-skeleton rounded mb-2"></div>
+              <div class="h-4 w-5/6 loading-skeleton rounded mb-2"></div>
+              <div class="h-4 w-4/6 loading-skeleton rounded"></div>
+            </div>
+            
+            <div class="border-t border-surface-700 pt-4 mt-4">
+              <div class="grid grid-cols-2 gap-4">
+                <div>
+                  <p class="text-surface-400 text-sm">Collection</p>
+                  <p id="collection-name" class="font-medium">Moonstone Sanctum</p>
+                </div>
+                <div>
+                  <p class="text-surface-400 text-sm">Chain</p>
+                  <p class="font-medium">Base</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <div id="crossmint-container" class="w-full">
+          <div class="bg-surface-700 rounded-lg p-6 flex items-center justify-center">
+            <div class="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-primary-600"></div>
+          </div>
+        </div>
+      </div>
+      
+      <div class="bg-surface-800 border border-surface-700 rounded-lg p-6">
+        <h3 class="text-xl font-bold mb-4">About Moonstone Sanctum</h3>
+        <p class="text-surface-300 mb-4">
+          Moonstone Sanctum is a digital realm where AI entities come to life. Each avatar is unique, with its own personality, 
+          traits, and story. By minting this avatar, you're becoming its custodian in the digital world.
+        </p>
+        <p class="text-surface-300">
+          Your NFT will be minted on Base, a secure and efficient Ethereum L2 solution that offers 
+          low gas fees and fast transactions.
+        </p>
+      </div>
+    </main>
+  </div>
+
+  <script>
+    // Parse URL parameters
+    const urlParams = new URLSearchParams(window.location.search);
+    const templateId = urlParams.get('templateId');
+    const collectionId = urlParams.get('collectionId');
+    
+    if (!templateId || !collectionId) {
+      document.getElementById('crossmint-container').innerHTML = `
+        <div class="bg-red-900/30 border border-red-800 rounded-lg p-4 text-red-200">
+          <p>Error: Missing template or collection ID. Please use a valid link.</p>
+          <a href="/" class="inline-block mt-3 px-4 py-2 bg-surface-700 hover:bg-surface-600 rounded-lg transition">Return Home</a>
+        </div>
+      `;
+    } else {
+      // Fetch avatar details
+      fetchAvatarDetails(templateId);
+      
+      // Initialize Crossmint checkout
+      const container = document.getElementById('crossmint-container');
+      
+      const CrossmintUI = window.CrossmintUI;
+      if (CrossmintUI && CrossmintUI.EmbeddedCheckout) {
+        const checkout = new CrossmintUI.EmbeddedCheckout({
+          clientId: 'YOUR_CROSSMINT_CLIENT_ID',  // This should be replaced with your actual client ID
+          environment: 'staging',  // Change to 'production' when ready
+          lineItems: {
+            collectionLocator: `crossmint:${collectionId}:${templateId}`,
+            callData: {
+              quantity: 1
+            }
+          },
+          successCallbackURL: window.location.origin
+        });
+        
+        checkout.render(container);
+      } else {
+        container.innerHTML = `
+          <div class="bg-red-900/30 border border-red-800 rounded-lg p-4 text-red-200">
+            <p>Error: Crossmint SDK not loaded. Please try again later.</p>
+            <a href="/" class="inline-block mt-3 px-4 py-2 bg-surface-700 hover:bg-surface-600 rounded-lg transition">Return Home</a>
+          </div>
+        `;
+      }
+    }
+    
+    async function fetchAvatarDetails(templateId) {
+      try {
+        // This should be replaced with your actual endpoint that fetches template metadata
+        // For this example, we're showing a loading state and then populating with placeholder data
+        
+        // Simulate API call
+        setTimeout(() => {
+          // Replace loading skeletons with actual content
+          document.getElementById('avatar-image-container').innerHTML = `
+            <img id="avatar-image" src="/images/avatar_default.png" alt="Avatar" class="w-full h-full object-cover" />
+          `;
+          
+          document.getElementById('avatar-name').innerHTML = `
+            <h3 class="text-xl font-bold">Moonstone Avatar</h3>
+          `;
+          
+          document.getElementById('avatar-description').innerHTML = `
+            <p class="text-surface-300">
+              A unique digital entity from the Moonstone Sanctum universe. This avatar has its own personality,
+              traits, and story waiting to be discovered.
+            </p>
+          `;
+          
+          // Attempt to fetch the real image if we can find it
+          fetch(`/api/v1/templates/${templateId}`)
+            .then(response => {
+              if (response.ok) return response.json();
+              throw new Error('Template not found');
+            })
+            .then(data => {
+              if (data.metadata && data.metadata.image) {
+                document.getElementById('avatar-image').src = data.metadata.image;
+              }
+              if (data.metadata && data.metadata.name) {
+                document.getElementById('avatar-name').innerHTML = `
+                  <h3 class="text-xl font-bold">${data.metadata.name}</h3>
+                `;
+              }
+              if (data.metadata && data.metadata.description) {
+                document.getElementById('avatar-description').innerHTML = `
+                  <p class="text-surface-300">${data.metadata.description}</p>
+                `;
+              }
+            })
+            .catch(err => {
+              console.error('Failed to fetch template details:', err);
+            });
+            
+        }, 1500);
+        
+      } catch (error) {
+        console.error('Error fetching avatar details:', error);
+      }
+    }
+  </script>
+</body>
+</html>
