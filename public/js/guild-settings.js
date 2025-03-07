@@ -85,7 +85,10 @@ class GuildSettingsManager {
     card.className = 'border rounded-md p-4 bg-white shadow-sm flex justify-between items-center';
     card.dataset.guildId = guild.id;
 
-    const iconUrl = guild.icon ? `https://cdn.discordapp.com/icons/${guild.id}/${guild.icon}.png` : '/images/default-guild-icon.png';
+    // Use iconUrl if available directly, otherwise construct from id/icon, or use Discord default
+    const iconUrl = guild.iconUrl || 
+                   (guild.icon ? `https://cdn.discordapp.com/icons/${guild.id}/${guild.icon}.png` : 
+                   'https://cdn.discordapp.com/embed/avatars/0.png');
 
     let date = 'Unknown date';
     try {
