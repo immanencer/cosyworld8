@@ -580,7 +580,7 @@ Based on all of the above context, share an updated personality that reflects yo
       : `You are in ${avatar.channelName || 'a chat channel'}.`;
 
     // Get guild configuration for emojis
-    let summonEmoji = '💼'; // Default
+    let summonEmoji = '🔮'; // Default
     let breedEmoji = '🏹'; // Default
 
     try {

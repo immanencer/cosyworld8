@@ -153,7 +153,7 @@ async function handleBreedCommand(message, args, commandLine) {
   logger.info(prompt);
   const originalContent = message.content;
   // Temporarily set the breeding prompt as the message content
-  message.content = `💼 ${prompt}`;
+  message.content = `${summonEmoji} ${prompt}`;
   await handleSummonCommand(message, true, {
     summoner: `${message.author.username}@${message.author.id}`,
     parents: [avatar1._id, avatar2._id],
@@ -199,7 +199,7 @@ async function handleSummonCommand(message, breed = false, attributes = {}) {
 
   try {
     if (existingAvatar) {
-      await reactToMessage(message, existingAvatar.emoji || "💼");
+      await reactToMessage(message, existingAvatar.emoji || "🔮");
 
       existingAvatar = await chatService.dungeonService.updateAvatarPosition(existingAvatar._id, message.channel.id);
       existingAvatar.stats = await chatService.dungeonService.getAvatarStats(existingAvatar._id);
@@ -325,12 +325,12 @@ async function handleAttackCommand(message, args) {
 async function handleCommands(message) {
   const content = message.content;
   if (content.startsWith("!summon")) {
-    await replyToMessage(message, "Command Deprecated. Use 💼 instead.");
+    await replyToMessage(message, "Command Deprecated. Use 🔮 Instead.");
     return;
   }
   // Check if message starts with summon emoji from guild config
   const guildId = message.guild?.id;
-  let summonEmoji = process.env.DEFAULT_SUMMON_EMOJI || "💼";
+  let summonEmoji = process.env.DEFAULT_SUMMON_EMOJI || "🔮";
 
   if (guildId) {
     try {
@@ -351,7 +351,7 @@ async function handleCommands(message) {
 
   if (content.startsWith(summonEmoji)) {
     const member = message.guild?.members?.cache?.get(message.author.id);
-    const requiredRole = (guildId ? await configService.getGuildConfig(databaseService.getDatabase(), guildId)?.summonerRole : process.env.SUMMONER_ROLE) || "💼";
+    const requiredRole = (guildId ? await configService.getGuildConfig(databaseService.getDatabase(), guildId)?.summonerRole : process.env.SUMMONER_ROLE) || "🔮";
     if (!message.author.bot && member && !member.roles.cache.some(
       (role) => role.id === requiredRole || role.name === requiredRole
     )) {

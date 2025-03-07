@@ -6,7 +6,7 @@ export class SummonTool extends BaseTool {
     super(dungeonService);
     this.name = 'summon';
     this.description = 'Summons a new avatar';
-    this.emoji = '💼'; // Default emoji
+    this.emoji = '🔮'; // Default emoji
     this.configService = dungeonService.configService || global.configService;
   }
   

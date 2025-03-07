@@ -423,7 +423,7 @@ async function whitelistDetectedGuild(guildId, guildName) {
       },
       summonEmoji: '✨',
       toolEmojis: {
-        summon: '💼',
+        summon: '🔮',
         breed: '🏹',
         attack: '⚔️',
         defend: '🛡️'
