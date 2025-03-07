@@ -10,6 +10,24 @@ function showMessage(message, type) {
 
 // Function to render detected but not whitelisted guilds
 async function renderDetectedGuilds() {
+  const container = document.getElementById('detected-guilds-container');
+  if (!container) {
+    // Create container if it doesn't exist
+    const adminPanel = document.querySelector('.admin-panel-container');
+    if (adminPanel) {
+      const newContainer = document.createElement('div');
+      newContainer.id = 'detected-guilds-container';
+      newContainer.className = 'mt-6 bg-white shadow overflow-hidden sm:rounded-lg';
+      
+      const header = document.createElement('div');
+      header.className = 'px-4 py-5 sm:px-6';
+      header.innerHTML = '<h3 class="text-lg leading-6 font-medium text-gray-900">Detected Discord Servers</h3>' +
+                         '<p class="mt-1 max-w-2xl text-sm text-gray-500">These servers have been detected but are not yet whitelisted</p>';
+      
+      newContainer.appendChild(header);
+      adminPanel.appendChild(newContainer);
+    }
+  }
   try {
     // Fetch logs to extract server info
     const logsResponse = await fetch('/api/audit-logs?type=guild_access&limit=50');
@@ -97,6 +115,68 @@ async function renderDetectedGuilds() {
         
         detectedGuildsContainer.appendChild(card);
       }
+
+// Function to add manual whitelist form
+function setupManualWhitelistForm() {
+  const container = document.getElementById('detected-guilds-container');
+  if (!container) return;
+  
+  // Create a simple form for manual whitelist
+  const formDiv = document.createElement('div');
+  formDiv.className = 'bg-white shadow-md rounded-lg p-4 mt-4';
+  formDiv.innerHTML = `
+    <h3 class="text-lg font-medium mb-3">Manually Whitelist Server</h3>
+    <div class="space-y-3">
+      <div>
+        <label class="block text-sm font-medium text-gray-700">Server ID</label>
+        <input type="text" id="manual-guild-id" class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm" placeholder="Enter Discord server ID">
+      </div>
+      <div>
+        <label class="block text-sm font-medium text-gray-700">Server Name (Optional)</label>
+        <input type="text" id="manual-guild-name" class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm" placeholder="Enter server name">
+      </div>
+      <button id="manual-whitelist-button" class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+        Whitelist Server
+      </button>
+    </div>
+  `;
+  
+  container.appendChild(formDiv);
+  
+  // Add event listener for the whitelist button
+  document.getElementById('manual-whitelist-button').addEventListener('click', async () => {
+    const guildId = document.getElementById('manual-guild-id').value.trim();
+    const guildName = document.getElementById('manual-guild-name').value.trim();
+    
+    if (!guildId) {
+      showMessage('Server ID is required', 'error');
+      return;
+    }
+    
+    const button = document.getElementById('manual-whitelist-button');
+    button.disabled = true;
+    button.textContent = 'Processing...';
+    
+    const success = await whitelistGuildById(guildId, guildName);
+    
+    button.disabled = false;
+    button.textContent = 'Whitelist Server';
+    
+    if (success) {
+      document.getElementById('manual-guild-id').value = '';
+      document.getElementById('manual-guild-name').value = '';
+      
+      // Refresh detected guilds
+      renderDetectedGuilds();
+    }
+  });
+}
+
+// Call setup function when page loads
+document.addEventListener('DOMContentLoaded', function() {
+  setupManualWhitelistForm();
+});
+
       
       // Add event listeners to whitelist buttons
       document.querySelectorAll('.whitelist-detected-guild').forEach(button => {
@@ -107,6 +187,46 @@ async function renderDetectedGuilds() {
     }
   } catch (error) {
     console.error('Error rendering detected guilds:', error);
+  }
+}
+
+// Function to whitelist a specific guild by ID
+async function whitelistGuildById(guildId, guildName) {
+  if (!guildId) return false;
+  
+  try {
+    // Create a new guild config with default values
+    const response = await fetch('/api/guilds', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        guildId,
+        guildName: guildName || `Guild ${guildId}`,
+        whitelisted: true,
+        features: {
+          breeding: true,
+          combat: true,
+          itemCreation: true
+        },
+        rateLimit: {
+          messages: 5,
+          interval: 60000
+        }
+      })
+    });
+    
+    if (!response.ok) {
+      throw new Error(`Server responded with ${response.status}`);
+    }
+    
+    showMessage('Server successfully whitelisted! You can now configure its settings.', 'success');
+    return true;
+  } catch (error) {
+    console.error('Error whitelisting guild:', error);
+    showMessage(`Failed to whitelist server: ${error.message}`, 'error');
+    return false;
   }
 }
 

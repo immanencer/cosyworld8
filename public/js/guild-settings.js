@@ -59,10 +59,18 @@ class GuildSettingsManager {
             // Match different message patterns
             const matchPattern1 = log.message.match(/Guild\s+([^(]+)\s+\((\d+)\)\s+is\s+not\s+whitelisted/i);
             const matchPattern2 = log.message.match(/Retrieved guild config for (\d+) from database: whitelisted=false/i);
+            const matchPattern3 = log.message.match(/Guild ([^(]+) \((\d+)\) is not whitelisted/i);
             
             if (matchPattern1 && matchPattern1[1] && matchPattern1[2]) {
               const guildName = matchPattern1[1].trim();
               const guildId = matchPattern1[2];
+            } else if (matchPattern3 && matchPattern3[1] && matchPattern3[2]) {
+              const guildName = matchPattern3[1].trim();
+              const guildId = matchPattern3[2];
+              
+              if (!existingGuildIds.has(guildId) && !detectedGuildIds.has(guildId)) {
+                detectedGuildIds.set(guildId, guildName);
+              }
 
               if (!existingGuildIds.has(guildId)) {
                 detectedGuildIds.set(guildId, guildName);
