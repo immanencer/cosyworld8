@@ -3,6 +3,7 @@ const AdminPanel = (() => {
   // State variables
   let serverConfig = {
     servers: [],
+    unauthorizedServers: [],
     emojis: {
       summon: "💼",
       breed: "🏹",
@@ -42,6 +43,15 @@ const AdminPanel = (() => {
     closeAdmin.addEventListener('click', () => {
       adminModal.classList.add('hidden');
     });
+    
+    // Event delegation for dynamically added whitelist buttons
+    adminContent.addEventListener('click', (e) => {
+      if (e.target && e.target.classList.contains('whitelist-server')) {
+        const serverId = e.target.getAttribute('data-server-id');
+        const serverName = e.target.getAttribute('data-server-name');
+        whitelistServer(serverId, serverName);
+      }
+    });
 
     // Set up tab switching
     adminTabButtons.forEach(button => {
@@ -69,6 +79,7 @@ const AdminPanel = (() => {
 
   // Fetch admin data from API
   function fetchAdminData() {
+    // Fetch admin config
     fetch('/api/admin/config')
       .then(response => {
         if (!response.ok) {
@@ -78,9 +89,61 @@ const AdminPanel = (() => {
       })
       .then(data => {
         updateAdminUI(data);
+        // After updating UI with config, fetch unauthorized servers
+        fetchUnauthorizedServers();
       })
       .catch(error => {
         console.error('Error fetching admin data:', error);
+      });
+  }
+  
+  // Fetch unauthorized servers from audit logs
+  function fetchUnauthorizedServers() {
+    fetch('/api/audit-logs?type=guild_access&limit=50')
+      .then(response => {
+        if (!response.ok) {
+          throw new Error(`HTTP error! Status: ${response.status}`);
+        }
+        return response.json();
+      })
+      .then(logs => {
+        // Extract unique guild IDs from logs that aren't in our configs
+        const existingGuildIds = new Set(serverConfig.servers.map(s => s.id));
+        const detectedGuildIds = new Map();
+
+        // Parse logs for "Guild X (id) is not whitelisted" entries
+        logs.forEach(log => {
+          if (typeof log.message === 'string') {
+            const match = log.message.match(/Guild\s+([^(]+)\s+\((\d+)\)\s+is\s+not\s+whitelisted/i);
+            if (match && match[1] && match[2]) {
+              const guildName = match[1].trim();
+              const guildId = match[2];
+
+              if (!existingGuildIds.has(guildId)) {
+                detectedGuildIds.set(guildId, guildName);
+              }
+            }
+          }
+        });
+
+        // Add detected guilds to our unauthorized servers list with default settings
+        serverConfig.unauthorizedServers = [];
+        for (const [guildId, guildName] of detectedGuildIds.entries()) {
+          serverConfig.unauthorizedServers.push({
+            id: guildId,
+            name: guildName,
+            memberCount: '-',
+            status: 'Unauthorized'
+          });
+        }
+        
+        // Update the servers tab to show unauthorized servers
+        if (document.getElementById('admin-content').innerHTML.includes('Connected Servers')) {
+          showServersTab();
+        }
+      })
+      .catch(error => {
+        console.error('Error fetching unauthorized servers:', error);
       });
   }
 
@@ -99,6 +162,52 @@ const AdminPanel = (() => {
     if (data.config) {
       serverConfig = { ...serverConfig, ...data.config };
     }
+  }
+  
+  // Whitelist an unauthorized server
+  function whitelistServer(serverId, serverName) {
+    // Create a default server configuration
+    const defaultServerConfig = {
+      id: serverId,
+      name: serverName,
+      whitelisted: true,
+      features: {
+        breeding: true,
+        combat: true,
+        itemCreation: true
+      },
+      rateLimit: {
+        messages: 5,
+        interval: 60000 // 1 minute in milliseconds
+      }
+    };
+    
+    // Send the request to whitelist the server
+    fetch('/api/guilds', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(defaultServerConfig)
+    })
+    .then(response => {
+      if (!response.ok) {
+        throw new Error(`HTTP error! Status: ${response.status}`);
+      }
+      return response.json();
+    })
+    .then(data => {
+      console.log('Server whitelisted successfully:', data);
+      // Remove server from unauthorized list and add to authorized list
+      serverConfig.unauthorizedServers = serverConfig.unauthorizedServers.filter(s => s.id !== serverId);
+      serverConfig.servers.push(defaultServerConfig);
+      // Refresh the servers tab
+      showServersTab();
+    })
+    .catch(error => {
+      console.error('Error whitelisting server:', error);
+      alert('Failed to whitelist server. Please try again.');
+    });
   }
 
   // Show appropriate tab content
@@ -226,37 +335,63 @@ const AdminPanel = (() => {
             </tr>
           </thead>
           <tbody class="divide-y divide-surface-700" id="server-list">
-            <tr>
-              <td class="py-3 px-4 text-sm text-white">Fantasy Realm</td>
-              <td class="py-3 px-4">
-                <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
-                  Online
-                </span>
-              </td>
-              <td class="py-3 px-4 text-sm text-surface-300">128</td>
-              <td class="py-3 px-4 text-sm text-surface-300">12</td>
-              <td class="py-3 px-4 text-sm text-surface-300">
-                <button class="text-primary-500 hover:text-primary-400 mr-2">Edit</button>
-                <button class="text-red-500 hover:text-red-400">Remove</button>
-              </td>
-            </tr>
-            <tr>
-              <td class="py-3 px-4 text-sm text-white">Dragon's Lair</td>
-              <td class="py-3 px-4">
-                <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
-                  Online
-                </span>
-              </td>
-              <td class="py-3 px-4 text-sm text-surface-300">85</td>
-              <td class="py-3 px-4 text-sm text-surface-300">8</td>
-              <td class="py-3 px-4 text-sm text-surface-300">
-                <button class="text-primary-500 hover:text-primary-400 mr-2">Edit</button>
-                <button class="text-red-500 hover:text-red-400">Remove</button>
-              </td>
-            </tr>
+            ${serverConfig.servers.map(server => `
+              <tr>
+                <td class="py-3 px-4 text-sm text-white">${server.name}</td>
+                <td class="py-3 px-4">
+                  <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
+                    Online
+                  </span>
+                </td>
+                <td class="py-3 px-4 text-sm text-surface-300">${server.memberCount || '-'}</td>
+                <td class="py-3 px-4 text-sm text-surface-300">${server.avatarCount || '-'}</td>
+                <td class="py-3 px-4 text-sm text-surface-300">
+                  <button class="text-primary-500 hover:text-primary-400 mr-2">Edit</button>
+                  <button class="text-red-500 hover:text-red-400">Remove</button>
+                </td>
+              </tr>
+            `).join('')}
           </tbody>
         </table>
       </div>
+      
+      ${serverConfig.unauthorizedServers && serverConfig.unauthorizedServers.length > 0 ? `
+        <div class="flex justify-between items-center mb-6 mt-8">
+          <h2 class="text-2xl font-bold">Unauthorized Servers</h2>
+          <div class="text-sm text-surface-400">These servers have attempted to use the bot but are not whitelisted</div>
+        </div>
+
+        <div class="bg-surface-800 rounded-lg overflow-hidden mb-6">
+          <table class="min-w-full">
+            <thead class="bg-surface-700">
+              <tr>
+                <th class="py-3 px-4 text-left text-xs font-medium text-surface-300 uppercase tracking-wider">Server Name</th>
+                <th class="py-3 px-4 text-left text-xs font-medium text-surface-300 uppercase tracking-wider">Status</th>
+                <th class="py-3 px-4 text-left text-xs font-medium text-surface-300 uppercase tracking-wider">Server ID</th>
+                <th class="py-3 px-4 text-left text-xs font-medium text-surface-300 uppercase tracking-wider">Actions</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-surface-700" id="unauthorized-server-list">
+              ${serverConfig.unauthorizedServers.map(server => `
+                <tr>
+                  <td class="py-3 px-4 text-sm text-white">${server.name}</td>
+                  <td class="py-3 px-4">
+                    <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800">
+                      Unauthorized
+                    </span>
+                  </td>
+                  <td class="py-3 px-4 text-sm text-surface-300">${server.id}</td>
+                  <td class="py-3 px-4 text-sm text-surface-300">
+                    <button class="bg-primary-600 hover:bg-primary-700 text-white px-3 py-1 rounded-md text-xs whitelist-server" data-server-id="${server.id}" data-server-name="${server.name}">
+                      Whitelist Server
+                    </button>
+                  </td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        </div>
+      ` : ''}
 
       <div class="flex justify-between items-center mb-6">
         <h2 class="text-2xl font-bold">Command Emojis</h2>
