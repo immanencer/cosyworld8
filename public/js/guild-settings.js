@@ -24,6 +24,7 @@ class GuildSettingsManager {
       // Initialize interface elements
       this.initializeGuildSelector();
       this.initializeFormHandlers();
+      this.setupManualWhitelistButton(); // Added this line
 
       // Hide the loading message
       document.getElementById('settings-message').classList.add('hidden');
@@ -506,6 +507,61 @@ class GuildSettingsManager {
       }, 5000);
     }
   }
+
+  async whitelistGuild(guildId, guildName) {
+    try {
+      const newGuildConfig = {
+        guildId: guildId,
+        name: guildName,
+        whitelisted: true,
+        // Add other default settings as needed
+      };
+
+      const response = await fetch('/api/guilds', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(newGuildConfig),
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! Status: ${response.status}`);
+      }
+
+      await this.loadGuildConfigs();
+      this.initializeGuildSelector();
+      this.showMessage(`Guild "${guildName}" (ID: ${guildId}) whitelisted successfully!`, 'success');
+    } catch (error) {
+      console.error('Failed to whitelist guild:', error);
+      this.showMessage(`Error whitelisting guild: ${error.message}`, 'error');
+    }
+  }
+
+  setupManualWhitelistButton() {
+    const manualWhitelistButton = document.getElementById('manual-whitelist-button');
+    if (manualWhitelistButton) {
+      manualWhitelistButton.addEventListener('click', () => {
+        const guildIdInput = document.getElementById('manual-guild-id');
+        const guildNameInput = document.getElementById('manual-guild-name');
+
+        if (!guildIdInput || !guildIdInput.value) {
+          alert('Please enter a Discord server ID');
+          return;
+        }
+
+        const guildId = guildIdInput.value.trim();
+        const guildName = guildNameInput ? guildNameInput.value.trim() : `Server ${guildId}`;
+
+        this.whitelistGuild(guildId, guildName).then(() => {
+          // Clear inputs on success
+          if (guildIdInput) guildIdInput.value = '';
+          if (guildNameInput) guildNameInput.value = '';
+        });
+      });
+    }
+  }
+
 }
 
 async function checkForDetectedServers() {

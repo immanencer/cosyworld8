@@ -1,5 +1,5 @@
+
 import express from 'express';
-import logger from '../../services/logger.service.mjs';
 import configService from '../../../src/services/configService.mjs';
 
 const router = express.Router();
@@ -18,9 +18,9 @@ router.get('/', async (req, res) => {
       .find({ 
         $or: [
           { message: { $regex: 'Guild .+ is not whitelisted' } },
-          { message: { $regex: 'Retrieved guild config for .+ from database: whitelisted=false' } }
+          { message: { $regex: 'Retrieved guild config for .+ from database: whitelisted=false' } },
+          { type: 'guild_access' }
         ],
-        level: 'info',
         timestamp: { $gte: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000) } // Last 30 days
       })
       .sort({ timestamp: -1 })
@@ -28,13 +28,28 @@ router.get('/', async (req, res) => {
 
     // Extract guild IDs and names from log messages
     const detectedGuilds = new Map();
-    const guildInfoRegex1 = /Guild (.+) \((\d+)\) is not whitelisted/;
-    const guildInfoRegex2 = /Retrieved guild config for (\d+) from database: whitelisted=false/;
+    const guildInfoRegex1 = /Guild (.+) \((\d+)\) is not whitelisted/i;
+    const guildInfoRegex2 = /Retrieved guild config for (\d+) from database: whitelisted=false/i;
 
     logs.forEach(log => {
+      // First check if this is a structured guild_access log
+      if (log.type === 'guild_access' && log.guildId && log.guildName) {
+        if (!detectedGuilds.has(log.guildId)) {
+          detectedGuilds.set(log.guildId, {
+            id: log.guildId,
+            name: log.guildName,
+            detectedAt: log.timestamp
+          });
+        }
+        return;
+      }
+      
+      // Then check for pattern matches in log messages
+      if (typeof log.message !== 'string') return;
+      
       let match = guildInfoRegex1.exec(log.message);
       if (match && match.length >= 3) {
-        const guildName = match[1];
+        const guildName = match[1].trim();
         const guildId = match[2];
 
         if (!detectedGuilds.has(guildId)) {
@@ -53,7 +68,7 @@ router.get('/', async (req, res) => {
           if (!detectedGuilds.has(guildId)) {
             detectedGuilds.set(guildId, {
               id: guildId,
-              name: guildId, // If we only have the ID, use it as the name temporarily
+              name: `Server ${guildId}`, // If we only have the ID, use it as the name temporarily
               detectedAt: log.timestamp
             });
           }
@@ -71,7 +86,7 @@ router.get('/', async (req, res) => {
 
     res.json(detectedGuildsArray);
   } catch (error) {
-    logger.error(`Error fetching detected guilds: ${error.message}`);
+    console.error(`Error fetching detected guilds: ${error.message}`);
     res.status(500).json({ error: 'Failed to fetch detected guilds' });
   }
 });
