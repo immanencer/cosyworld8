@@ -4,6 +4,9 @@ class GuildSettingsManager {
     this.guildConfigs = [];
     this.selectedGuildId = null;
     this.initializeInterface();
+    
+    // Make this instance globally accessible for other scripts
+    window.guildSettingsManager = this;
   }
 
   async initializeInterface() {
@@ -53,12 +56,33 @@ class GuildSettingsManager {
         // Parse logs for "Guild X (id) is not whitelisted" entries
         logs.forEach(log => {
           if (typeof log.message === 'string') {
-            const match = log.message.match(/Guild\s+([^(]+)\s+\((\d+)\)\s+is\s+not\s+whitelisted/i);
-            if (match && match[1] && match[2]) {
-              const guildName = match[1].trim();
-              const guildId = match[2];
+            // Match different message patterns
+            const matchPattern1 = log.message.match(/Guild\s+([^(]+)\s+\((\d+)\)\s+is\s+not\s+whitelisted/i);
+            const matchPattern2 = log.message.match(/Retrieved guild config for (\d+) from database: whitelisted=false/i);
+            
+            if (matchPattern1 && matchPattern1[1] && matchPattern1[2]) {
+              const guildName = matchPattern1[1].trim();
+              const guildId = matchPattern1[2];
 
               if (!existingGuildIds.has(guildId)) {
+                detectedGuildIds.set(guildId, guildName);
+              }
+            }
+            else if (matchPattern2 && matchPattern2[1]) {
+              const guildId = matchPattern2[1];
+              
+              // If we don't have a name, use a placeholder
+              if (!existingGuildIds.has(guildId)) {
+                // Look for a guild name in nearby log entries
+                const nameMatch = logs.find(otherLog => 
+                  otherLog.message && otherLog.message.includes(guildId) && 
+                  otherLog.message.match(/Guild\s+([^(]+)\s+\((\d+)\)/i)
+                );
+                
+                const guildName = nameMatch ? 
+                  nameMatch.message.match(/Guild\s+([^(]+)\s+\((\d+)\)/i)[1].trim() : 
+                  `Server ${guildId}`;
+                
                 detectedGuildIds.set(guildId, guildName);
               }
             }

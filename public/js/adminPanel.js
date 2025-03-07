@@ -117,7 +117,7 @@ const AdminPanel = (() => {
             const match = log.message.match(/Guild\s+([^(]+)\s+\((\d+)\)\s+is\s+not\s+whitelisted/i);
             if (match && match[1] && match[2]) {
               const guildName = match[1].trim();
-              const guildId = match[2];
+              const guildId = match[2];dId = match[2];
 
               if (!existingGuildIds.has(guildId)) {
                 detectedGuildIds.set(guildId, guildName);
@@ -141,10 +141,202 @@ const AdminPanel = (() => {
         if (document.getElementById('admin-content').innerHTML.includes('Connected Servers')) {
           showServersTab();
         }
+        
+        // If we have unauthorized servers and are on the Guild Settings page, display them
+        if (serverConfig.unauthorizedServers.length > 0 && window.location.pathname.includes('/admin/guild-settings')) {
+          displayUnauthorizedServers(serverConfig.unauthorizedServers);
+        }
       })
       .catch(error => {
         console.error('Error fetching unauthorized servers:', error);
       });
+  }
+  
+  // Display unauthorized servers in the guild-settings UI
+  function displayUnauthorizedServers(servers) {
+    const guildCardsContainer = document.getElementById('guild-cards-container');
+    if (!guildCardsContainer) return;
+    
+    if (guildCardsContainer.innerHTML.includes('No guild configurations found')) {
+      guildCardsContainer.innerHTML = ''; // Clear the "no configurations" message
+    }
+    
+    servers.forEach(server => {
+      // Check if this server card already exists
+      if (document.querySelector(`[data-guild-id="${server.id}"]`)) {
+        return; // Skip if already displayed
+      }
+      
+      const card = document.createElement('div');
+      card.setAttribute('data-guild-id', server.id);
+      card.classList.add('bg-white', 'shadow', 'rounded-lg', 'p-4', 'cursor-pointer', 'hover:shadow-md', 'transition');
+      card.classList.add('border-l-4', 'border-red-500'); // Red border for unauthorized
+      
+      card.innerHTML = `
+        <h3 class="text-lg font-semibold">${server.name || `Server: ${server.id}`}</h3>
+        <div class="mt-2 flex items-center">
+          <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
+            Unauthorized
+          </span>
+          <span class="ml-2 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">Auto-detected</span>
+        </div>
+        <p class="text-sm text-gray-500 mt-1">ID: ${server.id}</p>
+        <button class="mt-2 inline-flex items-center px-2 py-1 border border-transparent text-xs font-medium rounded-md text-white bg-green-600 hover:bg-green-700 whitelist-server-btn">
+          ✅ Whitelist Server
+        </button>
+      `;
+      
+      guildCardsContainer.appendChild(card);
+      
+      // Add event listener for the whitelist button
+      card.querySelector('.whitelist-server-btn').addEventListener('click', (e) => {
+        e.stopPropagation(); // Prevent card click
+        whitelistServer(server.id, server.name);
+      });
+      
+      // Add click handler for the card (edit full settings)
+      card.addEventListener('click', () => {
+        addNewServerWithPrefilledValues(server.id, server.name);
+      });
+    });
+  }
+  
+  // Function to whitelist a server quickly
+  function whitelistServer(guildId, guildName) {
+    // Create a minimal config with defaults
+    const config = {
+      guildId: guildId,
+      guildName: guildName || `Server ${guildId}`,
+      whitelisted: true,
+      features: {
+        breeding: true,
+        combat: true,
+        itemCreation: true
+      },
+      rateLimit: {
+        messages: 5,
+        interval: 60000
+      }
+    };
+    
+    // Save to API
+    fetch('/api/guilds', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(config)
+    })
+    .then(response => {
+      if (!response.ok) {
+        throw new Error(`HTTP error! Status: ${response.status}`);
+      }
+      return response.json();
+    })
+    .then(data => {
+      // Show success message
+      const card = document.querySelector(`[data-guild-id="${guildId}"]`);
+      if (card) {
+        card.classList.remove('border-red-500');
+        card.classList.add('border-green-500');
+        
+        const statusBadge = card.querySelector('.bg-red-100');
+        if (statusBadge) {
+          statusBadge.classList.remove('bg-red-100', 'text-red-800');
+          statusBadge.classList.add('bg-green-100', 'text-green-800');
+          statusBadge.textContent = 'Whitelisted';
+        }
+        
+        const whitelistBtn = card.querySelector('.whitelist-server-btn');
+        if (whitelistBtn) {
+          whitelistBtn.remove();
+        }
+      }
+      
+      // Force reload configs after a second
+      setTimeout(() => {
+        fetchAdminData();
+      }, 1000);
+    })
+    .catch(error => {
+      console.error('Error whitelisting server:', error);
+      alert(`Failed to whitelist server: ${error.message}`);
+    });
+  }
+  
+  // Function to open the full settings form with prefilled values
+  function addNewServerWithPrefilledValues(guildId, guildName) {
+    // Navigate to guild-settings page if not already there
+    if (!window.location.pathname.includes('/admin/guild-settings')) {
+      window.location.href = '/admin/guild-settings.html';
+      return;
+    }
+    
+    // Find the guild settings manager instance
+    const guildSettingsManager = window.guildSettingsManager;
+    if (!guildSettingsManager) {
+      console.error('Guild settings manager not found');
+      return;
+    }
+    
+    // Create a new guild config
+    const newConfig = {
+      guildId: guildId,
+      guildName: guildName,
+      whitelisted: false,
+      features: {
+        breeding: true,
+        combat: true,
+        itemCreation: true
+      },
+      prompts: {
+        introduction: '',
+        summon: '',
+        attack: '',
+        defend: '',
+        breed: ''
+      },
+      rateLimit: {
+        messages: 5,
+        interval: 60000
+      },
+      adminRoles: [],
+      summonEmoji: '✨',
+      toolEmojis: {
+        summon: '💼',
+        breed: '🏹',
+        attack: '⚔️',
+        defend: '🛡️'
+      }
+    };
+    
+    // Open the form in edit mode
+    try {
+      document.getElementById('no-server-selected').classList.add('hidden');
+      const form = document.getElementById('guild-settings-form');
+      if (form) {
+        form.classList.remove('hidden');
+        
+        // Populate form fields
+        const guildIdField = document.getElementById('guild-id');
+        if (guildIdField) {
+          guildIdField.value = guildId;
+        }
+        
+        const guildNameField = document.getElementById('guild-name');
+        if (guildNameField) {
+          guildNameField.value = guildName;
+        }
+        
+        // Auto-check the whitelist checkbox
+        const whitelistCheckbox = document.getElementById('guild-whitelisted');
+        if (whitelistCheckbox) {
+          whitelistCheckbox.checked = true;
+        }
+      }
+    } catch (error) {
+      console.error('Error opening server configuration:', error);
+    }
   }
 
   // Update UI with fetched data
