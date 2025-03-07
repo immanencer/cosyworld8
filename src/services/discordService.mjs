@@ -58,6 +58,44 @@ export const client = new Client({
   partials: [Partials.Message, Partials.Channel, Partials.Reaction],
 });
 
+
+/**
+ * Updates the database with both connected and detected guilds
+ * @returns {Promise<void>}
+ */
+async function updateDetectedGuilds() {
+  if (!client.db) {
+    logger.error('Database not connected, cannot update detected guilds');
+    return;
+  }
+
+  try {
+    const allGuilds = client.guilds.cache.map(guild => ({
+      id: guild.id,
+      name: guild.name,
+      memberCount: guild.memberCount,
+      icon: guild.icon,
+      detectedAt: new Date(),
+      updatedAt: new Date(),
+    }));
+
+    logger.info(`Updating ${allGuilds.length} detected guilds from Discord client's cache`);
+
+    if (allGuilds.length > 0) {
+      const bulkOps = allGuilds.map(guild => ({
+        updateOne: {
+          filter: { id: guild.id },
+          update: { $set: guild },
+          upsert: true,
+        },
+      }));
+      await client.db.collection('detected_guilds').bulkWrite(bulkOps);
+    }
+  } catch (error) {
+    logger.error('Error updating detected guilds: ' + error.message);
+  }
+}
+
 // Webhook management cache
 const webhookCache = new Map();
 
@@ -68,6 +106,7 @@ client.once('ready', async () => {
     client.db = db;
     logger.info(`Bot is ready as ${client.user.tag} and connected to MongoDB`);
     await updateConnectedGuilds();
+    await updateDetectedGuilds();
     client.guildWhitelist = new Map(); // Initialize guild whitelist cache
   } catch (error) {
     logger.error('Failed to initialize bot: ' + error.message);
@@ -428,6 +467,7 @@ export async function getRecentMessages(channelId, limit = 10) {
 client.on('guildCreate', async guild => {
   logger.info(`Joined guild: ${guild.name} (${guild.id})`);
   await updateConnectedGuilds();
+  await updateDetectedGuilds();
 });
 
 client.on('guildDelete', async guild => {
@@ -435,6 +475,7 @@ client.on('guildDelete', async guild => {
   if (!client.db) return;
   try {
     await client.db.collection('connected_guilds').deleteOne({ id: guild.id });
+    // We keep the guild in detected_guilds even if we leave it
   } catch (error) {
     logger.error(`Failed to remove guild ${guild.id} from database: ${error.message}`);
   }
