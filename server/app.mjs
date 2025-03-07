@@ -53,8 +53,8 @@ async function initializeApp() {
     await initializeIndexes(db);
 
     // Mount the API router
-    import apiRoutes from './routes/api/index.mjs';
-    import guildsDetectedRoute from './routes/api/guilds-detected.mjs';
+    const apiRoutes = (await import('./routes/api/index.mjs')).default;
+    const guildsDetectedRoute = (await import('./routes/api/guilds-detected.mjs')).default;
     app.use('/api', apiRoutes(db));
     app.use('/api/guilds-detected', (req, res, next) => {
       req.app.locals.db = db;
