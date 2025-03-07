@@ -10,77 +10,84 @@ function showMessage(message, type) {
 
 // Function to render detected but not whitelisted guilds
 async function renderDetectedGuilds() {
-  const container = document.getElementById('detected-guilds-container');
-  if (!container) {
-    // Create container if it doesn't exist
-    const adminPanel = document.querySelector('.admin-panel-container');
-    if (adminPanel) {
-      const newContainer = document.createElement('div');
-      newContainer.id = 'detected-guilds-container';
-      newContainer.className = 'mt-6 bg-white shadow overflow-hidden sm:rounded-lg';
-      
-      const header = document.createElement('div');
-      header.className = 'px-4 py-5 sm:px-6';
-      header.innerHTML = '<h3 class="text-lg leading-6 font-medium text-gray-900">Detected Discord Servers</h3>' +
-                         '<p class="mt-1 max-w-2xl text-sm text-gray-500">These servers have been detected but are not yet whitelisted</p>';
-      
-      newContainer.appendChild(header);
-      adminPanel.appendChild(newContainer);
-    }
-  }
   try {
-    // Fetch logs to extract server info
-    const logsResponse = await fetch('/api/audit-logs?type=guild_access&limit=50');
-    if (!logsResponse.ok) return;
-    
-    const logs = await logsResponse.json();
-    
-    // Track existing guild IDs and detected guilds
-    const existingGuildIds = new Set();
-    const detectedGuilds = new Map();
-    
-    // If guild settings manager exists, get existing guild IDs
-    if (window.guildSettingsManager && window.guildSettingsManager.guildConfigs) {
-      window.guildSettingsManager.guildConfigs.forEach(config => {
-        existingGuildIds.add(config.guildId);
-      });
+    // First, fetch guild configurations from database to know what guilds exist
+    const guildsResponse = await fetch('/api/guilds');
+    if (!guildsResponse.ok) {
+      console.error('Error fetching guilds:', await guildsResponse.text());
+      return;
     }
     
-    // Parse logs for "Guild X (id) is not whitelisted" entries
-    logs.forEach(log => {
-      if (typeof log.message === 'string') {
-        // Match different message patterns
-        const matchPattern1 = log.message.match(/Guild\s+([^(]+)\s+\((\d+)\)\s+is\s+not\s+whitelisted/i);
-        const matchPattern2 = log.message.match(/Retrieved guild config for (\d+) from database: whitelisted=false/i);
-
-        if (matchPattern1 && matchPattern1[1] && matchPattern1[2]) {
-          const guildName = matchPattern1[1].trim();
-          const guildId = matchPattern1[2];
-
-          if (!existingGuildIds.has(guildId) && !detectedGuilds.has(guildId)) {
-            detectedGuilds.set(guildId, { name: guildName, id: guildId });
-          }
-        }
-        else if (matchPattern2 && matchPattern2[1]) {
-          const guildId = matchPattern2[1];
-
-          // Only add if we don't already have this guild
-          if (!existingGuildIds.has(guildId) && !detectedGuilds.has(guildId)) {
-            // Look for a guild name in logs
-            const nameMatch = logs.find(otherLog => 
-              otherLog.message && otherLog.message.includes(guildId) && 
-              otherLog.message.match(/Guild\s+([^(]+)\s+\((\d+)\)/i)
-            );
-
-            const guildName = nameMatch ? 
-              nameMatch.message.match(/Guild\s+([^(]+)\s+\((\d+)\)/i)[1].trim() : 
-              `Server ${guildId}`;
-
-            detectedGuilds.set(guildId, { name: guildName, id: guildId });
-          }
-        }
+    const guildConfigs = await guildsResponse.json();
+    
+    // Identify non-whitelisted guilds from the database
+    const nonWhitelistedGuilds = new Map();
+    
+    // Add database guilds that are not whitelisted
+    guildConfigs.forEach(config => {
+      if (!config.whitelisted) {
+        nonWhitelistedGuilds.set(config.guildId, { 
+          name: config.guildName || `Server ${config.guildId}`, 
+          id: config.guildId,
+          inDatabase: true
+        });
       }
     });
+    
+    // Now fetch logs to find additional detected guilds
+    const logsResponse = await fetch('/api/audit-logs?type=guild_access&limit=50');
+    if (logsResponse.ok) {
+      const logs = await logsResponse.json();
+      
+      // Set of whitelisted guild IDs for reference
+      const whitelistedGuildIds = new Set(
+        guildConfigs.filter(g => g.whitelisted).map(g => g.guildId)
+      );
+      
+      // Parse logs for "Guild X (id) is not whitelisted" entries
+      logs.forEach(log => {
+        if (typeof log.message === 'string') {
+          // Match different message patterns
+          const matchPattern1 = log.message.match(/Guild\s+([^(]+)\s+\((\d+)\)\s+is\s+not\s+whitelisted/i);
+          const matchPattern2 = log.message.match(/Retrieved guild config for (\d+) from database: whitelisted=false/i);
+
+          if (matchPattern1 && matchPattern1[1] && matchPattern1[2]) {
+            const guildName = matchPattern1[1].trim();
+            const guildId = matchPattern1[2];
+
+            if (!whitelistedGuildIds.has(guildId) && !nonWhitelistedGuilds.has(guildId)) {
+              nonWhitelistedGuilds.set(guildId, { 
+                name: guildName, 
+                id: guildId,
+                inDatabase: false 
+              });
+            }
+          }
+          else if (matchPattern2 && matchPattern2[1]) {
+            const guildId = matchPattern2[1];
+
+            // Only add if we don't already have this guild
+            if (!whitelistedGuildIds.has(guildId) && !nonWhitelistedGuilds.has(guildId)) {
+              // Look for a guild name in logs
+              const nameMatch = logs.find(otherLog => 
+                otherLog.message && otherLog.message.includes(guildId) && 
+                otherLog.message.match(/Guild\s+([^(]+)\s+\((\d+)\)/i)
+              );
+
+              const guildName = nameMatch ? 
+                nameMatch.message.match(/Guild\s+([^(]+)\s+\((\d+)\)/i)[1].trim() : 
+                `Server ${guildId}`;
+
+              nonWhitelistedGuilds.set(guildId, { 
+                name: guildName, 
+                id: guildId,
+                inDatabase: false
+              });
+            }
+          }
+        }
+      });
+    }
     
     // Get the container and update visibility
     const detectedGuildsSection = document.getElementById('detected-guilds-section');
@@ -92,17 +99,26 @@ async function renderDetectedGuilds() {
     detectedGuildsContainer.innerHTML = '';
     
     // If we have detected guilds, show the section and render them
-    if (detectedGuilds.size > 0) {
+    if (nonWhitelistedGuilds.size > 0) {
       detectedGuildsSection.classList.remove('hidden');
       
-      for (const [id, guild] of detectedGuilds.entries()) {
+      for (const [id, guild] of nonWhitelistedGuilds.entries()) {
         const card = document.createElement('div');
         card.classList.add('bg-white', 'shadow', 'rounded-lg', 'p-4', 'flex', 'items-center', 'justify-between');
+        
+        // Add different styling for guilds already in database
+        if (guild.inDatabase) {
+          card.classList.add('border-l-4', 'border-yellow-500');
+        }
         
         card.innerHTML = `
           <div>
             <h4 class="font-medium">${guild.name}</h4>
             <p class="text-sm text-gray-500">ID: ${guild.id}</p>
+            ${guild.inDatabase ? 
+              '<span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">In Database (Not Whitelisted)</span>' : 
+              '<span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">Detected from Logs</span>'
+            }
           </div>
           <button 
             data-guild-id="${guild.id}" 
@@ -115,68 +131,6 @@ async function renderDetectedGuilds() {
         
         detectedGuildsContainer.appendChild(card);
       }
-
-// Function to add manual whitelist form
-function setupManualWhitelistForm() {
-  const container = document.getElementById('detected-guilds-container');
-  if (!container) return;
-  
-  // Create a simple form for manual whitelist
-  const formDiv = document.createElement('div');
-  formDiv.className = 'bg-white shadow-md rounded-lg p-4 mt-4';
-  formDiv.innerHTML = `
-    <h3 class="text-lg font-medium mb-3">Manually Whitelist Server</h3>
-    <div class="space-y-3">
-      <div>
-        <label class="block text-sm font-medium text-gray-700">Server ID</label>
-        <input type="text" id="manual-guild-id" class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm" placeholder="Enter Discord server ID">
-      </div>
-      <div>
-        <label class="block text-sm font-medium text-gray-700">Server Name (Optional)</label>
-        <input type="text" id="manual-guild-name" class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm" placeholder="Enter server name">
-      </div>
-      <button id="manual-whitelist-button" class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
-        Whitelist Server
-      </button>
-    </div>
-  `;
-  
-  container.appendChild(formDiv);
-  
-  // Add event listener for the whitelist button
-  document.getElementById('manual-whitelist-button').addEventListener('click', async () => {
-    const guildId = document.getElementById('manual-guild-id').value.trim();
-    const guildName = document.getElementById('manual-guild-name').value.trim();
-    
-    if (!guildId) {
-      showMessage('Server ID is required', 'error');
-      return;
-    }
-    
-    const button = document.getElementById('manual-whitelist-button');
-    button.disabled = true;
-    button.textContent = 'Processing...';
-    
-    const success = await whitelistGuildById(guildId, guildName);
-    
-    button.disabled = false;
-    button.textContent = 'Whitelist Server';
-    
-    if (success) {
-      document.getElementById('manual-guild-id').value = '';
-      document.getElementById('manual-guild-name').value = '';
-      
-      // Refresh detected guilds
-      renderDetectedGuilds();
-    }
-  });
-}
-
-// Call setup function when page loads
-document.addEventListener('DOMContentLoaded', function() {
-  setupManualWhitelistForm();
-});
-
       
       // Add event listeners to whitelist buttons
       document.querySelectorAll('.whitelist-detected-guild').forEach(button => {
@@ -187,46 +141,6 @@ document.addEventListener('DOMContentLoaded', function() {
     }
   } catch (error) {
     console.error('Error rendering detected guilds:', error);
-  }
-}
-
-// Function to whitelist a specific guild by ID
-async function whitelistGuildById(guildId, guildName) {
-  if (!guildId) return false;
-  
-  try {
-    // Create a new guild config with default values
-    const response = await fetch('/api/guilds', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        guildId,
-        guildName: guildName || `Guild ${guildId}`,
-        whitelisted: true,
-        features: {
-          breeding: true,
-          combat: true,
-          itemCreation: true
-        },
-        rateLimit: {
-          messages: 5,
-          interval: 60000
-        }
-      })
-    });
-    
-    if (!response.ok) {
-      throw new Error(`Server responded with ${response.status}`);
-    }
-    
-    showMessage('Server successfully whitelisted! You can now configure its settings.', 'success');
-    return true;
-  } catch (error) {
-    console.error('Error whitelisting guild:', error);
-    showMessage(`Failed to whitelist server: ${error.message}`, 'error');
-    return false;
   }
 }
 
@@ -243,26 +157,50 @@ async function whitelistDetectedGuild(event) {
   button.textContent = 'Processing...';
   
   try {
-    // Create a new guild config with default values
-    const response = await fetch('/api/guilds', {
-      method: 'POST',
+    let method = 'POST';
+    let url = '/api/guilds';
+    let config = {
+      guildId,
+      guildName,
+      whitelisted: true,
+      features: {
+        breeding: true,
+        combat: true,
+        itemCreation: true
+      },
+      rateLimit: {
+        messages: 5,
+        interval: 60000
+      }
+    };
+    
+    // First check if the guild already exists in the database
+    const checkResponse = await fetch(`/api/guilds/${guildId}`);
+    
+    // If guild already exists, use PATCH instead of POST
+    if (checkResponse.ok) {
+      method = 'PATCH';
+      url = `/api/guilds/${guildId}`;
+      
+      // Get existing configuration
+      const existingConfig = await checkResponse.json();
+      
+      // Only update the whitelisted status and keep other settings
+      config = {
+        ...existingConfig,
+        guildId,
+        guildName: existingConfig.guildName || guildName,
+        whitelisted: true
+      };
+    }
+    
+    // Send the request to whitelist the guild
+    const response = await fetch(url, {
+      method: method,
       headers: {
         'Content-Type': 'application/json'
       },
-      body: JSON.stringify({
-        guildId,
-        guildName,
-        whitelisted: true,
-        features: {
-          breeding: true,
-          combat: true,
-          itemCreation: true
-        },
-        rateLimit: {
-          messages: 5,
-          interval: 60000
-        }
-      })
+      body: JSON.stringify(config)
     });
     
     if (!response.ok) {
@@ -336,15 +274,25 @@ async function initGuildDiscovery() {
 // Function to check for detected but non-whitelisted servers
 async function checkForDetectedServers() {
   try {
-    // Get detected guilds from our new API endpoint
-    const detectedResponse = await fetch('/api/guilds-detected');
-    if (!detectedResponse.ok) {
-      console.error('Failed to fetch detected guilds');
+    // Get logs to check for non-whitelisted servers
+    const logsResponse = await fetch('/api/audit-logs?type=guild_access&limit=50');
+    if (!logsResponse.ok) {
+      console.error('Failed to fetch audit logs');
       return;
     }
 
-    const detectedGuilds = await detectedResponse.json();
-    console.log('Retrieved detected guilds:', detectedGuilds);
+    const logs = await logsResponse.json();
+    console.log('Retrieved audit logs:', logs);
+
+    // Get existing guild configs
+    const configsResponse = await fetch('/api/guilds');
+    if (!configsResponse.ok) {
+      console.error('Failed to fetch guild configs');
+      return;
+    }
+
+    const existingConfigs = await configsResponse.json();
+    const existingGuildIds = new Set(existingConfigs.map(g => g.guildId));
 
     // Container for detected guilds
     const detectedGuildsContainer = document.getElementById('detected-guilds-container');
@@ -353,29 +301,8 @@ async function checkForDetectedServers() {
       return;
     }
 
-    const detectedGuildsSection = document.getElementById('detected-guilds-section');
-    
-    // If we have detected guilds, show them
-    if (detectedGuilds.length > 0) {
-      // Show the detected guilds section
-      if (detectedGuildsSection) {
-        detectedGuildsSection.classList.remove('hidden');
-      }
-      
-      // Clear existing cards
-      detectedGuildsContainer.innerHTML = '';
-      
-      // Add guild cards for each detected guild
-      detectedGuilds.forEach(guild => {
-        const card = createDetectedGuildCard(guild);
-        detectedGuildsContainer.appendChild(card);
-      });
-    } else {
-      // Hide the section if no detected guilds
-      if (detectedGuildsSection) {
-        detectedGuildsSection.classList.add('hidden');
-      }
-    }
+    // Map to track detected guild IDs and names
+    const detectedGuilds = new Map();
 
     // Parse logs for "Guild X (id) is not whitelisted" entries
     logs.forEach(log => {
@@ -587,84 +514,6 @@ function renderAdminPanel() {
         <form id="guild-settings-form" class="hidden space-y-6 mt-6">
           </form>
       </div>
-      
-      <script>
-        // Load detected Discord servers
-        async function loadDetectedServers() {
-          try {
-            const response = await fetch('/api/guilds/detected');
-            if (!response.ok) return;
-            
-            const detectedGuilds = await response.json();
-            
-            if (detectedGuilds && detectedGuilds.length > 0) {
-              // Show the detected guilds section
-              document.getElementById('detected-guilds-section').classList.remove('hidden');
-              
-              // Render each detected guild
-              const container = document.getElementById('detected-guilds-container');
-              container.innerHTML = '';
-              
-              detectedGuilds.forEach(guild => {
-                const card = document.createElement('div');
-                card.className = 'p-4 bg-gray-50 rounded-lg border border-gray-200';
-                card.innerHTML = `
-                  <div class="flex items-center justify-between">
-                    <div>
-                      <h4 class="font-medium text-gray-900">${guild.name}</h4>
-                      <p class="text-sm text-gray-500">ID: ${guild.id}</p>
-                    </div>
-                    <button 
-                      data-guild-id="${guild.id}" 
-                      data-guild-name="${guild.name}"
-                      class="whitelist-guild-btn inline-flex items-center px-3 py-1 border border-transparent text-sm leading-4 font-medium rounded-md text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500">
-                      Whitelist Server
-                    </button>
-                  </div>
-                `;
-                container.appendChild(card);
-              });
-              
-              // Add event listeners to whitelist buttons
-              document.querySelectorAll('.whitelist-guild-btn').forEach(btn => {
-                btn.addEventListener('click', async () => {
-                  const guildId = btn.dataset.guildId;
-                  const guildName = btn.dataset.guildName;
-                  
-                  try {
-                    const response = await fetch('/api/guilds', {
-                      method: 'POST',
-                      headers: {
-                        'Content-Type': 'application/json',
-                      },
-                      body: JSON.stringify({
-                        guildId,
-                        name: guildName,
-                        whitelisted: true,
-                      }),
-                    });
-                    
-                    if (!response.ok) {
-                      throw new Error('Failed to whitelist server');
-                    }
-                    
-                    alert(`Server ${guildName} has been whitelisted successfully!`);
-                    window.location.reload();
-                  } catch (error) {
-                    console.error('Failed to whitelist server:', error);
-                    alert('Failed to whitelist server: ' + error.message);
-                  }
-                });
-              });
-            }
-          } catch (error) {
-            console.error('Error fetching detected servers:', error);
-          }
-        }
-        
-        // Call on page load
-        document.addEventListener('DOMContentLoaded', loadDetectedServers);
-      </script>
     </div>
   `;
 }
