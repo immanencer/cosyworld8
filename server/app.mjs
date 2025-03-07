@@ -53,7 +53,14 @@ async function initializeApp() {
     await initializeIndexes(db);
 
     // Mount the API router
-    app.use('/api', (await import('./routes/api/index.mjs')).default(db));
+    import apiRoutes from './routes/api/index.mjs';
+    import guildsDetectedRoute from './routes/api/guilds-detected.mjs';
+    app.use('/api', apiRoutes(db));
+    app.use('/api/guilds-detected', (req, res, next) => {
+      req.app.locals.db = db;
+      next();
+    }, guildsDetectedRoute);
+
 
     // Admin routes are already mounted in index.mjs router
 

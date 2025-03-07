@@ -43,9 +43,132 @@ class GuildSettingsManager {
 
       this.guildConfigs = await response.json();
       console.log('Loaded guild configurations:', this.guildConfigs);
+      
+      // Also check for detected guilds
+      this.checkDetectedGuilds();
     } catch (error) {
       console.error('Failed to load guild configurations:', error);
       throw error;
+    }
+  }
+  
+  async checkDetectedGuilds() {
+    try {
+      const response = await fetch('/api/guilds-detected');
+      if (!response.ok) {
+        return;
+      }
+      
+      const detectedGuilds = await response.json();
+      if (detectedGuilds.length > 0) {
+        const detectedSection = document.getElementById('detected-guilds-section');
+        const detectedContainer = document.getElementById('detected-guilds-container');
+        
+        if (detectedSection && detectedContainer) {
+          detectedSection.classList.remove('hidden');
+          detectedContainer.innerHTML = '';
+          
+          detectedGuilds.forEach(guild => {
+            const card = this.createDetectedGuildCard(guild);
+            detectedContainer.appendChild(card);
+          });
+        }
+      }
+    } catch (error) {
+      console.error('Failed to check for detected guilds:', error);
+    }
+  }
+  
+  createDetectedGuildCard(guild) {
+    const card = document.createElement('div');
+    card.className = 'border rounded-md p-4 bg-white shadow-sm flex justify-between items-center';
+    card.dataset.guildId = guild.id;
+    
+    let date = 'Unknown date';
+    try {
+      date = new Date(guild.detectedAt).toLocaleString();
+    } catch (e) {}
+    
+    card.innerHTML = `
+      <div>
+        <h4 class="font-medium text-gray-900">${guild.name}</h4>
+        <p class="text-sm text-gray-500">ID: ${guild.id}</p>
+        <p class="text-xs text-gray-400">First detected: ${date}</p>
+      </div>
+      <button class="whitelist-guild-btn px-3 py-1 bg-green-600 text-white text-sm rounded hover:bg-green-700 transition-colors">
+        Whitelist
+      </button>
+    `;
+    
+    // Add click handler for the whitelist button
+    card.querySelector('.whitelist-guild-btn').addEventListener('click', async () => {
+      await this.whitelistDetectedGuild(guild);
+    });
+    
+    return card;
+  }
+  
+  async whitelistDetectedGuild(guild) {
+    try {
+      // Create a basic guild config with whitelist enabled
+      const newGuildConfig = {
+        guildId: guild.id,
+        name: guild.name,
+        whitelisted: true,
+        summonEmoji: "✨", // Default summon emoji
+        adminRoles: [],
+        features: {
+          breeding: true,
+          combat: true,
+          itemCreation: true
+        },
+        prompts: {
+          intro: "You are now conversing with {avatar_name}, a unique AI character with its own personality and abilities.",
+          summon: "You are {avatar_name}, responding to being summoned by {user_name}.",
+          attack: "You are {avatar_name}, attacking {target_name} with your abilities.",
+          defend: "You are {avatar_name}, defending against an attack.",
+          breed: "You are {avatar_name}, breeding with {target_name} to create a new entity."
+        },
+        rateLimiting: {
+          messages: 5,
+          interval: 60
+        },
+        toolEmojis: {
+          summon: "💼",
+          breed: "🏹",
+          attack: "⚔️",
+          defend: "🛡️"
+        }
+      };
+      
+      // Send the request to create a new guild config
+      const response = await fetch('/api/guilds', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(newGuildConfig)
+      });
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error ${response.status}`);
+      }
+      
+      // Reload guild configs
+      await this.loadGuildConfigs();
+      this.initializeGuildSelector();
+      
+      // Show success message
+      this.showMessage(`Guild "${guild.name}" has been whitelisted and configured with default settings.`, 'success');
+      
+      // Remove the card from the detected guilds container
+      const card = document.querySelector(`[data-guild-id="${guild.id}"]`);
+      if (card) {
+        card.remove();
+      }
+    } catch (error) {
+      console.error('Failed to whitelist guild:', error);
+      this.showMessage(`Failed to whitelist guild: ${error.message}`, 'error');
     }
   }
 

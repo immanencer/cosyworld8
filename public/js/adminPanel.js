@@ -336,25 +336,15 @@ async function initGuildDiscovery() {
 // Function to check for detected but non-whitelisted servers
 async function checkForDetectedServers() {
   try {
-    // Get logs to check for non-whitelisted servers
-    const logsResponse = await fetch('/api/audit-logs?type=guild_access&limit=50');
-    if (!logsResponse.ok) {
-      console.error('Failed to fetch audit logs');
+    // Get detected guilds from our new API endpoint
+    const detectedResponse = await fetch('/api/guilds-detected');
+    if (!detectedResponse.ok) {
+      console.error('Failed to fetch detected guilds');
       return;
     }
 
-    const logs = await logsResponse.json();
-    console.log('Retrieved audit logs:', logs);
-
-    // Get existing guild configs
-    const configsResponse = await fetch('/api/guilds');
-    if (!configsResponse.ok) {
-      console.error('Failed to fetch guild configs');
-      return;
-    }
-
-    const existingConfigs = await configsResponse.json();
-    const existingGuildIds = new Set(existingConfigs.map(g => g.guildId));
+    const detectedGuilds = await detectedResponse.json();
+    console.log('Retrieved detected guilds:', detectedGuilds);
 
     // Container for detected guilds
     const detectedGuildsContainer = document.getElementById('detected-guilds-container');
@@ -363,8 +353,29 @@ async function checkForDetectedServers() {
       return;
     }
 
-    // Map to track detected guild IDs and names
-    const detectedGuilds = new Map();
+    const detectedGuildsSection = document.getElementById('detected-guilds-section');
+    
+    // If we have detected guilds, show them
+    if (detectedGuilds.length > 0) {
+      // Show the detected guilds section
+      if (detectedGuildsSection) {
+        detectedGuildsSection.classList.remove('hidden');
+      }
+      
+      // Clear existing cards
+      detectedGuildsContainer.innerHTML = '';
+      
+      // Add guild cards for each detected guild
+      detectedGuilds.forEach(guild => {
+        const card = createDetectedGuildCard(guild);
+        detectedGuildsContainer.appendChild(card);
+      });
+    } else {
+      // Hide the section if no detected guilds
+      if (detectedGuildsSection) {
+        detectedGuildsSection.classList.add('hidden');
+      }
+    }
 
     // Parse logs for "Guild X (id) is not whitelisted" entries
     logs.forEach(log => {

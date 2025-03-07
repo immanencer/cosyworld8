@@ -497,6 +497,22 @@ async function checkGuildWhitelist(guildId) {
         const guild = await client.guilds.fetch(guildId);
         if (guild) {
           logger.info(`Guild ${guild.name} (${guildId}) is not whitelisted. Ignoring message.`);
+          
+          // Also log to the database for admin panel detection
+          if (client.db) {
+            try {
+              await client.db.collection('logs').insertOne({
+                level: 'info',
+                message: `Guild ${guild.name} (${guildId}) is not whitelisted`,
+                timestamp: new Date(),
+                type: 'guild_access',
+                guildId: guildId,
+                guildName: guild.name
+              });
+            } catch (dbError) {
+              logger.debug(`Failed to log guild access to database: ${dbError.message}`);
+            }
+          }
         }
       } catch (guildError) {
         logger.debug(`Could not fetch guild info for ${guildId}: ${guildError.message}`);
