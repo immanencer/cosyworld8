@@ -576,6 +576,84 @@ function renderAdminPanel() {
         <form id="guild-settings-form" class="hidden space-y-6 mt-6">
           </form>
       </div>
+      
+      <script>
+        // Load detected Discord servers
+        async function loadDetectedServers() {
+          try {
+            const response = await fetch('/api/guilds/detected');
+            if (!response.ok) return;
+            
+            const detectedGuilds = await response.json();
+            
+            if (detectedGuilds && detectedGuilds.length > 0) {
+              // Show the detected guilds section
+              document.getElementById('detected-guilds-section').classList.remove('hidden');
+              
+              // Render each detected guild
+              const container = document.getElementById('detected-guilds-container');
+              container.innerHTML = '';
+              
+              detectedGuilds.forEach(guild => {
+                const card = document.createElement('div');
+                card.className = 'p-4 bg-gray-50 rounded-lg border border-gray-200';
+                card.innerHTML = `
+                  <div class="flex items-center justify-between">
+                    <div>
+                      <h4 class="font-medium text-gray-900">${guild.name}</h4>
+                      <p class="text-sm text-gray-500">ID: ${guild.id}</p>
+                    </div>
+                    <button 
+                      data-guild-id="${guild.id}" 
+                      data-guild-name="${guild.name}"
+                      class="whitelist-guild-btn inline-flex items-center px-3 py-1 border border-transparent text-sm leading-4 font-medium rounded-md text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500">
+                      Whitelist Server
+                    </button>
+                  </div>
+                `;
+                container.appendChild(card);
+              });
+              
+              // Add event listeners to whitelist buttons
+              document.querySelectorAll('.whitelist-guild-btn').forEach(btn => {
+                btn.addEventListener('click', async () => {
+                  const guildId = btn.dataset.guildId;
+                  const guildName = btn.dataset.guildName;
+                  
+                  try {
+                    const response = await fetch('/api/guilds', {
+                      method: 'POST',
+                      headers: {
+                        'Content-Type': 'application/json',
+                      },
+                      body: JSON.stringify({
+                        guildId,
+                        name: guildName,
+                        whitelisted: true,
+                      }),
+                    });
+                    
+                    if (!response.ok) {
+                      throw new Error('Failed to whitelist server');
+                    }
+                    
+                    alert(`Server ${guildName} has been whitelisted successfully!`);
+                    window.location.reload();
+                  } catch (error) {
+                    console.error('Failed to whitelist server:', error);
+                    alert('Failed to whitelist server: ' + error.message);
+                  }
+                });
+              });
+            }
+          } catch (error) {
+            console.error('Error fetching detected servers:', error);
+          }
+        }
+        
+        // Call on page load
+        document.addEventListener('DOMContentLoaded', loadDetectedServers);
+      </script>
     </div>
   `;
 }

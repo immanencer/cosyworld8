@@ -463,12 +463,47 @@ client.on('messageCreate', async message => {
  */
 async function checkGuildWhitelist(guildId) {
   try {
+    // Check memory cache first
+    if (client.guildWhitelist?.has(guildId)) {
+      const cached = client.guildWhitelist.get(guildId);
+      logger.debug(`Retrieved guild config for ${guildId} from memory cache: whitelisted=${cached}`);
+      return cached;
+    }
+    
+    // Check database
     const guildConfig = await configService.getGuildConfig(client.db, guildId);
-    if (guildConfig?.whitelisted) return true;
+    logger.debug(`Retrieved guild config for ${guildId} from database: whitelisted=${!!guildConfig?.whitelisted}`);
+    
+    if (guildConfig) {
+      // Update cache
+      if (!client.guildWhitelist) client.guildWhitelist = new Map();
+      client.guildWhitelist.set(guildId, !!guildConfig.whitelisted);
+      
+      return !!guildConfig.whitelisted;
+    }
 
+    // Check global whitelist as fallback
     const globalConfig = await configService.get('whitelistedGuilds');
     const whitelistedGuilds = Array.isArray(globalConfig) ? globalConfig : [];
-    return whitelistedGuilds.includes(guildId);
+    const isWhitelisted = whitelistedGuilds.includes(guildId);
+    
+    // Store result in memory cache
+    if (!client.guildWhitelist) client.guildWhitelist = new Map();
+    client.guildWhitelist.set(guildId, isWhitelisted);
+    
+    // If not whitelisted, get the guild name and log it
+    if (!isWhitelisted) {
+      try {
+        const guild = await client.guilds.fetch(guildId);
+        if (guild) {
+          logger.info(`Guild ${guild.name} (${guildId}) is not whitelisted. Ignoring message.`);
+        }
+      } catch (guildError) {
+        logger.debug(`Could not fetch guild info for ${guildId}: ${guildError.message}`);
+      }
+    }
+    
+    return isWhitelisted;
   } catch (error) {
     logger.error(`Failed to check whitelist for guild ${guildId}: ${error.message}`);
     return false; // Default to not whitelisted on error
