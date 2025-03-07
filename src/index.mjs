@@ -152,6 +152,27 @@ async function handleBreedCommand(message, args, commandLine) {
 
   logger.info(prompt);
   const originalContent = message.content;
+  
+  // Get the summon emoji for the guild
+  const guildId = message.guild?.id;
+  let summonEmoji = process.env.DEFAULT_SUMMON_EMOJI || "🔮";
+  
+  if (guildId) {
+    try {
+      const guildConfig = await configService.getGuildConfig(databaseService.getDatabase(), guildId);
+      if (guildConfig) {
+        if (guildConfig.toolEmojis && guildConfig.toolEmojis.summon) {
+          summonEmoji = guildConfig.toolEmojis.summon;
+        } else if (guildConfig.summonEmoji) {
+          // For backwards compatibility with older config format
+          summonEmoji = guildConfig.summonEmoji;
+        }
+      }
+    } catch (error) {
+      logger.error(`Error getting summon emoji from config: ${error.message}`);
+    }
+  }
+  
   // Temporarily set the breeding prompt as the message content
   message.content = `${summonEmoji} ${prompt}`;
   await handleSummonCommand(message, true, {
