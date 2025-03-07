@@ -2,6 +2,7 @@ import express from 'express';
 import { ObjectId } from 'mongodb';
 import openApiRouter from './openapi.mjs';
 import adminRouterFactory from './admin.mjs';
+import templatesRoutes from './templates.mjs';
 
 const router = express.Router();
 
