@@ -85,16 +85,21 @@ class GuildSettingsManager {
     card.className = 'border rounded-md p-4 bg-white shadow-sm flex justify-between items-center';
     card.dataset.guildId = guild.id;
 
+    const iconUrl = guild.icon ? `https://cdn.discordapp.com/icons/${guild.id}/${guild.icon}.png` : '/images/default-guild-icon.png';
+
     let date = 'Unknown date';
     try {
       date = new Date(guild.detectedAt).toLocaleString();
     } catch (e) {}
 
     card.innerHTML = `
-      <div>
-        <h4 class="font-medium text-gray-900">${guild.name}</h4>
-        <p class="text-sm text-gray-500">ID: ${guild.id}</p>
-        <p class="text-xs text-gray-400">First detected: ${date}</p>
+      <div class="flex items-center space-x-3">
+        <img src="${iconUrl}" alt="${guild.name}" class="w-8 h-8 rounded-full" onerror="this.src='https://cdn.discordapp.com/embed/avatars/0.png'">
+        <div>
+          <h4 class="font-medium">${guild.name}</h4>
+          <p class="text-sm text-gray-500">ID: ${guild.id}</p>
+          <p class="text-xs text-gray-400">First detected: ${date}</p>
+        </div>
       </div>
       <button class="whitelist-guild-btn px-3 py-1 bg-green-600 text-white text-sm rounded hover:bg-green-700 transition-colors">
         Whitelist
