@@ -7,6 +7,171 @@ function showMessage(message, type) {
   messageElement.classList.add(`text-${type === 'success' ? 'green' : 'red'}-500`);
   messageElement.classList.remove('hidden');
 
+
+// Function to render detected but not whitelisted guilds
+async function renderDetectedGuilds() {
+  try {
+    // Fetch logs to extract server info
+    const logsResponse = await fetch('/api/audit-logs?type=guild_access&limit=50');
+    if (!logsResponse.ok) return;
+    
+    const logs = await logsResponse.json();
+    
+    // Track existing guild IDs and detected guilds
+    const existingGuildIds = new Set();
+    const detectedGuilds = new Map();
+    
+    // If guild settings manager exists, get existing guild IDs
+    if (window.guildSettingsManager && window.guildSettingsManager.guildConfigs) {
+      window.guildSettingsManager.guildConfigs.forEach(config => {
+        existingGuildIds.add(config.guildId);
+      });
+    }
+    
+    // Parse logs for "Guild X (id) is not whitelisted" entries
+    logs.forEach(log => {
+      if (typeof log.message === 'string') {
+        // Match different message patterns
+        const matchPattern1 = log.message.match(/Guild\s+([^(]+)\s+\((\d+)\)\s+is\s+not\s+whitelisted/i);
+        const matchPattern2 = log.message.match(/Retrieved guild config for (\d+) from database: whitelisted=false/i);
+
+        if (matchPattern1 && matchPattern1[1] && matchPattern1[2]) {
+          const guildName = matchPattern1[1].trim();
+          const guildId = matchPattern1[2];
+
+          if (!existingGuildIds.has(guildId) && !detectedGuilds.has(guildId)) {
+            detectedGuilds.set(guildId, { name: guildName, id: guildId });
+          }
+        }
+        else if (matchPattern2 && matchPattern2[1]) {
+          const guildId = matchPattern2[1];
+
+          // Only add if we don't already have this guild
+          if (!existingGuildIds.has(guildId) && !detectedGuilds.has(guildId)) {
+            // Look for a guild name in logs
+            const nameMatch = logs.find(otherLog => 
+              otherLog.message && otherLog.message.includes(guildId) && 
+              otherLog.message.match(/Guild\s+([^(]+)\s+\((\d+)\)/i)
+            );
+
+            const guildName = nameMatch ? 
+              nameMatch.message.match(/Guild\s+([^(]+)\s+\((\d+)\)/i)[1].trim() : 
+              `Server ${guildId}`;
+
+            detectedGuilds.set(guildId, { name: guildName, id: guildId });
+          }
+        }
+      }
+    });
+    
+    // Get the container and update visibility
+    const detectedGuildsSection = document.getElementById('detected-guilds-section');
+    const detectedGuildsContainer = document.getElementById('detected-guilds-container');
+    
+    if (!detectedGuildsContainer) return;
+    
+    // Clear existing content
+    detectedGuildsContainer.innerHTML = '';
+    
+    // If we have detected guilds, show the section and render them
+    if (detectedGuilds.size > 0) {
+      detectedGuildsSection.classList.remove('hidden');
+      
+      for (const [id, guild] of detectedGuilds.entries()) {
+        const card = document.createElement('div');
+        card.classList.add('bg-white', 'shadow', 'rounded-lg', 'p-4', 'flex', 'items-center', 'justify-between');
+        
+        card.innerHTML = `
+          <div>
+            <h4 class="font-medium">${guild.name}</h4>
+            <p class="text-sm text-gray-500">ID: ${guild.id}</p>
+          </div>
+          <button 
+            data-guild-id="${guild.id}" 
+            data-guild-name="${guild.name}"
+            class="whitelist-detected-guild px-3 py-1 bg-green-600 text-white rounded hover:bg-green-700 text-sm"
+          >
+            Whitelist Server
+          </button>
+        `;
+        
+        detectedGuildsContainer.appendChild(card);
+      }
+      
+      // Add event listeners to whitelist buttons
+      document.querySelectorAll('.whitelist-detected-guild').forEach(button => {
+        button.addEventListener('click', whitelistDetectedGuild);
+      });
+    } else {
+      detectedGuildsSection.classList.add('hidden');
+    }
+  } catch (error) {
+    console.error('Error rendering detected guilds:', error);
+  }
+}
+
+// Function to handle whitelisting a detected guild
+async function whitelistDetectedGuild(event) {
+  const button = event.currentTarget;
+  const guildId = button.dataset.guildId;
+  const guildName = button.dataset.guildName;
+  
+  if (!guildId) return;
+  
+  // Disable the button and show loading state
+  button.disabled = true;
+  button.textContent = 'Processing...';
+  
+  try {
+    // Create a new guild config with default values
+    const response = await fetch('/api/guilds', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        guildId,
+        guildName,
+        whitelisted: true,
+        features: {
+          breeding: true,
+          combat: true,
+          itemCreation: true
+        },
+        rateLimit: {
+          messages: 5,
+          interval: 60000
+        }
+      })
+    });
+    
+    if (!response.ok) {
+      throw new Error(`Server responded with ${response.status}`);
+    }
+    
+    showMessage('Server successfully whitelisted! You can now configure its settings.', 'success');
+
+    // Refresh the guild configs
+    if (window.guildSettingsManager) {
+      await window.guildSettingsManager.loadGuildConfigs();
+      window.guildSettingsManager.initializeGuildSelector();
+      
+      // Refresh detected guilds
+      renderDetectedGuilds();
+    } else {
+      // Reload the page if the guild manager isn't available
+      window.location.reload();
+    }
+  } catch (error) {
+    console.error('Error whitelisting detected guild:', error);
+    showMessage(`Failed to whitelist server: ${error.message}`, 'error');
+    
+    // Re-enable the button
+    button.disabled = false;
+    button.textContent = 'Whitelist Server';
+  }
+}
+
   setTimeout(() => {
     messageElement.classList.add('hidden');
   }, 5000);
@@ -239,6 +404,7 @@ async function whitelistDetectedGuild(guildId, guildName) {
 
 function initializeAdminPanel() {
   initGuildDiscovery();
+  renderDetectedGuilds();
   renderAdminPanel();
 }
 
