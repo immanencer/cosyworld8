@@ -1,6 +1,6 @@
 
 import { BaseTool } from './BaseTool.mjs';
-import { OpenRouterService as AIService } from '../../openrouterService.mjs';
+import { AIService } from "../../aiService.mjs";
 
 export class RespondTool extends BaseTool {
   constructor(dungeonService) {

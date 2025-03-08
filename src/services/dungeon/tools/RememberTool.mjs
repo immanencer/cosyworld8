@@ -1,6 +1,6 @@
 
 import { MemoryService } from '../../memoryService.mjs';
-import { OpenRouterService as AIService } from '../../openrouterService.mjs';
+import { AIService } from "../../aiService.mjs";
 import { BaseTool } from './BaseTool.mjs';
 import { sendAsWebhook } from '../../discordService.mjs';
 

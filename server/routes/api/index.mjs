@@ -1,13 +1,13 @@
 import express from 'express';
 import { ObjectId } from 'mongodb';
-import openApiRouter from './openapi.mjs';
 import adminRouterFactory from './admin.mjs';
 import templatesRoutes from './templates.mjs';
 
-const router = express.Router();
+// Import here to avoid circular dependencies
+const { GoogleAIService as AIService } = await import('../../../src/services/googleAIService.mjs');
+const aiService = new AIService();
 
-// Mount OpenAPI specification route
-router.use('/openapi', openApiRouter);
+const router = express.Router();
 
 // Wrap async route handlers to catch errors
 const asyncHandler = (fn) => (req, res, next) =>
@@ -267,9 +267,6 @@ export default function(db) {
     }
 
     try {
-      // Import here to avoid circular dependencies
-      const { OpenRouterService } = await import('../../../src/services/openrouterService.mjs');
-      const aiService = new OpenRouterService();
 
       // Generate avatar response
       const prompt = `As ${avatar.name}, respond to the following message. 
@@ -349,9 +346,6 @@ export default function(db) {
     }
 
     try {
-      // Import here to avoid circular dependencies
-      const { OpenRouterService } = await import('../../../src/services/openrouterService.mjs');
-      const aiService = new OpenRouterService();
 
       // Generate responses from each avatar
       const responses = [];
