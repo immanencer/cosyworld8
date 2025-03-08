@@ -1,2 +1,2 @@
 
-import '../src/services/scoring/scoringWorker.mjs';
+import '../services/scoring/scoringWorker.mjs';
