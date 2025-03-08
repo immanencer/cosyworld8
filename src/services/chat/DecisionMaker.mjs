@@ -170,9 +170,29 @@ export class DecisionMaker {
     
     // Get consecutive bot messages from the end
     let consecutiveBotMessages = 0;
+    
+    // Track if recent messages were from this same avatar
+    let consecutiveSameAvatarMessages = 0;
+    
     for (const msg of lastFiveMessages) {
       if (msg.author.bot) {
         consecutiveBotMessages++;
+        
+        // Check if the message is from the same avatar (matching name and emoji)
+        const botName = msg.author.username;
+        const botEmoji = msg.author.avatar; // Assuming emoji might be stored in avatar
+        
+        // Different ways to identify the same avatar
+        const isSameAvatar = 
+          (botName === avatar.name) || 
+          (botName.includes(avatar.name) && botName.includes(avatar.emoji || '')) ||
+          (msg.webhookId && botName.startsWith(avatar.name));
+          
+        if (isSameAvatar) {
+          consecutiveSameAvatarMessages++;
+        } else {
+          break; // Stop counting if we encounter a different avatar
+        }
       } else {
         break;
       }
@@ -181,6 +201,12 @@ export class DecisionMaker {
     // Skip if there are 2 or more consecutive bot messages
     if (consecutiveBotMessages >= 2) {
       this.logger.debug(`${consecutiveBotMessages} consecutive bot messages - skipping response`);
+      return false;
+    }
+    
+    // Skip if the last 3 or more messages were from this same avatar
+    if (consecutiveSameAvatarMessages >= 3) {
+      this.logger.debug(`${consecutiveSameAvatarMessages} consecutive messages from ${avatar.name} - preventing self-conversation`);
       return false;
     }
 

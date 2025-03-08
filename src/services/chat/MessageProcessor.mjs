@@ -263,25 +263,47 @@ export class MessageProcessor {
       const avatarsInChannel = await this.avatarService.getAvatarsInChannel(channelId);
       if (!avatarsInChannel || avatarsInChannel.length === 0) return;
 
-      // Filter for avatars marked as active.
+      // Get recent messages to check for repeated avatar responses
+      const channel = await this.client.channels.fetch(channelId);
+      if (!channel) return;
+      
+      const messages = await channel.messages.fetch({ limit: 5 });
+      const recentMessageAuthors = Array.from(messages.values())
+        .map(msg => msg.author.username)
+        .filter(name => name); // Filter out undefined/null
+      
+      // Filter for avatars marked as active
       const activeAvatars = avatarsInChannel.filter(avatar => avatar.active);
-      let selectedAvatar;
-      if (activeAvatars.length > 0) {
-        // Sort descending by activity count.
-        activeAvatars.sort((a, b) => {
-          const activityA = this.avatarActivityCount.get(a.id) || 0;
-          const activityB = this.avatarActivityCount.get(b.id) || 0;
-          return activityB - activityA;
+      
+      // Filter out avatars that have recently sent multiple messages
+      const availableAvatars = (activeAvatars.length > 0 ? activeAvatars : avatarsInChannel)
+        .filter(avatar => {
+          // Count occurrences of this avatar's name in recent messages
+          const nameOccurrences = recentMessageAuthors.filter(
+            authorName => authorName === avatar.name || 
+                         (avatar.emoji && authorName.includes(avatar.name) && authorName.includes(avatar.emoji))
+          ).length;
+          
+          // Exclude avatars with 2 or more recent messages
+          return nameOccurrences < 2;
         });
-        selectedAvatar = activeAvatars[0];
+      
+      // If no available avatars after filtering, use a random avatar to prevent deadlock
+      if (availableAvatars.length === 0) {
+        const randomIndex = Math.floor(Math.random() * avatarsInChannel.length);
+        selectedAvatar = avatarsInChannel[randomIndex];
       } else {
-        // If none are marked active, fallback to highest activity overall.
-        avatarsInChannel.sort((a, b) => {
+        // Sort available avatars by activity count
+        availableAvatars.sort((a, b) => {
           const activityA = this.avatarActivityCount.get(a.id) || 0;
           const activityB = this.avatarActivityCount.get(b.id) || 0;
           return activityB - activityA;
         });
-        selectedAvatar = avatarsInChannel[0];
+        
+        // Select from top 3 avatars if available, otherwise use the top one
+        const topCount = Math.min(3, availableAvatars.length);
+        const selectedIndex = Math.floor(Math.random() * topCount);
+        selectedAvatar = availableAvatars[selectedIndex];
       }
 
       if (selectedAvatar) {
