@@ -2,8 +2,6 @@ import express from 'express';
 import cors from 'cors';
 import { MongoClient } from 'mongodb';
 import process from 'process';
-import adminRoutes from './routes/adminRoutes.mjs';
-import auditLogsRoutes from './routes/audit-logs.js'; // Import audit logs routes
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -52,20 +50,7 @@ async function initializeApp() {
     // Initialize indexes
     await initializeIndexes(db);
 
-    // Mount the API router
-    const apiRoutes = (await import('./routes/api/index.mjs')).default;
-    const guildsDetectedRoute = (await import('./routes/api/guilds-detected.mjs')).default;
-    app.use('/api', apiRoutes(db));
-    app.use('/api/guilds-detected', (req, res, next) => {
-      req.app.locals.db = db;
-      next();
-    }, guildsDetectedRoute);
 
-
-    // Admin routes are already mounted in index.mjs router
-
-    // Explicitly mount your original routes with database connection
-    // You'll need to gradually migrate these to the OpenAPI format
 
     app.use('/api/leaderboard', (await import('./routes/leaderboard.mjs')).default(db));
     app.use('/api/dungeon', (await import('./routes/dungeon.mjs')).default(db));
@@ -77,12 +62,8 @@ async function initializeApp() {
     app.use('/api/wiki', (await import('./routes/wiki.mjs')).default(db));
     app.use('/api/social', (await import('./routes/social.mjs')).default(db));
     app.use('/api/claims', (await import('./routes/claims.mjs')).default(db));
-    app.use('/api/guilds', (await import('./routes/api/guilds.mjs')).default(db));
-    app.use('/api/admin', adminRoutes(db)); //Added admin routes
-    app.use('/api/audit-logs', auditLogsRoutes); //Added audit logs route
-
-    // Removed duplicate API router import for /api/v1
-
+    app.use('/api/guilds', (await import('./routes/guilds.mjs')).default(db));
+    app.use('/api/admin', (await import('./routes/admin.mjs')).default(db)); 
     // Add renounce claim route
     app.post('/api/claims/renounce', async (req, res) => {
       const { avatarId, walletAddress } = req.body;
