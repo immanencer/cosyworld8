@@ -35,7 +35,7 @@
     "cloudinary": "^2.5.1",
     "concurrently": "^9.1.2",
     "cors": "^2.8.5",
-    "discord.js": "^14.18.0",
+    "discord.js": "^14.14.1",
     "dotenv": "^16.4.5",
     "esbuild": "^0.25.0",
     "ethereumjs-util": "^7.1.5",
