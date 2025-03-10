@@ -81,7 +81,13 @@ class GuildSettingsManager {
       // Fetch detected guilds
       const response = await fetch("/api/guilds-detected");
       if (!response.ok) {
-        throw new Error(`Failed to fetch detected guilds: ${response.status}`);
+        detectedContainer.innerHTML = `
+          <div class="p-4 bg-red-50 text-red-700 rounded-md">
+            <p>Failed to fetch detected guilds: ${response.status}</p>
+            <p class="text-sm mt-2">This could be because you need to restart the server after adding the API endpoint.</p>
+          </div>
+        `;
+        return;
       }
       
       const detectedGuilds = await response.json();

@@ -50,8 +50,6 @@ async function initializeApp() {
     // Initialize indexes
     await initializeIndexes(db);
 
-
-
     app.use('/api/leaderboard', (await import('./routes/leaderboard.mjs')).default(db));
     app.use('/api/dungeon', (await import('./routes/dungeon.mjs')).default(db));
     app.use('/api/health', (await import('./routes/health.mjs')).default(db));
@@ -63,7 +61,7 @@ async function initializeApp() {
     app.use('/api/social', (await import('./routes/social.mjs')).default(db));
     app.use('/api/claims', (await import('./routes/claims.mjs')).default(db));
     app.use('/api/guilds', (await import('./routes/guilds.mjs')).default(db));
-    app.use('/api/admin', (await import('./routes/admin.mjs')).default(db)); 
+    app.use('/api/admin', (await import('./routes/admin.mjs')).default(db));
     // Add renounce claim route
     app.post('/api/claims/renounce', async (req, res) => {
       const { avatarId, walletAddress } = req.body;
@@ -82,6 +80,11 @@ async function initializeApp() {
     // Models route
     const modelsRouter = await import('./routes/models.mjs');
     app.use('/api/models', modelsRouter.default(db));
+
+    //Import and use guilds-detected route
+    const guildsDetectedRouter = (await import('./routes/guilds-detected.mjs')).default;
+    app.use('/api/guilds-detected', guildsDetectedRouter);
+
 
     // Start server
     app.listen(PORT, '0.0.0.0', () => {

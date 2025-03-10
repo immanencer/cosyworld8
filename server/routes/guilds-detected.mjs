@@ -1,5 +1,5 @@
+
 import express from 'express';
-import configService from '../../src/services/configService.mjs';
 import { client } from '../../src/services/discordService.mjs';
 
 const router = express.Router();
@@ -51,32 +51,74 @@ router.get('/', async (req, res) => {
         console.error('Error accessing Discord client guilds:', discordError);
       }
     }
-
-    // Get existing whitelisted guilds
-    const existingConfigs = await configService.getAllGuildConfigs(db);
-    const existingGuildIds = new Set(existingConfigs.map(g => g.guildId));
-
-    // Get fresh data after update
-    const allDetectedGuilds = await db.collection('detected_guilds')
-      .find({})
-      .sort({ updatedAt: -1 })
+    
+    // Also check logs for non-whitelisted guild attempts
+    const logsCollection = db.collection('logs');
+    const guildAccessLogs = await logsCollection
+      .find({ type: 'guild_access' })
+      .sort({ timestamp: -1 })
+      .limit(100)
       .toArray();
-
-    // Filter out guilds that are already configured
-    const filteredGuilds = allDetectedGuilds
-      .filter(guild => !existingGuildIds.has(guild.id))
-      .map(guild => ({
-        id: guild.id,
-        name: guild.name,
-        memberCount: guild.memberCount || 0,
-        icon: guild.icon || null,
-        detectedAt: guild.detectedAt || guild.updatedAt || new Date()
-      }));
-
-    res.json(filteredGuilds);
+    
+    // Extract guild info from logs
+    const logGuilds = new Map();
+    guildAccessLogs.forEach(log => {
+      if (log.guildId && log.guildName) {
+        if (!logGuilds.has(log.guildId)) {
+          logGuilds.set(log.guildId, {
+            id: log.guildId,
+            name: log.guildName,
+            fromLogs: true,
+            detectedAt: log.timestamp || new Date(),
+            updatedAt: new Date()
+          });
+        }
+      }
+    });
+    
+    // Combine sources, preferring data from Discord client
+    const allDetectedGuilds = new Map();
+    
+    // First add DB guilds
+    detectedGuildsFromDB.forEach(guild => {
+      allDetectedGuilds.set(guild.id, guild);
+    });
+    
+    // Then add log guilds (if not already in DB)
+    logGuilds.forEach((guild, id) => {
+      if (!allDetectedGuilds.has(id)) {
+        allDetectedGuilds.set(id, guild);
+      }
+    });
+    
+    // Finally add Discord client guilds (override existing)
+    discordGuilds.forEach(guild => {
+      allDetectedGuilds.set(guild.id, guild);
+    });
+    
+    // Check which guilds are already configured/whitelisted
+    const configuredGuilds = await db.collection('guild_configs')
+      .find({})
+      .toArray();
+    
+    const whitelistedGuildIds = new Set(
+      configuredGuilds
+        .filter(g => g.whitelisted)
+        .map(g => g.guildId)
+    );
+    
+    // Prepare final response
+    const result = Array.from(allDetectedGuilds.values()).map(guild => {
+      return {
+        ...guild,
+        whitelisted: whitelistedGuildIds.has(guild.id)
+      };
+    });
+    
+    res.json(result);
   } catch (error) {
-    console.error(`Error fetching detected guilds: ${error.message}`);
-    res.status(500).json({ error: 'Failed to fetch detected guilds' });
+    console.error('Error fetching detected guilds:', error);
+    res.status(500).json({ error: error.message });
   }
 });
 
