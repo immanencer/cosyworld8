@@ -81,9 +81,7 @@ async function initializeApp() {
     const modelsRouter = await import('./routes/models.mjs');
     app.use('/api/models', modelsRouter.default(db));
 
-    //Import and use guilds-detected route
-    const guildsDetectedRouter = (await import('./routes/guilds-detected.mjs')).default;
-    app.use('/api/guilds-detected', guildsDetectedRouter);
+    // Removed standalone guilds-detected route as it's now integrated into the guilds route
 
 
     // Start server

@@ -22,12 +22,12 @@ class GuildSettingsManager {
       this.initializeGuildSelector();
       this.initializeFormHandlers();
       this.setupManualWhitelistButton();
-      
+
       // Check for detected guilds after loading configurations
       await this.checkDetectedGuilds();
-      
+
       document.getElementById("settings-message").classList.add("hidden");
-      
+
       // Setup refresh button for detected guilds
       const refreshButton = document.getElementById("refresh-detected-guilds");
       if (refreshButton) {
@@ -68,18 +68,18 @@ class GuildSettingsManager {
         "detected-guilds-container",
       );
       const detectedCount = document.getElementById("detected-guilds-count");
-      
+
       if (!detectedSection || !detectedContainer) return;
-      
+
       // Show loading state
       detectedContainer.innerHTML = `
         <div class="flex justify-center py-4">
           <div class="animate-spin rounded-full h-6 w-6 border-b-2 border-indigo-600"></div>
         </div>
       `;
-      
-      // Fetch detected guilds
-      const response = await fetch("/api/guilds-detected");
+
+      // Fetch detected guilds using the consolidated endpoint
+      const response = await fetch("/api/guilds/detected");
       if (!response.ok) {
         detectedContainer.innerHTML = `
           <div class="p-4 bg-red-50 text-red-700 rounded-md">
@@ -89,7 +89,7 @@ class GuildSettingsManager {
         `;
         return;
       }
-      
+
       const detectedGuilds = await response.json();
       const nonWhitelisted = detectedGuilds.filter(
         (guild) => !guild.whitelisted,
@@ -100,14 +100,14 @@ class GuildSettingsManager {
         if (detectedCount) {
           detectedCount.textContent = nonWhitelisted.length.toString();
         }
-        
+
         // Clear and populate container
         detectedContainer.innerHTML = "";
-        
+
         // Sort by name for consistency
         nonWhitelisted
           .sort((a, b) => a.name.localeCompare(b.name))
-          .forEach((guild) => 
+          .forEach((guild) =>
             detectedContainer.appendChild(this.createDetectedGuildCard(guild))
           );
       } else {
@@ -132,11 +132,11 @@ class GuildSettingsManager {
     if (guild.icon) {
       iconUrl = `https://cdn.discordapp.com/icons/${guild.id}/${guild.icon}.png?size=128`;
     }
-    
+
     const date = guild.detectedAt
       ? new Date(guild.detectedAt).toLocaleString()
       : "Unknown date";
-    
+
     const memberCountDisplay = guild.memberCount ? 
       `<p class="text-xs text-gray-400">Members: ${guild.memberCount}</p>` : '';
 
@@ -161,7 +161,7 @@ class GuildSettingsManager {
       whitelistButton.disabled = true;
       whitelistButton.textContent = "Whitelisting...";
       whitelistButton.classList.add("opacity-75");
-      
+
       try {
         await this.whitelistDetectedGuild(guild);
         this.checkDetectedGuilds(); // Refresh the detected guilds section
@@ -209,7 +209,7 @@ class GuildSettingsManager {
         const checkResponse = await fetch(`/api/guilds/${guild.id}`);
         if (checkResponse.ok) {
           const existingConfig = await checkResponse.json();
-          
+
           // Preserve existing settings but set whitelisted to true
           Object.assign(newGuildConfig, existingConfig, { 
             whitelisted: true,
@@ -241,7 +241,7 @@ class GuildSettingsManager {
         `Guild "${guild.name}" has been whitelisted and configured with default settings.`,
         "success",
       );
-      
+
       // Clear guild whitelist cache in Discord service
       try {
         await fetch(`/api/guilds/${guild.id}/clear-cache`, {
@@ -251,7 +251,7 @@ class GuildSettingsManager {
         console.warn("Failed to clear guild cache:", cacheError);
         // Non-critical, so continue
       }
-      
+
       return true;
     } catch (error) {
       console.error("Failed to whitelist guild:", error);
