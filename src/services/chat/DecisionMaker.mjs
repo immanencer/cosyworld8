@@ -146,6 +146,28 @@ export class DecisionMaker {
       if (record.count >= DAILY_RESPONSE_LIMIT) {
         return false; // Skip response if limit is reached
       }
+      
+      // For human messages, calculate time since message was sent
+      const timeSinceHumanMessage = Date.now() - lastMessage.createdTimestamp;
+      
+      // Prioritize responses to human messages within 30 seconds
+      // Increase likelihood of response if we're within the 30-second window
+      if (timeSinceHumanMessage < 30000) {
+        // Very high chance to respond to humans in the first 30 seconds
+        this._updateAttention(avatar.id, 30); // Boost attention
+        
+        // Skip the usual attention threshold check for human messages within 30 seconds
+        // But still maintain a small random chance of not responding
+        if (Math.random() < 0.8) {
+          this.logger.debug(`Prioritizing response to human message within 30s window`);
+          
+          // Skip cooldown check for quick human responses
+          const state = this._getState(avatar.id);
+          state.lastResponse = Date.now() - this.PER_AVATAR_COOLDOWN + 1000;
+          
+          return true;
+        }
+      }
     }
 
     // Attention threshold check

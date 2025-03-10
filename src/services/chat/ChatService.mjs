@@ -79,6 +79,9 @@ export class ChatService {
     this.RESPONSE_DELAY = 3000; // Wait 3 seconds before processing responses
 
     this.AMBIENT_CHECK_INTERVAL = process.env.AMBIENT_CHECK_INTERVAL || 60 * 60 * 1000; // Check for ambient responses every hour
+    this.lastAmbientBurst = new Map();
+    this.recentResponders = new Map();
+    this.avatarLastResponse = new Map();
   }
 
   async setupDatabase() {
