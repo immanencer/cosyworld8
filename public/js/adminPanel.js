@@ -511,8 +511,7 @@ function renderAdminPanel() {
           <p class="text-sm text-gray-400">Note: New servers will inherit settings from the first configured server as a template</p>
         </div>
 
-        <form id="guild-settings-form" class="hidden space-y-6 mt-6">
-          </form>
+        <!-- Guild settings form is defined in guild-settings.html -->
       </div>
     </div>
   `;
