@@ -359,13 +359,27 @@ async function handleCommands(message) {
 
   if (content.startsWith(summonEmoji)) {
     const member = message.guild?.members?.cache?.get(message.author.id);
-    const requiredRole = (guildId ? await configService.getGuildConfig(databaseService.getDatabase(), guildId)?.summonerRole : process.env.SUMMONER_ROLE) || "🔮";
-    if (!message.author.bot && member && !member.roles.cache.some(
+    let requiredRole = null;
+    
+    try {
+      if (guildId) {
+        const guildConfig = await configService.getGuildConfig(databaseService.getDatabase(), guildId);
+        requiredRole = guildConfig?.summonerRole || null;
+      } else {
+        requiredRole = process.env.SUMMONER_ROLE || null;
+      }
+    } catch (error) {
+      logger.error(`Error getting summoner role from config: ${error.message}`);
+    }
+    
+    // If there's a required role configured and user doesn't have it, prevent summoning
+    if (requiredRole && !message.author.bot && member && !member.roles.cache.some(
       (role) => role.id === requiredRole || role.name === requiredRole
     )) {
       await replyToMessage(message, `You lack the required role (${requiredRole}) to summon.`);
       return;
     }
+    
     await reactToMessage(message, summonEmoji);
     await handleSummonCommand(message, false, {});
     return;

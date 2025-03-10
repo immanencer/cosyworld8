@@ -18,7 +18,14 @@ export class SummonTool extends BaseTool {
         this.dungeonService.db || global.databaseService?.getDatabase(),
         guildId
       );
-      return (guildConfig?.toolEmojis?.summon) || this.emoji;
+      
+      // Check both new and old configuration paths
+      if (guildConfig?.toolEmojis?.summon) {
+        return guildConfig.toolEmojis.summon;
+      } else if (guildConfig?.summonEmoji) {
+        return guildConfig.summonEmoji;
+      }
+      return this.emoji;
     } catch (error) {
       console.error(`Error getting summon emoji from config: ${error.message}`);
       return this.emoji;
