@@ -22,7 +22,20 @@ class GuildSettingsManager {
       this.initializeGuildSelector();
       this.initializeFormHandlers();
       this.setupManualWhitelistButton();
+      
+      // Check for detected guilds after loading configurations
+      await this.checkDetectedGuilds();
+      
       document.getElementById("settings-message").classList.add("hidden");
+      
+      // Setup refresh button for detected guilds
+      const refreshButton = document.getElementById("refresh-detected-guilds");
+      if (refreshButton) {
+        refreshButton.addEventListener("click", async (e) => {
+          e.preventDefault();
+          await this.checkDetectedGuilds();
+        });
+      }
     } catch (error) {
       console.error("Failed to initialize guild settings:", error);
       this.showMessage(
@@ -48,13 +61,6 @@ class GuildSettingsManager {
   /** Check for detected guilds and update the UI */
   async checkDetectedGuilds() {
     try {
-      const response = await fetch("/api/guilds-detected");
-      if (!response.ok) return;
-      const detectedGuilds = await response.json();
-      const nonWhitelisted = detectedGuilds.filter(
-        (guild) => !guild.whitelisted,
-      );
-
       const detectedSection = document.getElementById(
         "detected-guilds-section",
       );
@@ -62,22 +68,49 @@ class GuildSettingsManager {
         "detected-guilds-container",
       );
       const detectedCount = document.getElementById("detected-guilds-count");
+      
+      if (!detectedSection || !detectedContainer) return;
+      
+      // Show loading state
+      detectedContainer.innerHTML = `
+        <div class="flex justify-center py-4">
+          <div class="animate-spin rounded-full h-6 w-6 border-b-2 border-indigo-600"></div>
+        </div>
+      `;
+      
+      // Fetch detected guilds
+      const response = await fetch("/api/guilds-detected");
+      if (!response.ok) {
+        throw new Error(`Failed to fetch detected guilds: ${response.status}`);
+      }
+      
+      const detectedGuilds = await response.json();
+      const nonWhitelisted = detectedGuilds.filter(
+        (guild) => !guild.whitelisted,
+      );
 
-      if (detectedSection && detectedContainer) {
-        if (nonWhitelisted.length > 0) {
-          detectedSection.classList.remove("hidden");
-          if (detectedCount)
-            detectedCount.textContent = nonWhitelisted.length.toString();
-          detectedContainer.innerHTML = "";
-          nonWhitelisted.forEach((guild) =>
-            detectedContainer.appendChild(this.createDetectedGuildCard(guild)),
-          );
-        } else {
-          detectedSection.classList.add("hidden");
+      if (nonWhitelisted.length > 0) {
+        detectedSection.classList.remove("hidden");
+        if (detectedCount) {
+          detectedCount.textContent = nonWhitelisted.length.toString();
         }
+        
+        // Clear and populate container
+        detectedContainer.innerHTML = "";
+        
+        // Sort by name for consistency
+        nonWhitelisted
+          .sort((a, b) => a.name.localeCompare(b.name))
+          .forEach((guild) => 
+            detectedContainer.appendChild(this.createDetectedGuildCard(guild))
+          );
+      } else {
+        detectedSection.classList.add("hidden");
+        detectedContainer.innerHTML = "";
       }
     } catch (error) {
       console.error("Failed to check for detected guilds:", error);
+      this.showMessage(`Error checking for detected guilds: ${error.message}`, "error");
     }
   }
 
@@ -88,20 +121,27 @@ class GuildSettingsManager {
       "border rounded-md p-4 bg-white shadow-sm flex justify-between items-center";
     card.dataset.guildId = guild.id;
 
-    const iconUrl = guild.icon
-      ? `https://cdn.discordapp.com/icons/${guild.id}/${guild.icon}.png`
-      : "https://cdn.discordapp.com/embed/avatars/0.png";
+    // Handle Discord CDN icon URL 
+    let iconUrl = "https://cdn.discordapp.com/embed/avatars/0.png";
+    if (guild.icon) {
+      iconUrl = `https://cdn.discordapp.com/icons/${guild.id}/${guild.icon}.png?size=128`;
+    }
+    
     const date = guild.detectedAt
       ? new Date(guild.detectedAt).toLocaleString()
       : "Unknown date";
+    
+    const memberCountDisplay = guild.memberCount ? 
+      `<p class="text-xs text-gray-400">Members: ${guild.memberCount}</p>` : '';
 
     card.innerHTML = `
       <div class="flex items-center space-x-3">
-        <img src="${iconUrl}" alt="${guild.name}" class="w-8 h-8 rounded-full" onerror="this.src='https://cdn.discordapp.com/embed/avatars/0.png'">
+        <img src="${iconUrl}" alt="${guild.name}" class="w-10 h-10 rounded-full object-cover border border-gray-200" onerror="this.src='https://cdn.discordapp.com/embed/avatars/0.png'">
         <div>
           <h4 class="font-medium">${guild.name}</h4>
           <p class="text-sm text-gray-500">ID: ${guild.id}</p>
           <p class="text-xs text-gray-400">First detected: ${date}</p>
+          ${memberCountDisplay}
         </div>
       </div>
       <button class="whitelist-guild-btn px-3 py-1 bg-green-600 text-white text-sm rounded hover:bg-green-700 transition-colors">
@@ -109,12 +149,24 @@ class GuildSettingsManager {
       </button>
     `;
 
-    card
-      .querySelector(".whitelist-guild-btn")
-      .addEventListener("click", async () => {
+    // Add loading state handling
+    const whitelistButton = card.querySelector(".whitelist-guild-btn");
+    whitelistButton.addEventListener("click", async () => {
+      whitelistButton.disabled = true;
+      whitelistButton.textContent = "Whitelisting...";
+      whitelistButton.classList.add("opacity-75");
+      
+      try {
         await this.whitelistDetectedGuild(guild);
         this.checkDetectedGuilds(); // Refresh the detected guilds section
-      });
+      } catch (error) {
+        console.error("Failed to whitelist guild:", error);
+        whitelistButton.textContent = "Whitelist";
+        whitelistButton.disabled = false;
+        whitelistButton.classList.remove("opacity-75");
+        this.showMessage(`Failed to whitelist guild: ${error.message}`, "error");
+      }
+    });
 
     return card;
   }
@@ -126,6 +178,7 @@ class GuildSettingsManager {
         guildId: guild.id,
         name: guild.name,
         icon: guild.icon, // Include icon if available
+        memberCount: guild.memberCount,
         whitelisted: true,
         summonEmoji: "✨",
         adminRoles: [],
@@ -145,13 +198,36 @@ class GuildSettingsManager {
         toolEmojis: { summon: "🔮", breed: "🏹", attack: "⚔️", defend: "🛡️" },
       };
 
+      // Check if the guild already exists but is not whitelisted
+      try {
+        const checkResponse = await fetch(`/api/guilds/${guild.id}`);
+        if (checkResponse.ok) {
+          const existingConfig = await checkResponse.json();
+          
+          // Preserve existing settings but set whitelisted to true
+          Object.assign(newGuildConfig, existingConfig, { 
+            whitelisted: true,
+            // Update these fields with fresh data from detected guild
+            name: guild.name,
+            icon: guild.icon,
+            memberCount: guild.memberCount
+          });
+        }
+      } catch (error) {
+        console.warn(`Couldn't check for existing guild config: ${error.message}`);
+        // Continue with new guild creation
+      }
+
       const response = await fetch("/api/guilds", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(newGuildConfig),
       });
 
-      if (!response.ok) throw new Error(`HTTP error ${response.status}`);
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || `HTTP error ${response.status}`);
+      }
 
       await this.loadGuildConfigs();
       this.initializeGuildSelector();
@@ -159,9 +235,22 @@ class GuildSettingsManager {
         `Guild "${guild.name}" has been whitelisted and configured with default settings.`,
         "success",
       );
+      
+      // Clear guild whitelist cache in Discord service
+      try {
+        await fetch(`/api/guilds/${guild.id}/clear-cache`, {
+          method: "POST"
+        });
+      } catch (cacheError) {
+        console.warn("Failed to clear guild cache:", cacheError);
+        // Non-critical, so continue
+      }
+      
+      return true;
     } catch (error) {
       console.error("Failed to whitelist guild:", error);
       this.showMessage(`Failed to whitelist guild: ${error.message}`, "error");
+      throw error;
     }
   }
 
