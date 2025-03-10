@@ -310,3 +310,78 @@
   <script src="/js/guild-settings.js"></script>
 </body>
 </html>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Guild Settings - Admin Dashboard</title>
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="/css/admin.css">
+</head>
+<body class="bg-gray-900 text-white">
+  <div class="container mx-auto px-4 py-6">
+    <header class="mb-8">
+      <h1 class="text-3xl font-bold">Guild Settings</h1>
+      <p class="text-gray-400">Manage Discord server configurations</p>
+    </header>
+    
+    <div class="mb-6">
+      <button id="refresh-btn" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded">
+        Refresh Guild List
+      </button>
+    </div>
+    
+    <div id="loading" class="text-center py-8">
+      <div class="spinner"></div>
+      <p>Loading guilds...</p>
+    </div>
+    
+    <div id="guild-list" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      <!-- Guild cards will be inserted here -->
+    </div>
+    
+    <div id="error-message" class="hidden bg-red-500 text-white p-4 rounded mt-4">
+      Error loading guilds. Please try again.
+    </div>
+  </div>
+
+  <!-- Guild Card Template -->
+  <template id="guild-card-template">
+    <div class="guild-card bg-gray-800 rounded-lg overflow-hidden shadow-lg">
+      <div class="p-4 flex items-center border-b border-gray-700">
+        <div class="guild-icon w-12 h-12 rounded-full bg-gray-600 mr-4 flex-shrink-0">
+          <img class="w-full h-full rounded-full object-cover" src="" alt="">
+        </div>
+        <div class="flex-grow">
+          <h3 class="guild-name text-xl font-semibold"></h3>
+          <p class="guild-id text-sm text-gray-400"></p>
+        </div>
+      </div>
+      <div class="p-4">
+        <div class="mb-4">
+          <div class="flex items-center justify-between">
+            <label class="flex items-center cursor-pointer">
+              <span class="mr-2">Whitelist Status:</span>
+              <div class="relative">
+                <input type="checkbox" class="whitelist-toggle sr-only">
+                <div class="block bg-gray-600 w-14 h-8 rounded-full"></div>
+                <div class="dot absolute left-1 top-1 bg-white w-6 h-6 rounded-full transition"></div>
+              </div>
+            </label>
+            <span class="whitelist-status px-2 py-1 rounded text-xs font-semibold"></span>
+          </div>
+        </div>
+        <div class="flex justify-between items-center">
+          <span class="text-sm text-gray-400">Members: <span class="member-count"></span></span>
+          <button class="settings-btn bg-blue-600 hover:bg-blue-700 text-white px-4 py-1 rounded text-sm">
+            Settings
+          </button>
+        </div>
+      </div>
+    </div>
+  </template>
+
+  <script src="/js/guild-settings.js"></script>
+</body>
+</html>
