@@ -1,10 +1,10 @@
-
 import { z } from 'zod';
 
 export const GuildConfigSchema = z.object({
   guildId: z.string().min(1).regex(/^\d+$/, "Guild ID must be a valid Discord server ID (numbers only)"),
   guildName: z.string().optional(),
-  whitelisted: z.boolean().default(false),
+  authorized: z.boolean().default(false),
+  whitelisted: z.boolean().default(false), // For backward compatibility
   summonerRole: z.string().optional(),
   adminRoles: z.array(z.string()).default([]),
   prompts: z.object({

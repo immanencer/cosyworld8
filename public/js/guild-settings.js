@@ -91,21 +91,21 @@ class GuildSettingsManager {
       }
 
       const detectedGuilds = await response.json();
-      const nonWhitelisted = detectedGuilds.filter(
-        (guild) => !guild.whitelisted,
+      const nonAuthorized = detectedGuilds.filter(
+        (guild) => !guild.authorized,
       );
 
-      if (nonWhitelisted.length > 0) {
+      if (nonAuthorized.length > 0) {
         detectedSection.classList.remove("hidden");
         if (detectedCount) {
-          detectedCount.textContent = nonWhitelisted.length.toString();
+          detectedCount.textContent = nonAuthorized.length.toString();
         }
 
         // Clear and populate container
         detectedContainer.innerHTML = "";
 
         // Sort by name for consistency
-        nonWhitelisted
+        nonAuthorized
           .sort((a, b) => a.name.localeCompare(b.name))
           .forEach((guild) =>
             detectedContainer.appendChild(this.createDetectedGuildCard(guild))
@@ -150,27 +150,27 @@ class GuildSettingsManager {
           ${memberCountDisplay}
         </div>
       </div>
-      <button class="whitelist-guild-btn px-3 py-1 bg-green-600 text-white text-sm rounded hover:bg-green-700 transition-colors">
-        Whitelist
+      <button class="authorize-guild-btn px-3 py-1 bg-green-600 text-white text-sm rounded hover:bg-green-700 transition-colors">
+        Authorize
       </button>
     `;
 
     // Add loading state handling
-    const whitelistButton = card.querySelector(".whitelist-guild-btn");
-    whitelistButton.addEventListener("click", async () => {
-      whitelistButton.disabled = true;
-      whitelistButton.textContent = "Whitelisting...";
-      whitelistButton.classList.add("opacity-75");
+    const authorizeButton = card.querySelector(".authorize-guild-btn");
+    authorizeButton.addEventListener("click", async () => {
+      authorizeButton.disabled = true;
+      authorizeButton.textContent = "Authorizing...";
+      authorizeButton.classList.add("opacity-75");
 
       try {
-        await this.whitelistDetectedGuild(guild);
+        await this.whitelistDetectedGuild(guild); //Updated to use the original function, renamed below
         this.checkDetectedGuilds(); // Refresh the detected guilds section
       } catch (error) {
-        console.error("Failed to whitelist guild:", error);
-        whitelistButton.textContent = "Whitelist";
-        whitelistButton.disabled = false;
-        whitelistButton.classList.remove("opacity-75");
-        this.showMessage(`Failed to whitelist guild: ${error.message}`, "error");
+        console.error("Failed to authorize guild:", error);
+        authorizeButton.textContent = "Authorize";
+        authorizeButton.disabled = false;
+        authorizeButton.classList.remove("opacity-75");
+        this.showMessage(`Failed to authorize guild: ${error.message}`, "error");
       }
     });
 
@@ -185,7 +185,8 @@ class GuildSettingsManager {
         name: guild.name,
         icon: guild.icon, // Include icon if available
         memberCount: guild.memberCount,
-        whitelisted: true,
+        authorized: true,
+        whitelisted: true, // For backward compatibility
         summonEmoji: "✨",
         adminRoles: [],
         features: { breeding: true, combat: true, itemCreation: true },
@@ -212,7 +213,8 @@ class GuildSettingsManager {
 
           // Preserve existing settings but set whitelisted to true
           Object.assign(newGuildConfig, existingConfig, { 
-            whitelisted: true,
+            authorized: true,
+            whitelisted: true, // For backward compatibility
             // Update these fields with fresh data from detected guild
             name: guild.name,
             icon: guild.icon,
@@ -238,7 +240,7 @@ class GuildSettingsManager {
       await this.loadGuildConfigs();
       this.initializeGuildSelector();
       this.showMessage(
-        `Guild "${guild.name}" has been whitelisted and configured with default settings.`,
+        `Guild "${guild.name}" has been authorized and configured with default settings.`,
         "success",
       );
 
@@ -254,8 +256,8 @@ class GuildSettingsManager {
 
       return true;
     } catch (error) {
-      console.error("Failed to whitelist guild:", error);
-      this.showMessage(`Failed to whitelist guild: ${error.message}`, "error");
+      console.error("Failed to authorize guild:", error);
+      this.showMessage(`Failed to authorize guild: ${error.message}`, "error");
       throw error;
     }
   }
@@ -308,8 +310,8 @@ class GuildSettingsManager {
           <p class="text-sm text-gray-500">ID: ${guildId}</p>
         </div>
         <div class="ml-4 flex-shrink-0">
-          <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${guild.whitelisted ? "bg-green-100 text-green-800" : "bg-gray-100 text-gray-800"}">
-            ${guild.whitelisted ? "Whitelisted" : "Not Whitelisted"}
+          <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${guild.authorized ? "bg-green-100 text-green-800" : "bg-gray-100 text-gray-800"}">
+            ${guild.authorized ? "Authorized" : "Not Authorized"}
           </span>
         </div>
       </div>
@@ -387,6 +389,8 @@ class GuildSettingsManager {
       this.populateForm(guildConfig);
     } else {
       this.showMessage("Guild configuration not found", "error");
+      form.classList.add("hidden"); // Hide the form if the config isn't found.
+      document.getElementById("no-server-selected").classList.remove("hidden"); //Show the message
     }
   }
 
@@ -404,8 +408,8 @@ class GuildSettingsManager {
     )
       ? guildConfig.adminRoles.join(", ")
       : "";
-    document.getElementById("guild-whitelisted").checked =
-      guildConfig.whitelisted || false;
+    document.getElementById("guild-authorized").checked =
+      guildConfig.authorized || false;
 
     const rateLimiting = guildConfig.rateLimiting || {};
     document.getElementById("rate-limit-messages").value =
@@ -498,7 +502,8 @@ class GuildSettingsManager {
         .value.split(",")
         .map((role) => role.trim())
         .filter(Boolean),
-      whitelisted: document.getElementById("guild-whitelisted").checked,
+      authorized: document.getElementById("guild-authorized").checked,
+      whitelisted: document.getElementById("guild-authorized").checked, //for backward compatibility
       rateLimiting: {
         messages:
           parseInt(document.getElementById("rate-limit-messages").value, 10) ||
@@ -548,9 +553,9 @@ class GuildSettingsManager {
             <input type="text" id="new-guild-name" class="mt-1 focus:ring-indigo-500 focus:border-indigo-500 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md" placeholder="Server name" required>
           </div>
           <div class="flex items-start mb-4">
-            <input id="new-guild-whitelisted" type="checkbox" class="focus:ring-indigo-500 h-4 w-4 text-indigo-600 border-gray-300 rounded">
+            <input id="new-guild-authorized" type="checkbox" class="focus:ring-indigo-500 h-4 w-4 text-indigo-600 border-gray-300 rounded">
             <div class="ml-3 text-sm">
-              <label for="new-guild-whitelisted" class="font-medium text-gray-700">Whitelist this server</label>
+              <label for="new-guild-authorized" class="font-medium text-gray-700">Authorize this server</label>
               <p class="text-gray-500">Enable the bot to respond to messages in this server</p>
             </div>
           </div>
@@ -574,8 +579,8 @@ class GuildSettingsManager {
 
         const guildId = document.getElementById("new-guild-id").value.trim();
         const name = document.getElementById("new-guild-name").value.trim();
-        const whitelisted = document.getElementById(
-          "new-guild-whitelisted",
+        const authorized = document.getElementById(
+          "new-guild-authorized",
         ).checked;
 
         if (!/^\d+$/.test(guildId)) {
@@ -588,7 +593,7 @@ class GuildSettingsManager {
           const response = await fetch("/api/guilds", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ guildId, name, whitelisted }),
+            body: JSON.stringify({ guildId, name, authorized }),
           });
 
           if (!response.ok) {
@@ -663,7 +668,7 @@ class GuildSettingsManager {
   /** Whitelist a guild manually */
   async whitelistGuild(guildId, guildName) {
     try {
-      const newGuildConfig = { guildId, name: guildName, whitelisted: true };
+      const newGuildConfig = { guildId, name: guildName, authorized: true, whitelisted: true };
       const response = await fetch("/api/guilds", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -675,12 +680,12 @@ class GuildSettingsManager {
       await this.loadGuildConfigs();
       this.initializeGuildSelector();
       this.showMessage(
-        `Guild "${guildName}" (ID: ${guildId}) whitelisted successfully!`,
+        `Guild "${guildName}" (ID: ${guildId}) authorized successfully!`,
         "success",
       );
     } catch (error) {
-      console.error("Failed to whitelist guild:", error);
-      this.showMessage(`Error whitelisting guild: ${error.message}`, "error");
+      console.error("Failed to authorize guild:", error);
+      this.showMessage(`Error authorizing guild: ${error.message}`, "error");
     }
   }
 }

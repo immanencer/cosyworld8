@@ -1,15 +1,3 @@
-
-// NOTE: This is just a portion of the file. Find where you initialize the MessageHandler and ensure imageProcessingService is passed.
-// Look for code similar to:
-// 
-// const messageHandler = new MessageHandler(avatarService, client, chatService);
-//
-// And change it to include the imageProcessingService if it exists:
-// 
-// const messageHandler = new MessageHandler(avatarService, client, chatService, imageProcessingService || null);
-//
-// If you can't find this exact code pattern, look for where MessageHandler is instantiated and make a similar change.
-
 // index.mjs
 import winston from "winston";
 import { DatabaseService } from "./services/databaseService.mjs";
@@ -151,11 +139,11 @@ async function handleBreedCommand(message, args, commandLine) {
 
   logger.info(prompt);
   const originalContent = message.content;
-  
+
   // Get the summon emoji for the guild
   const guildId = message.guild?.id;
   let summonEmoji = process.env.DEFAULT_SUMMON_EMOJI || "🔮";
-  
+
   if (guildId) {
     try {
       const guildConfig = await configService.getGuildConfig(databaseService.getDatabase(), guildId);
@@ -171,7 +159,7 @@ async function handleBreedCommand(message, args, commandLine) {
       logger.error(`Error getting summon emoji from config: ${error.message}`);
     }
   }
-  
+
   // Temporarily set the breeding prompt as the message content
   message.content = `${summonEmoji} ${prompt}`;
   await handleSummonCommand(message, true, {
@@ -473,25 +461,25 @@ client.on("messageCreate", async (message) => {
     if (!message.guild) return;
 
     // --------------------------
-    // Guild Whitelist Check
+    // Guild Authorization Check
     // --------------------------
-    if (client.guildWhitelist?.has(message.guild.id)) {
-      if (!client.guildWhitelist.get(message.guild.id)) {
-        logger.warn(`Guild ${message.guild.name} (${message.guild.id}) is not whitelisted. Ignoring message.`);
+    if (client.authorizedGuilds?.has(message.guild.id)) {
+      if (!client.authorizedGuilds.get(message.guild.id)) {
+        logger.warn(`Guild ${message.guild.name} (${message.guild.id}) is not authorized. Ignoring message.`);
         return;
       }
     } else {
       const db = databaseService.getDatabase();
       if (!db) return;
       const guildConfig = await configService.getGuildConfig(db, message.guild.id);
-      if (guildConfig?.whitelisted === true) {
-        client.guildWhitelist = client.guildWhitelist || new Map();
-        client.guildWhitelist.set(message.guild.id, true);
+      if (guildConfig?.authorized === true) {
+        client.authorizedGuilds = client.authorizedGuilds || new Map();
+        client.authorizedGuilds.set(message.guild.id, true);
       } else {
-        const globalConfig = await configService.get("whitelistedGuilds");
-        const whitelistedGuilds = Array.isArray(globalConfig) ? globalConfig : [];
-        if (!whitelistedGuilds.includes(message.guild.id)) {
-          const logMessage = `Guild ${message.guild.name} (${message.guild.id}) is not whitelisted. Ignoring message.`;
+        const globalConfig = await configService.get("authorizedGuilds");
+        const authorizedGuilds = Array.isArray(globalConfig) ? globalConfig : [];
+        if (!authorizedGuilds.includes(message.guild.id)) {
+          const logMessage = `Guild ${message.guild.name} (${message.guild.id}) is not authorized. Ignoring message.`;
           logger.warn(logMessage);
 
           // Save to application_logs collection for audit purposes
@@ -509,8 +497,8 @@ client.on("messageCreate", async (message) => {
 
           return;
         }
-        client.guildWhitelist = client.guildWhitelist || new Map();
-        client.guildWhitelist.set(message.guild.id, true);
+        client.authorizedGuilds = client.authorizedGuilds || new Map();
+        client.authorizedGuilds.set(message.guild.id, true);
       }
     }
 
@@ -561,14 +549,14 @@ async function loadGuildWhitelist(database) {
   try {
     logger.info("Pre-loading guild whitelist settings...");
     const guildConfigs = await database.collection("guild_configs").find({}).toArray();
-    client.guildWhitelist = new Map();
+    client.authorizedGuilds = new Map(); // Changed to authorizedGuilds
     for (const config of guildConfigs) {
-      if (config.guildId && config.whitelisted === true) {
-        client.guildWhitelist.set(config.guildId, true);
+      if (config.guildId && config.authorized === true) { // Changed to authorized
+        client.authorizedGuilds.set(config.guildId, true); // Changed to authorizedGuilds
         logger.debug(`Pre-loaded whitelist for guild ${config.guildId}.`);
       }
     }
-    logger.info(`Pre-loaded whitelist settings for ${client.guildWhitelist.size} guild(s).`);
+    logger.info(`Pre-loaded whitelist settings for ${client.authorizedGuilds.size} guild(s).`); // Changed to authorizedGuilds
   } catch (err) {
     logger.error(`Failed to pre-load guild whitelist settings: ${err.message}`);
   }
@@ -576,7 +564,7 @@ async function loadGuildWhitelist(database) {
 
 async function main() {
   try {
-    client.guildWhitelist = new Map();
+    client.authorizedGuilds = new Map(); // Changed to authorizedGuilds
     configService.setClient(client);
     const db = await databaseService.connect();
     if (!db) {

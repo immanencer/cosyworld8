@@ -15,7 +15,7 @@ export default function(db) {
     res.json(guildConfigs);
   }));
 
-  // Get detected but not whitelisted guilds
+  // Get detected but not authorized guilds
   router.get('/detected', asyncHandler(async (req, res) => {
     try {
       if (!db) {
@@ -62,7 +62,7 @@ export default function(db) {
         }
       }
       
-      // Also check logs for non-whitelisted guild attempts
+      // Also check logs for non-authorized guild attempts
       const logsCollection = db.collection('logs');
       const guildAccessLogs = await logsCollection
         .find({ type: 'guild_access' })
@@ -70,9 +70,20 @@ export default function(db) {
         .limit(100)
         .toArray();
       
+      // Also check application_logs for guild access attempts
+      const appLogsCollection = db.collection('application_logs');
+      const appGuildAccessLogs = await appLogsCollection
+        .find({ type: 'guild_access' })
+        .sort({ timestamp: -1 })
+        .limit(100)
+        .toArray();
+      
+      // Combine both log collections
+      const allAccessLogs = [...guildAccessLogs, ...appGuildAccessLogs];
+      
       // Extract guild info from logs
       const logGuilds = new Map();
-      guildAccessLogs.forEach(log => {
+      allAccessLogs.forEach(log => {
         if (log.guildId && log.guildName) {
           if (!logGuilds.has(log.guildId)) {
             logGuilds.set(log.guildId, {
@@ -106,14 +117,14 @@ export default function(db) {
         allDetectedGuilds.set(guild.id, guild);
       });
       
-      // Check which guilds are already configured/whitelisted
+      // Check which guilds are already configured/authorized
       const configuredGuilds = await db.collection('guild_configs')
         .find({})
         .toArray();
       
-      const whitelistedGuildIds = new Set(
+      const authorizedGuildIds = new Set(
         configuredGuilds
-          .filter(g => g.whitelisted)
+          .filter(g => g.authorized === true || g.whitelisted === true)
           .map(g => g.guildId)
       );
       
@@ -121,7 +132,8 @@ export default function(db) {
       const result = Array.from(allDetectedGuilds.values()).map(guild => {
         return {
           ...guild,
-          whitelisted: whitelistedGuildIds.has(guild.id)
+          authorized: authorizedGuildIds.has(guild.id),
+          whitelisted: authorizedGuildIds.has(guild.id) // For backward compatibility
         };
       });
       
@@ -204,8 +216,9 @@ export default function(db) {
         // Copy summon emoji
         newGuildConfig.summonEmoji = templateGuild.summonEmoji;
         
-        // New guilds start as not whitelisted by default for safety
-        newGuildConfig.whitelisted = false;
+        // New guilds start as not authorized by default for safety
+        newGuildConfig.authorized = false;
+        newGuildConfig.whitelisted = false; // For backward compatibility
       }
 
       const result = await db.collection('guild_configs').insertOne(newGuildConfig);
