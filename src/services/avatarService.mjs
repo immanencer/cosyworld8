@@ -1,5 +1,4 @@
 // services/avatar_generation_service.mjs
-
 import { SchemaValidator } from './utils/schemaValidator.mjs';
 
 // Fallback validator in case the import fails
@@ -386,7 +385,8 @@ export class AvatarGenerationService {
         [{ role: 'system', content: systemPrompt },
          { role: 'user', content: prompt }],
         {
-          maxOutputTokens: 1024,
+          model: process.env.META_PROMPT_MODEL,
+          maxOutputTokens: 2048,
           temperature: 1.0,
           topP: 0.95,
           topK: 40,

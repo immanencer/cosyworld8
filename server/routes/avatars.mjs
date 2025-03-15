@@ -161,12 +161,6 @@ export default function avatarRoutes(db) {
       let query = {};
       let sort = { createdAt: -1 };
 
-
-      const totalPages = Math.ceil(total / limit);
-      if (page > totalPages && total > 0) {
-        return res.json({ avatars: [], total, page, totalPages, limit });
-      }
-
       if (view === 'claims' && !req.query.walletAddress) {
         return res.status(400).json({ error: 'walletAddress required for claims view' });
       }
@@ -213,6 +207,11 @@ export default function avatarRoutes(db) {
           .toArray(),
         db.collection('avatars').countDocuments(query),
       ]);
+
+      const totalPages = Math.ceil(total / limit);
+      if (page > totalPages && total > 0) {
+        return res.json({ avatars: [], total, page, totalPages, limit });
+      }
 
       // Generate thumbnails
       await thumbnailService.ensureThumbnailDir();
