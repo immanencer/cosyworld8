@@ -4,6 +4,7 @@ import { AIService } from "../aiService.mjs";
 import { uploadImage } from '../s3imageService/s3imageService.mjs';
 import { sendAsWebhook } from '../discordService.mjs';
 import { ObjectId } from 'mongodb';
+import { SchemaValidator } from '../utils/schemaValidator.mjs';
 import Replicate from 'replicate';
 import fs from 'fs/promises';
 
@@ -344,7 +345,7 @@ If already suitable, return as is. If it needs editing, revise it while preservi
         updatedAt: new Date().toISOString(),
         version: '1.0.0'
       };
-      
+
       // Post the evocative description as a webhook
       await sendAsWebhook(thread.id, evocativeDescription, locationDocument);
 
