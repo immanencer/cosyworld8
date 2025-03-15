@@ -4,9 +4,38 @@ document.addEventListener("DOMContentLoaded", () => {
     currentPage: 1,
     pageSize: 20,
     totalAvatars: 0,
-    currentFilter: "all",
+    currentStatusFilter: "all",
+    currentModelFilter: "all", 
     currentSearch: "",
   };
+
+  // Load available models
+  async function loadModels() {
+    try {
+      const response = await fetch('/api/models/config');
+      const data = await response.json();
+      const modelSelect = document.getElementById('model-filter');
+      
+      // Add models to select
+      Object.keys(data).forEach(model => {
+        const option = document.createElement('option');
+        option.value = model;
+        option.textContent = model;
+        modelSelect.appendChild(option);
+      });
+
+      // Add filter listeners
+      modelSelect.addEventListener('change', () => {
+        state.currentModelFilter = modelSelect.value;
+        state.currentPage = 1;
+        loadAvatars();
+      });
+    } catch (error) {
+      console.error('Error loading models:', error);
+    }
+  }
+
+  loadModels();
 
   // DOM Elements
   const elements = {
