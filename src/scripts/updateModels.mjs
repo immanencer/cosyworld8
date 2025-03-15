@@ -11,10 +11,11 @@ const CONFIG = {
   },
   logging: {
     verbose: false     // set to true for more detailed logs
-  }
+  },
+  filters: ['-guard-'],         // e.g., ['gpt', 'test'] to filter models containing these words
 };
 
-// Import existing models config to preserve rarities if needed
+// Import existing models config to preserve rarities
 import existingModels from '../models.config.mjs';
 
 /**
@@ -123,14 +124,19 @@ function assignRarityByCost(models) {
 async function updateModelsConfig() {
   console.info('[INFO] Starting updateModelsConfig process...');
   try {
+    // Create a map of existing model rarities to preserve them
+    const existingModelRarities = new Map(existingModels.map(m => [m.model, m.rarity]));
+
     // Fetch and filter models
     const { data: models } = await fetchModels();
     console.info(`[INFO] Retrieved ${models.length} models from the API.`);
 
-    // Only consider models with pricing information
-    const modelsWithPricing = models.filter(m => m.pricing);
+    // Apply filters to exclude models based on name
+    const filteredModels = models.filter(m => !CONFIG.filters.some(f => m.id.toLowerCase().includes(f.toLowerCase())));
+    console.info(`[INFO] After filtering, ${filteredModels.length} models remain.`);
+
     // Identify and exclude models with negative pricing values
-    const validModels = models.filter(m => {
+    const validModels = filteredModels.filter(m => {
       if (m.pricing) {
         const prompt = parseFloat(m.pricing.prompt);
         const completion = parseFloat(m.pricing.completion);
@@ -141,12 +147,17 @@ async function updateModelsConfig() {
       }
       return true;
     });
+
     const validModelsWithPricing = validModels.filter(m => m.pricing);
     console.info(`[INFO] Processing ${validModelsWithPricing.length} models with valid pricing.`);
 
     // Compute overall average prompt and completion costs from valid models
-    const avgPromptCost = validModelsWithPricing.reduce((sum, m) => sum + parseFloat(m.pricing.prompt), 0) / validModelsWithPricing.length;
-    const avgCompletionCost = validModelsWithPricing.reduce((sum, m) => sum + parseFloat(m.pricing.completion), 0) / validModelsWithPricing.length;
+    const avgPromptCost = validModelsWithPricing.length > 0
+      ? validModelsWithPricing.reduce((sum, m) => sum + parseFloat(m.pricing.prompt), 0) / validModelsWithPricing.length
+      : 0;
+    const avgCompletionCost = validModelsWithPricing.length > 0
+      ? validModelsWithPricing.reduce((sum, m) => sum + parseFloat(m.pricing.completion), 0) / validModelsWithPricing.length
+      : 0;
     console.info(`[INFO] Overall average prompt: $${formatCost(avgPromptCost)}, completion: $${formatCost(avgCompletionCost)}`);
 
     // Map models to a new structure with computed average cost
@@ -158,8 +169,20 @@ async function updateModelsConfig() {
     });
     console.info(`[INFO] Computed average cost for ${configModels.length} models.`);
 
-    // Dynamically assign rarity based on cost
+    // Dynamically assign rarity based on cost for all models
     assignRarityByCost(configModels);
+
+    // Override rarity for existing models to preserve their original rarity
+    configModels.forEach(model => {
+      if (existingModelRarities.has(model.model)) {
+        model.rarity = existingModelRarities.get(model.model);
+      }
+    });
+
+    // Identify and report new models
+    const newModels = configModels.filter(m => !existingModelRarities.has(m.model));
+    console.info(`[INFO] Found ${newModels.length} new models:`);
+    newModels.forEach(m => console.info(`  - ${m.model}: ${m.rarity}`));
 
     // Group by rarity for summary analysis
     const groups = configModels.reduce((acc, m) => {
@@ -188,7 +211,9 @@ async function updateModelsConfig() {
 
     // Remove the cost property before saving final config
     const finalConfig = configModels.map(({ model, rarity }) => ({ model, rarity }));
-    console.debug('[DEBUG] Final configuration:', finalConfig);
+    if (CONFIG.logging.verbose) {
+      console.debug('[DEBUG] Final configuration:', finalConfig);
+    }
 
     // Write config file
     const configContent = `export default ${JSON.stringify(finalConfig, null, 2)};\n`;
