@@ -86,3 +86,18 @@ export default function (db) {
 
   return router;
 }
+import express from 'express';
+import { models } from '../../src/models.config.mjs';
+
+const router = express.Router();
+
+router.get('/config', async (req, res) => {
+  try {
+    res.json(models);
+  } catch (error) {
+    console.error('Error fetching model config:', error);
+    res.status(500).json({ error: 'Failed to fetch model configurations' });
+  }
+});
+
+export default router;
