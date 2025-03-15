@@ -79,8 +79,8 @@ document.addEventListener("DOMContentLoaded", () => {
       }
     });
 
-    elements.avatarFilter.addEventListener("change", () => {
-      state.currentFilter = elements.avatarFilter.value;
+    elements.statusFilter.addEventListener("change", () => {
+      state.currentStatusFilter = elements.statusFilter.value;
       state.currentPage = 1;
       loadAvatars();
     });
@@ -132,25 +132,25 @@ document.addEventListener("DOMContentLoaded", () => {
       });
       
       const response = await fetch(`/api/avatars?${params}`);
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
       const data = await response.json();
       
       if (data.error) {
-        console.error("Error loading avatars:", data.error);
-        elements.avatarsBody.innerHTML = `<tr><td colspan="7" class="px-6 py-4 text-center text-sm text-red-500">Error: ${data.error}</td></tr>`;
-        return;
+        throw new Error(data.error);
       }
 
       const avatars = data.avatars || [];
+      state.totalAvatars = data.total || 0;
+
       if (avatars.length === 0) {
         elements.avatarsBody.innerHTML = '<tr><td colspan="7" class="px-6 py-4 text-center text-sm text-gray-500">No avatars found</td></tr>';
       } else {
         renderAvatars(avatars);
       }
       
-      const total = data.total || 0;
-      const page = data.page || 1;
-      const limit = data.limit || state.pageSize;
-      updatePagination(total, page, limit);
+      updatePagination(state.totalAvatars, data.page || 1, data.limit || state.pageSize);
     } catch (error) {
       console.error("Error loading avatars:", error);
       elements.avatarsBody.innerHTML = '<tr><td colspan="7" class="px-6 py-4 text-center text-sm text-red-500">Failed to load avatars</td></tr>';
