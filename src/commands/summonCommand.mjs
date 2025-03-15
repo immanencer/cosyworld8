@@ -1,6 +1,8 @@
 // commands/summonCommand.mjs
 import { reactToMessage, replyToMessage, sendAsWebhook, sendAvatarProfileEmbedFromObject } from "../services/discordService.mjs";
 
+import { sanitizeInput } from "../utils/utils.mjs";
+
 const DAILY_SUMMON_LIMIT = 16;
 
 async function checkDailySummonLimit(userId, services) {
@@ -50,7 +52,7 @@ export async function handleSummonCommand(message, breed = false, attributes = {
     const guildConfig = await services.configService.getGuildConfig(services.databaseService.getDatabase(), message.guild?.id, true);
     const summonPrompt = guildConfig?.prompts?.summon || "Create an avatar with the following description:";
     const avatarData = {
-      prompt: services.sanitizeInput(`${summonPrompt}\n\nRequires you to design a creative character based on the following content:\n\n${content}`),
+      prompt: sanitizeInput(`${summonPrompt}\n\nRequires you to design a creative character based on the following content:\n\n${content}`),
       channelId: message.channel.id,
     };
     if (summonPrompt.match(/^(https:\/\/.*\.arweave\.net\/|ar:\/\/)/)) avatarData.arweave_prompt = summonPrompt;
