@@ -1,7 +1,7 @@
 import OpenAI from 'openai';
 import models from '../models.config.mjs';
 
-export class OpenRouterService {
+export class OpenRouterAIService {
   constructor(apiKey) {
     this.model = process.env.OPENROUTER_MODEL || 'meta-llama/llama-3.2-3b-instruct';
     this.openai = new OpenAI({

@@ -161,8 +161,18 @@ export default function avatarRoutes(db) {
       let query = {};
       let sort = { createdAt: -1 };
 
+
+      const totalPages = Math.ceil(total / limit);
+      if (page > totalPages && total > 0) {
+        return res.json({ avatars: [], total, page, totalPages, limit });
+      }
+
+      if (view === 'claims' && !req.query.walletAddress) {
+        return res.status(400).json({ error: 'walletAddress required for claims view' });
+      }
+
       // Example logic for "owned" filtering:
-      if (view === 'claims' && req.query.walletAddress) {
+      if (view === 'claims') {
         // Get avatars from both X auth and avatar claims collections
         const [xAuths, avatarClaims] = await Promise.all([
           db.collection('x_auth')
@@ -250,11 +260,12 @@ export default function avatarRoutes(db) {
       });
 
 
+
       res.json({
         avatars: avatarsWithTemplates,
         total,
         page,
-        totalPages: Math.ceil(total / limit),
+        totalPages,
         limit,
       });
     } catch (error) {

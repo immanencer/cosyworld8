@@ -51,7 +51,7 @@ export default function tokenRoutes(db) {
       const tokenMetadata = {
         name: avatar.name,
         symbol: avatar.name.substring(0, 4).toUpperCase(),
-        description: `Token for ${avatar.name} from Project 89`,
+        description: `Token for ${avatar.name} from Monstone Sanctum`,
         icon,
         banner
       };

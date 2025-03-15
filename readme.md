@@ -1,6 +1,6 @@
 # CosyWorld - AI Avatar Discord Bot
 
-## 0.0.89 Project 89 Update 🌟
+## 0.0.8 Moonstone Sanctum 🌟
 
 An advanced Discord bot that creates AI-powered avatars with persistent memory, combat mechanics, and cross-platform capabilities.
 

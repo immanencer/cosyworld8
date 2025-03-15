@@ -64,20 +64,6 @@ function createRouter(db) {
   const router = express.Router();
 
   // ===== Avatar Routes =====
-  router.get('/avatars', asyncHandler(async (req, res) => {
-    const limit = parseInt(req.query.limit) || 20;
-    const offset = parseInt(req.query.offset) || 0;
-
-    const total = await db.avatars.countDocuments();
-    const data = await db.avatars
-      .find()
-      .sort({ createdAt: -1 })
-      .skip(offset)
-      .limit(limit)
-      .toArray();
-
-    res.json({ data, total, limit, offset });
-  }));
 
   router.post('/avatars', asyncHandler(async (req, res) => {
     const {
