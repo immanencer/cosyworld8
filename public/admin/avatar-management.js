@@ -37,8 +37,10 @@ document.addEventListener("DOMContentLoaded", () => {
 
   loadModels();
 
-  // DOM Elements
+  // DOM Elements 
   const elements = {
+    statusFilter: document.getElementById('status-filter'),
+    modelFilter: document.getElementById('model-filter'),
     avatarsBody: document.getElementById("avatars-body"),
     paginationInfo: document.getElementById("pagination-info"),
     prevPageBtn: document.getElementById("prev-page"),
@@ -120,22 +122,39 @@ document.addEventListener("DOMContentLoaded", () => {
 
   // Avatar List Functions
   async function loadAvatars() {
-    const params = new URLSearchParams({
-      page: state.currentPage,
-      limit: state.pageSize,
-      view: state.currentView,
-      walletAddress: state.walletAddress || "",
-    });
-    const response = await fetch(`/api/avatars?${params}`);
-    const data = await response.json();
-    console.log("Response:", data); // Debug
-    if (data.avatars.length === 0) {
-      document.getElementById("avatarsBody").innerHTML =
-        '<tr><td colspan="7">No avatars found</td></tr>';
-    } else {
-      renderAvatars(data.avatars);
+    try {
+      const params = new URLSearchParams({
+        page: state.currentPage,
+        limit: state.pageSize,
+        status: state.currentStatusFilter,
+        model: state.currentModelFilter,
+        search: state.currentSearch
+      });
+      
+      const response = await fetch(`/api/avatars?${params}`);
+      const data = await response.json();
+      
+      if (data.error) {
+        console.error("Error loading avatars:", data.error);
+        elements.avatarsBody.innerHTML = `<tr><td colspan="7" class="px-6 py-4 text-center text-sm text-red-500">Error: ${data.error}</td></tr>`;
+        return;
+      }
+
+      const avatars = data.avatars || [];
+      if (avatars.length === 0) {
+        elements.avatarsBody.innerHTML = '<tr><td colspan="7" class="px-6 py-4 text-center text-sm text-gray-500">No avatars found</td></tr>';
+      } else {
+        renderAvatars(avatars);
+      }
+      
+      const total = data.total || 0;
+      const page = data.page || 1;
+      const limit = data.limit || state.pageSize;
+      updatePagination(total, page, limit);
+    } catch (error) {
+      console.error("Error loading avatars:", error);
+      elements.avatarsBody.innerHTML = '<tr><td colspan="7" class="px-6 py-4 text-center text-sm text-red-500">Failed to load avatars</td></tr>';
     }
-    updatePagination(data.total, data.page, data.limit);
   }
 
   function updatePagination(total, page, limit) {
