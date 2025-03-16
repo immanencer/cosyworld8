@@ -26,7 +26,7 @@ export class PeriodicTaskManager {
       const avatars = await this.avatarManager.getAvatarsInChannel(channel.id);
       const selected = avatars.sort(() => Math.random() - 0.5).slice(0, 2);
       for (const avatar of selected) {
-        await this.responseGenerator.respondAsAvatar(channel, avatar, true);
+        await this.responseGenerator.respondAsAvatar(channel, avatar);
       }
     }
   }

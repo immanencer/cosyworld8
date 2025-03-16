@@ -6,8 +6,6 @@ import { ResponseGenerator } from './responseGenerator.mjs';
 import { MessageHandler } from './messageHandler.mjs';
 import { PeriodicTaskManager } from './periodicTaskManager.mjs';
 
-import { DungeonService } from '../dungeon/DungeonService.mjs';
-
 
 export class ChatService {
   constructor(client, db, options = {}) {
@@ -18,6 +16,7 @@ export class ChatService {
     // Initialize dependencies
     this.avatarService = options.avatarService;
     this.aiService = options.aiService;
+    this.dungeonService = options.dungeonService;
     this.imageService = options.imageProcessingService;
 
     // Initialize core modules
@@ -32,7 +31,11 @@ export class ChatService {
       this.dungeonService,
       this.imageService
     );
-    this.responseGenerator = new ResponseGenerator(this.decisionMaker, this.conversationHandler, client, this.logger);
+    this.responseGenerator = new ResponseGenerator(
+      this.decisionMaker,
+      this.conversationHandler,
+      client, this.logger
+    );
 
 
     this.messageHandler = new MessageHandler({
@@ -42,7 +45,12 @@ export class ChatService {
       responseGenerator: this.responseGenerator,
     });
 
-    this.periodicTaskManager = new PeriodicTaskManager(this.avatarManager, this.channelManager, this.responseGenerator, this.logger);
+    this.periodicTaskManager = new PeriodicTaskManager(
+      this.avatarManager,
+      this.channelManager,
+      this.responseGenerator,
+      this.logger
+    );
 
 
   }

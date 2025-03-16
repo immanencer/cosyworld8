@@ -129,6 +129,12 @@ export class OpenRouterAIService {
         return result;
       }
 
+      if (!result.content) {
+        console.error('Invalid response from OpenRouter during chat.');
+        console.log(JSON.stringify(result, null, 2));
+        return '-# [⚠️ No response from OpenRouter]';
+      }
+
       return (result.content.trim() || '...') + (fallback ? '-# Fallback (auto) model used.' : '');
     } catch (error) {
       console.error('Error while chatting with OpenRouter:', error);

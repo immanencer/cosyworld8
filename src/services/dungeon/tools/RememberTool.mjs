@@ -49,7 +49,7 @@ export class RememberTool extends BaseTool {
       );
     }
     this.logger?.debug(`Generated memory: ${formattedMemory}`);
-    return `[🧠 Memory Generated ]`;
+    return `-# [🧠 Memory Generated ]`;
   }
 
   getDescription() {

@@ -13,11 +13,8 @@ export class ResponseGenerator {
     }
   }
 
-  async respondAsAvatar(channel, avatar, forceResponse = false) {
-    const decision = forceResponse || (await this.decisionMaker.shouldRespond(channel, avatar));
-    if (decision) {
-      await this.conversationHandler.sendResponse(channel, avatar);
-      this.logger.info(`${avatar.name} responded in channel ${channel.id}`);
-    }
+  async respondAsAvatar(channel, avatar) {
+    await this.conversationHandler.sendResponse(channel, avatar);
+    this.logger.info(`${avatar.name} responded in channel ${channel.id}`);
   }
 }

@@ -14,7 +14,7 @@ export async function handleAttackCommand(message, args, services) {
     await replyToMessage(message, `Avatar "${targetName}" not found.`);
     return;
   }
-  const attackResult = await services.chatService.dungeonService.tools.get("attack").execute(message, [targetAvatar.name], targetAvatar);
+  const attackResult = await services.dungeonService.tools.get("attack").execute(message, [targetAvatar.name], targetAvatar);
   await reactToMessage(message, "⚔️");
   await replyToMessage(message, `🔥 **${attackResult}**`);
 }

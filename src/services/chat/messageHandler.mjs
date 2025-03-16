@@ -98,7 +98,14 @@ export class MessageHandler {
     // Handle commands
     await handleCommands(message, {
       client: this.client,
-      avatarManager: this.avatarManager
+      avatarService: this.avatarService,
+      dungeonService: this.dungeonService,
+      avatarManager: this.avatarManager,
+      configService: this.configService,
+      databaseService: this.databaseService,
+      responseGenerator: this.responseGenerator,
+      aiService: this.aiService,
+      logger: this.logger,
     });
 
     // Ignore bot messages
@@ -115,9 +122,10 @@ export class MessageHandler {
 
     // Process channel (trigger responses from existing avatars)
     try {
-      await this.processChannel(channelId);
+      await this.processChannel(channelId, message);
     } catch (error) {
       this.logger.error(`Error processing channel: ${error.message}`);
+      throw error;
     }
 
     // Handle user's avatar
@@ -132,7 +140,7 @@ export class MessageHandler {
         result.avatar.stats = await this.dungeonService.getAvatarStats(result.avatar._id);
         await this.avatarManager.updateAvatar(result.avatar);
         await sendAvatarProfileEmbedFromObject(result.avatar);
-        await this.responseGenerator.respondAsAvatar(message.channel, result.avatar, true);
+        await this.responseGenerator.respondAsAvatar(message.channel, result.avatar);
       }
     } catch (error) {
       this.logger.error(`Error handling avatar creation: ${error.message}`);
@@ -140,7 +148,7 @@ export class MessageHandler {
 
     // Process channel again (e.g., after new avatar creation)
     try {
-      await this.processChannel(channelId);
+      await this.processChannel(channelId, message);
     } catch (error) {
       this.logger.error(`Error in second channel processing: ${error.message}`);
     }
@@ -149,17 +157,28 @@ export class MessageHandler {
   }
 
   /**
-   * Processes a channel by fetching avatars and triggering potential responses.
+   * Processes a channel by selecting a subset of avatars and triggering potential responses.
    * @param {string} channelId - The ID of the channel to process.
+   * @param {Object} message - The Discord message object triggering the processing.
    */
-  async processChannel(channelId) {
+  async processChannel(channelId, message) {
     try {
-      const avatars = await this.avatarManager.getAvatarsInChannel(channelId);
-      for (const avatar of avatars) {
-        await this.responseGenerator.considerResponse(this.client.channels.cache.get(channelId), avatar);
+      const channel = this.client.channels.cache.get(channelId);
+      if (!channel) {
+        this.logger.error(`Channel ${channelId} not found in cache.`);
+        return;
       }
+      // Fetch all avatars in the channel
+      const allAvatars = await this.avatarManager.getAvatarsInChannel(channelId);
+      // Select subset of avatars to consider
+      const avatarsToConsider = this.responseGenerator.decisionMaker.selectAvatarsToConsider(allAvatars, message);
+      // Consider responses for the selected subset
+      await Promise.all(avatarsToConsider.map(avatar =>
+        this.responseGenerator.considerResponse(channel, avatar)
+      ));
     } catch (error) {
       this.logger.error(`Error in processChannel for channel ${channelId}: ${error.message}`);
+      throw error;
     }
   }
 }

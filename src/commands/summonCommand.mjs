@@ -35,11 +35,11 @@ export async function handleSummonCommand(message, breed = false, attributes = {
   try {
     if (existingAvatar) {
       await reactToMessage(message, existingAvatar.emoji || "🔮");
-      const updatedAvatar = await services.chatService.dungeonService.updateAvatarPosition(existingAvatar._id, message.channel.id);
-      updatedAvatar.stats = await services.chatService.dungeonService.getAvatarStats(updatedAvatar._id);
+      const updatedAvatar = await services.dungeonService.updateAvatarPosition(existingAvatar._id, message.channel.id);
+      updatedAvatar.stats = await services.dungeonService.getAvatarStats(updatedAvatar._id);
       await services.avatarService.updateAvatar(updatedAvatar);
       await sendAvatarProfileEmbedFromObject(updatedAvatar);
-      await services.chatService.respondAsAvatar(message.channel, updatedAvatar, true);
+      await services.responseGenerator.respondAsAvatar(message.channel, updatedAvatar);
       return;
     }
 
@@ -65,7 +65,7 @@ export async function handleSummonCommand(message, breed = false, attributes = {
 
     createdAvatar.summoner = `${message.author.username}@${message.author.id}`;
     createdAvatar.model = createdAvatar.model || (await services.aiService.selectRandomModel());
-    createdAvatar.stats = await services.chatService.dungeonService.getAvatarStats(createdAvatar._id);
+    createdAvatar.stats = await services.dungeonService.getAvatarStats(createdAvatar._id);
     await services.avatarService.updateAvatar(createdAvatar);
     await sendAvatarProfileEmbedFromObject(createdAvatar);
 
@@ -79,10 +79,10 @@ export async function handleSummonCommand(message, breed = false, attributes = {
     await services.avatarService.updateAvatar(createdAvatar);
     await sendAsWebhook(message.channel.id, intro, createdAvatar);
 
-    await services.chatService.dungeonService.initializeAvatar(createdAvatar._id, message.channel.id);
+    await services.dungeonService.initializeAvatar(createdAvatar._id, message.channel.id);
     await reactToMessage(message, createdAvatar.emoji || "🎉");
     if (!breed) await trackSummon(message.author.id, services);
-    await services.chatService.respondAsAvatar(message.channel, createdAvatar, true);
+    await services.responseGenerator.respondAsAvatar(message.channel, createdAvatar);
   } catch (error) {
     services.logger.error(`Summon error: ${error.message}`);
     await reactToMessage(message, "❌");
