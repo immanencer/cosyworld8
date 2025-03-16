@@ -5,10 +5,10 @@ import { AIService } from "./aiService.mjs";
 import { AvatarGenerationService } from "./avatarService.mjs";
 import { ImageProcessingService } from "./imageProcessingService.mjs";
 import configService from "./configService.mjs";
-import { ChatService } from "./chat/ChatService.mjs";
-import { MessageHandler } from "./chat/MessageHandler.mjs";
+import { ChatService } from "./chat/chatService.mjs";
 import { handleSummonCommand } from "../commands/summonCommand.mjs";
 import { handleBreedCommand } from "../commands/breedCommand.mjs";
+import { DungeonService } from "./dungeon/DungeonService.mjs";
 
 export async function initializeServices(logger, client) {
   configService.validate();
@@ -31,6 +31,10 @@ export async function initializeServices(logger, client) {
   const imageProcessingService = new ImageProcessingService(logger, aiService);
   const avatarService = new AvatarGenerationService(db, configService);
   const spamControlService = new SpamControlService(db, logger);
+  const dungeonService = new DungeonService(client, logger, avatarService, db, {
+    summon: handleSummonCommand,
+    breed: handleBreedCommand
+  });
   const chatService = new ChatService(client, db, {
     logger,
     avatarService,
@@ -38,11 +42,13 @@ export async function initializeServices(logger, client) {
     imageProcessingService,
     handleSummonCommand,
     handleBreedCommand,
+    databaseService,
+    spamControlService,
+    configService,
+    dungeonService
   });
-  const messageHandler = new MessageHandler(avatarService, client, chatService, imageProcessingService, logger);
 
   await avatarService.updateAllArweavePrompts();
-  await chatService.setup();
   await chatService.start();
 
   return {
@@ -50,7 +56,6 @@ export async function initializeServices(logger, client) {
     aiService,
     avatarService,
     chatService,
-    messageHandler,
     spamControlService,
     imageProcessingService,
     configService,

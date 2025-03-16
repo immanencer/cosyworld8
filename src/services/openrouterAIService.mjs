@@ -102,9 +102,11 @@ export class OpenRouterAIService {
     mergedOptions.messages = messages.filter(m => m.content);
 
     // Verify that the chosen model is available. If not, fall back.
+    let fallback = false;
     if (!this.modelIsAvailable(mergedOptions.model)) {
       console.error('Invalid model provided to chat:', mergedOptions.model);
-      mergedOptions.model = this.model;
+      mergedOptions.model = 'auto';
+      fallback = true;
     }
 
     console.log(`Generating chat completion with model ${mergedOptions.model}...`);
@@ -127,7 +129,7 @@ export class OpenRouterAIService {
         return result;
       }
 
-      return result.content.trim() || '...';
+      return (result.content.trim() || '...') + (fallback ? '-# Fallback (auto) model used.' : '');
     } catch (error) {
       console.error('Error while chatting with OpenRouter:', error);
       // Retry if the error is a rate limit error

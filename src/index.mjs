@@ -1,7 +1,6 @@
 // index.mjs
 import winston from "winston";
 import { initializeServices } from "./services/serviceInitializer.mjs";
-import { handleMessage } from "./handlers/messageHandler.mjs";
 import { client } from "./services/discordService.mjs";
 
 // Define the log format once
@@ -42,14 +41,6 @@ async function shutdown(signal, services) {
 async function main() {
   try {
     const services = await initializeServices(logger, client);
-
-    client.on("messageCreate", async (message) => {
-      try {
-        await handleMessage(message, services);
-      } catch (error) {
-        logger.error(`Error processing message: ${error.stack}`);
-      }
-    });
 
     await client.login(process.env.DISCORD_BOT_TOKEN);
     await new Promise((resolve) => client.once("ready", resolve));

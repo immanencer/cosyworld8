@@ -235,8 +235,19 @@ export async function sendAsWebhook(channelId, content, avatar) {
       throw new Error('Failed to obtain webhook');
     }
 
+    // Construct the username, ensuring a maximum length of 80 characters
     const username = `${avatar.name.slice(0, 78)}${avatar.emoji || ''}`.slice(0, 80);
-    const preparedContent = processMessageLinks(content, client);
+
+    // Define the prefix to remove (username followed by ": ")
+    const prefix = `${username}: `;
+
+    // Remove the prefix only if it appears at the beginning of the content
+    const trimmed = content.startsWith(prefix) ? content.slice(prefix.length) : content;
+
+    // Process the trimmed content to handle message links
+    const preparedContent = processMessageLinks(trimmed, client);
+
+    // Split the prepared content into chunks
     const chunks = chunkMessage(preparedContent);
 
     for (const chunk of chunks) {
@@ -266,7 +277,7 @@ export async function sendAvatarProfileEmbedFromObject(avatar, targetChannelId) 
   if (!channelId || typeof channelId !== 'string') {
     throw new Error('Invalid channel ID in avatar object');
   }
-  
+
   // Log the override if it's happening
   if (targetChannelId && targetChannelId !== avatar.channelId) {
     logger.debug(`Overriding avatar ${avatar.name}'s channelId ${avatar.channelId} with ${targetChannelId} for profile embed`);
@@ -480,92 +491,6 @@ client.on('guildDelete', async guild => {
     logger.error(`Failed to remove guild ${guild.id} from database: ${error.message}`);
   }
 });
-
-// Message event handler with whitelist check
-client.on('messageCreate', async message => {
-  if (!message.guild) return; // Ignore DMs
-
-  try {
-    const isWhitelisted = await checkGuildWhitelist(message.guild.id);
-    if (!isWhitelisted) {
-      logger.debug(`Guild ${message.guild.id} not whitelisted, ignoring message`);
-      return;
-    }
-    // Add additional message handling logic here if needed
-  } catch (error) {
-    logger.error(`Error in message handler for guild ${message.guild.id}: ${error.message}`);
-  }
-});
-
-/**
- * Checks if a guild is whitelisted
- * @param {string} guildId - The guild ID
- * @returns {Promise<boolean>}
- */
-async function checkGuildWhitelist(guildId) {
-  try {
-    // Check memory cache first
-    if (client.guildWhitelist?.has(guildId)) {
-      const cached = client.guildWhitelist.get(guildId);
-      logger.debug(`Retrieved guild config for ${guildId} from memory cache: whitelisted=${cached}`);
-      return cached;
-    }
-    
-    // Check database
-    const guildConfig = await configService.getGuildConfig(client.db, guildId);
-    logger.debug(`Retrieved guild config for ${guildId} from database: whitelisted=${!!guildConfig?.whitelisted}`);
-    
-    if (guildConfig) {
-      // Update cache
-      if (!client.guildWhitelist) client.guildWhitelist = new Map();
-      client.guildWhitelist.set(guildId, !!guildConfig.whitelisted);
-      
-      return !!guildConfig.whitelisted;
-    }
-
-    // Check global whitelist as fallback
-    const globalConfig = await configService.get('whitelistedGuilds');
-    const whitelistedGuilds = Array.isArray(globalConfig) ? globalConfig : [];
-    const isWhitelisted = whitelistedGuilds.includes(guildId);
-    
-    // Store result in memory cache
-    if (!client.guildWhitelist) client.guildWhitelist = new Map();
-    client.guildWhitelist.set(guildId, isWhitelisted);
-    
-    // If not whitelisted, get the guild name and log it
-    if (!isWhitelisted) {
-      try {
-        const guild = await client.guilds.fetch(guildId);
-        if (guild) {
-          logger.info(`Guild ${guild.name} (${guildId}) is not whitelisted. Ignoring message.`);
-          
-          // Also log to the database for admin panel detection
-          if (client.db) {
-            try {
-              await client.db.collection('logs').insertOne({
-                level: 'info',
-                message: `Guild ${guild.name} (${guildId}) is not whitelisted`,
-                timestamp: new Date(),
-                type: 'guild_access',
-                guildId: guildId,
-                guildName: guild.name
-              });
-            } catch (dbError) {
-              logger.debug(`Failed to log guild access to database: ${dbError.message}`);
-            }
-          }
-        }
-      } catch (guildError) {
-        logger.debug(`Could not fetch guild info for ${guildId}: ${guildError.message}`);
-      }
-    }
-    
-    return isWhitelisted;
-  } catch (error) {
-    logger.error(`Failed to check whitelist for guild ${guildId}: ${error.message}`);
-    return false; // Default to not whitelisted on error
-  }
-}
 
 // Login to Discord
 client.login(discordConfig.botToken).catch(error => {

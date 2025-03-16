@@ -9,6 +9,7 @@ channel = "stable-24_05"
 run = ["sh", "-c", "npm run start"]
 deploymentTarget = "gce"
 build = ["sh", "-c", "npm run build"]
+ignorePorts = true
 
 [[ports]]
 localPort = 3001
