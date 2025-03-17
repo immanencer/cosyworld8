@@ -216,15 +216,15 @@ async function getOrCreateWebhook(channel) {
  * @returns {Promise<void>}
  */
 export async function sendAsWebhook(channelId, content, avatar) {
-  if (!channelId || typeof channelId !== 'string') {
-    throw new Error('Invalid channel ID');
-  }
-  if (!content || typeof content !== 'string') {
-    throw new Error('Content is required and must be a string');
-  }
-  validateAvatar(avatar);
-
   try {
+    validateAvatar(avatar);
+    if (!channelId || typeof channelId !== 'string') {
+      throw new Error('Invalid channel ID');
+    }
+    if (!content || typeof content !== 'string') {
+      throw new Error('Content is required and must be a string');
+    }
+    
     const channel = await client.channels.fetch(channelId);
     if (!channel || !channel.isTextBased()) {
       throw new Error('Channel not accessible or not text-based');
@@ -261,7 +261,6 @@ export async function sendAsWebhook(channelId, content, avatar) {
     logger.info(`Sent message to channel ${channelId} as ${username}`);
   } catch (error) {
     logger.error(`Failed to send webhook message to ${channelId}: ${error.message}`);
-    throw error;
   }
 }
 
