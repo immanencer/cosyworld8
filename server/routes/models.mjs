@@ -29,7 +29,7 @@ export default function (db) {
       const skip = (page - 1) * limit;
 
       // Filter models
-      let filteredModels = [...models];
+      let filteredModels = [...modelsConfig];
       if (rarity) filteredModels = filteredModels.filter((m) => m.rarity.toLowerCase() === rarity);
       if (search) filteredModels = filteredModels.filter((m) => m.model.toLowerCase().includes(search));
 
@@ -65,7 +65,7 @@ export default function (db) {
   router.get('/:modelName', async (req, res) => {
     try {
       const modelName = decodeURIComponent(req.params.modelName);
-      const model = models.find((m) => m.model === modelName);
+      const model = modelsConfig.find((m) => m.model === modelName);
 
       if (!model) {
         return res.status(404).json({ error: 'Model not found' });
@@ -83,7 +83,7 @@ export default function (db) {
 
   router.get('/config', async (req, res) => {
     try {
-      res.json(models);
+      res.json(modelsConfig);
     } catch (error) {
       console.error('Error fetching model config:', error);
       res.status(500).json({ error: 'Failed to fetch model configurations' });
