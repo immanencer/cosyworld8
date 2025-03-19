@@ -2,9 +2,16 @@ import express from 'express';
 import fs from 'fs/promises';
 import path from 'path';
 import { ObjectId } from 'mongodb';
-import { fileURLToPath } from 'url';
 
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
+import multer from 'multer';
+import { uploadImage } from '../../src/services/s3imageService/s3imageService.mjs';
+
+const upload = multer({
+  limits: {
+    fileSize: 5 * 1024 * 1024 // 5MB limit
+  }
+});
+
 const configPath = path.join(process.cwd(), 'src/config');
 
 // Helper function to handle async route handlers
@@ -20,7 +27,7 @@ async function loadConfig() {
   } catch (error) {
     console.error('Config load error:', error);
     // Return empty config if files don't exist
-    return { 
+    return {
       whitelistedGuilds: [],
       emojis: {
         summon: "🔮",
@@ -374,8 +381,8 @@ function createRouter(db) {
       const { userId } = req.body;
       await db.collection('user_spam_penalties').updateOne(
         { userId },
-        { 
-          $set: { 
+        {
+          $set: {
             strikeCount: 0,
             permanentlyBlacklisted: false,
             penaltyExpires: new Date()
@@ -498,7 +505,7 @@ function createRouter(db) {
 
       await saveUserConfig(config);
 
-      res.json({ 
+      res.json({
         success: true,
         message: 'Settings saved successfully'
       });
@@ -520,7 +527,7 @@ function createRouter(db) {
       config.emojis = emojis;
       await saveUserConfig(config);
 
-      res.json({ 
+      res.json({
         success: true,
         message: 'Emoji configuration updated'
       });
@@ -538,7 +545,7 @@ function createRouter(db) {
       // In a real app, we would save these to a database
       console.log('Server configuration updated:', servers);
 
-      res.json({ 
+      res.json({
         success: true,
         message: 'Server configuration updated'
       });
@@ -567,36 +574,30 @@ function createRouter(db) {
     }
   };
 
+  router.post('/upload-image', upload.single('image'), async (req, res) => {
+    try {
+      if (!req.file) {
+        return res.status(400).json({ error: 'No image file provided' });
+      }
+
+      // Convert buffer to base64 for s3imageService
+      const base64Image = req.file.buffer.toString('base64');
+      const s3url = await uploadImage(base64Image);
+
+      if (!s3url) {
+        throw new Error('Failed to upload to S3');
+      }
+
+      res.json({ url: s3url });
+    } catch (error) {
+      console.error('Image upload error:', error);
+      res.status(500).json({ error: 'Failed to upload image' });
+    }
+  });
+
   return router;
 }
 
 export default createRouter;
-import multer from 'multer';
-import { uploadImage } from '../../src/services/s3imageService/s3imageService.mjs';
 
-const upload = multer({
-  limits: {
-    fileSize: 5 * 1024 * 1024 // 5MB limit
-  }
-});
 
-router.post('/upload-image', upload.single('image'), async (req, res) => {
-  try {
-    if (!req.file) {
-      return res.status(400).json({ error: 'No image file provided' });
-    }
-
-    // Convert buffer to base64 for s3imageService
-    const base64Image = req.file.buffer.toString('base64');
-    const s3url = await uploadImage(base64Image);
-
-    if (!s3url) {
-      throw new Error('Failed to upload to S3');
-    }
-
-    res.json({ url: s3url });
-  } catch (error) {
-    console.error('Image upload error:', error);
-    res.status(500).json({ error: 'Failed to upload image' });
-  }
-});
