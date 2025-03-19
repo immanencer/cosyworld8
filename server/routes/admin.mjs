@@ -23,6 +23,25 @@ const upload = multer({
   }
 });
 
+// Upload endpoint handler
+router.post('/upload-image', async (req, res) => {
+  try {
+    if (!req.body.image) {
+      return res.status(400).json({ error: 'No image data provided' });
+    }
+
+    const url = await handleBase64Upload(req.body.image);
+    res.json({ url });
+  } catch (error) {
+    console.error('Upload error:', error);
+    res.status(500).json({ error: 'Failed to upload image' });
+  }
+});
+
+// Helper function to handle async route handlers
+const asyncHandler = (fn) => (req, res, next) =>
+  Promise.resolve(fn(req, res, next)).catch(next);
+
 const configPath = path.join(process.cwd(), 'src/config');
 
 // Helper function to handle async route handlers
@@ -585,30 +604,8 @@ function createRouter(db) {
     }
   };
 
-  router.post('/upload-image', upload.single('image'), async (req, res) => {
-    try {
-      if (!req.file) {
-        return res.status(400).json({ error: 'No image file provided' });
-      }
-
-      // Convert buffer to base64 for s3imageService
-      const base64Image = req.file.buffer.toString('base64');
-      const s3url = await uploadImage(base64Image);
-
-      if (!s3url) {
-        throw new Error('Failed to upload to S3');
-      }
-
-      res.json({ url: s3url });
-    } catch (error) {
-      console.error('Image upload error:', error);
-      res.status(500).json({ error: 'Failed to upload image' });
-    }
-  });
 
   return router;
 }
 
 export default createRouter;
-
-
