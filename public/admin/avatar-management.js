@@ -15,13 +15,22 @@ document.addEventListener("DOMContentLoaded", () => {
       const response = await fetch('/api/models/config');
       const data = await response.json();
       const modelSelect = document.getElementById('model-filter');
+      const avatarModelSelect = document.getElementById('avatar-model');
       
-      // Add models to select
+      // Add models to filter select
       Object.keys(data).forEach(model => {
         const option = document.createElement('option');
         option.value = model;
         option.textContent = model;
         modelSelect.appendChild(option);
+      });
+
+      // Add models to avatar form select
+      Object.keys(data).forEach(model => {
+        const option = document.createElement('option');
+        option.value = model;
+        option.textContent = model;
+        avatarModelSelect.appendChild(option);
       });
 
       // Add filter listeners
