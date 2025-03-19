@@ -23,25 +23,6 @@ const upload = multer({
   }
 });
 
-// Upload endpoint handler
-router.post('/upload-image', async (req, res) => {
-  try {
-    if (!req.body.image) {
-      return res.status(400).json({ error: 'No image data provided' });
-    }
-
-    const url = await handleBase64Upload(req.body.image);
-    res.json({ url });
-  } catch (error) {
-    console.error('Upload error:', error);
-    res.status(500).json({ error: 'Failed to upload image' });
-  }
-});
-
-// Helper function to handle async route handlers
-const asyncHandler = (fn) => (req, res, next) =>
-  Promise.resolve(fn(req, res, next)).catch(next);
-
 const configPath = path.join(process.cwd(), 'src/config');
 
 // Helper function to handle async route handlers
@@ -584,6 +565,22 @@ function createRouter(db) {
       res.status(500).json({ error: error.message });
     }
   }));
+
+
+  // Upload endpoint handler
+  router.post('/upload-image', async (req, res) => {
+    try {
+      if (!req.body.image) {
+        return res.status(400).json({ error: 'No image data provided' });
+      }
+
+      const url = await handleBase64Upload(req.body.image);
+      res.json({ url });
+    } catch (error) {
+      console.error('Upload error:', error);
+      res.status(500).json({ error: 'Failed to upload image' });
+    }
+  });
 
   // Add admin routes to main router
   router.use('/admin', adminRouter);
