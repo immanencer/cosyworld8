@@ -1,5 +1,6 @@
 
 import { BaseTool } from './BaseTool.mjs';
+import { handleSummonCommand } from '../../../commands/summonCommand.mjs';
 
 export class SummonTool extends BaseTool {
   constructor(dungeonService) {
@@ -41,9 +42,9 @@ export class SummonTool extends BaseTool {
     return `${emoji} <description or name>`;
   }
 
-  async execute(message, params) {
+  async execute(message, params, services) {
     try {
-      return await this.dungeonService.handleSummonCommand(message, params);
+      return await handleSummonCommand(message, params, services);
     } catch (error) {
       console.error('Error in SummonTool:', error);
       return 'Failed to summon avatar...';

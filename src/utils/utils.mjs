@@ -3,7 +3,7 @@ export function sanitizeInput(input) {
   return input.replace(/[^\p{L}\p{N}\s\p{Emoji}]/gu, "").trim();
 }
 
-export async function findAvatarByName(name, avatars, services) {
+export async function findAvatarByName(name, avatars) {
   const sanitizedName = sanitizeInput(name.toLowerCase());
   return avatars
     .filter((avatar) =>

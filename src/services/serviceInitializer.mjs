@@ -32,9 +32,16 @@ export async function initializeServices(logger, client) {
   const avatarService = new AvatarGenerationService(db, configService);
   const spamControlService = new SpamControlService(db, logger);
   const dungeonService = new DungeonService(client, logger, avatarService, db, {
-    summon: handleSummonCommand,
-    breed: handleBreedCommand
-  });
+     logger,
+     avatarService,
+     aiService,
+     imageProcessingService,
+     handleSummonCommand,
+     handleBreedCommand,
+     databaseService,
+     spamControlService,
+     configService
+   });
   const chatService = new ChatService(client, db, {
     logger,
     avatarService,

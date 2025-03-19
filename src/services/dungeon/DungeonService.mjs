@@ -27,17 +27,13 @@ export class DungeonService {
    * @param {import('mongodb').Db} [db] - MongoDB database connection.
    * @param {Object} [commands] - Command handlers for summon, breed, item, and respond actions.
    */
-  constructor(client, logger, avatarService = null, db, commands = {
-    summon: () => { },
-    breed: () => { },
-    item: () => { },
-    respond: () => { },
-  }) {
+  constructor(client, logger, avatarService = null, db, services) {
+    this.services = services;
+    this.services.dungeonService = this;
     this.db = db;
     this.client = client;
     this.logger = logger;
     this.avatarService = avatarService;
-    this.handleSummonCommand = commands.summon;
 
     // Tools & Logging
     this.dungeonLog = new DungeonLog(logger);
@@ -102,28 +98,37 @@ export class DungeonService {
   }
 
   /**
-   * Extracts tool commands from text based on emoji triggers at the start.
+   * Extracts tool commands from text based on emoji triggers at the start of lines.
    * @param {string} text - The input text to parse.
    * @returns {{ commands: Array<{ command: string, params: string[] }>, cleanText: string, commandLines: string[] }}
    */
   extractToolCommands(text) {
     if (!text) return { commands: [], cleanText: '', commandLines: [] };
 
+    const lines = text.split('\n');
     const commands = [];
-    let cleanText = text.trim();
+    const commandLines = [];
+    const narrativeLines = [];
 
-    for (const [emoji, toolName] of this.toolEmojis.entries()) {
-      if (cleanText.startsWith(emoji)) {
-        const rest = cleanText.slice(emoji.length).trim();
-        const params = rest ? rest.split(/\s+/) : [];
-        commands.push({ command: toolName, params });
-        cleanText = rest;
-        break; // Only one command per message for simplicity
+    for (const line of lines) {
+      const trimmedLine = line.trim();
+      let isCommand = false;
+      for (const [emoji, toolName] of this.toolEmojis.entries()) {
+        if (trimmedLine.startsWith(emoji)) {
+          const rest = trimmedLine.slice(emoji.length).trim();
+          const params = rest ? rest.split(/\s+/) : [];
+          commands.push({ command: toolName, params });
+          commandLines.push(line);
+          isCommand = true;
+          break;
+        }
+      }
+      if (!isCommand) {
+        narrativeLines.push(line);
       }
     }
 
-    cleanText = cleanText.replace(/\s+/g, ' ').trim();
-    return { commands, cleanText, commandLines: [] };
+    return { commands, text, commandLines };
   }
 
   // --- Database Initialization ---
@@ -183,7 +188,7 @@ export class DungeonService {
     if (!tool) {
       this.logger.debug(`Unknown command '${command}', using CreationTool`);
       try {
-        const result = await this.creationTool.execute(message, params, avatar);
+        const result = await this.creationTool.execute(message, params, avatar, this.services);
         await this.dungeonLog.logAction({
           channelId: message.channel.id,
           action: command,
@@ -201,7 +206,7 @@ export class DungeonService {
     }
 
     try {
-      const result = await tool.execute(message, params, avatar);
+      const result = await tool.execute(message, params, avatar, this.services);
       await this.dungeonLog.logAction({
         channelId: message.channel.id,
         action: command,

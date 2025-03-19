@@ -44,6 +44,8 @@ export class RespondTool extends BaseTool {
 
       // Step 3: Generate a reflection
       const reflectionPrompt = `Based on this conversation:\n${context}\nYou are about to respond to the message: "${messageToRespondTo}". Reflect in detail on the context, think carefully about the conversation and analyze its meaning.`;
+
+      console.log(reflectionPrompt);
       const reflection = await this.aiService.chat([
         {
           role: 'system',

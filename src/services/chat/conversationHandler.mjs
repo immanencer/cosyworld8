@@ -272,7 +272,7 @@ Based on all of the above context, share an updated personality that reflects yo
    * @param {number} limit - Maximum number of messages to retrieve
    * @returns {Promise<Array>} Array of message objects
    */
-  async getChannelContext(channelId, limit = 10) {
+  async getChannelContext(channelId, limit = 50) {
     try {
       this.logger.info(`Fetching channel context for channel ${channelId}`);
 
@@ -322,6 +322,121 @@ Based on all of the above context, share an updated personality that reflects yo
       this.logger.error(`Error fetching channel context for channel ${channelId}: ${error.message}`);
       return [];
     }
+  }
+
+  /**
+   * Retrieves or updates the channel summary for the avatar.
+   * @param {string} avatarId - The ID of the avatar.
+   * @param {string} channelId - The ID of the channel.
+   * @returns {Promise<string>} The current channel summary.
+   */
+  async getChannelSummary(avatarId, channelId) {
+    if (!this.db) {
+      this.logger.error('DB not initialized. Cannot fetch channel summary.');
+      return '';
+    }
+
+    const summariesCollection = this.db.collection('channel_summaries');
+    const messagesCollection = this.db.collection('messages');
+
+    // Fetch existing summary
+    const summaryDoc = await summariesCollection.findOne({ avatarId, channelId });
+    let messagesToSummarize = [];
+
+    if (summaryDoc) {
+      // Check for new messages since the last update
+      const lastUpdated = summaryDoc.lastUpdated;
+      messagesToSummarize = await messagesCollection
+        .find({ channelId, timestamp: { $gt: lastUpdated } })
+        .sort({ timestamp: 1 })
+        .toArray();
+
+      if (messagesToSummarize.length < 50) {
+        return summaryDoc.summary; // Not enough new messages, return existing summary
+      }
+    } else {
+      // No summary exists, fetch last 50 messages for initial summary
+      messagesToSummarize = await messagesCollection
+        .find({ channelId })
+        .sort({ timestamp: -1 })
+        .limit(50)
+        .toArray();
+      messagesToSummarize.reverse(); // Sort chronologically
+    }
+
+    if (messagesToSummarize.length === 0) {
+      return summaryDoc ? summaryDoc.summary : ''; // No messages to summarize
+    }
+
+    // Fetch avatar details
+    const avatar = await this.avatarService.getAvatarById(avatarId);
+    if (!avatar) {
+      this.logger.error(`Avatar ${avatarId} not found for summarization.`);
+      return summaryDoc ? summaryDoc.summary : '';
+    }
+
+    // Format messages for summarization
+    const messagesText = messagesToSummarize.map(msg =>
+      `${msg.authorUsername || 'User'}: ${msg.content || '[No content]'}${msg.hasImages ? ' [has image]' : ''}`
+    ).join('\n');
+
+    // Build summarization prompt
+    let prompt;
+    if (summaryDoc) {
+      prompt = `
+  You are ${avatar.name}.
+
+  Previous channel summary:
+  ${summaryDoc.summary}
+
+  New conversation:
+  ${messagesText}
+
+  Update the summary to incorporate the new conversation, focusing on key events, interactions, and how they relate to you.
+      `.trim();
+    } else {
+      prompt = `
+  You are ${avatar.name}.
+
+  Summarize the following conversation from your perspective, focusing on key events, interactions, and how they relate to you.
+
+  Conversation:
+  ${messagesText}
+      `.trim();
+    }
+
+    // Generate summary using AI service
+    const summary = await this.aiService.chat([
+      { role: 'system', content: avatar.prompt || `You are ${avatar.name}. ${avatar.personality}` },
+      { role: 'user', content: prompt }
+    ], { model: avatar.model, max_tokens: 500 });
+
+    if (!summary) {
+      this.logger.error(`Failed to generate summary for avatar ${avatar.name} in channel ${channelId}`);
+      return summaryDoc ? summaryDoc.summary : '';
+    }
+
+    // Update or insert summary in database
+    const lastMessage = messagesToSummarize[messagesToSummarize.length - 1];
+    const lastUpdated = lastMessage.timestamp;
+    const lastMessageId = lastMessage.messageId;
+
+    if (summaryDoc) {
+      await summariesCollection.updateOne(
+        { _id: summaryDoc._id },
+        { $set: { summary, lastUpdated, lastMessageId } }
+      );
+    } else {
+      await summariesCollection.insertOne({
+        avatarId,
+        channelId,
+        summary,
+        lastUpdated,
+        lastMessageId
+      });
+    }
+
+    return summary;
   }
 
   /**
@@ -411,60 +526,67 @@ Based on all of the above context, share an updated personality that reflects yo
       return null;
     }
 
-      try {
-        // Fetch recent channel messages
-        const messages = await channel.messages.fetch({ limit: 50 });
+    try {
+      // Fetch recent channel messages
+      const messages = await channel.messages.fetch({ limit: 50 });
 
-        // Extract images from the most recent message with images
-        const imagePromptParts = [];
-        let recentImageMessage = null;
+      // Extract images from the most recent message with images
+      const imagePromptParts = [];
+      let recentImageMessage = null;
 
-        for (const msg of Array.from(messages.values()).reverse()) {
-          if (msg.author.id === avatar._id) continue;
-          const hasImages = msg.attachments.some(a => a.contentType?.startsWith('image/')) ||
-            msg.embeds.some(e => e.image || e.thumbnail);
-          if (hasImages) {
-            recentImageMessage = msg;
-            break;
-          }
+      for (const msg of Array.from(messages.values()).reverse()) {
+        if (msg.author.id === avatar._id) continue;
+        const hasImages = msg.attachments.some(a => a.contentType?.startsWith('image/')) ||
+          msg.embeds.some(e => e.image || e.thumbnail);
+        if (hasImages) {
+          recentImageMessage = msg;
+          break;
         }
+      }
 
-        if (recentImageMessage && this.imageProcessingService) {
-          const extractedImages = await this.imageProcessingService.extractImagesFromMessage(recentImageMessage);
-          for (let i = 0; i < Math.min(extractedImages.length, 3); i++) {
-            imagePromptParts.push({
-              inlineData: {
-                data: extractedImages[i].base64,
-                mimeType: extractedImages[i].mimeType
-              }
-            });
-          }
-          this.logger.info(`Found ${extractedImages.length} images, using ${imagePromptParts.length}`);
+      if (recentImageMessage && this.imageProcessingService) {
+        const extractedImages = await this.imageProcessingService.extractImagesFromMessage(recentImageMessage);
+        for (let i = 0; i < Math.min(extractedImages.length, 3); i++) {
+          imagePromptParts.push({
+            inlineData: {
+              data: extractedImages[i].base64,
+              mimeType: extractedImages[i].mimeType
+            }
+          });
         }
+        this.logger.info(`Found ${extractedImages.length} images, using ${imagePromptParts.length}`);
+      }
 
-        // Build channel context and image descriptions
-        const channelHistory = await this.getChannelContext(channel.id, 15);
-        const channelContextText = channelHistory.map(msg =>
-          `${msg.authorUsername || 'User'}: ${msg.content || '[No content]'}${msg.hasImages ? ' [has image]' : ''}`
-        ).join('\n');
-        const imageDescriptions = channelHistory
-          .filter(msg => msg.imageDescription)
-          .map(msg => `[Image: ${msg.imageDescription}]`);
+      // Build channel context and image descriptions
+      const channelHistory = await this.getChannelContext(channel.id, 50);
+      const channelContextText = channelHistory.map(msg =>
+        `${msg.authorUsername || 'User'}: ${msg.content || '[No content]'}${msg.hasImages ? ' [has image]' : ''}`
+      ).join('\n');
 
-        // Build contextual prompt
-        const context = {
-          channelName: channel.name,
-          guildName: channel.guild?.name || 'Unknown Guild'
-        };
-        const systemPrompt = await this.buildSystemPrompt(avatar);
-        const dungeonPrompt = await this.buildDungeonPrompt(avatar);
-        const lastNarrative = await this.getLastNarrative(avatar._id);
 
-        const contextualPrompt = `
+      const imageDescriptions = channelHistory
+        .filter(msg => msg.imageDescription)
+        .map(msg => `[Image: ${msg.imageDescription}]`);
+
+      // Build contextual prompt
+      const context = {
+        channelName: channel.name,
+        guildName: channel.guild?.name || 'Unknown Guild'
+      };
+      const systemPrompt = this.buildSystemPrompt(avatar);
+      const dungeonPrompt = this.buildDungeonPrompt(avatar);
+      const lastNarrative = await this.getLastNarrative(avatar._id);
+      const channelSummary = await this.getChannelSummary(avatar._id, channel.id);
+
+      const contextualPrompt = `
           Channel: #${context.channelName} in ${context.guildName}
+
+          Channel summary:
+          ${channelSummary}
 
           Actions Available:
           ${dungeonPrompt}
+          
           Recent conversation history:
           ${channelContextText}
 
@@ -472,28 +594,28 @@ Based on all of the above context, share an updated personality that reflects yo
           ${imageDescriptions.length > 0 ? 'Comment on the described images appropriately as part of your response.' : ''}
         `.trim();
 
-        // Determine userContent based on multimodal support
-        let userContent;
-        if (this.aiService.supportsMultimodal && imagePromptParts.length > 0) {
-          userContent = [...imagePromptParts, { text: contextualPrompt }];
-        } else {
-          const imageContext = imageDescriptions.length > 0
-            ? `\nRecent images:\n${imageDescriptions.join('\n')}\n`
-            : '';
-          userContent = `${imageContext}${contextualPrompt}`;
-        }
+      // Determine userContent based on multimodal support
+      let userContent;
+      if (this.aiService.supportsMultimodal && imagePromptParts.length > 0) {
+        userContent = [...imagePromptParts, { text: contextualPrompt }];
+      } else {
+        const imageContext = imageDescriptions.length > 0
+          ? `\nRecent images:\n${imageDescriptions.join('\n')}\n`
+          : '';
+        userContent = `${imageContext}${contextualPrompt}`;
+      }
 
-        // Generate response via AI service
-        let response = await this.aiService.chat([
-          { role: 'system', content: systemPrompt },
-          { role: 'assistant', content: lastNarrative?.content || 'No previous reflection' },
-          { role: 'user', content: userContent }
-        ], { model: avatar.model, max_tokens: 200 });
+      // Generate response via AI service
+      let response = await this.aiService.chat([
+        { role: 'system', content: systemPrompt },
+        { role: 'assistant', content: lastNarrative?.content || 'No previous reflection' },
+        { role: 'user', content: userContent }
+      ], { model: avatar.model, max_tokens: 200 });
 
-        if (!response) {
-          this.logger.error(`Empty response generated for ${avatar.name}`);
-          return null;
-        }
+      if (!response) {
+        this.logger.error(`Empty response generated for ${avatar.name}`);
+        return null;
+      }
 
       // Remove leading "AvatarName:" if present
       response = this.removeAvatarPrefix(response, avatar);
@@ -521,7 +643,9 @@ Based on all of the above context, share an updated personality that reflects yo
               { channel, author: { id: avatar._id, username: avatar.name }, content: response },
               cmd.command,
               cmd.params,
-              avatar
+              avatar, {
+              avatarService: this.avatarService
+            }
             )
           )
         );
@@ -531,7 +655,7 @@ Based on all of the above context, share an updated personality that reflects yo
             avatar.channelId,
             commandResults.join('\n'),
             {
-              name: avatar.name,
+              name: `Command results for ${avatar.name}`,
               emoji: `🛠️`,
               imageUrl: avatar.imageUrl
             }
@@ -579,28 +703,28 @@ Based on all of the above context, share an updated personality that reflects yo
       ? `You are currently in ${location.name}. ${location.description}`
       : `You are in ${avatar.channelName || 'a chat channel'}.`;
 
-    // Get guild configuration for emojis
-    let summonEmoji = '🔮'; // Default
-    let breedEmoji = '🏹'; // Default
+    // Selected item
+    const selectedItem = avatar.selectedItemId
+      ? avatar.inventory.find(i => i._id === avatar.selectedItemId)
+      : null;
+    const selectedItemText = selectedItem
+      ? `Selected item: ${selectedItem.name}`
+      : 'No item selected.';
 
+    // Items on the ground
+    const groundItems = await this.dungeonService.itemService.searchItems(avatar.channelId, '');
+    const groundItemsText = groundItems.length > 0
+      ? `Items on the ground: ${groundItems.map(i => i.name).join(', ')}`
+      : 'There are no items on the ground.';
+
+    // Get guild configuration for emojis
+    let summonEmoji = '🔮';
+    let breedEmoji = '🏹';
     try {
       if (avatar.channelId) {
         const channel = await this.client.channels.fetch(avatar.channelId);
         if (channel && channel.guild && this.db) {
-          // Import configService if available
-          let guildConfig = null;
-          try {
-            // Try to access configService from global scope or import dynamically
-            const configService = global.configService || await import('../configService.mjs').then(m => m.default);
-            if (configService && typeof configService.getGuildConfig === 'function') {
-              guildConfig = await configService.getGuildConfig(this.db, channel.guild.id);
-            }
-          } catch (configError) {
-            this.logger.debug(`Could not access configService: ${configError.message}`);
-            // Fall back to direct database query
-            guildConfig = await this.db.collection('guild_configs').findOne({ guildId: channel.guild.id });
-          }
-
+          const guildConfig = await this.db.collection('guild_configs').findOne({ guildId: channel.guild.id });
           if (guildConfig && guildConfig.toolEmojis) {
             summonEmoji = guildConfig.toolEmojis.summon || summonEmoji;
             breedEmoji = guildConfig.toolEmojis.breed || breedEmoji;
@@ -612,18 +736,22 @@ Based on all of the above context, share an updated personality that reflects yo
     }
 
     return `
-These commands are available in this location:
+  These commands are available in this location:
 
-${summonEmoji} <any concept or thing> - Summon an avatar to your location.
-${breedEmoji} <avatar one> <avatar two> - Breed two avatars together.
+  ${summonEmoji} <any concept or thing> - Summon an avatar to your location.
+  ${breedEmoji} <avatar one> <avatar two> - Breed two avatars together.
 
-${commandsDescription}
+  ${commandsDescription}
 
-${locationText}
+  ${locationText}
 
-You can also use these items in your inventory:  
+  ${selectedItemText}
 
-${items}
+  ${groundItemsText}
+
+  You can also use these items in your inventory:
+
+  ${items}
     `.trim();
   }
 

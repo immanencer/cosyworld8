@@ -19,6 +19,10 @@ export class DatabaseService {
   }
 
   async connect() {
+
+    if (this.db) {
+      return this.db;
+    }
     if (!process.env.MONGO_URI) {
       this.logger.error('MongoDB URI not provided in environment variables.');
       return null;
@@ -49,7 +53,7 @@ export class DatabaseService {
 
       // Set up reconnection with exponential backoff
       const reconnectDelay = Math.min(this.reconnectDelay * 1.5, 30000); // Maximum 30 seconds
-      this.logger.info(`Will attempt to reconnect in ${reconnectDelay/1000} seconds...`);
+      this.logger.info(`Will attempt to reconnect in ${reconnectDelay / 1000} seconds...`);
       setTimeout(() => this.connect(), reconnectDelay);
       this.reconnectDelay = reconnectDelay;
       return null;
@@ -94,9 +98,60 @@ export class DatabaseService {
     return null;
   }
 
+  async cleanDuplicateMessageIds(collection) {
+    try {
+
+      console.log('Cleaning duplicate message ids...');
+      return false;
+      
+      // Ensure an index exists for efficient sorting
+      await collection.createIndex({ messageId: 1, timestamp: 1 });
+
+      // Use a cursor to iterate through the sorted collection
+      const cursor = collection.find().sort({ messageId: 1, timestamp: 1 });
+
+      // Track seen messageIds and collect IDs to delete
+      let seenMessageIds = new Set();
+      let deleteBatch = [];
+      const batchSize = 10;
+
+      // Process each document
+      while (await cursor.hasNext()) {
+        const doc = await cursor.next();
+        const messageId = doc.messageId;
+
+        if (!seenMessageIds.has(messageId)) {
+          // First occurrence (latest timestamp) - keep it
+          seenMessageIds.add(messageId);
+        } else {
+          // Duplicate - add to delete batch
+          deleteBatch.push(doc._id);
+        }
+
+        // Perform bulk delete when batch is full
+        if (deleteBatch.length >= batchSize) {
+          console.log('Deleting duplicate message ids...');
+          await collection.deleteMany({ _id: { $in: deleteBatch } });
+          deleteBatch = []; // Clear the batch
+        }
+      }
+
+      // Delete any remaining duplicates
+      if (deleteBatch.length > 0) {
+        await collection.deleteMany({ _id: { $in: deleteBatch } });
+      }
+
+      console.log("Duplicate messageIds cleaned up successfully.");
+    } catch (error) {
+      console.error("Error cleaning up duplicate messageIds:", error);
+    }
+  }
+
   async createIndexes() {
     const db = this.getDatabase();
     if (!db) return;
+
+    await this.cleanDuplicateMessageIds(db.collection('messages'));
 
     try {
       await Promise.all([
@@ -104,6 +159,7 @@ export class DatabaseService {
           { key: { authorUsername: 1 }, background: true },
           { key: { timestamp: -1 }, background: true },
           { key: { avatarId: 1 }, background: true },
+          { messageId: 1 }, { unique: true }
         ]),
         db.collection('avatars').createIndexes([
           { key: { name: 1, createdAt: -1 }, background: true },
