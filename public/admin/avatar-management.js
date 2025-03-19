@@ -113,11 +113,63 @@ document.addEventListener("DOMContentLoaded", () => {
 
     elements.deleteAvatarBtn.addEventListener("click", handleDeleteAvatar);
 
-    elements.imageUrlInput.addEventListener("input", () => {
-      const url = elements.imageUrlInput.value;
-      elements.imagePreview.src = url;
-      elements.imagePreview.classList.toggle("hidden", !url);
+    // Add file input element for direct uploads
+const fileInput = document.createElement('input');
+fileInput.type = 'file';
+fileInput.accept = 'image/*';
+fileInput.style.display = 'none';
+document.body.appendChild(fileInput);
+
+// Add upload button next to image URL input
+const uploadButton = document.createElement('button');
+uploadButton.textContent = 'Upload Image';
+uploadButton.className = 'ml-2 px-3 py-1 bg-blue-500 text-white rounded hover:bg-blue-600';
+elements.imageUrlInput.parentNode.appendChild(uploadButton);
+
+uploadButton.addEventListener('click', () => {
+  fileInput.click();
+});
+
+fileInput.addEventListener('change', async (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+
+  const formData = new FormData();
+  formData.append('image', file);
+
+  try {
+    uploadButton.disabled = true;
+    uploadButton.textContent = 'Uploading...';
+
+    const response = await fetch('/api/admin/upload-image', {
+      method: 'POST',
+      body: formData
     });
+
+    if (!response.ok) {
+      throw new Error(`Upload failed: ${response.statusText}`);
+    }
+
+    const data = await response.json();
+    elements.imageUrlInput.value = data.url;
+    elements.imagePreview.src = data.url;
+    elements.imagePreview.classList.remove('hidden');
+    showNotification('Image uploaded successfully');
+  } catch (error) {
+    console.error('Upload error:', error);
+    showNotification('Failed to upload image', 'error');
+  } finally {
+    uploadButton.disabled = false;
+    uploadButton.textContent = 'Upload Image';
+    fileInput.value = ''; // Reset file input
+  }
+});
+
+elements.imageUrlInput.addEventListener("input", () => {
+  const url = elements.imageUrlInput.value;
+  elements.imagePreview.src = url;
+  elements.imagePreview.classList.toggle("hidden", !url);
+});
   }
 
   // Avatar List Functions

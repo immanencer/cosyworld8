@@ -571,3 +571,32 @@ function createRouter(db) {
 }
 
 export default createRouter;
+import multer from 'multer';
+import { uploadImage } from '../../src/services/s3imageService/s3imageService.mjs';
+
+const upload = multer({
+  limits: {
+    fileSize: 5 * 1024 * 1024 // 5MB limit
+  }
+});
+
+router.post('/upload-image', upload.single('image'), async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ error: 'No image file provided' });
+    }
+
+    // Convert buffer to base64 for s3imageService
+    const base64Image = req.file.buffer.toString('base64');
+    const s3url = await uploadImage(base64Image);
+
+    if (!s3url) {
+      throw new Error('Failed to upload to S3');
+    }
+
+    res.json({ url: s3url });
+  } catch (error) {
+    console.error('Image upload error:', error);
+    res.status(500).json({ error: 'Failed to upload image' });
+  }
+});
