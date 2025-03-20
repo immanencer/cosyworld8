@@ -182,10 +182,11 @@ function renderAvatarDescription({ description = '', className = '' }) {
  * @param {boolean} options.isEditable - Whether avatar is editable
  * @param {Function} options.onEdit - Edit callback function
  * @param {string} options.className - Additional CSS classes
+ * @param {Object} options.claimInfo - Claim status information
  * @returns {string} Complete HTML for avatar details
  */
 function renderAvatarDetails(avatar, options = {}) {
-  const { isEditable = false, onEdit = null, className = '' } = options;
+  const { isEditable = false, onEdit = null, className = '', claimInfo = null } = options;
 
   // Extract properties with defaults
   const {
@@ -229,12 +230,18 @@ function renderAvatarDetails(avatar, options = {}) {
   const tierClass = getTierColor(avatar.model);
   const tier = getTier(avatar.model);
 
+  // Extract claim info if provided
+  const isClaimed = claimInfo?.claimed || false;
+  const claimedBy = claimInfo?.claimedBy || '';
+  const isClaimedByCurrentWallet = claimInfo?.isClaimedByCurrentWallet || false;
+  
   return `
     <div class="avatar-details-container ${className} bg-gray-900 rounded-lg overflow-hidden">
       <!-- Header with avatar image, name, and tier -->
       <div class="flex flex-col md:flex-row items-center p-4 bg-gray-800 border-b border-gray-700">
-        <div class="flex-shrink-0 mb-4 md:mb-0">
+        <div class="flex-shrink-0 mb-4 md:mb-0 relative">
           ${renderAvatarImage({ imageUrl, name, size: 'large' })}
+          ${isClaimed ? `<div class="absolute -top-2 -right-2 bg-green-500 rounded-full w-8 h-8 flex items-center justify-center text-lg shadow-md">✓</div>` : ''}
         </div>
 
         <div class="md:ml-6 flex-grow text-center md:text-left">
@@ -263,6 +270,15 @@ function renderAvatarDetails(avatar, options = {}) {
             <span>XP: ${experience}</span>
             ${lastActive ? `<span class="mx-2">•</span><span>Last active: ${formattedDate}</span>` : ''}
           </div>
+          
+          <!-- Claim status information at the top -->
+          ${isClaimed ? `
+            <div class="mt-3 py-2 px-3 bg-gray-700 rounded-md inline-flex items-center">
+              <span class="text-green-400 mr-2">✓</span>
+              <span>Claimed by ${shortenAddress ? shortenAddress(claimedBy) : claimedBy}</span>
+              ${isClaimedByCurrentWallet ? '<span class="ml-2 text-blue-400">(You)</span>' : ''}
+            </div>
+          ` : ''}
         </div>
       </div>
 
@@ -287,9 +303,11 @@ function renderAvatarDetails(avatar, options = {}) {
  * Renders a compact avatar card
  * @param {Object} avatar - Avatar data object
  * @param {Function} onClick - Click handler function
+ * @param {boolean} isClaimed - Whether the avatar is claimed
+ * @param {string} claimedBy - Address of the claimer
  * @returns {string} HTML string for compact avatar card
  */
-function renderAvatarCard(avatar = {}, onClick = null) {
+function renderAvatarCard(avatar = {}, onClick = null, isClaimed = false, claimedBy = '') {
   // Extract with safe defaults
   const id = avatar?._id || '';
   const name = avatar?.name || 'Unknown';
@@ -320,9 +338,12 @@ function renderAvatarCard(avatar = {}, onClick = null) {
   const clickHandler = onClick ? `onclick="${onClick}('${id}')"` : '';
 
   return `
-    <div class="avatar-card bg-gray-800 p-3 rounded-lg hover:bg-gray-700 transition-colors cursor-pointer" ${clickHandler}>
+    <div class="avatar-card bg-gray-800 p-3 rounded-lg hover:bg-gray-700 transition-colors cursor-pointer ${isClaimed ? 'border-l-2 border-green-500' : ''}" ${clickHandler}>
       <div class="flex items-center gap-3">
-        ${renderAvatarImage({ imageUrl, name, size: 'small' })}
+        <div class="relative">
+          ${renderAvatarImage({ imageUrl, name, size: 'small' })}
+          ${isClaimed ? `<div class="absolute -top-1 -right-1 bg-green-500 rounded-full w-5 h-5 flex items-center justify-center text-xs" title="Claimed by ${claimedBy}">✓</div>` : ''}
+        </div>
 
         <div class="flex-1 min-w-0">
           <h3 class="text-lg font-semibold truncate">${name}</h3>
@@ -332,6 +353,7 @@ function renderAvatarCard(avatar = {}, onClick = null) {
               Tier ${getTier(model)}
             </span>
             ${avatar.score ? `<span class="text-xs text-gray-400">Score: ${avatar.score}</span>` : ''}
+            ${isClaimed ? `<span class="text-xs text-green-400">Claimed</span>` : ''}
           </div>
         </div>
       </div>
@@ -342,9 +364,10 @@ function renderAvatarCard(avatar = {}, onClick = null) {
 /**
  * Renders a compact avatar card specifically for the leaderboard
  * @param {Object} avatar - Avatar data object
+ * @param {boolean} isClaimed - Whether the avatar is claimed 
  * @returns {string} HTML string for leaderboard avatar card
  */
-function renderLeaderboardCard(avatar = {}) {
+function renderLeaderboardCard(avatar = {}, isClaimed = false) {
   // Extract with safe defaults
   const id = avatar?._id || '';
   const name = avatar?.name || 'Unknown';
@@ -374,9 +397,12 @@ function renderLeaderboardCard(avatar = {}) {
   };
 
   return `
-    <div class="avatar-card bg-gray-800 p-3 rounded-lg hover:bg-gray-700 transition-colors cursor-pointer">
+    <div class="avatar-card bg-gray-800 p-3 rounded-lg hover:bg-gray-700 transition-colors cursor-pointer ${isClaimed ? 'border-l-2 border-green-500' : ''}">
       <div class="flex gap-3 items-center">
-        ${renderAvatarImage({ imageUrl, name, size: 'small' })}
+        <div class="relative">
+          ${renderAvatarImage({ imageUrl, name, size: 'small' })}
+          ${isClaimed ? `<div class="absolute -top-1 -right-1 bg-green-500 rounded-full w-5 h-5 flex items-center justify-center text-xs">✓</div>` : ''}
+        </div>
 
         <div class="flex-1 min-w-0">
           <h3 class="text-sm font-semibold truncate">${name}</h3>
@@ -386,6 +412,7 @@ function renderLeaderboardCard(avatar = {}) {
             <span class="px-1.5 py-0.5 rounded text-xs font-bold ${getTierColor(model)}">
               Tier ${getTier(model)}
             </span>
+            ${isClaimed ? `<span class="text-xs text-green-400">Claimed</span>` : ''}
           </div>
         </div>
       </div>
@@ -475,15 +502,21 @@ function generateAvatarDetailModal(avatar) {
   `;
 }
 
+// Helper function to shorten addresses if not already available globally
+function shortenAddress(address) {
+  if (typeof address !== 'string') return '';
+  return address.slice(0, 6) + '...' + address.slice(-4);
+}
 
 // Export functions
 window.AvatarDetails = {
   renderAvatarDetails,
   renderAvatarCard,
-  renderLeaderboardCard, // Add the new function
+  renderLeaderboardCard,
   renderAvatarImage,
   renderAvatarStats,
   renderAvatarSkills,
   renderAvatarDescription,
-  generateAvatarDetailModal
+  generateAvatarDetailModal,
+  shortenAddress
 };

@@ -67,7 +67,7 @@ export class RespondTool extends BaseTool {
 
       // Step 4: Store the reflection as a memory
       const memoryService = new MemoryService(this.logger);
-      await memoryService.addMemory(avatar._id, reflection);
+      await memoryService.addMemory(avatar._id, "[💭 Reflection]\n" + reflection);
       if (avatar.innerMonologueChannel) {
         sendAsWebhook(avatar.innerMonologueChannel, reflection, avatar);
       }
