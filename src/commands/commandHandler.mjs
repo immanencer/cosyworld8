@@ -27,13 +27,13 @@ export async function handleCommands(message, services) {
     await reactToMessage(message, summonEmoji);
     await handleSummonCommand(message, false, {}, services);
   } else if (content.startsWith("⚔️")) {
-    if (!message.author.bot) {
-      await replyToMessage(message, "❌ Sword of violence not found.");
-      return;
-    }
     const args = content.slice(2).trim().split(" ");
     await reactToMessage(message, "⚔️");
     await handleAttackCommand(message, args, services);
+    await reactToMessage(message, "✅");
+  } else if (content.startsWith("🛡️")) {
+    await reactToMessage(message, "🛡️");
+    await handleDefendCommand(message, services);
     await reactToMessage(message, "✅");
   } else if (content.startsWith("🏹")) {
     const args = content.slice(2).trim().split(" ");

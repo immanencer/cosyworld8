@@ -38,13 +38,17 @@ export class AttackTool extends BaseTool {
     const targetStats = await this.getStatsWithRetry(targetAvatar._id);
 
     // D&D style attack roll: d20 + strength modifier
-    const attackRoll = Math.floor(Math.random() * 20) + 1 + Math.floor((stats.strength - 10) / 2);
-    const armorClass = 10 + Math.floor((targetStats.dexterity - 10) / 2);
+    const strMod = Math.floor((stats.strength - 10) / 2);
+    const dexMod = Math.floor((targetStats.dexterity - 10) / 2);
+    
+    const attackRoll = Math.floor(Math.random() * 20) + 1 + strMod;
+    const armorClass = 10 + dexMod + (targetStats.isDefending ? 2 : 0);
 
     if (attackRoll >= armorClass) {
-      // Damage roll: 1d6 + strength modifier
-      const damage = Math.max(1, Math.floor(Math.random() * 6) + 1 + Math.floor((stats.strength - 10) / 2));
+      // Damage roll: 1d8 + strength modifier (longsword)
+      const damage = Math.max(1, Math.floor(Math.random() * 8) + 1 + strMod);
       targetStats.hp -= damage;
+      targetStats.isDefending = false; // Reset defense stance
 
       if (targetStats.hp <= 0) {
         return await this.handleKnockout(message, targetAvatar, damage);
@@ -54,6 +58,8 @@ export class AttackTool extends BaseTool {
       return `⚔️ ${message.author.username} hits ${targetAvatar.name} for ${damage} damage! (${attackRoll} vs AC ${armorClass})`;
     }
 
+    targetStats.isDefending = false; // Reset defense stance on miss
+    await this.updateStatsWithRetry(targetAvatar._id, targetStats);
     return `🛡️ ${message.author.username}'s attack misses ${targetAvatar.name}! (${attackRoll} vs AC ${armorClass})`;
   }
 
