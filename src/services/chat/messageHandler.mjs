@@ -2,24 +2,7 @@ import { saveMessageToDatabase } from "../../utils/databaseUtils.mjs";
 import { handleCommands } from "../../commands/commandHandler.mjs";
 import { sendAvatarProfileEmbedFromObject } from "../discordService.mjs";
 
-/**
- * MessageHandler class to manage incoming Discord message processing.
- * Integrates various services to handle guild authorization, spam control, message persistence,
- * command execution, channel activity, and avatar interactions.
- */
 export class MessageHandler {
-  /**
-   * Constructor for MessageHandler.
-   * @param {object} client - The Discord client instance.
-   * @param {object} databaseService - Service for database operations.
-   * @param {object} spamControlService - Service for spam detection and control.
-   * @param {object} avatarManager - Manager for avatar-related operations.
-   * @param {object} channelManager - Manager for channel activity tracking.
-   * @param {object} configService - Service for configuration management.
-   * @param {object} aiService - Service for AI-related operations (e.g., model selection).
-   * @param {object} responseGenerator - Generator for considering and sending avatar responses.
-   * @param {object} [logger=console] - Logger instance for debugging and error reporting.
-   */
   constructor(services) {
     this.client = services.client;
     this.databaseService = services.databaseService;
@@ -34,14 +17,7 @@ export class MessageHandler {
     this.dungeonService = services.dungeonService;
   }
 
-  /**
-   * Handles an incoming Discord message.
-   * Performs guild checks, spam control, message saving, command handling,
-   * and avatar-related interactions.
-   * @param {object} message - The Discord message object to process.
-   */
   async handleMessage(message) {
-    // Validate required services
     if (
       !this.databaseService ||
       !this.spamControlService ||
@@ -58,10 +34,8 @@ export class MessageHandler {
       return;
     }
 
-    // Ignore messages not from a guild
     if (!message.guild) return;
 
-    // Guild authorization check
     try {
       if (!this.client.authorizedGuilds?.get(message.guild.id)) {
         const db = this.databaseService.getDatabase();
@@ -82,20 +56,45 @@ export class MessageHandler {
       return;
     }
 
-    // Apply spam control
     if (!(await this.spamControlService.shouldProcessMessage(message))) return;
 
-    // Save message to database
+    // Add image description to the original message object
+    let imageDescription = null;
+    const hasImages = message.attachments?.some(a => a.contentType?.startsWith('image/')) ||
+      message.embeds?.some(e => e.image || e.thumbnail);
+
+    if (hasImages && this.aiService && typeof this.aiService.analyzeImage === 'function') {
+      const attachment = message.attachments?.find(a => a.contentType?.startsWith('image/'));
+      if (attachment) {
+        try {
+          imageDescription = await this.aiService.analyzeImage(attachment.url);
+          this.logger.info(`Generated image description for message ${message.id}: ${imageDescription}`);
+        } catch (error) {
+          this.logger.error(`Error analyzing image for message ${message.id}: ${error.message}`);
+          imageDescription = 'Image analysis failed.';
+        }
+      }
+    } else if (hasImages) {
+      this.logger.warn('AI service lacks image analysis capability; skipping image description.');
+      imageDescription = 'Image present but not analyzed.';
+    }
+
+    // Attach imageDescription to the message object
+    message.imageDescription = imageDescription;
+    message.hasImages = hasImages;
+
+    // Save the enhanced message object to the database
     try {
+      this.logger.debug(`Saving message ${message.id} with imageDescription: ${imageDescription}`);
       await saveMessageToDatabase(message, {
         databaseService: this.databaseService,
         logger: this.logger,
       });
     } catch (error) {
       this.logger.error(`Error saving message to database: ${error.message}`);
+      console.error(error.stack); // Log stack trace for more detail
     }
 
-    // Handle commands
     await handleCommands(message, {
       client: this.client,
       avatarService: this.avatarService,
@@ -108,19 +107,16 @@ export class MessageHandler {
       logger: this.logger,
     });
 
-    // Ignore bot messages
     if (message.author.bot) return;
 
     const channelId = message.channel.id;
 
-    // Mark channel as active
     try {
       this.channelManager.markChannelActive(channelId, message.guild.id);
     } catch (error) {
       this.logger.error(`Error marking channel active: ${error.message}`);
     }
 
-    // Process channel (trigger responses from existing avatars)
     try {
       await this.processChannel(channelId, message);
     } catch (error) {
@@ -128,7 +124,6 @@ export class MessageHandler {
       throw error;
     }
 
-    // Handle user's avatar
     try {
       const result = await this.avatarService.getOrCreateUniqueAvatarForUser(
         message.author.id,
@@ -146,7 +141,6 @@ export class MessageHandler {
       this.logger.error(`Error handling avatar creation: ${error.message}`);
     }
 
-    // Process channel again (e.g., after new avatar creation)
     try {
       await this.processChannel(channelId, message);
     } catch (error) {
@@ -156,11 +150,6 @@ export class MessageHandler {
     this.logger.debug(`Message processed successfully in channel ${channelId}`);
   }
 
-  /**
-   * Processes a channel by selecting a subset of avatars and triggering potential responses.
-   * @param {string} channelId - The ID of the channel to process.
-   * @param {Object} message - The Discord message object triggering the processing.
-   */
   async processChannel(channelId, message) {
     try {
       const channel = this.client.channels.cache.get(channelId);
@@ -168,12 +157,9 @@ export class MessageHandler {
         this.logger.error(`Channel ${channelId} not found in cache.`);
         return;
       }
-      // Fetch all avatars in the channel
       const allAvatars = await this.avatarManager.getAvatarsInChannel(channelId);
-      // Select subset of avatars to consider
       const avatarsToConsider = this.responseGenerator.decisionMaker.selectAvatarsToConsider(allAvatars, message);
-      // Consider responses for the selected subset
-      await Promise.all(avatarsToConsider.map(avatar =>
+      await Promise.all(avatarsToConsider.slice(0,3).map(avatar =>
         this.responseGenerator.considerResponse(channel, avatar)
       ));
     } catch (error) {

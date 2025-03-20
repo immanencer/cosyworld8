@@ -136,7 +136,10 @@ export class DecisionMaker {
 
   /** Main decision logic for whether to respond */
   async shouldRespond(channel, avatar) {
-    if (!channel?.id || !avatar?.id) return false;
+    if (!channel?.id) return false;
+    if (!avatar?.id) {
+      avatar.id = `${avatar._id.toString()}`;
+    }
 
     const state = this._getAttentionState(avatar.id);
     const isRecentlySummoned = Date.now() - (avatar.summonedAt || 0) < this.config.RECENT_SUMMON_WINDOW;
