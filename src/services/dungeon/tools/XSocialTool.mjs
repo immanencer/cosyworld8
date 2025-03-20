@@ -3,7 +3,7 @@ import { TwitterApi } from 'twitter-api-v2';
 import { MongoClient } from 'mongodb';
 import { MemoryService } from '../../memoryService.mjs';
 import { AIService } from "../../aiService.mjs";
-import { encrypt, decrypt } from 'crypto'; // Placeholder for encryption
+import { encrypt, decrypt } from '../../utils/encryption.mjs'; // Placeholder for encryption
 
 let mongoClient = null;
 
