@@ -3,8 +3,8 @@ import { BaseTool } from './BaseTool.mjs';
 import { handleSummonCommand } from '../../../commands/summonCommand.mjs';
 
 export class SummonTool extends BaseTool {
-  constructor(dungeonService) {
-    super(dungeonService);
+  constructor() {
+    super();
     this.name = 'summon';
     this.description = 'Summons a new avatar';
     this.emoji = '🔮'; // Default emoji
@@ -42,7 +42,7 @@ export class SummonTool extends BaseTool {
     return `${emoji} <description or name>`;
   }
 
-  async execute(message, params, services) {
+  async execute(message, params, avatar, services) {
     try {
       return await handleSummonCommand(message, params, services);
     } catch (error) {

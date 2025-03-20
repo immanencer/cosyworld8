@@ -103,7 +103,7 @@ export class ConversationHandler {
         { role: 'system', content: avatar.prompt || `You are ${avatar.name}. ${avatar.personality}` },
         { role: 'assistant', content: `Current personality: ${avatar.dynamicPersonality || 'None yet'}\n\nMemories: ${memories}\n\nRecent actions: ${actions}\n\nNarrative thoughts: ${narrativeContent}` },
         { role: 'user', content: prompt }
-      ], { model: avatar.model, max_tokens: 1024 });
+      ], { model: avatar.model, max_tokens: 2048 });
       if (!narrative) {
         this.logger.error(`No narrative generated for ${avatar.name}.`);
         return null;
@@ -396,17 +396,13 @@ Based on all of the above context, share an updated personality that reflects yo
         { role: 'system', content: systemPrompt },
         { role: 'assistant', content: lastNarrative?.content || 'No previous reflection' },
         { role: 'user', content: userContent }
-      ], { model: avatar.model, max_tokens: 200 });
+      ], { model: avatar.model, max_tokens: 1024 });
       if (!response) {
         this.logger.error(`Empty response generated for ${avatar.name}`);
         return null;
       }
       response = this.removeAvatarPrefix(response, avatar);
-      if (response.length > 2000) {
-        this.logger.warn(`Truncating response for ${avatar.name} to avoid exceeding Discord limit`);
-        const safeIndex = response.lastIndexOf('\n', 1500);
-        response = safeIndex > 0 ? response.substring(0, safeIndex) : response.substring(0, 1500);
-      }
+
       const { commands, cleanText } = this.dungeonService.extractToolCommands(response);
       let sentMessage = null;
       let commandResults = [];
@@ -433,9 +429,45 @@ Based on all of the above context, share an updated personality that reflects yo
         avatar = await this.avatarService.getAvatarById(avatar._id);
       }
       const finalText = commands.length ? cleanText : response;
+      // Process <think> tags
       if (finalText && finalText.trim()) {
-        sentMessage = await sendAsWebhook(avatar.channelId, finalText.trim(), avatar);
+        const thinkRegex = /<think>(.*?)<\/think>/gs;
+        const thoughts = [];
+        const cleanedText = finalText.replace(thinkRegex, (match, thought) => {
+          thoughts.push(thought.trim());
+          return '';
+        }).trim();
+
+        // Store thoughts in narrative history
+        if (thoughts.length > 0) {
+          avatar.narrativeHistory = avatar.narrativeHistory || [];
+          const guildName = GUILD_NAME;
+          thoughts.forEach(thought => {
+            if (thought) { // Skip empty thoughts
+              const narrativeData = {
+                timestamp: Date.now(),
+                content: thought,
+                guildName: guildName
+              };
+              avatar.narrativeHistory.unshift(narrativeData);
+            }
+          });
+          // Limit narrative history to 5 entries (consistent with updateNarrativeHistory)
+          avatar.narrativeHistory = avatar.narrativeHistory.slice(0, 5);
+          // Update narrativesSummary
+          avatar.narrativesSummary = avatar.narrativeHistory
+            .map(r => `[${new Date(r.timestamp).toLocaleDateString()}] ${r.guildName}: ${r.content}`)
+            .join('\n\n');
+          // Persist the updated avatar
+          await this.avatarService.updateAvatar(avatar);
+        }
+
+        // Send the cleaned text as the response
+        if (cleanedText) {
+          sentMessage = await sendAsWebhook(avatar.channelId, cleanedText, avatar);
+        }
       }
+
       this.channelLastMessage.set(channel.id, Date.now());
       this.channelResponders.get(channel.id).add(avatar._id);
       setTimeout(() => this.channelResponders.set(channel.id, new Set()), this.CHANNEL_COOLDOWN);

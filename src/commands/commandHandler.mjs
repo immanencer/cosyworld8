@@ -2,6 +2,7 @@
 import { replyToMessage, reactToMessage } from "../services/discordService.mjs";
 import { handleSummonCommand } from "./summonCommand.mjs";
 import { handleAttackCommand } from "./attackCommand.mjs";
+import { handleDefendCommand } from "./defendCommand.mjs";  
 import { handleBreedCommand } from "./breedCommand.mjs";
 
 import { getSummonEmoji } from "../utils/utils.mjs";
@@ -15,6 +16,7 @@ export async function handleCommands(message, services) {
     await replyToMessage(message, `Command Deprecated. Use ${summonEmoji} Instead.`);
     return;
   }
+  const args = content.slice(2).trim().split(" ");
   
   if (content.startsWith(summonEmoji)) {
     const member = message.guild?.members?.cache?.get(message.author.id);
@@ -27,7 +29,6 @@ export async function handleCommands(message, services) {
     await reactToMessage(message, summonEmoji);
     await handleSummonCommand(message, false, {}, services);
   } else if (content.startsWith("⚔️")) {
-    const args = content.slice(2).trim().split(" ");
     await reactToMessage(message, "⚔️");
     await handleAttackCommand(message, args, services);
     await reactToMessage(message, "✅");
@@ -36,9 +37,8 @@ export async function handleCommands(message, services) {
     await handleDefendCommand(message, services);
     await reactToMessage(message, "✅");
   } else if (content.startsWith("🏹")) {
-    const args = content.slice(2).trim().split(" ");
     await reactToMessage(message, "🏹");
-    await handleBreedCommand(message, args, content, services);
+    await handleBreedCommand(message, args, services);
     await reactToMessage(message, "✅");
   }
 }

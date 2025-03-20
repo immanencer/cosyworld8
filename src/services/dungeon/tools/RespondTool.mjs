@@ -4,8 +4,8 @@ import { MemoryService } from '../../memoryService.mjs';
 import { sendAsWebhook } from '../../discordService.mjs';
 
 export class RespondTool extends BaseTool {
-  constructor(dungeonService) {
-    super(dungeonService);
+  constructor() {
+    super();
     this.name = 'respond';
     this.description = 'Generates a thoughtful in-character response with reflection';
     this.emoji = '💭';

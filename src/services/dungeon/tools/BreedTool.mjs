@@ -1,9 +1,10 @@
 
 import { BaseTool } from './BaseTool.mjs';
+import { handleBreedCommand } from '../../../commands/breedCommand.mjs';
 
 export class BreedTool extends BaseTool {
-  constructor(dungeonService) {
-    super(dungeonService);
+  constructor() {
+    super();
     this.name = 'breed';
     this.description = 'Breeds two avatars together';
     this.emoji = '🏹';
@@ -17,9 +18,9 @@ export class BreedTool extends BaseTool {
     return '🏹 <avatar1> <avatar2>';
   }
 
-  async execute(message, params, commandLine) {
+  async execute(message, params, avatar, services) {
     try {
-      return await this.dungeonService.handleBreedCommand(message, params, commandLine);
+      return await handleBreedCommand(message, params, services);
     } catch (error) {
       console.error('Error in BreedTool:', error);
       return 'Failed to breed avatars...';

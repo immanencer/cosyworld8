@@ -5,8 +5,8 @@ import { BaseTool } from './BaseTool.mjs';
 import { sendAsWebhook } from '../../discordService.mjs';
 
 export class RememberTool extends BaseTool {
-  constructor(dungeonService) {
-    super(dungeonService);
+  constructor() {
+    super();
     this.aiService = new AIService();
     this.name = 'remember';
     this.description = 'Generates a memory from the current context.';

@@ -1,9 +1,6 @@
 export class BaseTool {
-  constructor(dungeonService) {
-    this.dungeonService = dungeonService;
-  }
 
-  async execute(avatar, message, params) {
+  async execute(message, params, avatar, services) {
     throw new Error('Tool must implement execute method');
   }
 

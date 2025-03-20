@@ -3,8 +3,8 @@ import { TwitterApi } from 'twitter-api-v2';
 import { MongoClient } from 'mongodb';
 
 export class XPostTool extends BaseTool {
-    constructor(dungeonService) {
-        super(dungeonService);
+    constructor() {
+        super();
         this.emoji = '🐦';
         this.name = 'post';
         this.description = 'Post a relevant message to social media.';
