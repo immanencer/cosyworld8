@@ -8,7 +8,7 @@ import { DefendTool } from './tools/DefendTool.mjs';
 import { MoveTool } from './tools/MoveTool.mjs';
 import { RememberTool } from './tools/RememberTool.mjs';
 import { CreationTool } from './tools/CreationTool.mjs';
-import { XPostTool } from './tools/XPostTool.mjs';
+import { XSocialTool as XPostTool } from './tools/XSocialTool.mjs';
 import { ItemTool } from './tools/ItemTool.mjs';
 import { RespondTool } from './tools/RespondTool.mjs';
 import { SummonTool } from './tools/SummonTool.mjs';
