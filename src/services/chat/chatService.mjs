@@ -17,6 +17,7 @@ export class ChatService {
     this.avatarService = options.avatarService;
     this.aiService = options.aiService;
     this.dungeonService = options.dungeonService;
+    this.statGenerationService = options.statGenerationService;
     this.imageService = options.imageProcessingService;
 
     // Initialize core modules
@@ -43,6 +44,9 @@ export class ChatService {
       avatarManager: this.avatarManager,
       channelManager: this.channelManager,
       responseGenerator: this.responseGenerator,
+      chatService: this,
+      memoryService: this.memoryService,
+      avatarService: this.avatarService
     });
 
     this.periodicTaskManager = new PeriodicTaskManager(

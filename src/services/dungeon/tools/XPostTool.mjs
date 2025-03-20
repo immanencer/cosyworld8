@@ -7,8 +7,8 @@ import { encrypt, decrypt } from 'crypto'; // Assuming a crypto module for encry
 let mongoClient = null;
 
 export class XPostTool extends BaseTool {
-    constructor(dungeonService) {
-        super(dungeonService);
+    constructor() {
+        super();
         this.emoji = '🐦';
         this.name = 'post';
         this.description = 'Post a relevant message to X/Twitter with preview option.';

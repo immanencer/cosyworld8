@@ -2,7 +2,8 @@
 import { replyToMessage } from "../services/discordService.mjs";
 import { handleSummonCommand } from "./summonCommand.mjs";
 
-export async function handleBreedCommand(message, args, commandLine, services) {
+export async function handleBreedCommand(message, args, services) {
+  const commandLine = args.join(" ");
   const avatars = await services.avatarService.getAvatarsInChannel(message.channel.id);
   const mentionedAvatars = Array.from(services.avatarService.extractMentionedAvatars(commandLine, avatars))
     .sort(() => Math.random() - 0.5)
@@ -32,7 +33,7 @@ export async function handleBreedCommand(message, args, commandLine, services) {
   await replyToMessage(message, `Breeding ${avatar1.name} with ${avatar2.name}...`);
 
   const buildNarrative = async (avatar) => {
-    const memories = (await services.chatService.conversationHandler.memoryService.getMemories(avatar._id)).map(m => m.memory).join("\n");
+    const memories = (await services.memoryService.getMemories(avatar._id)).map(m => m.memory).join("\n");
     return services.chatService.conversationHandler.buildNarrativePrompt(avatar, [memories]);
   };
 

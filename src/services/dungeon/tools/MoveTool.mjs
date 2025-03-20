@@ -7,8 +7,8 @@ export class MoveTool extends BaseTool {
    * Constructs a new MoveTool.
    * @param {Object} dungeonService - The dungeon service (must include a Discord client).
    */
-  constructor(dungeonService) {
-    super(dungeonService);
+  constructor() {
+    super();
     if (!dungeonService.client) {
       throw new Error('Discord client is required for MoveTool');
     }

@@ -1,38 +1,26 @@
+
 import { BaseTool } from './BaseTool.mjs';
 
 export class DefendTool extends BaseTool {
-  constructor(dungeonService) {
-    super(dungeonService);
+  constructor() {
+    super();
     this.name = 'defend';
-    this.description = 'Raise your AC temporarily';
+    this.description = 'Take a defensive stance';
     this.emoji = '🛡️';
   }
-  async execute(message) {
-    const avatarId = message.author.id;
-    const stats = await this.dungeonService.getAvatarStats(avatarId);
 
-    const acBoost = 2;
-    const boostDuration = 60000; // 1 minute
+  async execute(message, params, avatar, services) {
+    const avatarId = avatar._id;
+    const stats = await services.dungeonService.getOrCreateStatsForAvatar(avatarId, services);
+    
+    stats.isDefending = true;
+    await services.dungeonService.updateAvatarStats(avatarId, stats);
 
-    // Store original dexterity to ensure correct removal
-    const originalDexterity = stats.dexterity;
-    stats.dexterity += 4; // +2 to AC via +4 dexterity
-    await this.dungeonService.updateAvatarStats(avatarId, stats);
-
-    setTimeout(async () => {
-      const currentStats = await this.dungeonService.getAvatarStats(avatarId);
-      // Only remove boost if dexterity hasn't been modified by other effects
-      if (currentStats.dexterity === stats.dexterity) {
-        currentStats.dexterity = originalDexterity;
-        await this.dungeonService.updateAvatarStats(avatarId, currentStats);
-      }
-    }, boostDuration);
-
-    return `🛡️ ${message.author.username} takes a defensive stance! AC increased by ${acBoost} for 1 minute.`;
+    return `🛡️ ${message.author.username} takes a defensive stance! AC increased by 2 until next attack.`;
   }
 
   getDescription() {
-    return 'Increase defense temporarily';
+    return 'Take a defensive stance (+2 AC until next attack)';
   }
 
   getSyntax() {

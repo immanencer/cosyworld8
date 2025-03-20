@@ -4,8 +4,8 @@ import { ItemService } from '../../item/itemService.mjs';
 import { sendAsWebhook } from '../../discordService.mjs';
 
 export class ItemTool extends BaseTool {
-  constructor(dungeonService) {
-    super(dungeonService);
+  constructor() {
+    super();
     if (!dungeonService.client) {
       throw new Error('Discord client is required for ItemTool');
     }

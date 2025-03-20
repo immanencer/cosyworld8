@@ -1,3 +1,5 @@
+import { loggers } from "winston";
+
 export class PromptService {
   constructor(avatarService, memoryService, dungeonService, imageProcessingService, client) {
     this.avatarService = avatarService;
@@ -52,7 +54,7 @@ Based on the above, reflect on your recent experiences and how they have shaped 
     const imageDescriptions = await this.getImageDescriptions(messages);
     const context = `You are in channel #${channel.name} in ${channel.guild?.name || 'Unknown Guild'}.`;
 
-    return `
+    const prompt = `
 ${identity}
 
 Dynamic Personality: ${dynamicPersonality}
@@ -69,6 +71,8 @@ ${availableCommands || 'No commands available.'}
 
 Respond to the conversation in character with a single short message.
     `.trim();
+
+    console.debug(`Prompt: ${prompt}`);
   }
 
   /**

@@ -352,10 +352,6 @@ export default [
     "rarity": "uncommon"
   },
   {
-    "model": "deepseek/deepseek-r1",
-    "rarity": "uncommon"
-  },
-  {
     "model": "openai/gpt-3.5-turbo-0613",
     "rarity": "uncommon"
   },
@@ -381,6 +377,10 @@ export default [
   },
   {
     "model": "cohere/command",
+    "rarity": "uncommon"
+  },
+  {
+    "model": "deepseek/deepseek-r1",
     "rarity": "uncommon"
   },
   {
@@ -524,6 +524,10 @@ export default [
     "rarity": "uncommon"
   },
   {
+    "model": "allenai/olmo-2-0325-32b-instruct",
+    "rarity": "common"
+  },
+  {
     "model": "sao10k/l3-euryale-70b",
     "rarity": "common"
   },
@@ -577,10 +581,6 @@ export default [
   },
   {
     "model": "mistralai/mixtral-8x7b",
-    "rarity": "common"
-  },
-  {
-    "model": "allenai/olmo-2-0325-32b-instruct",
     "rarity": "common"
   },
   {
@@ -696,6 +696,10 @@ export default [
     "rarity": "common"
   },
   {
+    "model": "mistralai/mistral-small-3.1-24b-instruct",
+    "rarity": "common"
+  },
+  {
     "model": "aion-labs/aion-rp-llama-3.1-8b",
     "rarity": "common"
   },
@@ -808,11 +812,11 @@ export default [
     "rarity": "common"
   },
   {
-    "model": "microsoft/phi-4-multimodal-instruct",
+    "model": "amazon/nova-micro-v1",
     "rarity": "common"
   },
   {
-    "model": "amazon/nova-micro-v1",
+    "model": "microsoft/phi-4-multimodal-instruct",
     "rarity": "common"
   },
   {
@@ -897,6 +901,18 @@ export default [
   },
   {
     "model": "meta-llama/llama-3.2-1b-instruct",
+    "rarity": "common"
+  },
+  {
+    "model": "mistralai/mistral-small-3.1-24b-instruct:free",
+    "rarity": "common"
+  },
+  {
+    "model": "open-r1/olympiccoder-7b:free",
+    "rarity": "common"
+  },
+  {
+    "model": "open-r1/olympiccoder-32b:free",
     "rarity": "common"
   },
   {

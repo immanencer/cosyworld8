@@ -2,8 +2,8 @@ import { BaseTool } from './BaseTool.mjs';
 import { AIService } from "../../aiService.mjs";
 
 export class CreationTool extends BaseTool {
-  constructor(dungeonService) {
-    super(dungeonService);
+  constructor() {
+    super();
     this.cache = new Map(); // Cache for generated descriptions
     this.aiService = new AIService(); // Initialize AIService here
   }

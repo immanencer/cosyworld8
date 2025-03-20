@@ -454,6 +454,32 @@ export class DungeonService {
     }
   }
 
+  async createAvatarStats(stats) {
+    const db = this.ensureDb();
+    const collection = db.collection('dungeon_stats');
+    await collection.deleteOne({ avatarId: stats.avatarId });
+    await collection.insertOne(stats);
+    return stats;
+  }
+
+  async getOrCreateStatsForAvatar(avatarId, services) {
+    const stats = await services.dungeonService.getAvatarStats(avatarId);
+
+    // Validate or regenerate stats
+    if (!stats || !services.statGenerationService.validateStats(stats)) {
+      const avatar = await services.avatarService.getAvatarById(avatarId);
+      const generatedStats = services.statGenerationService.generateStatsFromDate(
+        avatar?.createdAt || new Date());
+
+      return this.createAvatarStats({
+        _id: new ObjectId(),
+        avatarId,
+        ...generatedStats
+      });
+    }
+    return stats;
+  }
+
   /**
    * Retrieves an avatar's stats, falling back to defaults if not found.
    * @param {string|ObjectId} avatarId - The avatar's ID.
@@ -491,7 +517,7 @@ export class DungeonService {
   toObjectId(id) {
     if (id instanceof ObjectId) return id;
     try {
-      return new ObjectId(id);
+      return ObjectId(id);
     } catch (error) {
       this.logger.error(`Invalid ID format: ${id}`);
       throw new Error(`Invalid ID: ${id}`);

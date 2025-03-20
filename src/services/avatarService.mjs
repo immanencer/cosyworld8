@@ -24,7 +24,7 @@ import Replicate from 'replicate';
 import { AIService } from "./aiService.mjs";
 import process from 'process';
 import winston from 'winston';
-import { extractJSON } from './utils.mjs';
+
 import Fuse from 'fuse.js';
 import { uploadImage } from './s3imageService/s3imageService.mjs';
 import { ObjectId } from 'mongodb';

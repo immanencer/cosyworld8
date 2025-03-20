@@ -32,6 +32,12 @@ export class OpenRouterAIService {
       frequency_penalty: 0,
       presence_penalty: 0,
     };
+
+    this.defaultVisionOptions = {
+      model: this.visionModel,
+      temperature: 0.5,
+      max_tokens: 200,
+    };
   }
 
   async selectRandomModel() {
@@ -105,7 +111,7 @@ export class OpenRouterAIService {
     let fallback = false;
     if (!this.modelIsAvailable(mergedOptions.model)) {
       console.error('Invalid model provided to chat:', mergedOptions.model);
-      mergedOptions.model = 'auto';
+      mergedOptions.model = 'gryphe/mythomax-l2-13b';
       fallback = true;
     }
 
@@ -132,10 +138,10 @@ export class OpenRouterAIService {
       if (!result.content) {
         console.error('Invalid response from OpenRouter during chat.');
         console.log(JSON.stringify(result, null, 2));
-        return '-# [⚠️ No response from OpenRouter]';
+        return '\n-# [⚠️ No response from OpenRouter]';
       }
 
-      return (result.content.trim() || '...') + (fallback ? '-# Fallback (auto) model used.' : '');
+      return (result.content.trim() || '...') + (fallback ? '\n-# [⚠️ Fallback (auto) model used.]' : '');
     } catch (error) {
       console.error('Error while chatting with OpenRouter:', error);
       // Retry if the error is a rate limit error
@@ -166,5 +172,47 @@ export class OpenRouterAIService {
       return `The ${item.name} remains silent.`;
     }
     return completion;
+  }
+
+  /**
+   * Analyzes an image and returns a description using Gemini Flash 2.0.
+   * @param {string} imageUrl - The URL of the image to analyze.
+   * @returns {Promise<string|null>} - The description of the image or null if analysis fails.
+   */
+  async analyzeImage(imageUrl) {
+    try {
+      const messages = [
+        {
+          role: 'user',
+          content: [
+            {
+              type: 'text',
+              text: 'Describe this image in detail.',
+            },
+            {
+              type: 'image_url',
+              image_url: { url: imageUrl },
+            },
+          ],
+        },
+      ];
+
+      const response = await this.openai.chat.completions.create({
+        ...this.defaultVisionOptions,
+        messages,
+      });
+
+      if (!response || !response.choices || response.choices.length === 0) {
+        console.error('Invalid response from OpenRouter during image analysis.');
+        return null;
+      }
+
+      console.log(response.choices[0].message.content);
+
+      return response.choices[0].message.content.trim();
+    } catch (error) {
+      console.error('Error analyzing image with OpenRouter:', error);
+      return null;
+    }
   }
 }
