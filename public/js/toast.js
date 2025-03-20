@@ -1,4 +1,3 @@
-
 // Toast Notification System
 const Toast = (() => {
   // Container for toast messages
@@ -126,3 +125,23 @@ const Toast = (() => {
     show
   };
 })();
+
+export function showToast(message) {
+  const container = document.getElementById("toast-container");
+  if (!container) {
+    console.log('Toast message (no container):', message);
+    alert(message);
+    return;
+  }
+
+  const toast = document.createElement("div");
+  toast.className = "toast bg-gray-800 text-white p-3 rounded shadow";
+  toast.textContent = message;
+  container.appendChild(toast);
+
+  setTimeout(() => {
+    if (toast.parentNode === container) {
+      toast.remove();
+    }
+  }, 3000);
+}

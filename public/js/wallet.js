@@ -74,3 +74,29 @@ document.addEventListener("DOMContentLoaded", () => {
   }
   updateWalletUI();
 });
+
+export function initializeWallet() {
+  const walletContainer = document.querySelector(".wallet-container");
+  if (walletContainer && !walletContainer.innerHTML.trim()) {
+    walletContainer.innerHTML = `<button onclick="connectWallet()" class="px-4 py-2 bg-blue-600 text-white rounded">Connect Wallet</button>`;
+  }
+
+  const provider = window?.phantom?.solana;
+  if (provider) {
+    provider.connect({ onlyIfTrusted: true })
+      .then((resp) => {
+        if (resp?.publicKey) {
+          window.state = window.state || {};
+          window.state.wallet = { publicKey: resp.publicKey.toString() };
+          updateWalletUI();
+          if (window.loadContent) window.loadContent();
+        }
+      })
+      .catch((err) => console.warn("Auto-connect failed:", err));
+  }
+
+  function updateWalletUI() {
+    const walletAddress = window.state?.wallet?.publicKey || "Not connected";
+    walletContainer.innerHTML = `<span class="text-white">Wallet: ${walletAddress}</span>`;
+  }
+}

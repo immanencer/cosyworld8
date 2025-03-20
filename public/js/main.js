@@ -1,3 +1,8 @@
+import { initializeTabs } from './tabs.js';
+import { initializeWallet } from './wallet.js';
+import { initializeContentLoader } from './contentLoader.js';
+import { showToast } from './toast.js';
+
 // Define base URL for API requests
 const API_BASE_URL = "/api";
 
@@ -720,6 +725,14 @@ function showToast(message) {
 
 // Initialization
 document.addEventListener("DOMContentLoaded", () => {
+  initializeWallet();
+  initializeTabs();
+  initializeContentLoader();
+  showToast("Welcome to Monstone Sanctum!");
+});
+
+// Initialization
+document.addEventListener("DOMContentLoaded", () => {
   // Inject wallet connect button if missing
   const walletContainer = document.querySelector(".wallet-container");
   if (walletContainer && !walletContainer.innerHTML.trim()) {
@@ -1103,4 +1116,102 @@ async function showAvatarDetails(avatarId) {
             </button>` : ''}
         </div>
         ${xAuthStatus.message ? `<p class="text-sm mt-2 text-gray-400">${xAuthStatus.message}</p>` : ''}
-        ${xAuthStatus.expiresAt ? `<p class="text-sm mt-1 text-gray-400">Expires: ${new Date(xAuthStatus.expiresAt).toLocaleString()}</p
+        ${xAuthStatus.expiresAt ? `<p class="text-sm mt-1 text-gray-400">Expires: ${new Date(xAuthStatus.expiresAt).toLocaleString()}</p>` : ''}
+      </div>
+    ` : '';
+
+    // Add claim button only if avatar is not claimed and wallet is connected
+    const claimSection = !isAvatarClaimed && state.wallet ?
+      `<button id="claim-btn" class="mt-4 bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded">
+        Claim this Avatar
+      </button>` : '';
+
+    // Prepare claim info for avatar details
+    const claimInfo = {
+      claimed: isAvatarClaimed,
+      claimedBy: claimantAddress,
+      isClaimedByCurrentWallet
+    };
+
+    // Use our AvatarDetails component for the modal content
+    modalContent.innerHTML = `
+      <div class="relative p-6">
+        <!-- Close button -->
+        <button onclick="closeAvatarModal()" class="absolute top-4 right-4 text-gray-400 hover:text-white p-2">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
+        
+        <!-- Avatar Details -->
+        ${window.AvatarDetails.renderAvatarDetails(avatar, { claimInfo })}
+        
+        <!-- Additional sections for narratives, actions, etc. -->
+        <div class="mt-6 grid grid-cols-1 md:grid-cols-2 gap-6">
+          <!-- Narratives section -->
+          <div class="bg-gray-800 p-4 rounded-lg">
+            <h3 class="text-lg font-bold mb-2">Recent Narratives</h3>
+            ${avatar.narratives.length > 0 ? `
+              <div class="space-y-3">
+                ${avatar.narratives.slice(0, 3).map(narrative => `
+                  <div class="bg-gray-700/50 p-3 rounded">
+                    <p class="text-sm text-gray-300">${narrative.content}</p>
+                    <div class="text-xs text-gray-500 mt-1">
+                      ${new Date(narrative.createdAt).toLocaleDateString()}
+                    </div>
+                  </div>
+                `).join('')}
+              </div>
+            ` : '<p class="text-gray-400">No narratives available.</p>'}
+          </div>
+          
+          <!-- Actions section -->
+          <div class="bg-gray-800 p-4 rounded-lg">
+            <h3 class="text-lg font-bold mb-2">Recent Actions</h3>
+            ${avatar.actions.length > 0 ? `
+              <div class="space-y-2">
+                ${avatar.actions.slice(0, 5).map(action => `
+                  <div class="text-sm flex items-center gap-2 bg-gray-700/30 p-2 rounded">
+                    <span class="text-lg">
+                      ${action.action === "attack" ? "⚔️" :
+                        action.action === "defend" ? "🛡️" :
+                          action.action === "move" ? "🚶" :
+                            action.action === "remember" ? "💭" : "❓"}
+                    </span>
+                    <span>${action.description || action.action}</span>
+                  </div>
+                `).join('')}
+              </div>
+            ` : '<p class="text-gray-400">No recent actions.</p>'}
+          </div>
+        </div>
+        
+        <!-- X Auth Section -->
+        ${xAuthSection}
+
+        <!-- Claim Section -->
+        ${claimSection}
+      </div>
+    `;
+
+    if (xAuthStatus.showButton) {
+      const xauthButton = document.getElementById("xauth-button");
+      if (xauthButton) {
+        xauthButton.addEventListener("click", () => initiateXAuth(avatarId));
+      }
+    }
+
+    const claimBtn = document.getElementById('claim-btn');
+    if (claimBtn) {
+      claimBtn.addEventListener('click', () => claimAvatar(avatarId));
+    }
+  } catch (err) {
+    console.error("Error loading avatar details:", err);
+    modalContent.innerHTML = `
+      <div class="text-center py-12 text-red-500">
+        Failed to load avatar details: ${err.message}
+        <button onclick="closeAvatarModal()" class="block mx-auto mt-4 px-4 py-2 bg-gray-700 rounded">Close</button>
+      </div>
+    `;
+  }
+}
