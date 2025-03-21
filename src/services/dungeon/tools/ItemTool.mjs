@@ -4,15 +4,13 @@ import { ItemService } from '../../item/itemService.mjs';
 import { sendAsWebhook } from '../../discordService.mjs';
 
 export class ItemTool extends BaseTool {
-  constructor() {
+  constructor(services) {
     super();
-    if (!dungeonService.client) {
-      throw new Error('Discord client is required for ItemTool');
-    }
+    this.avatarService = services.avatarService;
     this.itemService = new ItemService(
-      dungeonService.client,
-      dungeonService.aiService,
-      dungeonService.db
+      services.client,
+      services.aiService,
+      services.databaseService.db
     );
 
     this.name = 'item';
@@ -57,7 +55,7 @@ export class ItemTool extends BaseTool {
             selectedItem = sortedInventory[nextIndex];
           }
           avatar.selectedItemId = selectedItem._id;
-          await this.dungeonService.avatarService.updateAvatar(avatar);
+          await this.avatarService.updateAvatar(avatar);
           return `-# [${this.emoji} Selected item: ${selectedItem.name}]`;
         }
         case 'take': {
@@ -71,7 +69,7 @@ export class ItemTool extends BaseTool {
           }
           await this.postItemDetails(message.channel.id, takenItem);
           avatar.inventory.push(takenItem);
-          await this.dungeonService.avatarService.updateAvatar(avatar);
+          await this.avatarService.updateAvatar(avatar);
           return `-# [${this.emoji} ${avatar.name} has taken the item "${takenItem.name}."]`;
         }
         case 'drop': {
@@ -85,7 +83,7 @@ export class ItemTool extends BaseTool {
           await this.itemService.dropItem(avatar, selectedItem, locationId);
           avatar.inventory = avatar.inventory.filter(i => i._id !== selectedItem._id);
           avatar.selectedItemId = null;
-          await this.dungeonService.avatarService.updateAvatar(avatar);
+          await this.avatarService.updateAvatar(avatar);
           await this.postItemDetails(message.channel.id, selectedItem);
           return `-# [${this.emoji} ${avatar.name} has dropped the item "${selectedItem.name}."]`;
         }

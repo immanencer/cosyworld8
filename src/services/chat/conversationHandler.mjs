@@ -371,7 +371,7 @@ Based on all of the above context, share an updated personality that reflects yo
         .map(msg => `[Image: ${msg.imageDescription}]`);
       const context = { channelName: channel.name, guildName: channel.guild?.name || 'Unknown Guild' };
       const systemPrompt = await this.buildSystemPrompt(avatar);
-      const dungeonPrompt = await this.buildDungeonPrompt(avatar);
+      const dungeonPrompt = await this.buildDungeonPrompt(avatar, channel.guild.id);
       const lastNarrative = await this.getLastNarrative(avatar._id);
       const channelSummary = await this.getChannelSummary(avatar._id, channel.id);
       const contextualPrompt = `
@@ -478,8 +478,8 @@ Based on all of the above context, share an updated personality that reflects yo
     }
   }
 
-  async buildDungeonPrompt(avatar) {
-    const commandsDescription = this.dungeonService.getCommandsDescription(avatar) || '';
+  async buildDungeonPrompt(avatar, guildId) {
+    const commandsDescription = this.dungeonService.getCommandsDescription(guildId) || '';
     const location = await this.dungeonService.getLocationDescription(avatar.channelId, avatar.channelName);
     const items = await this.dungeonService.getItemsDescription(avatar);
     const locationText = location ? `You are currently in ${location.name}. ${location.description}` : `You are in ${avatar.channelName || 'a chat channel'}.`;

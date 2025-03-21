@@ -1,5 +1,5 @@
 import { BaseTool } from './BaseTool.mjs';
-import { sendAsWebhook, sendAvatarProfileEmbedFromObject } from '../../../services/discordService.mjs';
+import { sendAsWebhook } from '../../../services/discordService.mjs';
 import { EmbedBuilder } from 'discord.js';
 
 export class MoveTool extends BaseTool {
@@ -7,12 +7,13 @@ export class MoveTool extends BaseTool {
    * Constructs a new MoveTool.
    * @param {Object} dungeonService - The dungeon service (must include a Discord client).
    */
-  constructor() {
+  constructor(services) {
     super();
-    if (!dungeonService.client) {
+    if (!services.client) {
       throw new Error('Discord client is required for MoveTool');
     }
-    this.locationService = dungeonService.locationService;
+    this.dungeonService = services.dungeonService;
+    this.locationService = services.dungeonService.locationService;
     this.name = 'move';
     this.description = 'Move to the location specified, creating it if it does not exist.';
     this.emoji = '🏃‍♂️';
@@ -87,7 +88,7 @@ export class MoveTool extends BaseTool {
    * @param {Object} avatar - The avatar (must have at least { name, imageUrl, _id, channelId }).
    * @returns {Promise<string>} A status or error message.
    */
-  async execute(message, params, avatar) {
+  async execute(message, params, avatar, services) {
     // Get the destination
     const destination = params.join(' ');
     if (!destination) {
@@ -132,7 +133,7 @@ export class MoveTool extends BaseTool {
       // 5. Update the avatar's position in the database
       // Don't send profile yet - we'll do it separately below
       const updatedAvatar = await this.dungeonService.updateAvatarPosition(
-        avatar._id, 
+        avatar._id,
         newLocation.channel.id,
         currentLocationId,
         false // Don't send profile in updateAvatarPosition, we'll do it here

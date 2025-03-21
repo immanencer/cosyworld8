@@ -138,6 +138,7 @@ class ConfigService {
       // First, check if we have a valid guild ID
       if (!guildId) {
         console.warn(`Invalid guild ID provided to getGuildConfig: ${guildId}`);
+        throw new Error('Invalid guild ID');
         return { guildId: null, whitelisted: false, summonerRole: "🔮", summonEmoji: "🔮" };
       }
 
@@ -155,11 +156,11 @@ class ConfigService {
       // Option 1: Use the provided DB
       if (db) {
         dbToUse = db;
-      } 
+      }
       // Option 2: Try to get from client
       else if (this.client && this.client.db) {
         dbToUse = this.client.db;
-      } 
+      }
       // Option 3: Try to get from global database service
       else if (global.databaseService) {
         // First check if already connected
@@ -169,7 +170,7 @@ class ConfigService {
         if (!dbToUse) {
           try {
             // Attempt to get a connection with a short timeout
-            const timeoutPromise = new Promise((_, reject) => 
+            const timeoutPromise = new Promise((_, reject) =>
               setTimeout(() => reject(new Error('Database connection timeout')), 500));
 
             // Race between a connection attempt and timeout
