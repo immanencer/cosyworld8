@@ -34,7 +34,7 @@ export class OpenRouterAIService {
     };
 
     this.defaultVisionOptions = {
-      model: this.visionModel,
+      model: '"x-ai/grok-2-vision-1212"',
       temperature: 0.5,
       max_tokens: 200,
     };
@@ -191,7 +191,7 @@ export class OpenRouterAIService {
             },
             {
               type: 'image_url',
-              image_url: { url: imageUrl },
+              image_url: imageUrl,
             },
           ],
         },
