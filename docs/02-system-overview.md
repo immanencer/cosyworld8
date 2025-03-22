@@ -1,5 +1,5 @@
 # System Overview
-Monstone Sanctum is an **ecosystem** composed of interconnected services, each responsible for a facet of AI life and gameplay. These services integrate AI modeling, blockchain storage, distributed data, and real-time user interactions.
+Moonstone Sanctum is an **ecosystem** composed of interconnected services, each responsible for a facet of AI life and gameplay. These services integrate AI modeling, blockchain storage, distributed data, and real-time user interactions across multiple platforms.
 
 ### **1. Chat Service**
 - **Function**: Orchestrates immersive conversations between users and avatars.  

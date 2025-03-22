@@ -6,11 +6,16 @@
   "scripts": {
     "start": "concurrently \"node src/index.mjs\" \"node server/app.mjs\"",
     "dev": "node src/index.mjs",
-    "build:client": "webpack --config webpack.config.js",
+    "build:js": "webpack --mode production",
+    "dev:js": "webpack --mode development --watch",
+    "build:css": "cross-env NODE_ENV=production tailwindcss -i ./src/tailwind.css -o ./dist/css/tailwind.css --minify",
+    "dev:css": "tailwindcss -i ./src/tailwind.css -o ./public/css/tailwind.css --watch",
+    "build": "npm run clean && npm run build:js && npm run build:css && npm run copy-assets",
+    "clean": "rimraf dist",
+    "copy-assets": "node scripts/copy-assets.mjs",
     "wiki": "npm run build:wiki",
     "serve": "node server/app.mjs",
-    "build": "npm run build:css",
-    "build:css": "tailwindcss -i ./src/tailwind.css -o ./public/css/tailwind.css --minify"
+    "serve:prod": "cross-env NODE_ENV=production node server/app.mjs"
   },
   "keywords": [
     "discord",
@@ -60,7 +65,8 @@
     "tweetnacl": "^1.0.3",
     "twitter-api-v2": "^1.18.2",
     "undici": "^7.3.0",
-    "winston": "^3.15.0"
+    "winston": "^3.15.0",
+    "yallist": "^5.0.0"
   },
   "devDependencies": {
     "@babel/core": "^7.26.9",
@@ -69,7 +75,11 @@
     "@babel/preset-react": "^7.26.3",
     "babel-loader": "^9.2.1",
     "buffer": "^6.0.3",
+    "cross-env": "^7.0.3",
     "crypto-browserify": "^3.12.1",
+    "cssnano": "^6.0.5",
+    "html-webpack-plugin": "^5.6.0",
+    "rimraf": "^5.0.10",
     "stream-browserify": "^3.0.0",
     "webpack": "^5.98.0",
     "webpack-cli": "^6.0.1"

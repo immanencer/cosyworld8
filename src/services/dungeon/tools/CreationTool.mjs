@@ -2,10 +2,12 @@ import { BaseTool } from './BaseTool.mjs';
 import { AIService } from "../../aiService.mjs";
 
 export class CreationTool extends BaseTool {
-  constructor() {
+  constructor(services) {
     super();
+    this.services = services;
     this.cache = new Map(); // Cache for generated descriptions
-    this.aiService = new AIService(); // Initialize AIService here
+    this.aiService = services?.aiService || new AIService(); // Use service if available or create new
+    this.logger = services?.logger;
   }
 
   async execute(message, params, command) {
@@ -53,7 +55,7 @@ export class CreationTool extends BaseTool {
       const data = await response.json();
       return data.choices[0].message.content;
     } catch (error) {
-      this.dungeonService.logger.error(`Error generating narrative: ${error.message}`);
+      this.logger?.error(`Error generating narrative: ${error.message}`);
       return "The mysterious power fizzles unexpectedly...";
     }
   }

@@ -1,0 +1,19 @@
+[Unit]
+Description=Moonstone Sanctum Application
+After=network.target mongodb.service
+
+[Service]
+Type=simple
+User=nodejs
+WorkingDirectory=/var/www/moonstone-sanctum
+Environment=NODE_ENV=production
+Environment=WEB_PORT=3001
+ExecStart=/usr/bin/node server/app.mjs
+Restart=on-failure
+RestartSec=10
+StandardOutput=syslog
+StandardError=syslog
+SyslogIdentifier=moonstone-sanctum
+
+[Install]
+WantedBy=multi-user.target

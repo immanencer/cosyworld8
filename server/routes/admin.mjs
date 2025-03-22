@@ -582,6 +582,94 @@ function createRouter(db) {
     }
   });
 
+  // Preview prompt endpoint
+  router.get('/admin/avatars/:id/preview-prompt', asyncHandler(async (req, res) => {
+    let id;
+    try {
+      id = new ObjectId(req.params.id);
+    } catch (err) {
+      return res.status(400).json({ error: 'Invalid ID format' });
+    }
+
+    const avatar = await db.avatars.findOne({ _id: id });
+    if (!avatar) {
+      return res.status(404).json({ error: 'Avatar not found' });
+    }
+
+    try {
+      // Build a sample contextual prompt
+      const conversationHandler = req.app.locals.services?.conversationHandler;
+      
+      // If we have a conversation handler, use it to build an accurate prompt
+      if (conversationHandler) {
+        // Get the system prompt and dungeon prompt for this avatar
+        const systemPrompt = await conversationHandler.buildSystemPrompt(avatar);
+        let dungeonPrompt = '';
+        
+        if (avatar.channelId) {
+          try {
+            // Get guild ID from channel
+            const channel = req.app.locals.client?.channels.cache.get(avatar.channelId);
+            if (channel?.guild) {
+              dungeonPrompt = await conversationHandler.buildDungeonPrompt(avatar, channel.guild.id);
+            }
+          } catch (error) {
+            console.error('Error getting guild context:', error);
+          }
+        }
+
+        // Fetch summary if available
+        let channelSummary = '';
+        if (avatar.channelId && conversationHandler.getChannelSummary) {
+          try {
+            channelSummary = await conversationHandler.getChannelSummary(avatar._id, avatar.channelId);
+          } catch (error) {
+            console.error('Error getting channel summary:', error);
+          }
+        }
+
+        // Build the final preview prompt
+        const previewPrompt = `
+// System Prompt:
+${systemPrompt}
+
+// Channel Summary:
+${channelSummary || 'No channel summary available'}
+
+// Available Commands:
+${dungeonPrompt || 'No command information available'}
+
+// Example User Message:
+Hello ${avatar.name}, what's on your mind today?
+`;
+
+        return res.json({ prompt: previewPrompt });
+      } else {
+        // Fallback to a simple example prompt
+        const examplePrompt = `
+// System Prompt:
+You are ${avatar.name}.
+${avatar.personality || 'No personality defined'}
+${avatar.description || 'No description defined'}
+
+// Example Commands:
+🔮 <any concept or thing> - Summon an avatar to your location.
+⚔️ <target> - Attack another avatar.
+🛡️ - Defend yourself against attacks.
+🧠 <topic> - Access your memories on a topic.
+
+// Example User Message:
+Hello ${avatar.name}, what's on your mind today?
+`;
+        
+        return res.json({ prompt: examplePrompt });
+      }
+    } catch (error) {
+      console.error('Error generating preview prompt:', error);
+      return res.status(500).json({ error: 'Failed to generate preview prompt' });
+    }
+  }));
+
   // Add admin routes to main router
   router.use('/admin', adminRouter);
 

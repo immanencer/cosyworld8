@@ -790,7 +790,26 @@ export class AvatarGenerationService {
         const result = await this.db.collection(this.AVATARS_COLLECTION).insertOne(avatarDocument);
         if (result.acknowledged === true) {
           this.logger.info(`Avatar "${avatar.name} ${avatar.emoji}" created successfully with ID: ${result.insertedId}`);
-          return { _id: result.insertedId, ...avatarDocument };
+          
+          // Create a complete avatar object with the new ID
+          const newAvatar = { 
+            _id: result.insertedId, 
+            ...avatarDocument 
+          };
+          
+          // Validate the avatar object before returning
+          if (!newAvatar._id || !newAvatar.name) {
+            this.logger.error(`Created avatar is missing required fields: ${JSON.stringify(newAvatar)}`);
+            // Try to retrieve the full document from the database
+            const retrievedAvatar = await this.getAvatarById(result.insertedId);
+            if (retrievedAvatar && retrievedAvatar._id && retrievedAvatar.name) {
+              this.logger.info(`Retrieved complete avatar from database`);
+              return retrievedAvatar;
+            }
+            this.logger.error(`Could not retrieve valid avatar, this is a critical error`);
+          }
+          
+          return newAvatar;
         } else {
           this.logger.error('Failed to insert avatar into the database.');
           return null;
@@ -1016,6 +1035,69 @@ export class AvatarGenerationService {
     } catch (error) {
       this.logger.error(`Error in getOrCreateUniqueAvatarForUser: ${error.message}`);
       return null;
+    }
+  }
+
+  /**
+   * Gets or summons a user's avatar to the current channel.
+   * If the user doesn't have an avatar, it will create one.
+   * If the avatar is not in the current channel, it will move it there.
+   * 
+   * @param {Object} message - Discord message object
+   * @param {Object} services - Services object containing required services
+   * @param {string} [customPrompt] - Optional custom prompt to use for avatar creation
+   * @returns {Promise<Object>} The avatar object
+   */
+  async summonUserAvatar(message, services, customPrompt = null) {
+    try {
+      if (!message || !message.author) {
+        this.logger.error('Invalid message object provided to summonUserAvatar');
+        return null;
+      }
+      
+      const userId = message.author.id;
+      const userName = message.author.username;
+      const channelId = message.channel.id;
+      
+      this.logger.info(`Summoning avatar for user ${userName}(${userId}) in channel ${channelId}`);
+      
+      // Use the existing method to get or create the avatar
+      const result = await this.getOrCreateUniqueAvatarForUser(userId, 
+        customPrompt || `Create an avatar that represents ${userName}. Make it creative, unique, and memorable.`, 
+        channelId);
+      
+      if (!result) {
+        this.logger.error(`getOrCreateUniqueAvatarForUser returned null for user ${userName}`);
+        throw new Error(`Failed to get or create avatar for user ${userName}`);
+      }
+      
+      if (!result.avatar) {
+        this.logger.error(`No avatar found in result for user ${userName}: ${JSON.stringify(result)}`);
+        throw new Error(`Failed to get or create avatar for user ${userName}`);
+      }
+      
+      // Verify the avatar has all required properties
+      if (!result.avatar._id || !result.avatar.name) {
+        this.logger.error(`Incomplete avatar data for user ${userName}: ${JSON.stringify(result.avatar)}`);
+        throw new Error(`Incomplete avatar data for user ${userName}`);
+      }
+      
+      let userAvatar = result.avatar;
+      
+      // If avatar is not in this channel, move it
+      if (userAvatar.channelId !== channelId) {
+        this.logger.info(`Moving avatar ${userAvatar.name} to channel ${channelId}`);
+        await services.dungeonService.updateAvatarPosition(userAvatar._id, channelId, userAvatar.channelId);
+        userAvatar = await this.getAvatarById(userAvatar._id);
+      }
+      
+      return {
+        avatar: userAvatar,
+        isNewAvatar: result.new
+      };
+    } catch (error) {
+      this.logger.error(`Error summoning user avatar: ${error.message}`);
+      throw error;
     }
   }
 }

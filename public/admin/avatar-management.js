@@ -108,6 +108,32 @@ document.addEventListener("DOMContentLoaded", () => {
     elements.closeModal.addEventListener("click", closeModal);
     elements.cancelEdit.addEventListener("click", closeModal);
 
+    // Preview Prompt button
+    document.getElementById("preview-prompt").addEventListener("click", async () => {
+      const avatarId = elements.avatarForm.dataset.avatarId;
+      if (!avatarId) {
+        showNotification("Please save the avatar first to preview prompts", "error");
+        return;
+      }
+      
+      const previewContainer = document.getElementById("prompt-preview-container");
+      const previewContent = document.getElementById("prompt-preview-content");
+      
+      try {
+        previewContent.innerHTML = "Loading preview...";
+        previewContainer.classList.remove("hidden");
+        
+        const response = await fetch(`/api/admin/avatars/${avatarId}/preview-prompt`);
+        if (!response.ok) throw new Error(`HTTP error ${response.status}`);
+        
+        const data = await response.json();
+        previewContent.innerHTML = data.prompt || "No prompt preview available";
+      } catch (error) {
+        console.error("Error fetching prompt preview:", error);
+        previewContent.innerHTML = `Error loading preview: ${error.message}`;
+      }
+    });
+
     // Close modal with Escape key
     document.addEventListener("keydown", (e) => {
       if (

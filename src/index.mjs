@@ -27,20 +27,33 @@ const logger = winston.createLogger({
 
 async function shutdown(signal, services) {
   logger.info(`Received ${signal}. Shutting down gracefully...`);
-  await services.client.destroy();
-  logger.info("Disconnected from Discord.");
-  await services.databaseService.close();
-  logger.info("Closed MongoDB connection.");
-  if (services.chatService) {
-    await services.chatService.stop();
-    logger.info("ChatService stopped.");
+  
+  try {
+    if (services.client) {
+      await services.client.destroy();
+      logger.info("Disconnected from Discord.");
+    }
+    
+    if (services.databaseService) {
+      await services.databaseService.close();
+      logger.info("Closed MongoDB connection.");
+    }
+    
+    if (services.chatService) {
+      await services.chatService.stop();
+      logger.info("ChatService stopped.");
+    }
+  } catch (error) {
+    logger.error(`Error during shutdown: ${error.message}`);
   }
+  
   process.exit(0);
 }
 
 async function main() {
+  let services = { client };
   try {
-    const services = await initializeServices(logger, client);
+    services = await initializeServices(logger, client);
 
     await client.login(process.env.DISCORD_BOT_TOKEN);
     await new Promise((resolve) => client.once("ready", resolve));

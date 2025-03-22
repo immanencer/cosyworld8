@@ -67,7 +67,7 @@ export class DungeonService {
       this.toolEmojis.set(emoji, toolName);
     });
 
-    this.creationTool = new CreationTool(this);
+    this.creationTool = new CreationTool(this.services);
     this.defaultStats = { hp: 100, attack: 10, defense: 5 };
 
     // Runtime caches
@@ -182,7 +182,7 @@ export class DungeonService {
    * @throws {Error} If tool execution fails critically.
    */
   async processAction(message, command, params, avatar) {
-    this.logger.info(`Processing command '${command}' by ${avatar.name} (ID: ${avatar.id})`);
+    this.logger.info(`Processing command '${command}' by ${avatar.name} (ID: ${avatar._id})`);
     const tool = this.tools.get(command);
 
     if (!tool) {

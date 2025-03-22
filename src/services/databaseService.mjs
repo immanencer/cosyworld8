@@ -13,18 +13,28 @@ export class DatabaseService {
     this.db = null;
     this.connected = false;
     this.reconnectDelay = 5000;
-    this.dbName = process.env.MONGO_DB_NAME;
+    this.dbName = process.env.MONGO_DB_NAME || 'moonstone';
 
     DatabaseService.instance = this;
   }
 
   async connect() {
-
     if (this.db) {
       return this.db;
     }
+    
+    // Check if we're in development mode
+    const isDev = process.env.NODE_ENV === 'development' || process.env.NODE_ENV === 'test' || !process.env.NODE_ENV;
+    
     if (!process.env.MONGO_URI) {
       this.logger.error('MongoDB URI not provided in environment variables.');
+      
+      if (isDev) {
+        this.logger.warn('Creating mock database for development mode');
+        this.setupMockDatabase();
+        return this.db;
+      }
+      
       return null;
     }
 
@@ -34,6 +44,7 @@ export class DatabaseService {
         serverSelectionTimeoutMS: 5000,
         connectTimeoutMS: 10000,
       });
+      
       await this.dbClient.connect();
       this.db = this.dbClient.db(this.dbName);
       this.connected = true;
@@ -43,12 +54,20 @@ export class DatabaseService {
     } catch (error) {
       this.connected = false;
       this.logger.error(`MongoDB connection failed: ${error.message}`);
+      
       if (this.dbClient) {
         try {
           await this.dbClient.close();
         } catch (closeError) {
           this.logger.error(`Error closing MongoDB connection: ${closeError.message}`);
         }
+      }
+
+      // In development mode, use mock database if connection fails
+      if (isDev) {
+        this.logger.warn('Using mock database due to connection failure in development mode');
+        this.setupMockDatabase();
+        return this.db;
       }
 
       // Set up reconnection with exponential backoff
@@ -58,6 +77,30 @@ export class DatabaseService {
       this.reconnectDelay = reconnectDelay;
       return null;
     }
+  }
+  
+  /**
+   * Sets up a mock database for development/testing
+   */
+  setupMockDatabase() {
+    // Create a simple in-memory mock database
+    this.db = {
+      collection: (name) => ({
+        find: () => ({ toArray: async () => [] }),
+        findOne: async () => null,
+        insertOne: async () => ({ insertedId: 'mock-id' }),
+        updateOne: async () => ({ modifiedCount: 1 }),
+        deleteOne: async () => ({ deletedCount: 1 }),
+        countDocuments: async () => 0,
+        createIndex: async () => 'mock-index',
+        createIndexes: async () => ['mock-index-1', 'mock-index-2'],
+      }),
+      listCollections: () => ({ toArray: async () => [] }),
+      createCollection: async () => ({}),
+    };
+    
+    this.connected = true;
+    this.logger.info('Mock database initialized for development mode');
   }
 
   getDatabase() {

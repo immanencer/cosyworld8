@@ -375,14 +375,14 @@ async function buildAvatarComponents(avatar) {
       chain: 'base',
     });
 
-    if (crossmintData?.templateId) {
-      const publicUrl = process.env.PUBLIC_URL || 'https://default-url.com';
-      const collectButton = new ButtonBuilder()
-        .setLabel('Collect on Base')
-        .setStyle(ButtonStyle.Link)
-        .setURL(`${publicUrl}/checkout.html?templateId=${crossmintData.templateId}&collectionId=${crossmintData.collectionId}`);
-      components.push(new ActionRowBuilder().addComponents(collectButton));
-    }
+    // if (crossmintData?.templateId) {
+    //   const publicUrl = process.env.PUBLIC_URL || 'https://default-url.com';
+    //   const collectButton = new ButtonBuilder()
+    //     .setLabel('Collect on Base')
+    //     .setStyle(ButtonStyle.Link)
+    //     .setURL(`${publicUrl}/checkout.html?templateId=${crossmintData.templateId}&collectionId=${crossmintData.collectionId}`);
+    //   components.push(new ActionRowBuilder().addComponents(collectButton));
+    // }
   } catch (error) {
     logger.error(`Failed to fetch crossmint data for avatar ${avatar._id}: ${error.message}`);
   }

@@ -1,11 +1,15 @@
 import { BaseTool } from './BaseTool.mjs';
 
 export class AttackTool extends BaseTool {
-  constructor() {
+  constructor(services) {
     super();
     this.name = 'attack';
     this.description = 'Attacks the specified avatar';
     this.emoji = '⚔️';
+    this.configService = services?.configService;
+    this.avatarService = services?.avatarService;
+    this.databaseService = services?.databaseService;
+    this.dungeonService = services?.dungeonService;
   }
   async execute(message, params, avatar, services) {
     if (!params || !params[0]) {
@@ -68,7 +72,7 @@ export class AttackTool extends BaseTool {
     if (targetAvatar.lives <= 0) {
       targetAvatar.status = 'dead';
       targetAvatar.deathTimestamp = Date.now();
-      await this.dungeonService.avatarService.updateAvatar(targetAvatar);
+      await services.avatarService.updateAvatar(targetAvatar);
       return `💀 ${message.author.username} has dealt the final blow! ${targetAvatar.name} has fallen permanently! ☠️`;
     }
 
@@ -86,7 +90,27 @@ export class AttackTool extends BaseTool {
     return 'Attack another avatar';
   }
 
-  getSyntax() {
-    return '⚔️ <target>';
+  async getEmoji(guildId) {
+    if (!this.configService) return this.emoji;
+    
+    try {
+      const guildConfig = await this.configService.getGuildConfig(
+        this.databaseService.getDatabase(),
+        guildId
+      );
+      
+      if (guildConfig?.toolEmojis?.attack) {
+        return guildConfig.toolEmojis.attack;
+      }
+      return this.emoji;
+    } catch (error) {
+      console.error(`Error getting attack emoji from config: ${error.message}`);
+      return this.emoji;
+    }
+  }
+
+  async getSyntax(guildId) {
+    const emoji = await this.getEmoji(guildId);
+    return `${emoji} <target>`;
   }
 }

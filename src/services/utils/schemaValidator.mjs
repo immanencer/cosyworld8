@@ -1,10 +1,10 @@
 
 import Ajv from 'ajv';
 import addFormats from 'ajv-formats';
-import itemSchema from '../../schemas/itemSchema.json' assert { type: "json" };
-import avatarSchema from '../../schemas/avatarSchema.json' assert { type: "json" };
-import locationSchema from '../../schemas/locationSchema.json' assert { type: "json" };
-import questSchema from '../../schemas/questSchema.json' assert { type: "json" };
+import itemSchema from '../../schemas/itemSchema.json' with { type: "json" };
+import avatarSchema from '../../schemas/avatarSchema.json' with { type: "json" };
+import locationSchema from '../../schemas/locationSchema.json' with { type: "json" };
+import questSchema from '../../schemas/questSchema.json' with { type: "json" };
 
 export class SchemaValidator {
   constructor() {

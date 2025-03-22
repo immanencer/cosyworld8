@@ -2,26 +2,44 @@ import express from 'express';
 import cors from 'cors';
 import { MongoClient } from 'mongodb';
 import process from 'process';
+import path from 'path';
+import { fileURLToPath } from 'url';
+import dotenv from 'dotenv';
+
+// Load environment variables from the appropriate .env file
+const envFile = process.env.NODE_ENV === 'production' ? '.env.production' : '.env';
+dotenv.config({ path: envFile });
+console.log(`Loading environment from ${envFile}`);
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+// Determine static file directory based on environment
+const staticDir = process.env.NODE_ENV === 'production'
+  ? path.join(__dirname, '..', 'dist')
+  : path.join(__dirname, '..', 'public');
+
+console.log(`Static files will be served from: ${staticDir}`);
 
 const app = express();
-const PORT = process.env.PORT || 3001;
+const PORT = process.env.WEB_PORT || 3001;
 
 app.use(cors());
 app.use(express.json());
-app.use(express.static('public'));
+app.use(express.static(staticDir));
 
 // Explicit route for API documentation
 app.get('/api-docs', (req, res) => {
-  res.sendFile('api-docs.html', { root: 'public' });
+  res.sendFile('api-docs.html', { root: staticDir });
 });
 
 // Admin routes
 app.get('/admin/guild-settings', (req, res) => {
-  res.sendFile('admin/guild-settings.html', { root: 'public' });
+  res.sendFile('admin/guild-settings.html', { root: staticDir });
 });
 
 app.get('/admin/avatar-management', (req, res) => {
-  res.sendFile('admin/avatar-management.html', { root: 'public' });
+  res.sendFile('admin/avatar-management.html', { root: staticDir });
 });
 
 // MongoDB Setup
@@ -49,6 +67,41 @@ async function initializeApp() {
 
     // Initialize indexes
     await initializeIndexes(db);
+    
+    // Import and initialize main services for the admin UI
+    try {
+      // Only import if Discord bot is enabled 
+      if (process.env.DISCORD_BOT_TOKEN) {
+        const { Client } = await import('discord.js');
+        const client = new Client({ intents: [] }); // Minimal client for admin tools
+        
+        // Import core services
+        const { default: conversationHandlerModule } = await import('../src/services/chat/conversationHandler.mjs');
+        const { default: aiServiceModule } = await import('../src/services/aiService.mjs');
+        const { AvatarGenerationService } = await import('../src/services/avatarService.mjs');
+        
+        // Initialize minimal services
+        const logger = console;
+        const aiService = new aiServiceModule();
+        const avatarService = new AvatarGenerationService(db, { getAIConfig: () => ({}), getMongoConfig: () => ({}) });
+        
+        // Create conversation handler
+        const conversationHandler = new conversationHandlerModule(client, aiService, logger, avatarService);
+        
+        // Make services available to routes
+        app.locals.services = {
+          conversationHandler,
+          aiService,
+          avatarService,
+          client
+        };
+        
+        console.log('Core services initialized for admin UI');
+      }
+    } catch (error) {
+      console.error('Failed to initialize services for admin UI:', error);
+      // Continue anyway - the app should work without these services
+    }
 
     app.use('/api/leaderboard', (await import('./routes/leaderboard.mjs')).default(db));
     app.use('/api/dungeon', (await import('./routes/dungeon.mjs')).default(db));
@@ -62,6 +115,7 @@ async function initializeApp() {
     app.use('/api/claims', (await import('./routes/claims.mjs')).default(db));
     app.use('/api/guilds', (await import('./routes/guilds.mjs')).default(db));
     app.use('/api/admin', (await import('./routes/admin.mjs')).default(db));
+    
     // Add renounce claim route
     app.post('/api/claims/renounce', async (req, res) => {
       const { avatarId, walletAddress } = req.body;
@@ -81,11 +135,34 @@ async function initializeApp() {
     const modelsRouter = await import('./routes/models.mjs');
     app.use('/api/models', modelsRouter.default(db));
 
-    // Removed standalone guilds-detected route as it's now integrated into the guilds route
+    // Add version info endpoint for SPA
+    app.get('/api/version', (req, res) => {
+      res.json({
+        version: process.env.npm_package_version || '1.0.0',
+        environment: process.env.NODE_ENV || 'development',
+        buildDate: new Date().toISOString()
+      });
+    });
 
+    // SPA support - serve index.html for client-side routing
+    app.get('*', (req, res, next) => {
+      // Skip API routes
+      if (req.path.startsWith('/api/')) {
+        return next();
+      }
+      
+      // Skip direct file requests
+      if (path.extname(req.path)) {
+        return next();
+      }
+      
+      // For non-API routes without file extensions, serve index.html
+      res.sendFile('index.html', { root: staticDir });
+    });
 
     // Start server
     app.listen(PORT, '0.0.0.0', () => {
+      console.log(`Server running in ${process.env.NODE_ENV || 'development'} mode`);
       console.log(`Server running at http://0.0.0.0:${PORT}`);
       console.log(`API documentation available at http://0.0.0.0:${PORT}/api-docs`);
     });

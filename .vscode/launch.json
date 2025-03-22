@@ -5,14 +5,16 @@
             "type": "node",
             "request": "launch",
             "name": "Launch Server",
-            "program": "${workspaceFolder}/server/app.mjs",
+            "runtimeExecutable": "npm",
+            "runtimeArgs": ["run", "serve"],
             "envFile": "${workspaceFolder}/.env"
         },
         {
             "type": "node",
             "request": "launch",
             "name": "Launch Discord Bot",
-            "program": "${workspaceFolder}/src/index.mjs",
+            "runtimeExecutable": "npm",
+            "runtimeArgs": ["run", "dev"],
             "envFile": "${workspaceFolder}/.env"
         }
     ]

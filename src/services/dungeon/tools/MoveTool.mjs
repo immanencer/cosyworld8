@@ -5,18 +5,21 @@ import { EmbedBuilder } from 'discord.js';
 export class MoveTool extends BaseTool {
   /**
    * Constructs a new MoveTool.
-   * @param {Object} dungeonService - The dungeon service (must include a Discord client).
+   * @param {Object} services - The services container
    */
   constructor(services) {
     super();
-    if (!services.client) {
-      throw new Error('Discord client is required for MoveTool');
-    }
-    this.dungeonService = services.dungeonService;
-    this.locationService = services.dungeonService.locationService;
+    this.services = services;
     this.name = 'move';
     this.description = 'Move to the location specified, creating it if it does not exist.';
     this.emoji = '🏃‍♂️';
+    this.logger = services?.logger;
+    this.configService = services?.configService;
+    this.databaseService = services?.databaseService;
+    
+    // These will be set when the tool is used
+    this.dungeonService = null;
+    this.locationService = null;
   }
 
   /**
@@ -28,7 +31,13 @@ export class MoveTool extends BaseTool {
    */
   async sendMiniAvatarCard(avatar, channelId, message = '') {
     try {
-      const channel = await this.dungeonService.client.channels.fetch(channelId);
+      const client = this.services.client;
+      if (!client) {
+        this.logger?.error('No Discord client available');
+        return;
+      }
+      
+      const channel = await client.channels.fetch(channelId);
       if (!channel) return;
 
       const embed = new EmbedBuilder()
@@ -53,7 +62,7 @@ export class MoveTool extends BaseTool {
         await channel.send({ embeds: [embed] });
       }
     } catch (error) {
-      this.logger.error(`Error sending mini avatar card: ${error.message}`);
+      this.logger?.error(`Error sending mini avatar card: ${error.message}`);
     }
   }
 
@@ -64,19 +73,25 @@ export class MoveTool extends BaseTool {
    */
   async getOrCreateWebhook(channel) {
     try {
+      const client = this.services.client;
+      if (!client) {
+        this.logger?.error('No Discord client available');
+        return null;
+      }
+      
       const webhooks = await channel.fetchWebhooks();
-      let webhook = webhooks.find(wh => wh.owner.id === this.dungeonService.client.user.id);
+      let webhook = webhooks.find(wh => wh.owner.id === client.user.id);
 
       if (!webhook) {
         webhook = await channel.createWebhook({
           name: 'Movement Webhook',
-          avatar: this.dungeonService.client.user.displayAvatarURL()
+          avatar: client.user.displayAvatarURL()
         });
       }
 
       return webhook;
     } catch (error) {
-      this.logger.error(`Error getting/creating webhook: ${error.message}`);
+      this.logger?.error(`Error getting/creating webhook: ${error.message}`);
       return null;
     }
   }
@@ -89,6 +104,18 @@ export class MoveTool extends BaseTool {
    * @returns {Promise<string>} A status or error message.
    */
   async execute(message, params, avatar, services) {
+    // Initialize services if not already set
+    this.dungeonService = services.dungeonService;
+    this.locationService = this.dungeonService?.locationService;
+    
+    if (!this.dungeonService) {
+      return 'DungeonService not available';
+    }
+    
+    if (!this.locationService) {
+      return 'LocationService not available';
+    }
+    
     // Get the destination
     const destination = params.join(' ');
     if (!destination) {
