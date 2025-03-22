@@ -1,121 +1,149 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Monstone Sanctum</title>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Monstone Sanctum</title>
 
-  <!-- Google Fonts -->
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Crimson+Text:wght@400;600;700&display=swap" rel="stylesheet">
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Crimson+Text:wght@400;600;700&display=swap"
+      rel="stylesheet"
+    />
 
-  <!-- Tailwind CSS -->
-  <script src="https://cdn.tailwindcss.com"></script>
-  <script>
-    tailwind.config = {
-      darkMode: 'class',
-      theme: {
-        extend: {
-          colors: {
-            primary: {
-              50: '#eef2ff',
-              100: '#e0e7ff',
-              200: '#c7d2fe',
-              300: '#a5b4fc',
-              400: '#818cf8',
-              500: '#6366f1',
-              600: '#4f46e5',
-              700: '#4338ca',
-              800: '#3730a3',
-              900: '#312e81',
-              950: '#1e1b4b',
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            colors: {
+              primary: {
+                50: "#eef2ff",
+                100: "#e0e7ff",
+                200: "#c7d2fe",
+                300: "#a5b4fc",
+                400: "#818cf8",
+                500: "#6366f1",
+                600: "#4f46e5",
+                700: "#4338ca",
+                800: "#3730a3",
+                900: "#312e81",
+                950: "#1e1b4b",
+              },
+              surface: {
+                50: "#f8fafc",
+                100: "#f1f5f9",
+                200: "#e2e8f0",
+                300: "#cbd5e1",
+                400: "#94a3b8",
+                500: "#64748b",
+                600: "#475569",
+                700: "#334155",
+                800: "#1e293b",
+                900: "#0f172a",
+                950: "#020617",
+              },
             },
-            surface: {
-              50: '#f8fafc',
-              100: '#f1f5f9',
-              200: '#e2e8f0',
-              300: '#cbd5e1',
-              400: '#94a3b8',
-              500: '#64748b',
-              600: '#475569',
-              700: '#334155',
-              800: '#1e293b',
-              900: '#0f172a',
-              950: '#020617',
+            fontFamily: {
+              sans: ["Inter", "ui-sans-serif", "system-ui", "sans-serif"],
+              serif: ["Crimson Text", "ui-serif", "Georgia", "serif"],
             },
-          },
-          fontFamily: {
-            sans: ['Inter', 'ui-sans-serif', 'system-ui', 'sans-serif'],
-            serif: ['Crimson Text', 'ui-serif', 'Georgia', 'serif'],
           },
         },
-      },
-    }
-  </script>
+      };
+    </script>
 
-  <!-- Custom Styles -->
-  <style>
-    body {
-      background-color: #0f172a;
-      color: #f8fafc;
-      font-family: 'Inter', sans-serif;
-    }
+    <!-- Custom Styles -->
+    <style>
+      body {
+        background-color: #0f172a;
+        color: #f8fafc;
+        font-family: "Inter", sans-serif;
+      }
 
-    .loading-skeleton {
-      background: linear-gradient(90deg, #1e293b 25%, #334155 50%, #1e293b 75%);
-      background-size: 200% 100%;
-      animation: skeleton-loading 1.5s infinite;
-    }
+      .loading-skeleton {
+        background: linear-gradient(
+          90deg,
+          #1e293b 25%,
+          #334155 50%,
+          #1e293b 75%
+        );
+        background-size: 200% 100%;
+        animation: skeleton-loading 1.5s infinite;
+      }
 
-    @keyframes skeleton-loading {
-      0% { background-position: 200% 0; }
-      100% { background-position: -200% 0; }
-    }
+      @keyframes skeleton-loading {
+        0% {
+          background-position: 200% 0;
+        }
+        100% {
+          background-position: -200% 0;
+        }
+      }
 
-    /* Modal animation */
-    .modal-enter {
-      opacity: 0;
-      transform: scale(0.95);
-    }
+      /* Modal animation */
+      .modal-enter {
+        opacity: 0;
+        transform: scale(0.95);
+      }
 
-    .modal-enter-active {
-      opacity: 1;
-      transform: scale(1);
-      transition: opacity 200ms, transform 200ms;
-    }
+      .modal-enter-active {
+        opacity: 1;
+        transform: scale(1);
+        transition:
+          opacity 200ms,
+          transform 200ms;
+      }
 
-    .modal-exit {
-      opacity: 1;
-      transform: scale(1);
-    }
+      .modal-exit {
+        opacity: 1;
+        transform: scale(1);
+      }
 
-    .modal-exit-active {
-      opacity: 0;
-      transform: scale(0.95);
-      transition: opacity 200ms, transform 200ms;
-    }
+      .modal-exit-active {
+        opacity: 0;
+        transform: scale(0.95);
+        transition:
+          opacity 200ms,
+          transform 200ms;
+      }
 
-    /* Tab indicator animation */
-    .tab-indicator {
-      transition: transform 0.3s ease;
-    }
+      /* Tab indicator animation */
+      .tab-indicator {
+        transition: transform 0.3s ease;
+      }
 
-    /* Toast notification */
-    .toast {
-      animation: toast-in-out 3s forwards;
-    }
+      /* Toast notification */
+      .toast {
+        animation: toast-in-out 3s forwards;
+      }
 
-    @keyframes toast-in-out {
-      0% { transform: translateY(100%); opacity: 0; }
-      10% { transform: translateY(0); opacity: 1; }
-      90% { transform: translateY(0); opacity: 1; }
-      100% { transform: translateY(100%); opacity: 0; }
-    }
-  </style>
+      @keyframes toast-in-out {
+        0% {
+          transform: translateY(100%);
+          opacity: 0;
+        }
+        10% {
+          transform: translateY(0);
+          opacity: 1;
+        }
+        90% {
+          transform: translateY(0);
+          opacity: 1;
+        }
+        100% {
+          transform: translateY(100%);
+          opacity: 0;
+        }
+      }
+    </style>
 
-  <!-- Tribe-specific styles -->
-  <link rel="stylesheet" href="css/tribe-styles.css">
+    <!-- Tribe-specific styles -->
+    <link rel="stylesheet" href="css/tribe-styles.css" />
 
   <!-- Main application script (imports other modules) -->
   <script type="module" src="/js/main.js"></script>
@@ -131,108 +159,222 @@
         <h1 class="text-xl font-bold text-white hidden sm:block">Monstone Sanctum</h1>
       </div>
 
-      <div class="wallet-container flex items-center space-x-2">
-        <!-- Wallet connection button will be injected here -->
-        <div id="claims-container" class="flex space-x-2"></div>
+        <div class="wallet-container flex items-center space-x-2">
+          <!-- Wallet connection button will be injected here -->
+          <div id="claims-container" class="flex space-x-2"></div>
+        </div>
       </div>
+    </header>
+
+    <!-- Main content wrapper -->
+    <div class="flex-1 flex flex-col md:flex-row">
+      <!-- Navigation Sidebar -->
+      <nav
+        class="bg-surface-900 md:w-64 md:border-r border-surface-800 md:h-[calc(100vh-60px)] md:sticky md:top-[60px]"
+      >
+        <div class="p-4">
+          <div class="flex md:hidden justify-between items-center mb-4">
+            <h2 class="font-semibold text-lg">Navigation</h2>
+            <button
+              id="close-mobile-nav"
+              class="text-surface-400 hover:text-white"
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke-width="1.5"
+                stroke="currentColor"
+                class="w-6 h-6"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  d="M6 18L18 6M6 6l12 12"
+                />
+              </svg>
+            </button>
+          </div>
+
+          <div id="tab-buttons" class="flex flex-col space-y-1" role="tablist">
+            <button
+              data-tab="squad"
+              class="flex items-center space-x-3 p-3 rounded-lg text-left transition bg-primary-600 text-white"
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke-width="1.5"
+                stroke="currentColor"
+                class="w-5 h-5"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  d="M15 19.128a9.38 9.38 0 002.625.372 9.337 9.337 0 004.121-.952 4.125 4.125 0 00-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 018.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0111.964-3.07M12 6.375a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0zm8.25 2.25a2.625 2.625 0 11-5.25 0 2.625 2.625 0 015.25 0z"
+                />
+              </svg>
+              <span>Squad</span>
+            </button>
+
+            <button
+              data-tab="actions"
+              class="flex items-center space-x-3 p-3 rounded-lg text-left transition hover:bg-surface-800 text-surface-300 hover:text-white"
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke-width="1.5"
+                stroke="currentColor"
+                class="w-5 h-5"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  d="M3.75 13.5l10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75z"
+                />
+              </svg>
+              <span>Actions</span>
+            </button>
+
+            <button
+              data-tab="leaderboard"
+              class="flex items-center space-x-3 p-3 rounded-lg text-left transition hover:bg-surface-800 text-surface-300 hover:text-white"
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke-width="1.5"
+                stroke="currentColor"
+                class="w-5 h-5"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  d="M16.5 18.75h-9m9 0a3 3 0 013 3h-15a3 3 0 013-3m9 0v-3.375c0-.621-.503-1.125-1.125-1.125h-.871M7.5 18.75v-3.375c0-.621.504-1.125 1.125-1.125h.872m5.007 0H9.497m5.007 0a7.454 7.454 0 01-.982-3.172M9.497 14.25a7.454 7.454 0 00.981-3.172M5.25 4.236c-.982.143-1.954.317-2.916.52A6.003 6.003 0 007.73 9.728M5.25 4.236V4.5c0 2.108.966 3.99 2.48 5.228M5.25 4.236V2.721C7.456 2.41 9.71 2.25 12 2.25c2.291 0 4.545.16 6.75.47v1.516M7.73 9.728a6.726 6.726 0 002.748 1.35m8.272-6.842V4.5c0 2.108-.966 3.99-2.48 5.228m2.48-5.492a46.32 46.32 0 012.916.52 6.003 6.003 0 01-5.395 4.972m0 0a6.726 6.726 0 01-2.749 1.35m0 0a6.772 6.772 0 01-3.044 0"
+                />
+              </svg>
+              <span>Leaderboard</span>
+            </button>
+
+            <button
+              data-tab="tribes"
+              class="flex items-center space-x-3 p-3 rounded-lg text-left transition hover:bg-surface-800 text-surface-300 hover:text-white"
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke-width="1.5"
+                stroke="currentColor"
+                class="w-5 h-5"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  d="M18 18.72a9.094 9.094 0 003.741-.479 3 3 0 00-4.682-2.72m.94 3.198l.001.031c0 .225-.012.447-.037.666A11.944 11.944 0 0112 21c-2.17 0-4.207-.576-5.963-1.584A6.062 6.062 0 016 18.719m12 0a5.971 5.971 0 00-.941-3.197m0 0A5.995 5.995 0 0012 12.75a5.995 5.995 0 00-5.058 2.772m0 0a3 3 0 00-4.681 2.72 8.986 8.986 0 003.74.477m.94-3.197a5.971 5.971 0 00-.94 3.197M15 6.75a3 3 0 11-6 0 3 3 0 016 0zm6 3a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0zm-13.5 0a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0z"
+                />
+              </svg>
+              <span>Tribes</span>
+            </button>
+
+            <button
+              data-tab="social"
+              class="flex items-center space-x-3 p-3 rounded-lg text-left transition hover:bg-surface-800 text-surface-300 hover:text-white"
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke-width="1.5"
+                stroke="currentColor"
+                class="w-5 h-5"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  d="M7.5 8.25h9m-9 3H12m-9.75 1.51c0 1.6 1.123 2.994 2.707 3.227 1.129.166 2.27.293 3.423.379.35.026.67.21.865.501L12 21l2.755-4.133a1.14 1.14 0 01.865-.501 48.172 48.172 0 003.423-.379c1.584-.233 2.707-1.626 2.707-3.228V6.741c0-1.602-1.123-2.995-2.707-3.228A48.394 48.394 0 0012 3c-2.392 0-4.744.175-7.043.513C3.373 3.746 2.25 5.14 2.25 6.741v6.018z"
+                />
+              </svg>
+              <span>Social</span>
+            </button>
+
+            <div class="py-2 my-2 border-t border-surface-800"></div>
+
+            <!-- Admin panel button removed -->
+          </div>
+        </div>
+      </nav>
+
+      <!-- Mobile navigation toggle -->
+      <button
+        id="open-mobile-nav"
+        class="md:hidden fixed bottom-6 right-6 z-10 bg-primary-600 text-white p-3 rounded-full shadow-lg"
+      >
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          fill="none"
+          viewBox="0 0 24 24"
+          stroke-width="1.5"
+          stroke="currentColor"
+          class="w-6 h-6"
+        >
+          <path
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5"
+          />
+        </svg>
+      </button>
+
+      <!-- Main Content Area -->
+      <main class="flex-1 p-4 md:p-6 overflow-x-hidden">
+        <div id="content" class="container mx-auto max-w-7xl">
+          <!-- Tab content will be injected here -->
+          <div class="p-8 flex justify-center items-center">
+            <div
+              class="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary-600"
+            ></div>
+          </div>
+        </div>
+      </main>
     </div>
-  </header>
-
-  <!-- Main content wrapper -->
-  <div class="flex-1 flex flex-col md:flex-row">
-    <!-- Navigation Sidebar -->
-    <nav class="bg-surface-900 md:w-64 md:border-r border-surface-800 md:h-[calc(100vh-60px)] md:sticky md:top-[60px]">
-      <div class="p-4">
-        <div class="flex md:hidden justify-between items-center mb-4">
-          <h2 class="font-semibold text-lg">Navigation</h2>
-          <button id="close-mobile-nav" class="text-surface-400 hover:text-white">
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          </button>
-        </div>
-
-        <div id="tab-buttons" class="flex flex-col space-y-1" role="tablist">
-          <button data-tab="squad" class="flex items-center space-x-3 p-3 rounded-lg text-left transition bg-primary-600 text-white">
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M15 19.128a9.38 9.38 0 002.625.372 9.337 9.337 0 004.121-.952 4.125 4.125 0 00-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 018.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0111.964-3.07M12 6.375a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0zm8.25 2.25a2.625 2.625 0 11-5.25 0 2.625 2.625 0 015.25 0z" />
-            </svg>
-            <span>Squad</span>
-          </button>
-
-          <button data-tab="actions" class="flex items-center space-x-3 p-3 rounded-lg text-left transition hover:bg-surface-800 text-surface-300 hover:text-white">
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 13.5l10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75z" />
-            </svg>
-            <span>Actions</span>
-          </button>
-
-          <button data-tab="leaderboard" class="flex items-center space-x-3 p-3 rounded-lg text-left transition hover:bg-surface-800 text-surface-300 hover:text-white">
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M16.5 18.75h-9m9 0a3 3 0 013 3h-15a3 3 0 013-3m9 0v-3.375c0-.621-.503-1.125-1.125-1.125h-.871M7.5 18.75v-3.375c0-.621.504-1.125 1.125-1.125h.872m5.007 0H9.497m5.007 0a7.454 7.454 0 01-.982-3.172M9.497 14.25a7.454 7.454 0 00.981-3.172M5.25 4.236c-.982.143-1.954.317-2.916.52A6.003 6.003 0 007.73 9.728M5.25 4.236V4.5c0 2.108.966 3.99 2.48 5.228M5.25 4.236V2.721C7.456 2.41 9.71 2.25 12 2.25c2.291 0 4.545.16 6.75.47v1.516M7.73 9.728a6.726 6.726 0 002.748 1.35m8.272-6.842V4.5c0 2.108-.966 3.99-2.48 5.228m2.48-5.492a46.32 46.32 0 012.916.52 6.003 6.003 0 01-5.395 4.972m0 0a6.726 6.726 0 01-2.749 1.35m0 0a6.772 6.772 0 01-3.044 0" />
-            </svg>
-            <span>Leaderboard</span>
-          </button>
-
-          <button data-tab="tribes" class="flex items-center space-x-3 p-3 rounded-lg text-left transition hover:bg-surface-800 text-surface-300 hover:text-white">
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M18 18.72a9.094 9.094 0 003.741-.479 3 3 0 00-4.682-2.72m.94 3.198l.001.031c0 .225-.012.447-.037.666A11.944 11.944 0 0112 21c-2.17 0-4.207-.576-5.963-1.584A6.062 6.062 0 016 18.719m12 0a5.971 5.971 0 00-.941-3.197m0 0A5.995 5.995 0 0012 12.75a5.995 5.995 0 00-5.058 2.772m0 0a3 3 0 00-4.681 2.72 8.986 8.986 0 003.74.477m.94-3.197a5.971 5.971 0 00-.94 3.197M15 6.75a3 3 0 11-6 0 3 3 0 016 0zm6 3a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0zm-13.5 0a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0z" />
-            </svg>
-            <span>Tribes</span>
-          </button>
-
-          <button data-tab="social" class="flex items-center space-x-3 p-3 rounded-lg text-left transition hover:bg-surface-800 text-surface-300 hover:text-white">
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M7.5 8.25h9m-9 3H12m-9.75 1.51c0 1.6 1.123 2.994 2.707 3.227 1.129.166 2.27.293 3.423.379.35.026.67.21.865.501L12 21l2.755-4.133a1.14 1.14 0 01.865-.501 48.172 48.172 0 003.423-.379c1.584-.233 2.707-1.626 2.707-3.228V6.741c0-1.602-1.123-2.995-2.707-3.228A48.394 48.394 0 0012 3c-2.392 0-4.744.175-7.043.513C3.373 3.746 2.25 5.14 2.25 6.741v6.018z" />
-            </svg>
-            <span>Social</span>
-          </button>
-
-          <div class="py-2 my-2 border-t border-surface-800"></div>
-
-          <!-- Admin panel button removed -->
-        </div>
-      </div>
-    </nav>
-
-    <!-- Mobile navigation toggle -->
-    <button id="open-mobile-nav" class="md:hidden fixed bottom-6 right-6 z-10 bg-primary-600 text-white p-3 rounded-full shadow-lg">
-      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6">
-        <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />
-      </svg>
-    </button>
-
-    <!-- Main Content Area -->
-    <main class="flex-1 p-4 md:p-6 overflow-x-hidden">
-      <div id="content" class="container mx-auto max-w-7xl">
-        <!-- Tab content will be injected here -->
-        <div class="p-8 flex justify-center items-center">
-          <div class="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary-600"></div>
-        </div>
-      </div>
-    </main>
-  </div>
 
   <!-- Toast Notifications Container -->
   <div id="toast-container" class="fixed bottom-4 right-4 space-y-2 z-50"></div>
 
-  <!-- JavaScript for notifications -->
-  <script src="/js/toast.js"></script>
+    <!-- JavaScript for notifications -->
+    <script src="/js/toast.js" type="module" defer></script>
 
-  <!-- Modal Container -->
-  <div id="modal-container" class="fixed inset-0 bg-black bg-opacity-70 z-40 hidden flex items-center justify-center p-4">
-    <div id="modal-content" class="bg-surface-800 rounded-xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
-      <!-- Modal content will be injected here -->
+    <!-- Modal Container -->
+    <div
+      id="modal-container"
+      class="fixed inset-0 bg-black bg-opacity-70 z-40 hidden flex items-center justify-center p-4"
+    >
+      <div
+        id="modal-content"
+        class="bg-surface-800 rounded-xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto"
+      >
+        <!-- Modal content will be injected here -->
+      </div>
     </div>
-  </div>
 
-  <!-- Avatar Detail Modal Container -->
-  <div id="avatar-modal" class="fixed inset-0 bg-black bg-opacity-70 z-40 hidden flex items-center justify-center p-4">
-    <div id="avatar-modal-content" class="bg-surface-800 border border-surface-700 rounded-xl shadow-2xl max-w-5xl w-full max-h-[90vh] overflow-y-auto">
-      <!-- Avatar modal content will be injected here -->
+    <!-- Avatar Detail Modal Container -->
+    <div
+      id="avatar-modal"
+      class="fixed inset-0 bg-black bg-opacity-70 z-40 hidden flex items-center justify-center p-4"
+    >
+      <div
+        id="avatar-modal-content"
+        class="bg-surface-800 border border-surface-700 rounded-xl shadow-2xl max-w-5xl w-full max-h-[90vh] overflow-y-auto"
+      >
+        <!-- Avatar modal content will be injected here -->
+      </div>
     </div>
-  </div>
 
-  <!-- Admin Panel Modal Container removed -->
-</body>
+    <!-- Admin Panel Modal Container removed -->
+  </body>
 </html>

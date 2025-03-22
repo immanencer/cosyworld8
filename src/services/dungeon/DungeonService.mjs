@@ -29,6 +29,7 @@ export class DungeonService {
    */
   constructor(client, logger, avatarService = null, db, services) {
     this.services = services;
+    this.services.client = client;
     this.services.dungeonService = this;
     this.db = db;
     this.client = client;
@@ -55,7 +56,7 @@ export class DungeonService {
     };
 
     Object.entries(toolClasses).forEach(([name, ToolClass]) => {
-      const tool = new ToolClass(this);
+      const tool = new ToolClass(this.services);
       this.tools.set(name, tool);
       if (tool.emoji) this.toolEmojis.set(tool.emoji, name);
     });
@@ -77,7 +78,6 @@ export class DungeonService {
     this.aiService = new AIService();
     this.locationService = new LocationService(this.client, this.aiService, this.db);
     this.itemService = new ItemService(this.client, this.aiService, this.db);
-    this.registerTools();
 
     // Event listener for avatar movements
     this.client.on('avatarMoved', ({ avatarId, newChannelId, temporary }) => {
@@ -162,10 +162,10 @@ export class DungeonService {
    * Generates a formatted description of all registered commands.
    * @returns {string} A string listing commands with their triggers and descriptions.
    */
-  getCommandsDescription() {
+  getCommandsDescription(guildId) {
     const commands = [];
     for (const [name, tool] of this.tools.entries()) {
-      const syntax = tool.getSyntax?.() || `${tool.emoji || name}`;
+      const syntax = tool.getSyntax?.(guildId) || `${tool.emoji || name}`;
       const description = tool.getDescription?.() || 'No description available.';
       commands.push(`**${name}**\nTrigger: ${tool.emoji || 'N/A'}\nSyntax: ${syntax}\n${description}`);
     }
@@ -232,13 +232,13 @@ export class DungeonService {
    * @private
    */
   registerTools() {
-    this.tools.set('attack', new AttackTool(this));
-    this.tools.set('defend', new DefendTool(this));
-    this.tools.set('move', new MoveTool(this));
-    this.tools.set('remember', new RememberTool(this));
-    this.tools.set('xpost', new XPostTool(this));
-    this.tools.set('item', new ItemTool(this));
-    this.tools.set('respond', new RespondTool(this));
+    this.tools.set('attack', new AttackTool(this.services));
+    this.tools.set('defend', new DefendTool(this.services));
+    this.tools.set('move', new MoveTool(this.services));
+    this.tools.set('remember', new RememberTool(this.services));
+    this.tools.set('xpost', new XPostTool(this.services));
+    this.tools.set('item', new ItemTool(this.services));
+    this.tools.set('respond', new RespondTool(this.services));
   }
 
   // --- Location and Item Management ---

@@ -135,7 +135,7 @@ ${lastNarrative ? lastNarrative.content : 'No previous reflection.'}
   }
 
   async getAvailableCommands(avatar, channel) {
-    const commandsDescription = this.dungeonService.getCommandsDescription(avatar) || '';
+    const commandsDescription = this.dungeonService.getCommandsDescription(avatar, channel.guild.id) || '';
     const location = await this.dungeonService.getLocationDescription(avatar.channelId, channel.name);
     const items = await this.dungeonService.getItemsDescription(avatar);
     const locationText = location
