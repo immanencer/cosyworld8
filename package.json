@@ -6,7 +6,7 @@
   "scripts": {
     "start": "concurrently \"node src/index.mjs\" \"node server/app.mjs\"",
     "dev": "node src/index.mjs",
-    "build:js": "webpack --mode production",
+    "build:js": "webpack --mode production --progress",
     "dev:js": "webpack --mode development --watch",
     "build:css": "cross-env NODE_ENV=production tailwindcss -i ./src/tailwind.css -o ./dist/css/tailwind.css --minify",
     "dev:css": "tailwindcss -i ./src/tailwind.css -o ./public/css/tailwind.css --watch",
