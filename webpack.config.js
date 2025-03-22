@@ -20,8 +20,17 @@ export default (env, argv) => {
     },
     cache: {
       type: 'filesystem',
-      compression: 'gzip',
+      compression: false, // Disable compression for faster builds
       maxAge: 24 * 60 * 60 * 1000 // 24 hours
+    },
+    watchOptions: {
+      aggregateTimeout: 600,
+      ignored: ['**/node_modules', '**/dist']
+    },
+    optimization: {
+      removeAvailableModules: false,
+      removeEmptyChunks: false,
+      splitChunks: false,
     },
     entry: {
       main: './public/js/main.js',
