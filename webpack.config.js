@@ -12,6 +12,15 @@ export default (env, argv) => {
   const isProduction = argv.mode === 'production';
   
   return {
+    stats: 'verbose',
+    performance: {
+      hints: false,
+      maxEntrypointSize: 512000,
+      maxAssetSize: 512000
+    },
+    cache: {
+      type: 'filesystem'
+    },
     entry: {
       main: './public/js/main.js',
       adminPanel: './public/js/adminPanel.js',
