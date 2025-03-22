@@ -3,21 +3,21 @@ import { AIService } from "../../aiService.mjs";
 import { MemoryService } from '../../memoryService.mjs';
 import { sendAsWebhook } from '../../discordService.mjs';
 
-export class RespondTool extends BaseTool {
+export class ThinkTool extends BaseTool {
   constructor() {
     super();
-    this.name = 'respond';
-    this.description = 'Generates a thoughtful in-character response with reflection';
+    this.name = 'think';
+    this.description = 'Take a moment to reflect on a message or conversation, updating your thoughts and memories.';
     this.emoji = '💭';
     this.aiService = new AIService();
   }
 
   getDescription() {
-    return 'Generates a thoughtful in-character response based on conversation context and a specific message';
+    return this.description;
   }
 
   getSyntax() {
-    return '💭 <message or context to respond to> (or reply to a message)';
+    return '💭 <optional focus for your thoughts>';
   }
 
   // Borrowed from RememberTool to fetch channel context
@@ -72,10 +72,10 @@ export class RespondTool extends BaseTool {
         sendAsWebhook(avatar.innerMonologueChannel, reflection, avatar);
       }
 
-      return '-# [💭 Reflection Generated]';
+      return '💭 reflection generated.';
     } catch (error) {
-      console.error('Error in RespondTool:', error);
-      return `${avatar.name} seems unable to respond...`;
+      console.error('Error in ThinkTool:', error);
+      return `Error generating reflection: ${error.message}`;
     }
   }
 }

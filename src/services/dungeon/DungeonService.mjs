@@ -10,7 +10,7 @@ import { RememberTool } from './tools/RememberTool.mjs';
 import { CreationTool } from './tools/CreationTool.mjs';
 import { XSocialTool as XPostTool } from './tools/XSocialTool.mjs';
 import { ItemTool } from './tools/ItemTool.mjs';
-import { RespondTool } from './tools/RespondTool.mjs';
+import { ThinkTool } from './tools/ThinkTool.mjs';
 import { SummonTool } from './tools/SummonTool.mjs';
 import { BreedTool } from './tools/BreedTool.mjs';
 import configService from '../configService.mjs';
@@ -52,7 +52,7 @@ export class DungeonService {
       create: CreationTool,
       xpost: XPostTool,
       item: ItemTool,
-      respond: RespondTool,
+      respond: ThinkTool,
     };
 
     Object.entries(toolClasses).forEach(([name, ToolClass]) => {
@@ -238,7 +238,7 @@ export class DungeonService {
     this.tools.set('remember', new RememberTool(this.services));
     this.tools.set('xpost', new XPostTool(this.services));
     this.tools.set('item', new ItemTool(this.services));
-    this.tools.set('respond', new RespondTool(this.services));
+    this.tools.set('respond', new ThinkTool(this.services));
   }
 
   // --- Location and Item Management ---

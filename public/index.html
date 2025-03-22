@@ -14,9 +14,13 @@
     />
 
     <!-- Tailwind CSS -->
-    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="css/tailwind.css">
+    
+    <!-- Tailwind Config (To be migrated to a proper build process) -->
     <script>
-      tailwind.config = {
+      // This is temporary - should be replaced with a proper build process
+      // See: https://tailwindcss.com/docs/installation  
+      window.tailwindConfig = {
         darkMode: "class",
         theme: {
           extend: {
@@ -346,10 +350,10 @@
   <!-- Toast Notifications Container -->
   <div id="toast-container" class="fixed bottom-4 right-4 space-y-2 z-50"></div>
 
-    <!-- JavaScript for notifications -->
-    <script src="/js/toast.js" type="module" defer></script>
+  <!-- Main application script -->
+  <script src="/js/main.js" type="module"></script>
 
-    <!-- Modal Container -->
+  <!-- Modal Container -->
     <div
       id="modal-container"
       class="fixed inset-0 bg-black bg-opacity-70 z-40 hidden flex items-center justify-center p-4"
