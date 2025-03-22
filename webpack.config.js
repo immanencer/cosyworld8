@@ -12,14 +12,16 @@ export default (env, argv) => {
   const isProduction = argv.mode === 'production';
   
   return {
-    stats: 'verbose',
+    stats: 'normal',
     performance: {
       hints: false,
       maxEntrypointSize: 512000,
       maxAssetSize: 512000
     },
     cache: {
-      type: 'filesystem'
+      type: 'filesystem',
+      compression: 'gzip',
+      maxAge: 24 * 60 * 60 * 1000 // 24 hours
     },
     entry: {
       main: './public/js/main.js',
