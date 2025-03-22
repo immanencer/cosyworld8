@@ -66,7 +66,7 @@ export class OpenRouterAIService {
   }
 
   modelIsAvailable(model) {
-    return this.modelConfig.some(m => m.model === model);
+    return this.modelConfig.some(m => m.model === model.replace(':online', ''));
   }
 
   async generateCompletion(prompt, options = {}) {

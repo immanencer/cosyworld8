@@ -46,7 +46,7 @@ export class SummonTool extends BaseTool {
 
   async execute(message, params, avatar, services) {
     try {
-      return await handleSummonCommand(message, params, services);
+      return await handleSummonCommand(message, params, { summoner: avatar._id }, services);
     } catch (error) {
       console.error('Error in SummonTool:', error);
       return 'Failed to summon avatar...';

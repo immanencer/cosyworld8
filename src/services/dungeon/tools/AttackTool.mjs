@@ -87,6 +87,6 @@ export class AttackTool extends BaseTool {
   }
 
   getSyntax() {
-    return '!attack <target>';
+    return '⚔️ <target>';
   }
 }
