@@ -1,32 +1,258 @@
-export async function loadSquad() {
+/**
+ * Squad Tab
+ * Displays avatars claimed by the user
+ */
+
+import { state } from '../core/state.js';
+import { AvatarAPI, ClaimsAPI } from '../core/api.js';
+import { showToast } from '../utils/toast.js';
+import { shortenAddress } from '../utils/formatting.js';
+
+/**
+ * Load squad tab content
+ */
+export async function loadContent() {
   const content = document.getElementById("content");
-  const state = window.state || {};
-  if (!state.wallet) {
-    content.innerHTML = `
-      <div class="text-center py-12">
-        <p class="mb-4">Connect your wallet to view your Squad</p>
-        <button class="px-4 py-2 bg-blue-600 rounded" onclick="connectWallet()">Connect Wallet</button>
-      </div>`;
+  if (!content) return;
+  
+  // Check if wallet is connected
+  if (!state.wallet || !state.wallet.publicKey) {
+    renderWalletPrompt(content);
     return;
   }
+  
   try {
-    const response = await fetch(`/api/avatars?walletAddress=${state.wallet.publicKey}`);
-    const data = await response.json();
+    // Get user avatars
+    const data = await AvatarAPI.getAvatars({
+      walletAddress: state.wallet.publicKey,
+      view: 'claims',
+      page: 1,
+      limit: 12
+    });
+    
     if (!data.avatars || data.avatars.length === 0) {
-      content.innerHTML = '<div class="text-center py-12">No Squad members found</div>';
+      renderEmptyState(content);
       return;
     }
-    content.innerHTML = `
-      <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-        ${data.avatars.map(avatar => `
-          <div class="bg-gray-800 p-4 rounded-lg">
-            <h3 class="text-lg font-bold">${avatar.name}</h3>
-            <p>${avatar.description}</p>
-          </div>
-        `).join("")}
-      </div>`;
+    
+    // Add claim status to each avatar
+    const avatarsWithStatus = await Promise.all(data.avatars.map(async (avatar) => {
+      try {
+        const claimStatus = await ClaimsAPI.getStatus(avatar._id);
+        return {
+          ...avatar,
+          mintStatus: claimStatus.claimed && !claimStatus.minted ? 'unminted' : 'minted',
+          isClaimed: claimStatus.claimed,
+          claimedBy: claimStatus.claimedBy || ''
+        };
+      } catch (err) {
+        console.warn(`Failed to get claim status for avatar ${avatar._id}:`, err);
+        return {
+          ...avatar,
+          mintStatus: 'unknown',
+          isClaimed: false,
+          claimedBy: ''
+        };
+      }
+    }));
+    
+    renderAvatarGrid(content, avatarsWithStatus);
+    
+    // Load user claims
+    await loadUserClaims();
   } catch (err) {
     console.error("Load Squad error:", err);
-    content.innerHTML = `<div class="text-center py-12 text-red-500">Failed to load Squad: ${err.message}</div>`;
+    content.innerHTML = `
+      <div class="text-center py-12 text-red-500">
+        Failed to load Squad: ${err.message}
+        <button class="mt-4 px-4 py-2 bg-primary-600 rounded" onclick="loadContent()">
+          Retry
+        </button>
+      </div>
+    `;
+  }
+}
+
+/**
+ * Render wallet connection prompt
+ * @param {HTMLElement} container - Container element
+ */
+function renderWalletPrompt(container) {
+  container.innerHTML = `
+    <div class="text-center py-12">
+      <p class="mb-4">Connect your wallet to view your Squad</p>
+      <button class="px-4 py-2 bg-primary-600 hover:bg-primary-700 rounded text-white transition" onclick="connectWallet()">
+        Connect Wallet
+      </button>
+    </div>
+  `;
+}
+
+/**
+ * Render empty state when no avatars found
+ * @param {HTMLElement} container - Container element
+ */
+function renderEmptyState(container) {
+  container.innerHTML = `
+    <div class="max-w-4xl mx-auto px-4">
+      <div class="text-center py-12">
+        <h2 class="text-2xl font-bold mb-4">No Squad Members Found</h2>
+        <p class="text-gray-400 mb-6">
+          You haven't claimed any avatars yet. Explore the leaderboard to find avatars to claim!
+        </p>
+        <button 
+          onclick="setActiveTab('leaderboard')" 
+          class="px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white rounded transition"
+        >
+          Browse Leaderboard
+        </button>
+      </div>
+    </div>
+  `;
+}
+
+/**
+ * Render avatar grid
+ * @param {HTMLElement} container - Container element
+ * @param {Array} avatars - List of avatars to render
+ */
+function renderAvatarGrid(container, avatars) {
+  // Import AvatarDetails component if available
+  const renderAvatarCard = window.AvatarDetails?.renderAvatarCard || defaultRenderAvatarCard;
+  
+  container.innerHTML = `
+    <div class="max-w-7xl mx-auto px-4">
+      <div class="text-center py-4">
+        <h2 class="text-xl font-bold">Wallet: ${shortenAddress(state.wallet.publicKey)}</h2>
+      </div>
+      <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+        ${avatars.map(avatar => `
+          <div onclick="showAvatarDetails('${avatar._id}')" class="cursor-pointer relative">
+            ${renderAvatarCard(avatar, null, avatar.isClaimed, avatar.claimedBy)}
+            ${avatar.mintStatus === 'unminted' ?
+            `<div class="absolute top-2 right-2 px-2 py-1 bg-yellow-600 text-white text-xs rounded-full">
+              Unminted
+            </div>` : ''}
+          </div>
+        `).join("")}
+      </div>
+      <div id="claims-container" class="mt-8"></div>
+      <div id="claim-form-container" class="mt-8 hidden"></div>
+    </div>
+  `;
+}
+
+/**
+ * Default avatar card renderer if AvatarDetails component is not available
+ * @param {Object} avatar - Avatar data
+ * @param {Object} options - Render options
+ * @param {boolean} isClaimed - Whether the avatar is claimed
+ * @param {string} claimedBy - Address that claimed the avatar
+ * @returns {string} - Avatar card HTML
+ */
+function defaultRenderAvatarCard(avatar, options, isClaimed, claimedBy) {
+  return `
+    <div class="bg-gray-800 rounded-lg overflow-hidden hover:bg-gray-750 transition-colors ${isClaimed ? 'border-l-2 border-green-500' : ''}">
+      <div class="aspect-w-1 aspect-h-1 relative">
+        <img 
+          src="${avatar.thumbnailUrl || avatar.imageUrl}" 
+          alt="${avatar.name}" 
+          class="object-cover w-full h-full"
+          onerror="this.src='data:image/svg+xml,%3Csvg xmlns=\\'http://www.w3.org/2000/svg\\' width=\\'100\\' height=\\'100\\' viewBox=\\'0 0 100 100\\'%3E%3Crect fill=\\'%23333\\' width=\\'100\\' height=\\'100\\'/%3E%3Ctext fill=\\'%23FFF\\' x=\\'50\\' y=\\'50\\' font-size=\\'50\\' text-anchor=\\'middle\\' dominant-baseline=\\'middle\\'%3E${avatar.name.charAt(0).toUpperCase()}%3C/text%3E%3C/svg%3E';"
+        >
+      </div>
+      <div class="p-4">
+        <h3 class="font-bold text-lg truncate">${avatar.name}</h3>
+        <p class="text-sm text-gray-400 mt-1 truncate">${avatar.description || ''}</p>
+      </div>
+    </div>
+  `;
+}
+
+/**
+ * Load user claims
+ * Displays information about the user's token claims
+ */
+async function loadUserClaims() {
+  const container = document.getElementById("claims-container");
+  if (!container || !state.wallet) return;
+  
+  try {
+    const response = await fetch(`/api/claims?walletAddress=${state.wallet.publicKey}`);
+    const data = await response.json();
+    
+    if (!data.claims || data.claims.length === 0) {
+      container.innerHTML = '';
+      return;
+    }
+    
+    container.innerHTML = `
+      <div class="mt-8 bg-gray-800 rounded-lg p-6">
+        <h3 class="text-xl font-bold mb-4">Your Claims</h3>
+        <div class="space-y-4">
+          ${data.claims.map(claim => `
+            <div class="bg-gray-700 p-4 rounded-lg">
+              <div class="flex justify-between items-center">
+                <div>
+                  <p class="font-medium">${claim.avatarName || 'Avatar'}</p>
+                  <p class="text-sm text-gray-400">${new Date(claim.claimedAt).toLocaleString()}</p>
+                </div>
+                <div>
+                  ${claim.minted ?
+                    `<span class="px-2 py-1 bg-green-600 text-white text-sm rounded-full">Minted</span>` :
+                    `<button 
+                      onclick="mintClaim('${claim._id}')"
+                      class="px-3 py-1 bg-primary-600 hover:bg-primary-700 text-white text-sm rounded transition"
+                    >
+                      Mint Now
+                    </button>`
+                  }
+                </div>
+              </div>
+            </div>
+          `).join('')}
+        </div>
+      </div>
+    `;
+    
+    // Make mintClaim function available globally
+    window.mintClaim = mintClaim;
+  } catch (err) {
+    console.error("Load claims error:", err);
+    container.innerHTML = `
+      <div class="mt-8 bg-gray-800 rounded-lg p-6">
+        <p class="text-red-500">Failed to load claims: ${err.message}</p>
+      </div>
+    `;
+  }
+}
+
+/**
+ * Mint a claim
+ * @param {string} claimId - Claim ID to mint
+ */
+async function mintClaim(claimId) {
+  try {
+    showToast("Minting started...");
+    
+    const response = await fetch(`/api/claims/mint/${claimId}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      }
+    });
+    
+    const data = await response.json();
+    
+    if (data.success) {
+      showToast("Minting successful!", { type: 'success' });
+      // Reload content to reflect changes
+      loadContent();
+    } else {
+      throw new Error(data.error || "Minting failed");
+    }
+  } catch (err) {
+    console.error("Mint error:", err);
+    showToast(`Minting failed: ${err.message}`, { type: 'error' });
   }
 }

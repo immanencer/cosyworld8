@@ -1,1217 +1,159 @@
-import { initializeTabs } from './tabs.js';
-import { initializeWallet } from './wallet.js';
-import { initializeContentLoader } from './contentLoader.js';
-import { showToast } from './toast.js';
+/**
+ * Main application entry point
+ * Initializes core functionality and sets up event listeners
+ */
 
-// Define base URL for API requests
-const API_BASE_URL = "/api";
+import { initializeStateFromStorage, state, setActiveTab } from './core/state.js';
+import { initializeWallet } from './services/wallet.js';
+import { initializeTabs } from './components/tabs.js';
+import { initializeContentLoader } from './core/contentLoader.js';
+import { showToast } from './utils/toast.js';
 
-// Global State
-const state = {
-  wallet: null,
-  activeTab: "squad",
-  loading: false,
-  socialSort: "new",
-};
+// Initialize the application when DOM is loaded
+document.addEventListener("DOMContentLoaded", initializeApplication);
 
-// Helper: Fetch JSON safely
-const fetchJSON = async (url) => {
-  const res = await fetch(url);
-  if (!res.ok) throw new Error(`HTTP error: ${res.status}`);
-  return res.json();
-};
-
-// Tab Handling
-const tabButtons = document.querySelectorAll("[data-tab]");
-tabButtons.forEach((btn) =>
-  btn.addEventListener("click", () => setActiveTab(btn.dataset.tab))
-);
-
-function setActiveTab(tabName) {
-  state.activeTab = tabName;
-  // ...existing code to update tab UI classes...
-  tabButtons.forEach((btn) =>
-    btn.classList.toggle("bg-blue-600", btn.dataset.tab === tabName)
-  );
-  loadContent();
-}
-
-// Load main content based on active tab
-async function loadContent() {
-  const content = document.getElementById("content");
-  content.innerHTML = '<div class="text-center py-12">Loading...</div>';
-  state.loading = true;
-  try {
-    switch (state.activeTab) {
-      case "squad":
-        await loadSquad();
-        break;
-      case "actions":
-        await loadActionLog();
-        break;
-      case "leaderboard":
-        await loadLeaderboard();
-        break;
-      case "tribes":
-        await loadTribes(); // Use our new tribes function
-        break;
-      case "social":
-        await loadSocialContent();
-        break;
-      default:
-        content.innerHTML = `<div class="text-center py-12 text-red-500">Unknown tab: ${state.activeTab}</div>`;
-    }
-  } catch (err) {
-    console.error("Content load error:", err);
-    content.innerHTML = `<div class="text-center py-12 text-red-500">${err.message}</div>`;
-  } finally {
-    state.loading = false;
-  }
-}
-
-// Helper function to shorten wallet address
-function shortenAddress(address) {
-  if (typeof address !== 'string') return '';
-  return address.slice(0, 6) + '...' + address.slice(-4);
-}
-
-// Load Squad Tab
-async function loadSquad() {
-  const content = document.getElementById("content");
-  if (!state.wallet) {
-    content.innerHTML = `
-      <div class="text-center py-12">
-        <p class="mb-4">Connect your wallet to view your Squad</p>
-        <button class="px-4 py-2 bg-blue-600 rounded" onclick="connectWallet()">Connect Wallet</button>
-      </div>`;
-    return;
-  }
-  try {
-    console.log(state.wallet.publicKey);
-    const data = await fetchJSON(`${API_BASE_URL}/avatars?view=claims&walletAddress=${state.wallet.publicKey}&page=1&limit=12`);
-    if (!data.avatars || data.avatars.length === 0) {
-      content.innerHTML = '<div class="text-center py-12">No Squad members found</div>';
-      return;
-    }
-
-    // Fetch claim status for each avatar to determine minting status
-    const avatarsWithStatus = await Promise.all(data.avatars.map(async avatar => {
-      try {
-        const claimStatus = await fetchJSON(`/api/claims/status/${avatar._id}`);
-        // An avatar is considered unminted if it's claimed but not minted yet
-        avatar.mintStatus = claimStatus.claimed && !claimStatus.minted ? 'unminted' : 'minted';
-        avatar.isClaimed = claimStatus.claimed;
-        avatar.claimedBy = claimStatus.claimedBy || '';
-      } catch (err) {
-        avatar.mintStatus = 'unknown';
-        avatar.isClaimed = false;
-        avatar.claimedBy = '';
-      }
-      return avatar;
-    }));
-    
-    // Use our new AvatarDetails component to render cards with status
-    content.innerHTML = `
-      <div class="text-center py-4">
-        <h2 class="text-xl font-bold">Wallet: ${shortenAddress(state.wallet.publicKey)}</h2>
-      </div>
-      <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-        ${avatarsWithStatus.map(avatar => `
-          <div onclick="showAvatarDetails('${avatar._id}')" class="cursor-pointer relative">
-            ${window.AvatarDetails.renderAvatarCard(avatar, null, avatar.isClaimed, avatar.claimedBy)}
-            ${avatar.mintStatus === 'unminted' ?
-        `<div class="absolute top-2 right-2 px-2 py-1 bg-yellow-600 text-white text-xs rounded-full">
-                Unminted
-              </div>` : ''}
-          </div>
-        `).join("")}
-      </div>
-      <div id="claims-container" class="container mx-auto max-w-7xl"></div>
-      <div id="claim-form-container" class="container mx-auto max-w-7xl hidden"></div>
-    `;
-
-    // Load user claims
-    await loadUserClaims();
-  } catch (err) {
-    console.error("Load Squad error:", err);
-    content.innerHTML = `<div class="text-center py-12 text-red-500">Failed to load Squad: ${err.message}</div>`;
-  }
-}
-
-// Load Action Log Tab
-async function loadActionLog() {
-  const content = document.getElementById("content");
-  try {
-    const actions = await fetchJSON(`${API_BASE_URL}/dungeon/log`);
-    if (!actions || actions.length === 0) {
-      content.innerHTML = '<div class="text-center py-12">No actions found</div>';
-      return;
-    }
-
-    content.innerHTML = `
-      <div class="max-w-6xl mx-auto">
-        <h1 class="text-3xl font-bold mb-6">Action Log</h1>
-        <div class="space-y-4">
-          ${actions.map(action => {
-      // Safe extraction with defaults
-      const actorName = action.actorName || 'Unknown';
-      const initial = actorName.charAt(0).toUpperCase();
-      const actorImageUrl = action.actorImageUrl || ''; // Use direct image URL
-
-      // Format the description for specific action types
-      let actionDescription = '';
-      let actionIcon = '';
-
-      switch (action.action) {
-        case 'attack':
-          actionIcon = '⚔️';
-          actionDescription = `${actorName} attacked ${action.targetName || 'a target'}`;
-          break;
-        case 'defend':
-          actionIcon = '🛡️';
-          actionDescription = `${actorName} took a defensive stance`;
-          break;
-        case 'move':
-          actionIcon = '🚶';
-          actionDescription = `${actorName} moved to ${action.targetName || action.location?.name || 'a location'}`;
-          break;
-        case 'remember':
-          actionIcon = '💭';
-          actionDescription = `${actorName} formed a memory`;
-          break;
-        case 'xpost':
-          actionIcon = '🐦';
-          actionDescription = `${actorName} posted to X`;
-          break;
-        case 'post':
-          actionIcon = '📝';
-          actionDescription = `${actorName} posted to the social feed`;
-          break;
-        default:
-          actionIcon = '❓';
-          actionDescription = `${actorName} used ${action.action || 'an action'}`;
-      }
-
-      return `
-              <div class="bg-gray-800 p-4 rounded-lg hover:bg-gray-750 transition-colors">
-                <div class="flex items-start gap-3">
-                  <!-- Actor image with fallbacks -->
-                  ${actorImageUrl ? `
-                    <img 
-                      src="${actorImageUrl}" 
-                      alt="${actorName}" 
-                      class="w-12 h-12 rounded-full object-cover flex-shrink-0"
-                      onerror="this.onerror=null; this.src='data:image/svg+xml,%3Csvg xmlns=\\'http://www.w3.org/2000/svg\\' width=\\'100\\' height=\\'100\\' viewBox=\\'0 0 100 100\\'%3E%3Crect fill=\\'%23333\\' width=\\'100\\' height=\\'100\\'/%3E%3Ctext fill=\\'%23FFF\\' x=\\'50\\' y=\\'50\\' font-size=\\'50\\' text-anchor=\\'middle\\' dominant-baseline=\\'middle\\'%3E${initial}%3C/text%3E%3C/svg%3E';"
-                    >
-                  ` : `
-                    <div class="w-12 h-12 rounded-full bg-gray-700 flex items-center justify-center text-xl flex-shrink-0">
-                      ${initial}
-                    </div>
-                  `}
-                  
-                  <div class="flex-1">
-                    <!-- Action header -->
-                    <div class="flex justify-between">
-                      <div class="font-medium">
-                        <span class="text-lg mr-2">${actionIcon}</span>
-                        <span class="text-white">${actionDescription}</span>
-                      </div>
-                      
-                      <!-- Toggle action details button -->
-                      <button 
-                        class="text-gray-400 hover:text-white" 
-                        onclick="this.closest('.bg-gray-800').querySelector('.action-details').classList.toggle('hidden')"
-                      >
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
-                        </svg>
-                      </button>
-                    </div>
-                    
-                    <!-- Timestamp -->
-                    <div class="text-sm text-gray-400 mt-1">
-                      ${new Date(action.timestamp || Date.now()).toLocaleString()}
-                    </div>
-                    
-                    <!-- Collapsible details -->
-                    <div class="action-details hidden mt-4">
-                      ${action.result ? `
-                        <div class="bg-gray-700 p-3 rounded mt-2">
-                          <h4 class="font-medium mb-1 text-gray-300">Result</h4>
-                          <p class="text-gray-300 text-sm whitespace-pre-wrap">${action.result.replace(/^✨ Posted to X and feed:\s*/, '')}</p>
-                        </div>
-                      ` : ''}
-                      
-                      ${action.memory ? `
-                        <div class="bg-gray-700 p-3 rounded mt-2">
-                          <h4 class="font-medium mb-1 text-gray-300">Memory</h4>
-                          <p class="text-gray-300 text-sm whitespace-pre-wrap">${action.memory.replace(/\[🧠 Memory generated:\s*"(.*?)"\]$/s, '$1')}</p>
-                        </div>
-                      ` : ''}
-                      
-                      ${action.tweet ? `
-                        <div class="bg-gray-700 p-3 rounded mt-2">
-                          <h4 class="font-medium mb-1 flex items-center gap-2 text-gray-300">
-                            <span class="text-lg">🐦</span> Posted to X
-                          </h4>
-                          <p class="text-gray-300 text-sm">${action.tweet}</p>
-                        </div>
-                      ` : ''}
-                      
-                      ${action.location?.imageUrl ? `
-                        <div class="mt-2">
-                          <h4 class="font-medium mb-1 text-gray-300">Location</h4>
-                          <img 
-                            src="${action.location.imageUrl}" 
-                            alt="${action.location.name || 'Location'}" 
-                            class="w-full h-32 object-cover rounded"
-                            onerror="this.onerror=null; this.src='data:image/svg+xml,%3Csvg xmlns=\\'http://www.w3.org/2000/svg\\' width=\\'100\\' height=\\'100\\' viewBox=\\'0 0 100 100\\'%3E%3Crect fill=\\'%23444\\' width=\\'100\\' height=\\'100\\'/%3E%3Ctext fill=\\'%23FFF\\' x=\\'50\\' y=\\'50\\' font-size=\\'24\\' text-anchor=\\'middle\\' dominant-baseline=\\'middle\\'%3ELocation Image Not Available%3C/text%3E%3C/svg%3E';"
-                          >
-                          ${action.location.description ? `
-                            <p class="text-gray-400 text-sm mt-1">${action.location.description}</p>
-                          ` : ''}
-                        </div>
-                      ` : ''}
-                    </div>
-                  </div>
-                </div>
-              </div>
-            `;
-    }).join('')}
-        </div>
-      </div>`;
-  } catch (err) {
-    console.error("Load Action Log error:", err);
-    content.innerHTML = `<div class="text-center py-12 text-red-500">Failed to load actions: ${err.message}</div>`;
-  }
-}
-
-// Load Leaderboard Tab
-async function loadLeaderboard() {
-  const content = document.getElementById("content");
-  try {
-    content.innerHTML = `
-      <div class="max-w-7xl mx-auto px-4">
-        <h1 class="text-3xl font-bold mb-6">Leaderboard</h1>
-        <div id="leaderboard-items" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3"></div>
-        <div id="leaderboard-loader" class="text-center py-8 hidden">
-          <div class="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-primary-600 mx-auto"></div>
-          <p class="mt-2 text-gray-400">Loading more avatars...</p>
-        </div>
-      </div>`;
-
-    // Set up window scroll state for infinite scrolling
-    if (state.activeTab === "leaderboard") {
-      window.scrollState = {
-        page: 1,
-        loading: false,
-        hasMore: true,
-        initialized: false,
-      };
-    } else {
-      window.scrollState = window.scrollState || {
-        page: 1,
-        loading: false,
-        hasMore: true,
-      };
-    }
-
-    // Load initial data
-    const data = await fetchJSON(`${API_BASE_URL}/leaderboard?page=1&limit=12`);
-    const leaderboardItems = document.getElementById("leaderboard-items");
-    const loader = document.getElementById("leaderboard-loader");
-
-    if (!data.avatars || data.avatars.length === 0) {
-      leaderboardItems.innerHTML = '<div class="text-center py-4">No leaderboard data available</div>';
-      return;
-    }
-
-    // Check claim status for each avatar
-    const avatarsWithClaimStatus = await Promise.all(data.avatars.map(async avatar => {
-      try {
-        const claimStatusRes = await fetchJSON(`/api/claims/status/${avatar._id}`);
-        return {
-          ...avatar,
-          isClaimed: claimStatusRes.claimed || false,
-          claimedBy: claimStatusRes.claimedBy || ''
-        };
-      } catch (err) {
-        console.warn(`Failed to get claim status for avatar ${avatar._id}:`, err);
-        return {
-          ...avatar,
-          isClaimed: false,
-          claimedBy: ''
-        };
-      }
-    }));
-
-    // Function to render a leaderboard card with fallback if the component function is not available
-    const renderLeaderboardItem = (avatar) => {
-      // First try using our component
-      if (window.AvatarDetails && typeof window.AvatarDetails.renderLeaderboardCard === 'function') {
-        return window.AvatarDetails.renderLeaderboardCard(avatar, avatar.isClaimed);
-      }
-
-      // Fallback to render the card directly if the component function is not available
-      const getTier = (model) => {
-        if (!model) return "U";
-        if (model.includes("gpt-4")) return "S";
-        if (model.includes("gpt-3.5")) return "A";
-        if (model.includes("claude")) return "B";
-        return "C";
-      };
-
-      const getTierColor = (model) => {
-        const tier = getTier(model);
-        const colors = {
-          S: "bg-purple-600",
-          A: "bg-blue-600",
-          B: "bg-green-600",
-          C: "bg-yellow-600",
-          U: "bg-gray-600",
-        };
-        return colors[tier] || colors.U;
-      };
-
-      return `
-        <div class="avatar-card bg-gray-800 p-3 rounded-lg hover:bg-gray-700 transition-colors ${avatar.isClaimed ? 'border-l-2 border-green-500' : ''}">
-          <div class="flex gap-3 items-center">
-            <div class="relative">
-              <img 
-                src="${avatar.thumbnailUrl || avatar.imageUrl}" 
-                alt="${avatar.name}" 
-                class="w-16 h-16 object-cover rounded-full border-2 border-gray-600"
-                onerror="this.onerror=null; this.src='data:image/svg+xml,%3Csvg xmlns=\\'http://www.w3.org/2000/svg\\' width=\\'100\\' height=\\'100\\' viewBox=\\'0 0 100 100\\'%3E%3Crect fill=\\'%23333\\' width=\\'100\\' height=\\'100\\'/%3E%3Ctext fill=\\'%23FFF\\' x=\\'50\\' y=\\'50\\' font-size=\\'50\\' text-anchor=\\'middle\\' dominant-baseline=\\'middle\\'%3E${avatar.name.charAt(0).toUpperCase()}%3C/text%3E%3C/svg%3E';"
-              >
-              ${avatar.isClaimed ? `<div class="absolute -top-1 -right-1 bg-green-500 rounded-full w-5 h-5 flex items-center justify-center text-xs">✓</div>` : ''}
-            </div>
-            
-            <div class="flex-1 min-w-0">
-              <h3 class="text-sm font-semibold truncate">${avatar.name}</h3>
-              <p class="text-xs text-gray-400">Score: ${avatar.score || 0}</p>
-              
-              <div class="flex items-center gap-2 mt-1">
-                <span class="px-1.5 py-0.5 rounded text-xs font-bold ${getTierColor(avatar.model)}">
-                  Tier ${getTier(avatar.model)}
-                </span>
-                ${avatar.isClaimed ? `<span class="text-xs text-green-400">Claimed</span>` : ''}
-              </div>
-            </div>
-          </div>
-        </div>
-      `;
-    };
-
-    // Use our render function (either component or fallback)
-    leaderboardItems.innerHTML = avatarsWithClaimStatus.map(avatar => `
-      <div onclick="showAvatarDetails('${avatar._id}')" class="cursor-pointer">
-        ${renderLeaderboardItem(avatar)}
-      </div>
-    `).join("");
-
-    // Set up infinite scroll with the same render function
-    const loadMore = async () => {
-      if (window.scrollState.loading || !window.scrollState.hasMore) return;
-
-      window.scrollState.loading = true;
-      loader.classList.remove("hidden");
-
-      try {
-        const nextPage = window.scrollState.page + 1;
-        const moreData = await fetchJSON(`${API_BASE_URL}/leaderboard?page=${nextPage}&limit=12`);
-
-        if (!moreData.avatars || moreData.avatars.length === 0) {
-          window.scrollState.hasMore = false;
-          loader.classList.add("hidden");
-          return;
-        }
-
-        // Append new avatar cards
-        const fragment = document.createDocumentFragment();
-        moreData.avatars.forEach(avatar => {
-          const div = document.createElement("div");
-          div.className = "cursor-pointer";
-          div.onclick = () => showAvatarDetails(avatar._id);
-          div.innerHTML = renderLeaderboardItem(avatar);
-          fragment.appendChild(div);
-        });
-
-        leaderboardItems.appendChild(fragment);
-        window.scrollState.page = nextPage;
-
-      } catch (err) {
-        console.error("Failed to load more leaderboard items:", err);
-        const errorDiv = document.createElement("div");
-        errorDiv.className = "col-span-full text-center py-4 text-red-500";
-        errorDiv.innerHTML = `
-          Error loading more items: ${err.message}
-          <button class="ml-2 px-3 py-1 bg-blue-600 text-white rounded" onclick="retryLeaderboardLoad()">
-            Retry
-          </button>
-        `;
-        leaderboardItems.appendChild(errorDiv);
-      } finally {
-        window.scrollState.loading = false;
-        if (window.scrollState.hasMore) {
-          loader.classList.remove("hidden");
-        } else {
-          loader.classList.add("hidden");
-        }
-      }
-    };
-
-    // Set up intersection observer for infinite scroll
-    const observer = new IntersectionObserver(entries => {
-      if (entries[0].isIntersecting && !window.scrollState.loading && window.scrollState.hasMore) {
-        loadMore();
-      }
-    }, { threshold: 0.1 });
-
-    if (loader) {
-      observer.observe(loader);
-    }
-
-  } catch (err) {
-    console.error("Load Leaderboard error:", err);
-    content.innerHTML = `<div class="text-center py-12 text-red-500">Failed to load leaderboard: ${err.message}</div>`;
-  }
-}
-
-// Load Social Content Tab
-async function loadSocialContent() {
-  const content = document.getElementById("content");
-  try {
-    const posts = await fetchJSON(`${API_BASE_URL}/social/posts?sort=${state.socialSort}`);
-    content.innerHTML = `
-      <div class="max-w-6xl mx-auto px-4">
-        <div class="flex flex-col md:flex-row justify-between items-center mb-6">
-          <h2 class="text-4xl font-bold text-white">Social Feed</h2>
-          <div>
-            <button onclick="setSocialSort('new')" class="${state.socialSort === 'new' ? 'bg-blue-600' : 'bg-gray-700'} px-4 py-2 rounded">Latest</button>
-            <button onclick="setSocialSort('top')" class="${state.socialSort === 'top' ? 'bg-blue-600' : 'bg-gray-700'} px-4 py-2 rounded">Top</button>
-          </div>
-        </div>
-        <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
-          ${posts.map(post => `
-            <div class="bg-gray-800 rounded-lg p-6">
-              <div class="flex items-center gap-3 mb-3">
-                <img src="${post.avatar.thumbnailUrl || post.avatar.imageUrl}" class="w-12 h-12 rounded-full" alt="${post.avatar.name}">
-                <div>
-                  <div class="font-bold text-xl text-white">${post.avatar.name}</div>
-                  <div class="text-sm text-gray-400">${new Date(post.timestamp).toLocaleString()}</div>
-                </div>
-              </div>
-              <p class="mb-4 text-lg text-gray-100">${post.content}</p>
-            </div>
-          `).join("")}
-        </div>
-      </div>`;
-  } catch (err) {
-    console.error("Load Social Content error:", err);
-    content.innerHTML = `<div class="text-center py-12 text-red-500">Failed to load social content: ${err.message}</div>`;
-  }
-}
-
-async function setSocialSort(sort) {
-  state.socialSort = sort;
-  await loadSocialContent();
-}
-
-// Load Tribes Tab
-async function loadTribes() {
-  const content = document.getElementById("content");
-
-  try {
-    content.innerHTML = `
-      <div class="max-w-7xl mx-auto px-4">
-        <h1 class="text-3xl font-bold mb-6">Tribes</h1>
-        <div class="bg-gray-800/50 p-6 rounded-lg mb-8">
-          <p class="text-lg">Tribes are groups of avatars that share the same emoji identifier. Each tribe has its own characteristics and traits.</p>
-        </div>
-        
-        <div id="tribes-loader" class="flex justify-center py-12">
-          <div class="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary-600"></div>
-        </div>
-        
-        <div id="tribes-content" class="hidden">
-          <div id="tribes-grid" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4"></div>
-        </div>
-        
-        <div id="tribe-details" class="hidden mt-8">
-          <button 
-            id="back-to-tribes" 
-            class="flex items-center gap-2 bg-gray-800 hover:bg-gray-700 px-4 py-2 rounded mb-6 transition-colors"
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
-            </svg>
-            Back to tribes
-          </button>
-          
-          <div class="flex items-center gap-4 mb-6">
-            <div id="tribe-emoji" class="text-5xl"></div>
-            <h2 class="text-3xl font-bold">Tribe <span id="tribe-name"></span></h2>
-          </div>
-          
-          <div id="tribe-members" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4"></div>
-        </div>
-      </div>
-    `;
-
-    // Get tribe counts
-    const tribeCounts = await fetchJSON(`${API_BASE_URL}/tribes/counts`);
-    const loader = document.getElementById('tribes-loader');
-    const tribesContent = document.getElementById('tribes-content');
-    const tribesGrid = document.getElementById('tribes-grid');
-    const tribeDetails = document.getElementById('tribe-details');
-
-    if (!tribeCounts || tribeCounts.length === 0) {
-      loader.innerHTML = '<div class="text-center text-gray-400">No tribes found</div>';
-      return;
-    }
-
-    // Render tribe cards
-    tribesGrid.innerHTML = tribeCounts.map(tribe => `
-      <div 
-        class="tribe-card bg-gray-800 rounded-lg p-5 flex flex-col items-center hover:bg-gray-700 transition-colors cursor-pointer"
-        data-emoji="${tribe.emoji}" 
-        onclick="showTribeDetails('${tribe.emoji}')"
-      >
-        <div class="text-5xl mb-3">${tribe.emoji}</div>
-        <div class="text-xl font-bold">Tribe ${tribe.emoji}</div>
-        <div class="text-gray-400 mt-2">
-          ${tribe.count} ${tribe.count === 1 ? 'member' : 'members'}
-        </div>
-      </div>
-    `).join('');
-
-    // Hide loader, show content
-    loader.classList.add('hidden');
-    tribesContent.classList.remove('hidden');
-
-    // Set up back button handler
-    document.getElementById('back-to-tribes').addEventListener('click', () => {
-      tribesContent.classList.remove('hidden');
-      tribeDetails.classList.add('hidden');
-    });
-
-  } catch (err) {
-    console.error("Load Tribes error:", err);
-    content.innerHTML = `
-      <div class="text-center py-12 text-red-500">
-        Failed to load tribes: ${err.message}
-        <button 
-          class="block mx-auto mt-4 px-4 py-2 bg-gray-700 rounded"
-          onclick="loadTribes()"
-        >
-          Retry
-        </button>
-      </div>
-    `;
-  }
-}
-
-// Show details for a specific tribe
-async function showTribeDetails(emoji) {
-  try {
-    const tribesContent = document.getElementById('tribes-content');
-    const tribeDetails = document.getElementById('tribe-details');
-    const tribeEmoji = document.getElementById('tribe-emoji');
-    const tribeName = document.getElementById('tribe-name');
-    const tribeMembers = document.getElementById('tribe-members');
-
-    // Update UI
-    tribesContent.classList.add('hidden');
-    tribeDetails.classList.remove('hidden');
-    tribeEmoji.textContent = emoji;
-    tribeName.textContent = emoji;
-
-    // Show loading state
-    tribeMembers.innerHTML = `
-      <div class="col-span-full flex justify-center py-8">
-        <div class="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-primary-600"></div>
-      </div>
-    `;
-
-    // Fetch tribe details
-    const tribeData = await fetchJSON(`${API_BASE_URL}/tribes/${emoji}`);
-
-    if (!tribeData || !tribeData.members || tribeData.members.length === 0) {
-      tribeMembers.innerHTML = `
-        <div class="col-span-full text-center text-gray-400 py-8">
-          No members found for this tribe
-        </div>
-      `;
-      return;
-    }
-
-    // Render tribe members with safe name extraction
-    tribeMembers.innerHTML = tribeData.members.map(member => {
-      const safeName = member.name || 'Unknown';
-      const initial = safeName.charAt(0).toUpperCase();
-      return `
-        <div 
-          class="bg-gray-800 p-3 rounded-lg hover:bg-gray-700 transition-colors cursor-pointer"
-          onclick="showAvatarDetails('${member._id}')"
-        >
-          <div class="flex items-center gap-3">
-            ${member.imageUrl
-          ? `<img 
-                      src="${member.imageUrl}" 
-                      alt="${safeName}" 
-                      class="w-16 h-16 object-cover rounded-full"
-                      onerror="this.onerror=null; this.src='data:image/svg+xml,%3Csvg xmlns=\\'http://www.w3.org/2000/svg\\' width=\\'100\\' height=\\'100\\' viewBox=\\'0 0 100 100\\'%3E%3Crect fill=\\'%23333\\' width=\\'100\\' height=\\'100\\'/%3E%3Ctext fill=\\'%23FFF\\' x=\\'50\\' y=\\'50\\' font-size=\\'50\\' text-anchor=\\'middle\\' dominant-baseline=\\'middle\\'%3E${initial}%3C/text%3E%3C/svg%3E';">`
-          : `<div class="w-16 h-16 rounded-full bg-gray-700 flex items-center justify-center text-2xl font-bold text-white">
-                      ${initial}
-                  </div>`
-        }
-            
-            <div class="flex-1 min-w-0">
-              <h3 class="text-lg font-semibold truncate">${safeName}</h3>
-              <div class="text-xs text-gray-400 mt-1">
-                ${member.messageCount || 0} messages
-              </div>
-            </div>
-            
-            <div class="text-xl">${emoji}</div>
-          </div>
-        </div>
-      `;
-    }).join('');
-
-  } catch (err) {
-    console.error("Show Tribe Details error:", err);
-    document.getElementById('tribe-members').innerHTML = `
-      <div class="col-span-full text-center text-red-500 py-8">
-        Failed to load tribe members: ${err.message}
-        <button 
-          class="block mx-auto mt-4 px-4 py-2 bg-gray-700 rounded"
-          onclick="showTribeDetails('${emoji}')"
-        >
-          Retry
-        </button>
-      </div>
-    `;
-  }
-}
-
-// Mobile Navigation Toggle
-document.getElementById("open-mobile-nav")?.addEventListener("click", () => {
-  // ...existing code to open mobile navigation...
-  document.querySelector("nav").classList.toggle("hidden");
-});
-
-// Toast Notifications
-function showToast(message) {
-  const container = document.getElementById("toast-container");
-  if (!container) {
-    console.log('Toast message (no container):', message);
-    alert(message);
-    return;
-  }
-
-  const toast = document.createElement("div");
-  toast.className = "toast bg-gray-800 text-white p-3 rounded shadow";
-  toast.textContent = message;
-  container.appendChild(toast);
-
-  // Remove after animation completes
-  setTimeout(() => {
-    if (toast.parentNode === container) {
-      toast.remove();
-    }
-  }, 3000);
-}
-
-// Initialization
-document.addEventListener("DOMContentLoaded", () => {
+/**
+ * Initialize the application
+ */
+function initializeApplication() {
+  console.log("Initializing Moonstone Sanctum application...");
+  
+  // Initialize state from localStorage
+  initializeStateFromStorage();
+  
+  // Initialize wallet connection
   initializeWallet();
+  
+  // Initialize tabs
   initializeTabs();
+  
+  // Initialize content loader
   initializeContentLoader();
-  showToast("Welcome to Monstone Sanctum!");
-});
-
-// Initialization
-document.addEventListener("DOMContentLoaded", () => {
-  // Inject wallet connect button if missing
-  const walletContainer = document.querySelector(".wallet-container");
-  if (walletContainer && !walletContainer.innerHTML.trim()) {
-    walletContainer.innerHTML = `<button onclick="connectWallet()" class="px-4 py-2 bg-blue-600 text-white rounded">Connect Wallet</button>`;
-  }
-
-  // Auto connect wallet if available and trusted
-  const provider = window?.phantom?.solana;
-  if (provider) {
-    provider.connect({ onlyIfTrusted: true })
-      .then(resp => {
-        if (resp?.publicKey) {
-          state.wallet = { publicKey: resp.publicKey.toString() };
-          updateWalletUI();
-          loadContent();
-        }
-      })
-      .catch(err => {
-        console.warn("Auto-connect failed or not trusted:", err);
-        // Proceed with loading the component script even if auto-connect fails
-        loadAvatarDetailsScript();
-      });
-  } else {
-    loadAvatarDetailsScript();
-  }
-
-  function loadAvatarDetailsScript() {
-    // Load the AvatarDetails component script
-    if (!window.AvatarDetails) {
-      const script = document.createElement('script');
-      script.src = '/js/avatarDetails.js';
-      script.onload = () => {
-        console.log('AvatarDetails component loaded');
-        loadContent();
-      };
-      script.onerror = (err) => {
-        console.error('Failed to load AvatarDetails component:', err);
-        loadContent(); // Still attempt to load content without the component
-      };
-      document.head.appendChild(script);
-    } else {
-      loadContent();
-    }
-  }
-
-  // Event listener to close modal when clicking outside
-  document.getElementById("avatar-modal")?.addEventListener("click", (e) => {
-    if (e.target.id === "avatar-modal") {
-      closeAvatarModal();
-    }
-  });
-
-  updateWalletUI();
-});
-
-async function showAvatarDetails(avatarId) {
-  const modal = document.getElementById("avatar-modal");
-  const modalContent = document.getElementById("avatar-modal-content");
-
-  modal.classList.remove("hidden");
-  modalContent.innerHTML = `
-    <div class="text-center p-8">
-      <div class="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary-600 mx-auto"></div>
-      <p class="mt-2 text-gray-400">Loading avatar details...</p>
-    </div>
-  `;
-
-  try {
-    // Fetch all necessary avatar data
-    const [
-      avatarResponse,
-      xauthStatusResponse,
-      claimStatusResponse,
-      narrativesResponse,
-      actionsResponse,
-      statsResponse,
-    ] = await Promise.all([
-      fetchJSON(`/api/avatars/${avatarId}`),
-      fetchJSON(`/api/xauth/status/${avatarId}`),
-      fetchJSON(`/api/claims/status/${avatarId}`),
-      fetchJSON(`/api/avatars/${avatarId}/narratives`),
-      fetchJSON(`/api/avatars/${avatarId}/dungeon-actions`),
-      fetchJSON(`/api/avatars/${avatarId}/stats`),
-    ]);
-
-    // Combine all data into one avatar object
-    const avatar = {
-      ...avatarResponse,
-      stats: statsResponse,
-      narratives: narrativesResponse?.narratives || [],
-      actions: actionsResponse?.actions || [],
-    };
-
-    // Set the selected avatar so that claimAvatar() can use it
-    window.selectedAvatar = avatar;
-
-    // Process X authorization status
-    const xAuthStatus = processXAuthStatus(xauthStatusResponse, avatarId);
-
-    // Use claimStatusResponse to determine if avatar is already claimed
-    const isAvatarClaimed = claimStatusResponse && claimStatusResponse.claimed;
-    const claimantAddress = claimStatusResponse?.claimedBy || '';
-
-    // Check if the avatar is claimed by the current wallet
-    const isClaimedByCurrentWallet = isAvatarClaimed &&
-      claimantAddress?.toLowerCase() === state.wallet?.publicKey?.toLowerCase();
-
-    // Add X auth button and status display only if claimed by current wallet
-    const xAuthSection = isClaimedByCurrentWallet ? `
-      <div class="mt-4 border-t border-gray-700 pt-4">
-        <h3 class="font-medium text-lg mb-2">X Authorization Status</h3>
-        <div class="flex items-center">
-          <span class="px-2 py-1 rounded text-sm ${xAuthStatus.statusClass}">${xAuthStatus.statusText}</span>
-          ${xAuthStatus.showButton ?
-            `<button id="xauth-button" class="ml-2 bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded text-sm">
-              ${xAuthStatus.buttonText}
-            </button>` : ''}
-        </div>
-        ${xAuthStatus.message ? `<p class="text-sm mt-2 text-gray-400">${xAuthStatus.message}</p>` : ''}
-      </div>
-    ` : '';
-
-    // Add claim button only if avatar is not claimed and wallet is connected
-    const claimSection = !isAvatarClaimed && state.wallet ?
-      `<button id="claim-btn" class="mt-4 bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded">
-        Claim this Avatar
-      </button>` : '';
-
-    // Prepare claim info for avatar details
-    const claimInfo = {
-      claimed: isAvatarClaimed,
-      claimedBy: claimantAddress,
-      isClaimedByCurrentWallet
-    };
-
-    // Use our AvatarDetails component for the modal content
-    modalContent.innerHTML = `
-      <div class="relative p-6">
-        <!-- Close button -->
-        <button onclick="closeAvatarModal()" class="absolute top-4 right-4 text-gray-400 hover:text-white p-2">
-          <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-          </svg>
-        </button>
-        
-        <!-- Avatar Details -->
-        ${window.AvatarDetails.renderAvatarDetails(avatar, { claimInfo })}
-        
-        <!-- Additional sections for narratives, actions, etc. -->
-        <div class="mt-6 grid grid-cols-1 md:grid-cols-2 gap-6">
-          <!-- Narratives section -->
-          <div class="bg-gray-800 p-4 rounded-lg">
-            <h3 class="text-lg font-bold mb-2">Recent Narratives</h3>
-            ${avatar.narratives.length > 0 ? `
-              <div class="space-y-3">
-                ${avatar.narratives.slice(0, 3).map(narrative => `
-                  <div class="bg-gray-700/50 p-3 rounded">
-                    <p class="text-sm text-gray-300">${narrative.content}</p>
-                    <div class="text-xs text-gray-500 mt-1">
-                      ${new Date(narrative.createdAt).toLocaleDateString()}
-                    </div>
-                  </div>
-                `).join('')}
-              </div>
-            ` : '<p class="text-gray-400">No narratives available.</p>'}
-          </div>
-          
-          <!-- Actions section -->
-          <div class="bg-gray-800 p-4 rounded-lg">
-            <h3 class="text-lg font-bold mb-2">Recent Actions</h3>
-            ${avatar.actions.length > 0 ? `
-              <div class="space-y-2">
-                ${avatar.actions.slice(0, 5).map(action => `
-                  <div class="text-sm flex items-center gap-2 bg-gray-700/30 p-2 rounded">
-                    <span class="text-lg">
-                      ${action.action === "attack" ? "⚔️" :
-                        action.action === "defend" ? "🛡️" :
-                          action.action === "move" ? "🚶" :
-                            action.action === "remember" ? "💭" : "❓"}
-                    </span>
-                    <span>${action.description || action.action}</span>
-                  </div>
-                `).join('')}
-              </div>
-            ` : '<p class="text-gray-400">No recent actions.</p>'}
-          </div>
-        </div>
-        
-        <!-- X Auth Section -->
-        ${xAuthSection}
-
-        <!-- Claim Section -->
-        ${claimSection}
-      </div>
-    `;
-
-    if (xAuthStatus.showButton) {
-      const xauthButton = document.getElementById("xauth-button");
-      if (xauthButton) {
-        xauthButton.addEventListener("click", () => initiateXAuth(avatarId));
-      }
-    }
-
-    const claimBtn = document.getElementById('claim-btn');
-    if (claimBtn) {
-      claimBtn.addEventListener('click', () => claimAvatar(avatarId));
-    }
-  } catch (err) {
-    console.error("Error loading avatar details:", err);
-    modalContent.innerHTML = `
-      <div class="text-center py-12 text-red-500">
-        Failed to load avatar details: ${err.message}
-        <button onclick="closeAvatarModal()" class="block mx-auto mt-4 px-4 py-2 bg-gray-700 rounded">Close</button>
-      </div>
-    `;
+  
+  // Set up mobile navigation toggles
+  setupMobileNavigation();
+  
+  // Set up modal event listeners
+  setupModalEventListeners();
+  
+  // Show welcome toast
+  showToast("Welcome to Moonstone Sanctum!");
+  
+  // Make global functions available
+  registerGlobalFunctions();
+  
+  // Make the state object available globally
+  window.state = state;
+  
+  // Initial content load
+  if (window.loadContent) {
+    window.loadContent();
   }
 }
-// Helper function to process X authorization status
-function processXAuthStatus(response, avatarId) {
-  // Default values
-  let result = {
-    authorized: false,
-    statusText: "Not Authorized",
-    statusClass: "bg-red-600",
-    showButton: true,
-    buttonText: "Connect X Account",
-    message: "",
-    loading: false,
+
+/**
+ * Set up mobile navigation toggle functionality
+ */
+function setupMobileNavigation() {
+  // Open mobile navigation
+  const openMobileNav = document.getElementById("open-mobile-nav");
+  if (openMobileNav) {
+    openMobileNav.addEventListener("click", () => {
+      const nav = document.querySelector("nav");
+      if (nav) {
+        nav.classList.remove("hidden");
+      }
+    });
+  }
+  
+  // Close mobile navigation
+  const closeMobileNav = document.getElementById("close-mobile-nav");
+  if (closeMobileNav) {
+    closeMobileNav.addEventListener("click", () => {
+      const nav = document.querySelector("nav");
+      if (nav) {
+        nav.classList.add("hidden");
+      }
+    });
+  }
+}
+
+/**
+ * Set up modal event listeners
+ */
+function setupModalEventListeners() {
+  // Generic modal container
+  const modalContainer = document.getElementById("modal-container");
+  if (modalContainer) {
+    modalContainer.addEventListener("click", (e) => {
+      if (e.target === modalContainer) {
+        closeModal();
+      }
+    });
+  }
+  
+  // Avatar detail modal container
+  const avatarModal = document.getElementById("avatar-modal");
+  if (avatarModal) {
+    avatarModal.addEventListener("click", (e) => {
+      if (e.target === avatarModal) {
+        closeAvatarModal();
+      }
+    });
+  }
+}
+
+/**
+ * Register global functions for backward compatibility
+ */
+function registerGlobalFunctions() {
+  // Tab navigation
+  window.setActiveTab = setActiveTab;
+  
+  // Social sort
+  window.setSocialSort = (sort) => {
+    state.socialSort = sort;
+    if (window.loadContent) {
+      window.loadContent();
+    }
   };
-
-  if (!response) {
-    return result;
-  }
-
-  // Process based on authorization status
-  if (response.authorized) {
-    result = {
-      authorized: true,
-      statusText: "Connected",
-      statusClass: "bg-green-600",
-      showButton: true,
-      buttonText: "Disconnect",
-      message: "Your X account is successfully linked to this avatar.",
-      expiresAt: response.expiresAt,
-      isDisconnect: true
-    };
-  } else if (response.requiresReauth) {
-    result = {
-      authorized: false,
-      statusText: "Authorization Required",
-      statusClass: "bg-yellow-600",
-      showButton: true,
-      buttonText: "Connect X Account",
-      message: response.error || "Your X authorization needs to be renewed."
-    };
-  }
-
-  return result;
-}
-
-// Simplified X auth initiation using our new service
-async function initiateXAuth(avatarId) {
-  try {
-    // Import the X service dynamically - UPDATE THIS PATH
-    const xServiceModule = await import('/js/xService.mjs');
-    const xService = xServiceModule.default;
-    
-    showToast("Initiating X authorization...");
-    
-    const result = await xService.initiateXAuth(avatarId);
-    
-    if (result.success) {
-      showToast("X authorization initiated. Please complete the process in the popup window.");
-      
-      // Set up a listener for auth callback messages from the popup
-      window.addEventListener('message', function authMessageListener(event) {
-        if (event.data.type === 'X_AUTH_SUCCESS') {
-          showToast("X authorization successful!");
-          window.removeEventListener('message', authMessageListener);
-          
-          // Refresh the avatar modal to show updated status
-          showAvatarDetails(avatarId);
-        } else if (event.data.type === 'X_AUTH_ERROR') {
-          showToast(`X authorization failed: ${event.data.error || 'Unknown error'}`);
-          window.removeEventListener('message', authMessageListener);
-        }
-      });
-    } else {
-      showToast(`Error initiating X authorization: ${result.error}`);
+  
+  // Modal functions
+  window.closeModal = () => {
+    const modal = document.getElementById("modal-container");
+    if (modal) {
+      modal.classList.add("hidden");
     }
-  } catch (error) {
-    console.error("Error initiating X auth:", error);
-    showToast(`Error initiating X authorization: ${error.message}`);
-  }
-}
-
-// New function to disconnect X authentication
-async function disconnectXAuth(avatarId) {
-  try {
-    // Import the X service dynamically - UPDATE THIS PATH
-    const xServiceModule = await import('/js/xService.mjs');
-    const xService = xServiceModule.default;
-    
-    showToast("Disconnecting X account...");
-    
-    const result = await xService.disconnectXAuth(avatarId);
-    
-    if (result.success) {
-      showToast("X account disconnected successfully.");
-      // Refresh the avatar modal to show updated status
-      showAvatarDetails(avatarId);
-    } else {
-      showToast(`Error disconnecting X account: ${result.error}`);
+  };
+  
+  window.closeAvatarModal = () => {
+    const modal = document.getElementById("avatar-modal");
+    if (modal) {
+      modal.classList.add("hidden");
     }
-  } catch (error) {
-    console.error("Error disconnecting X auth:", error);
-    showToast(`Error disconnecting X account: ${error.message}`);
-  }
-}
-
-// Updated showAvatarDetails function with cleaner X auth UI
-async function showAvatarDetails(avatarId) {
-  const modal = document.getElementById("avatar-modal");
-  const modalContent = document.getElementById("avatar-modal-content");
-
-  modal.classList.remove("hidden");
-  modalContent.innerHTML = `
-    <div class="text-center p-8">
-      <div class="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary-600 mx-auto"></div>
-      <p class="mt-2 text-gray-400">Loading avatar details...</p>
-    </div>
-  `;
-
-  try {
-    // Fetch all necessary avatar data
-    const [
-      avatarResponse,
-      xauthStatusResponse,
-      claimStatusResponse,
-      narrativesResponse,
-      actionsResponse,
-      statsResponse,
-    ] = await Promise.all([
-      fetchJSON(`/api/avatars/${avatarId}`),
-      fetchJSON(`/api/xauth/status/${avatarId}`),
-      fetchJSON(`/api/claims/status/${avatarId}`),
-      fetchJSON(`/api/avatars/${avatarId}/narratives`),
-      fetchJSON(`/api/avatars/${avatarId}/dungeon-actions`),
-      fetchJSON(`/api/avatars/${avatarId}/stats`),
-    ]);
-
-    // Combine all data into one avatar object
-    const avatar = {
-      ...avatarResponse,
-      stats: statsResponse,
-      narratives: narrativesResponse?.narratives || [],
-      actions: actionsResponse?.actions || [],
-    };
-
-    // Set the selected avatar so that claimAvatar() can use it
-    window.selectedAvatar = avatar;
-
-    // Process X authorization status
-    const xAuthStatus = processXAuthStatus(xauthStatusResponse, avatarId);
-
-    // Process claim status
-    const isAvatarClaimed = claimStatusResponse && claimStatusResponse.claimed;
-    const claimantAddress = claimStatusResponse?.claimedBy || '';
-    const isClaimedByCurrentWallet = isAvatarClaimed &&
-      claimantAddress?.toLowerCase() === state.wallet?.publicKey?.toLowerCase();
-
-    // Add X auth button and status display only if claimed by current wallet
-    const xAuthSection = isClaimedByCurrentWallet ? `
-      <div class="mt-4 border-t border-gray-700 pt-4">
-        <h3 class="font-medium text-lg mb-2">X Connection Status</h3>
-        <div class="flex items-center justify-between">
-          <span class="px-2 py-1 rounded text-sm ${xAuthStatus.statusClass}">${xAuthStatus.statusText}</span>
-          ${xAuthStatus.showButton ?
-            `<button id="xauth-button" class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded text-sm">
-              ${xAuthStatus.buttonText}
-            </button>` : ''}
-        </div>
-        ${xAuthStatus.message ? `<p class="text-sm mt-2 text-gray-400">${xAuthStatus.message}</p>` : ''}
-        ${xAuthStatus.expiresAt ? `<p class="text-sm mt-1 text-gray-400">Expires: ${new Date(xAuthStatus.expiresAt).toLocaleString()}</p>` : ''}
-      </div>
-    ` : '';
-
-    // Add claim button only if avatar is not claimed and wallet is connected
-    const claimSection = !isAvatarClaimed && state.wallet ?
-      `<button id="claim-btn" class="mt-4 bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded">
-        Claim this Avatar
-      </button>` : '';
-
-    // Prepare claim info for avatar details
-    const claimInfo = {
-      claimed: isAvatarClaimed,
-      claimedBy: claimantAddress,
-      isClaimedByCurrentWallet
-    };
-
-    // Use our AvatarDetails component for the modal content
-    modalContent.innerHTML = `
-      <div class="relative p-6">
-        <!-- Close button -->
-        <button onclick="closeAvatarModal()" class="absolute top-4 right-4 text-gray-400 hover:text-white p-2">
-          <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-          </svg>
-        </button>
-        
-        <!-- Avatar Details -->
-        ${window.AvatarDetails.renderAvatarDetails(avatar, { claimInfo })}
-        
-        <!-- Additional sections for narratives, actions, etc. -->
-        <div class="mt-6 grid grid-cols-1 md:grid-cols-2 gap-6">
-          <!-- Narratives section -->
-          <div class="bg-gray-800 p-4 rounded-lg">
-            <h3 class="text-lg font-bold mb-2">Recent Narratives</h3>
-            ${avatar.narratives.length > 0 ? `
-              <div class="space-y-3">
-                ${avatar.narratives.slice(0, 3).map(narrative => `
-                  <div class="bg-gray-700/50 p-3 rounded">
-                    <p class="text-sm text-gray-300">${narrative.content}</p>
-                    <div class="text-xs text-gray-500 mt-1">
-                      ${new Date(narrative.createdAt).toLocaleDateString()}
-                    </div>
-                  </div>
-                `).join('')}
-              </div>
-            ` : '<p class="text-gray-400">No narratives available.</p>'}
-          </div>
-          
-          <!-- Actions section -->
-          <div class="bg-gray-800 p-4 rounded-lg">
-            <h3 class="text-lg font-bold mb-2">Recent Actions</h3>
-            ${avatar.actions.length > 0 ? `
-              <div class="space-y-2">
-                ${avatar.actions.slice(0, 5).map(action => `
-                  <div class="text-sm flex items-center gap-2 bg-gray-700/30 p-2 rounded">
-                    <span class="text-lg">
-                      ${action.action === "attack" ? "⚔️" :
-                        action.action === "defend" ? "🛡️" :
-                          action.action === "move" ? "🚶" :
-                            action.action === "remember" ? "💭" : "❓"}
-                    </span>
-                    <span>${action.description || action.action}</span>
-                  </div>
-                `).join('')}
-              </div>
-            ` : '<p class="text-gray-400">No recent actions.</p>'}
-          </div>
-        </div>
-        
-        <!-- X Auth Section -->
-        ${xAuthSection}
-
-        <!-- Claim Section -->
-        ${claimSection}
-      </div>
-    `;
-
-    if (xAuthStatus.showButton) {
-      const xauthButton = document.getElementById("xauth-button");
-      if (xauthButton) {
-        xauthButton.addEventListener("click", () => initiateXAuth(avatarId));
-      }
+  };
+  
+  // Avatar details
+  window.showAvatarDetails = async (avatarId) => {
+    try {
+      // Import the avatar component dynamically
+      const { showAvatarDetailsModal } = await import('./components/avatar.js');
+      showAvatarDetailsModal(avatarId);
+    } catch (error) {
+      console.error("Error loading avatar details:", error);
+      showToast(`Error loading avatar details: ${error.message}`, { type: 'error' });
     }
-
-    const claimBtn = document.getElementById('claim-btn');
-    if (claimBtn) {
-      claimBtn.addEventListener('click', () => claimAvatar(avatarId));
+  };
+  
+  // Tribe details
+  window.showTribeDetails = async (emoji) => {
+    try {
+      // Import the tribes component dynamically
+      const { showTribeDetailsContent } = await import('./tabs/tribes.js');
+      showTribeDetailsContent(emoji);
+    } catch (error) {
+      console.error("Error loading tribe details:", error);
+      showToast(`Error loading tribe details: ${error.message}`, { type: 'error' });
     }
-  } catch (err) {
-    console.error("Error loading avatar details:", err);
-    modalContent.innerHTML = `
-      <div class="text-center py-12 text-red-500">
-        Failed to load avatar details: ${err.message}
-        <button onclick="closeAvatarModal()" class="block mx-auto mt-4 px-4 py-2 bg-gray-700 rounded">Close</button>
-      </div>
-    `;
-  }
+  };
 }

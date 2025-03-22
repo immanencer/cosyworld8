@@ -117,11 +117,8 @@
   <!-- Tribe-specific styles -->
   <link rel="stylesheet" href="css/tribe-styles.css">
 
-  <!-- Avatar Details Component -->
-  <script src="js/avatarDetails.js"></script>
-  <script src="js/claims.js"></script>
-  <script src="/js/wallet.js" defer></script>
-  <script src="/js/main.js" defer></script>
+  <!-- Main application script (imports other modules) -->
+  <script type="module" src="/js/main.js"></script>
 </head>
 <body class="min-h-screen flex flex-col">
   <!-- Header -->
@@ -217,7 +214,7 @@
   </div>
 
   <!-- Toast Notifications Container -->
-  <div id="toast-container" class="fixed bottom-4 right-4 z-50 space-y-2"></div>
+  <div id="toast-container" class="fixed bottom-4 right-4 space-y-2 z-50"></div>
 
   <!-- JavaScript for notifications -->
   <script src="/js/toast.js"></script>
