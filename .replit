@@ -16,3 +16,15 @@ externalPort = 80
 
 [[ports]]
 localPort = 3080
+
+[workflows]
+runButton = "Production"
+
+[[workflows.workflow]]
+name = "Production"
+author = 34903672
+mode = "sequential"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "NODE_ENV=production node server/app.mjs"
