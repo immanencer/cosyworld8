@@ -138,7 +138,6 @@ class ConfigService {
       // First, check if we have a valid guild ID
       if (!guildId) {
         console.warn(`Invalid guild ID provided to getGuildConfig: ${guildId}`);
-        throw new Error('Invalid guild ID');
         return { guildId: null, whitelisted: false, summonerRole: "🔮", summonEmoji: "🔮" };
       }
 

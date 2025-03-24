@@ -113,8 +113,16 @@ export class SummonTool extends BaseTool {
         return "Failed to create avatar. The description may be too vague.";
       }
 
-      createdAvatar.summoner = `${message.author.username}@${message.author.id}`;
-      createdAvatar.model = createdAvatar.model || (await services.aiService.selectRandomModel());
+      if (createdAvatar.model) {
+        const model = await services.openrouterAIService.getModel(createdAvatar.model);
+        if (model) {
+          createdAvatar.model = model;
+        }
+      } else { 
+        createdAvatar.model = await services.openrouterAIService.selectRandomModel();
+      }
+
+      createdAvatar.summoner = avatar ? `AVATAR:${avatar._id}` : `${message.author.username}@${message.author.id}`;
       createdAvatar.stats = await services.dungeonService.getAvatarStats(createdAvatar._id);
       await services.avatarService.updateAvatar(createdAvatar);
       await sendAvatarProfileEmbedFromObject(createdAvatar);
@@ -122,7 +130,7 @@ export class SummonTool extends BaseTool {
       const intro = await services.aiService.chat([
         { role: "system", content: `${createdAvatar.name}. ${createdAvatar.description} ${createdAvatar.personality}` },
         { role: "user", content: guildConfig?.prompts?.introduction || "You've just arrived. Introduce yourself." },
-      ]);
+      ], { model: createdAvatar.model });
       
       createdAvatar.dynamicPersonality = intro;
       createdAvatar.channelId = message.channel.id;

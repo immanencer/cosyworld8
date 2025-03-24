@@ -1,5 +1,5 @@
 // commands/commandHandler.mjs
-import { replyToMessage, reactToMessage } from "../services/discordService.mjs";
+import { replyToMessage, reactToMessage, sendAsWebhook } from "../services/discordService.mjs";
 import { getSummonEmoji } from "../utils/utils.mjs";
 
 export async function handleCommands(message, services) {
@@ -109,7 +109,7 @@ export async function handleCommands(message, services) {
       
       // If we got a result and it's meaningful, show it
       if (result && typeof result === 'string' && result.trim().length > 0) {
-        await replyToMessage(message, `-# ${emoji} ${result}`);
+        await sendAsWebhook(message.channel, result, avatar);
       }
 
       // Respond as the user's avatar

@@ -1,5 +1,6 @@
 import OpenAI from 'openai';
 import models from '../models.config.mjs';
+import stringSimilarity from 'string-similarity';
 
 export class OpenRouterAIService {
   constructor(apiKey) {
@@ -153,6 +154,33 @@ export class OpenRouterAIService {
       return null;
     }
   }
+
+    /**
+   * Retrieves a model by exact match or finds the closest match using fuzzy search.
+   * @param {string} modelName - The name of the model to search for.
+   * @returns {string|null} - The exact or closest matching model name, or null if no match is found.
+   */
+    getModel(modelName) {
+      // Extract all model names from the configuration
+      const modelNames = this.modelConfig.map(model => model.model);
+  
+      // Check for an exact match first
+      if (modelNames.includes(modelName)) {
+        return modelName;
+      }
+  
+      // Perform fuzzy search to find the closest match
+      const { bestMatch } = stringSimilarity.findBestMatch(modelName, modelNames);
+  
+      // Return the closest match if the similarity score is above a threshold (e.g., 0.5)
+      if (bestMatch.rating > 0.5) {
+        console.log(`Fuzzy match found: "${modelName}" -> "${bestMatch.target}" (score: ${bestMatch.rating})`);
+        return bestMatch.target;
+      }
+  
+      console.warn(`No close match found for model: "${modelName}"`);
+      return null;
+    }
 
   /**
    * Generates a spoken response as the item within the current channel context.

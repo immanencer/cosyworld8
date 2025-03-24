@@ -111,16 +111,14 @@ export class AvatarGenerationService {
       });
       return mentionedAvatars;
     }
-
+  
+    // Exact match and emoji check
     for (const avatar of avatars) {
       try {
-        // Validate avatar object
         if (!avatar || typeof avatar !== 'object') {
           this.logger.error('Invalid avatar object:', avatar);
           continue;
         }
-
-        // Ensure required fields exist
         if (!avatar._id || !avatar.name) {
           this.logger.error('Avatar missing required fields:', {
             _id: avatar._id,
@@ -129,13 +127,11 @@ export class AvatarGenerationService {
           });
           continue;
         }
-
-        // Check for mentions by name or by emoji
         const nameMatch = avatar.name && content.toLowerCase().includes(avatar.name.toLowerCase());
         const emojiMatch = avatar.emoji && content.includes(avatar.emoji);
-
+  
         if (nameMatch || emojiMatch) {
-          this.logger.debug(`Found mention of avatar: ${avatar.name} (${avatar._id})`);
+          this.logger.debug(`Found mention of avatar (exact): ${avatar.name} (${avatar._id})`);
           mentionedAvatars.add(avatar);
         }
       } catch (error) {
@@ -144,7 +140,26 @@ export class AvatarGenerationService {
         });
       }
     }
-
+  
+    // Fuzzy matching for avatars not already matched
+    const avatarsToSearch = avatars.filter(avatar => !mentionedAvatars.has(avatar));
+    if (avatarsToSearch.length > 0) {
+      const fuseOptions = {
+        keys: ['name'],
+        threshold: 0.4
+      };
+      const fuse = new Fuse(avatarsToSearch, fuseOptions);
+      // Search using the full content as query
+      const fuzzyResults = fuse.search(content);
+      fuzzyResults.forEach(result => {
+        // Lower score implies a better match (score ranges from 0 to 1)
+        if (result.score !== undefined && result.score < 0.5) {
+          this.logger.debug(`Found fuzzy mention of avatar: ${result.item.name} (${result.item._id}) with score ${result.score}`);
+          mentionedAvatars.add(result.item);
+        }
+      });
+    }
+  
     return mentionedAvatars;
   }
 
@@ -356,7 +371,8 @@ export class AvatarGenerationService {
         "name": "Character Name",
         "description": "Detailed physical description of the character",
         "personality": "Description of the character's personality traits and background",
-        "emoji": "🔮"
+        "emoji": "🔮",
+        "model": "optional model name (if specifically provided)"
       }`;
 
       // Fetch guild-specific system prompt if guildId is provided
@@ -376,7 +392,8 @@ export class AvatarGenerationService {
           name: { type: "STRING", description: "The character's name" },
           description: { type: "STRING", description: "A detailed physical description of the character" },
           personality: { type: "STRING", description: "A description of the character's personality, traits, and background" },
-          emoji: { type: "STRING", description: "A single emoji that represents the character" }
+          emoji: { type: "STRING", description: "A single emoji that represents the character" },
+          model: { type: "STRING", description: "The model used to generate the avatar, if provided" }
         },
         required: ["name", "description", "personality"]
       };
@@ -710,6 +727,7 @@ export class AvatarGenerationService {
 
       const avatarDocument = {
         name: avatar.name,
+        model: avatar.model || (await this.aiService.selectRandomModel()),
         emoji: avatar.emoji || "👤", // Default emoji if none provided
         personality: avatar.personality,
         description: avatar.description,
