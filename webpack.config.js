@@ -1,3 +1,4 @@
+
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { dirname } from 'path';
@@ -21,13 +22,6 @@ export default (env, argv) => {
     cache: false,
     watchOptions: {
       ignored: /node_modules/
-    },
-    optimization: {
-      removeAvailableModules: false,
-      removeEmptyChunks: false,
-      splitChunks: false,
-      minimize: true,
-      concatenateModules: false
     },
     entry: {
       main: './public/js/main.js',
