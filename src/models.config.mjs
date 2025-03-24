@@ -1,5 +1,9 @@
 export default [
   {
+    "model": "openai/o1-pro",
+    "rarity": "legendary"
+  },
+  {
     "model": "openai/gpt-4.5-preview",
     "rarity": "legendary"
   },
@@ -408,10 +412,6 @@ export default [
     "rarity": "uncommon"
   },
   {
-    "model": "perplexity/llama-3.1-sonar-large-128k-chat",
-    "rarity": "uncommon"
-  },
-  {
     "model": "perplexity/llama-3.1-sonar-large-128k-online",
     "rarity": "uncommon"
   },
@@ -612,6 +612,10 @@ export default [
     "rarity": "common"
   },
   {
+    "model": "google/gemma-3-27b-it",
+    "rarity": "common"
+  },
+  {
     "model": "mistralai/mistral-saba",
     "rarity": "common"
   },
@@ -712,10 +716,6 @@ export default [
     "rarity": "common"
   },
   {
-    "model": "perplexity/llama-3.1-sonar-small-128k-chat",
-    "rarity": "common"
-  },
-  {
     "model": "perplexity/llama-3.1-sonar-small-128k-online",
     "rarity": "common"
   },
@@ -745,10 +745,6 @@ export default [
   },
   {
     "model": "nousresearch/nous-hermes-llama2-13b",
-    "rarity": "common"
-  },
-  {
-    "model": "google/gemma-3-27b-it",
     "rarity": "common"
   },
   {
