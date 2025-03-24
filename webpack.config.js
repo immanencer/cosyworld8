@@ -18,19 +18,16 @@ export default (env, argv) => {
       maxEntrypointSize: 512000,
       maxAssetSize: 512000
     },
-    cache: {
-      type: 'filesystem',
-      compression: false, // Disable compression for faster builds
-      maxAge: 24 * 60 * 60 * 1000 // 24 hours
-    },
+    cache: false,
     watchOptions: {
-      aggregateTimeout: 600,
-      ignored: ['**/node_modules', '**/dist']
+      ignored: /node_modules/
     },
     optimization: {
       removeAvailableModules: false,
       removeEmptyChunks: false,
       splitChunks: false,
+      minimize: true,
+      concatenateModules: false
     },
     entry: {
       main: './public/js/main.js',
