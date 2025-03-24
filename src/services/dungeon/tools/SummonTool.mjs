@@ -1,6 +1,5 @@
 import { BaseTool } from './BaseTool.mjs';
 import { reactToMessage, replyToMessage, sendAsWebhook, sendAvatarProfileEmbedFromObject } from "../../../services/discordService.mjs";
-import { sanitizeInput } from "../../../utils/utils.mjs";
 
 export class SummonTool extends BaseTool {
   constructor(services) {
@@ -99,7 +98,7 @@ export class SummonTool extends BaseTool {
       const guildConfig = await services.configService.getGuildConfig(services.databaseService.getDatabase(), message.guild?.id, true);
       const summonPrompt = guildConfig?.prompts?.summon || "Create an avatar with the following description:";
       const avatarData = {
-        prompt: sanitizeInput(`${summonPrompt}\n\nRequires you to design a creative character based on the following content:\n\n${content}`),
+        prompt: `${summonPrompt}\n\nRequires you to design a creative character based on the following content:\n\n${content}`,
         channelId: message.channel.id,
       };
       
