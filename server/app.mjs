@@ -90,17 +90,17 @@ async function initializeApp() {
         const client = new Client({ intents: [] }); // Minimal client for admin tools
         
         // Import core services
-        const { default: conversationHandlerModule } = await import('../src/services/chat/conversationHandler.mjs');
-        const { default: aiServiceModule } = await import('../src/services/aiService.mjs');
+        const { ConversationHandler } = await import('../src/services/chat/conversationHandler.mjs');
+        const { AIService } = await import('../src/services/aiService.mjs');
         const { AvatarGenerationService } = await import('../src/services/avatarService.mjs');
         
         // Initialize minimal services
         const logger = console;
-        const aiService = new aiServiceModule();
+        const aiService = new AIService();
         const avatarService = new AvatarGenerationService(db, { getAIConfig: () => ({}), getMongoConfig: () => ({}) });
         
         // Create conversation handler
-        const conversationHandler = new conversationHandlerModule(client, aiService, logger, avatarService);
+        const conversationHandler = new ConversationHandler(client, aiService, logger, avatarService);
         
         // Make services available to routes
         app.locals.services = {
@@ -129,6 +129,7 @@ async function initializeApp() {
     app.use('/api/claims', (await import('./routes/claims.mjs')).default(db));
     app.use('/api/guilds', (await import('./routes/guilds.mjs')).default(db));
     app.use('/api/admin', (await import('./routes/admin.mjs')).default(db));
+    app.use('/api/rati', (await import('./routes/rati.mjs')).default(db));
     
     // Add renounce claim route
     app.post('/api/claims/renounce', async (req, res) => {
@@ -148,6 +149,10 @@ async function initializeApp() {
     // Models route
     const modelsRouter = await import('./routes/models.mjs');
     app.use('/api/models', modelsRouter.default(db));
+
+    // Add ratiRoutes for metadata
+    const ratiRouter = await import('./routes/rati.mjs');
+    app.use('/api/rati', ratiRouter.default(db));
 
     // Add version info endpoint for SPA
     app.get('/api/version', (req, res) => {
