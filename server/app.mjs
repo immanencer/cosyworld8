@@ -97,7 +97,11 @@ async function initializeApp() {
         // Initialize minimal services
         const logger = console;
         const aiService = new AIService();
-        const avatarService = new AvatarGenerationService(db, { getAIConfig: () => ({}), getMongoConfig: () => ({}) });
+        const avatarService = new AvatarGenerationService(db, { getAIConfig: () => ({
+          replicate: {
+            apiToken: process.env.REPLICATE_API_TOKEN,
+          }
+        }), getMongoConfig: () => ({ }) });
         
         // Create conversation handler
         const conversationHandler = new ConversationHandler(client, aiService, logger, avatarService);
