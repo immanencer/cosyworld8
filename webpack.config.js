@@ -1,4 +1,3 @@
-
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { dirname } from 'path';
@@ -11,18 +10,10 @@ const __dirname = dirname(__filename);
 
 export default (env, argv) => {
   const isProduction = argv.mode === 'production';
-  
+
   return {
     stats: 'normal',
-    performance: {
-      hints: false,
-      maxEntrypointSize: 512000,
-      maxAssetSize: 512000
-    },
     cache: false,
-    watchOptions: {
-      ignored: /node_modules/
-    },
     entry: {
       main: './public/js/main.js',
       adminPanel: './public/js/adminPanel.js',
@@ -70,20 +61,6 @@ export default (env, argv) => {
         'process.env.PUBLIC_URL': JSON.stringify(process.env.PUBLIC_URL || ''),
         'process.env.ENABLE_ANALYTICS': JSON.stringify(process.env.ENABLE_ANALYTICS || 'false')
       })
-    ],
-    optimization: {
-      minimize: isProduction,
-      splitChunks: {
-        chunks: 'all',
-        name: 'vendor',
-        cacheGroups: {
-          vendor: {
-            test: /[\\/]node_modules[\\/]/,
-            name: 'vendors',
-            chunks: 'all'
-          }
-        }
-      }
-    }
+    ]
   };
 };
