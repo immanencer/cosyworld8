@@ -17,6 +17,10 @@ externalPort = 80
 [[ports]]
 localPort = 3080
 
+[[ports]]
+localPort = 8080
+externalPort = 8080
+
 [workflows]
 runButton = "Production"
 
