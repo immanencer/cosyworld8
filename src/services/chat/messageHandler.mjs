@@ -32,6 +32,24 @@ export class MessageHandler {
    * @param {Object} message - The Discord message object to process.
    */
   async handleMessage(message) {
+
+    const channel = message.channel;
+    if (channel && channel.name) {
+      if (process.env.NODE_ENV === 'development') {
+        // In dev mode, only respond in channels starting with the construction roadblock emoji
+        if (!channel.name.startsWith('🚧')) {
+          this.logger.debug(`Dev mode: Ignoring message in channel ${channel.name} as it does not start with 🚧.`);
+          return;
+        }
+      } else {
+        // In production, ignore channels that start with the construction roadblock emoji
+        if (channel.name.startsWith('🚧')) {
+          this.logger.debug(`Prod mode: Ignoring message in construction channel ${channel.name}.`);
+          return;
+        }
+      }
+    }
+
     // Validate required services
     if (!this.areServicesValid()) {
       console.error("Missing required services. Message processing aborted.");
