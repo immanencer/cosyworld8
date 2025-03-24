@@ -137,16 +137,29 @@ export class ItemService {
   async generateItemProperties(itemName, description) {
     try {
       const propertiesPrompt = `Generate properties for an item based on its name and description: Name: "${itemName}", Description: "${description}". Return ONLY a valid JSON object like this example: {"attack": 10, "defense": 5, "effect": "healing"}. Do not include any explanatory text.`;
-      const propertiesResponse = await this.aiService.chat([
-        { role: 'system', content: 'You are a master craftsman. Only respond with valid JSON objects containing item properties.' },
-        { role: 'user', content: propertiesPrompt }
-      ]);
 
-      const parsed = this.extractJson(propertiesResponse);
-      if (parsed && typeof parsed === 'object') {
-        return parsed;
+      const responseSchema = {
+        type: "OBJECT",
+        properties: {
+          attack: { type: "NUMBER", description: "Attack value of the item" },
+          defense: { type: "NUMBER", description: "Defense value of the item" },
+          effect: { type: "STRING", description: "Special effect of the item" }
+        },
+        required: ["attack", "defense"]
+      };
+
+      const propertiesResponse = await this.aiService.chat(
+        [
+          { role: 'system', content: 'You are a master craftsman. Only respond with valid JSON objects containing item properties.' },
+          { role: 'user', content: propertiesPrompt }
+        ],
+        { responseSchema }
+      );
+
+      if (propertiesResponse && typeof propertiesResponse === 'object') {
+        return propertiesResponse;
       } else {
-        console.warn(`Invalid JSON response for ${itemName}:`, propertiesResponse);
+        console.warn(`Invalid response for ${itemName}:`, propertiesResponse);
         return { attack: 5, defense: 5 }; // Fallback default properties
       }
     } catch (error) {
@@ -353,5 +366,39 @@ export class ItemService {
 
   validateItem(item) {
     return this.schemaValidator.validateItem(item);
+  }
+
+  /**
+   * Generates RATi-compatible metadata for an item.
+   * @param {Object} item - The item object.
+   * @param {Object} storageUris - URIs for metadata storage (e.g., { primary: 'ar://...', backup: 'ipfs://...' }).
+   * @returns {Object} - The RATi-compatible metadata.
+   */
+  generateRatiMetadata(item, storageUris) {
+    return {
+      tokenId: item._id.toString(),
+      name: item.name,
+      description: item.description,
+      media: {
+        image: item.imageUrl,
+        video: item.videoUrl || null
+      },
+      attributes: [
+        { trait_type: "Type", value: item.type },
+        { trait_type: "Rarity", value: item.rarity },
+        { trait_type: "Effect", value: item.properties.effect || "None" }
+      ],
+      signature: null, // To be signed by the RATi node.
+      storage: storageUris,
+      evolution: {
+        level: item.evolutionLevel || 1,
+        previous: item.previousTokenIds || [],
+        timestamp: item.updatedAt
+      },
+      memory: {
+        recent: item.memoryRecent || null,
+        archive: item.memoryArchive || null
+      }
+    };
   }
 }

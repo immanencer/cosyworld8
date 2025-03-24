@@ -203,18 +203,20 @@ export class LocationService {
         Keep it to 2-3 compelling sentences.
       `;
 
-      const response = await this.aiService.chat([
-        {
-          role: 'system',
-          content: 'You are a poetic location narrator skilled in atmospheric descriptions.'
-        },
-        {
-          role: 'user',
-          content: prompt
-        }
-      ]);
+      const responseSchema = {
+        type: "STRING",
+        description: "A short, vivid description of the location."
+      };
 
-      return response;
+      const response = await this.aiService.chat(
+        [
+          { role: 'system', content: 'You are a poetic location narrator skilled in atmospheric descriptions.' },
+          { role: 'user', content: prompt }
+        ],
+        { responseSchema }
+      );
+
+      return response || `A mysterious aura surrounds ${locationName}, but words fail to capture it.`;
     } catch (error) {
       console.error('Error generating location description:', error);
       return `A mysterious aura surrounds ${locationName}, but words fail to capture it.`;
@@ -557,5 +559,39 @@ ${messagesText}`;
       console.error('Error finding location by ID:', error);
       return null;
     }
+  }
+
+  /**
+   * Generates RATi-compatible metadata for a location.
+   * @param {Object} location - The location object.
+   * @param {Object} storageUris - URIs for metadata storage (e.g., { primary: 'ar://...', backup: 'ipfs://...' }).
+   * @returns {Object} - The RATi-compatible metadata.
+   */
+  generateRatiMetadata(location, storageUris) {
+    return {
+      tokenId: location._id.toString(),
+      name: location.name,
+      description: location.description,
+      media: {
+        image: location.imageUrl,
+        video: location.videoUrl || null
+      },
+      attributes: [
+        { trait_type: "Region", value: location.region || "Unknown" },
+        { trait_type: "Ambience", value: location.ambience || "Neutral" },
+        { trait_type: "Accessibility", value: location.accessibility || "Public" }
+      ],
+      signature: null, // To be signed by the RATi node.
+      storage: storageUris,
+      evolution: {
+        level: location.evolutionLevel || 1,
+        previous: location.previousTokenIds || [],
+        timestamp: location.updatedAt
+      },
+      memory: {
+        recent: location.memoryRecent || null,
+        archive: location.memoryArchive || null
+      }
+    };
   }
 }

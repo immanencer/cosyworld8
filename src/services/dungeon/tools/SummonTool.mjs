@@ -95,7 +95,7 @@ export class SummonTool extends BaseTool {
         return `Failed to summon: Daily limit reached`;
       }
 
-      const guildConfig = await services.configService.getGuildConfig(services.databaseService.getDatabase(), message.guild?.id, true);
+      const guildConfig = await services.configService.getGuildConfig(services.databaseService.getDatabase(), message.guild?.id || message.guildId, true);
       const summonPrompt = guildConfig?.prompts?.summon || "Create an avatar with the following description:";
       const avatarData = {
         prompt: `${summonPrompt}\n\nRequires you to design a creative character based on the following content:\n\n${content}`,
@@ -113,12 +113,12 @@ export class SummonTool extends BaseTool {
       }
 
       if (createdAvatar.model) {
-        const model = await services.openrouterAIService.getModel(createdAvatar.model);
+        const model = await services.aiService.getModel(createdAvatar.model);
         if (model) {
           createdAvatar.model = model;
         }
       } else { 
-        createdAvatar.model = await services.openrouterAIService.selectRandomModel();
+        createdAvatar.model = await services.aiService.selectRandomModel();
       }
 
       createdAvatar.summoner = avatar ? `AVATAR:${avatar._id}` : `${message.author.username}@${message.author.id}`;

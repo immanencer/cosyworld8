@@ -688,6 +688,11 @@ export class AvatarGenerationService {
 
       this.logger.info(`Generated avatar: ${JSON.stringify(avatar, null, 2)}`);
 
+      if (avatar.name.indexOf(',') !== -1) {
+        avatar.personality = avatar.name + '\n\n' + avatar.personality;
+      }
+      avatar.name = avatar.name.split(',')[0].trim();
+      
       // Check if the name matches an existing avatar
       const existingAvatar = await this.db.collection(this.AVATARS_COLLECTION).findOne({ name: avatar.name });
       if (existingAvatar) {
@@ -1117,5 +1122,39 @@ export class AvatarGenerationService {
       this.logger.error(`Error summoning user avatar: ${error.message}`);
       throw error;
     }
+  }
+
+  /**
+   * Generates RATi-compatible metadata for an avatar.
+   * @param {Object} avatar - The avatar object.
+   * @param {Object} storageUris - URIs for metadata storage (e.g., { primary: 'ar://...', backup: 'ipfs://...' }).
+   * @returns {Object} - The RATi-compatible metadata.
+   */
+  generateRatiMetadata(avatar, storageUris) {
+    return {
+      tokenId: avatar._id.toString(),
+      name: avatar.name,
+      description: avatar.description,
+      media: {
+        image: avatar.imageUrl,
+        video: avatar.videoUrl || null
+      },
+      attributes: [
+        { trait_type: "Personality", value: avatar.personality },
+        { trait_type: "Status", value: avatar.status },
+        { trait_type: "Lives", value: avatar.lives.toString() }
+      ],
+      signature: null, // To be signed by the RATi node.
+      storage: storageUris,
+      evolution: {
+        level: avatar.evolutionLevel || 1,
+        previous: avatar.previousTokenIds || [],
+        timestamp: avatar.updatedAt
+      },
+      memory: {
+        recent: avatar.memoryRecent || null,
+        archive: avatar.memoryArchive || null
+      }
+    };
   }
 }
