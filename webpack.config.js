@@ -12,8 +12,7 @@ export default (env, argv) => {
   const isProduction = argv.mode === 'production';
 
   return {
-    stats: 'normal',
-    cache: false,
+    mode: isProduction ? 'production' : 'development',
     entry: {
       main: './public/js/main.js',
       adminPanel: './public/js/adminPanel.js',
@@ -23,11 +22,8 @@ export default (env, argv) => {
     },
     output: {
       filename: '[name].bundle.js',
-      path: path.resolve(__dirname, 'dist/js'),
-      clean: true
+      path: path.resolve(__dirname, 'dist/js')
     },
-    mode: isProduction ? 'production' : 'development',
-    devtool: isProduction ? 'source-map' : 'eval-source-map',
     module: {
       rules: [
         {
@@ -42,19 +38,7 @@ export default (env, argv) => {
         }
       ]
     },
-    resolve: {
-      extensions: ['.js', '.mjs'],
-      fallback: {
-        "buffer": require.resolve("buffer/"),
-        "stream": require.resolve("stream-browserify"),
-        "crypto": require.resolve("crypto-browserify")
-      }
-    },
     plugins: [
-      new webpack.ProvidePlugin({
-        Buffer: ['buffer', 'Buffer'],
-        process: 'process/browser'
-      }),
       new webpack.DefinePlugin({
         'process.env.NODE_ENV': JSON.stringify(isProduction ? 'production' : 'development'),
         'process.env.API_URL': JSON.stringify(process.env.API_URL || '/api'),
