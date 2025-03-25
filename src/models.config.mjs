@@ -476,10 +476,6 @@ export default [
     "rarity": "uncommon"
   },
   {
-    "model": "deepseek/deepseek-chat",
-    "rarity": "uncommon"
-  },
-  {
     "model": "thedrummer/anubis-pro-105b-v1",
     "rarity": "uncommon"
   },
@@ -517,6 +513,14 @@ export default [
   },
   {
     "model": "latitudegames/wayfarer-large-70b-llama-3.3",
+    "rarity": "uncommon"
+  },
+  {
+    "model": "deepseek/deepseek-chat-v3-0324",
+    "rarity": "uncommon"
+  },
+  {
+    "model": "deepseek/deepseek-chat",
     "rarity": "uncommon"
   },
   {
@@ -897,6 +901,14 @@ export default [
   },
   {
     "model": "meta-llama/llama-3.2-1b-instruct",
+    "rarity": "common"
+  },
+  {
+    "model": "qwen/qwen2.5-vl-32b-instruct:free",
+    "rarity": "common"
+  },
+  {
+    "model": "deepseek/deepseek-chat-v3-0324:free",
     "rarity": "common"
   },
   {
