@@ -17,7 +17,7 @@ export class XPostTool extends BaseTool {
     // Initialize MongoClient singleton
     async getMongoClient() {
         if (!mongoClient) {
-            mongoClient = new MongoClient(process.env.MONGO_URI, { useUnifiedTopology: true });
+            mongoClient = new MongoClient(process.env.MONGO_URI);
             await mongoClient.connect();
         }
         return mongoClient;

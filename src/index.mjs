@@ -20,8 +20,8 @@ const logger = winston.createLogger({
         winston.format.colorize(), // Adds color to console output
         logFormat                  // Uses the same custom format
       ),
+      handleExceptions: true // ensures all exceptions are logged
     }),
-    new winston.transports.File({ filename: "application.log" }),
   ],
 });
 

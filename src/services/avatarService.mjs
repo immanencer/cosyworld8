@@ -204,6 +204,8 @@ export class AvatarGenerationService {
   async getAvatarsWithRecentMessages(limit = 100) {
     try {
       const collection = this.db.collection('messages');
+      const avatarsCollection = this.db.collection(this.AVATARS_COLLECTION);
+
       // Use a conditional query based on DISCORD_BOT_ID existence
       const matchQuery = process.env.DISCORD_BOT_ID
         ? { authorId: process.env.DISCORD_BOT_ID }
@@ -218,13 +220,21 @@ export class AvatarGenerationService {
           }
         },
         { $sort: { count: -1 } },
-        { $limit: 1000 }
+        { $limit: 1000 } // Fetch a larger pool of authors
       ];
 
       const messages = await collection.aggregate(pipeline).toArray();
-      const topAuthors = messages.map(mention => mention._id).slice(0, 100);
-      const avatars = await this.db.collection(this.AVATARS_COLLECTION).find({ name: { $in: topAuthors } }).toArray();
-      return avatars.slice(0, limit);
+      const topAuthors = messages.map(mention => mention._id);
+
+      // Fetch avatars for the top authors
+      const avatars = await avatarsCollection
+        .aggregate([
+          { $match: { name: { $in: topAuthors } } },
+          { $sample: { size: limit } } // Randomize selection for variety
+        ])
+        .toArray();
+
+      return avatars;
     } catch (error) {
       this.logger.error(`Error fetching avatars with recent messages: ${error.message}`);
       return [];
@@ -247,7 +257,7 @@ export class AvatarGenerationService {
     }
   }
 
-  async fuzzyAvatarByName(query, includeStatus = 'alive') {
+  async fuzzyAvatarByName(query, includeStatus = 'alive', limit = 10) {
     try {
       const collection = this.db.collection(this.AVATARS_COLLECTION);
       const filter = {};
@@ -264,25 +274,30 @@ export class AvatarGenerationService {
       const fuse = new Fuse(avatars, fuseOptions);
       const results = fuse.search(query);
 
-      if (results.length > 0) {
-        return results[0].item;
-      }
-
-      return null;
+      // Return a limited number of results for variety
+      return results.slice(0, limit).map(result => result.item);
     } catch (error) {
       this.logger.error(`Error fetching avatar by name: ${error.message}`);
-      return null;
+      return [];
     }
   }
 
-  async getAllAvatars(includeStatus = 'alive') {
+  async getAllAvatars(includeStatus = 'alive', limit = 100) {
     try {
       const collection = this.db.collection(this.AVATARS_COLLECTION);
       const query = { name: { $exists: true, $ne: null } };
       if (includeStatus === 'alive') {
         query.status = { $ne: 'dead' };
       }
-      const avatars = await collection.find(query).toArray();
+
+      // Fetch a larger pool of avatars and randomize the selection
+      const avatars = await collection
+        .aggregate([
+          { $match: query },
+          { $sample: { size: limit } } // Randomize selection for variety
+        ])
+        .toArray();
+
       return avatars.map(avatar => ({ ...avatar }));
     } catch (error) {
       this.logger.error(`Error fetching avatars: ${error.message}`);

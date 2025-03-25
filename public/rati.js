@@ -1,295 +1,501 @@
 document.addEventListener("DOMContentLoaded", () => {
-  const metadataViewer = document.getElementById("metadata-viewer");
-  const cardPackContainer = document.getElementById("card-pack-container");
-  const exportAllPacksBtn = document.getElementById("export-all-packs");
-  const generatePacksBtn = document.getElementById("generate-packs");
-  const emptyStateGenerateBtn = document.getElementById("empty-state-generate");
-  const openRandomPackBtn = document.getElementById("open-random-pack");
-  const packCountInput = document.getElementById("pack-count");
-  const notificationContainer = document.getElementById("notification-container");
+  // Cache DOM elements with null checking
+  const elements = {
+    metadataViewer: document.getElementById("metadata-viewer"),
+    cardContainer: document.getElementById("card-pack-container") || document.getElementById("packs-container"),
+    openRandomBtn: document.getElementById("open-random-pack"),
+    pagination: document.getElementById("pagination-container"),
+    notification: document.getElementById("notification") || createNotificationElement(),
+    encryptionKey: document.getElementById("encryption-key"),
+    redeemBtn: document.getElementById("redeem-pack"),
+    keyContainer: document.getElementById("user-key-container"),
+    userKey: document.getElementById("user-key-display"),
+    requestKeyBtn: document.getElementById("request-key-btn")
+  };
 
   let currentPacks = [];
-  let selectedPack = null;
+  let userKeyData = null;
 
-  // Show notification
-  function showNotification(message, type = 'success') {
-    const notification = document.createElement('div');
-    notification.className = `notification ${type} p-4 mb-4 rounded-lg shadow-lg text-white transition-opacity duration-500 ease-in-out`;
-    notification.style.opacity = '0';
+  // Create notification element if it doesn't exist
+  function createNotificationElement() {
+    const notificationEl = document.createElement('div');
+    notificationEl.id = 'notification';
+    notificationEl.className = 'notification';
+    document.body.appendChild(notificationEl);
+    return notificationEl;
+  }
+
+  // Show notification with enhanced animation
+  function showNotification(message, type = 'info') {
+    const { notification } = elements;
     
+    // Set message and style based on type
+    notification.textContent = message;
+    notification.className = 'notification show';
+    
+    // Set background color based on notification type
     if (type === 'success') {
-      notification.classList.add('bg-green-500');
+      notification.style.backgroundColor = '#10B981';
     } else if (type === 'error') {
-      notification.classList.add('bg-red-500');
-    } else if (type === 'info') {
-      notification.classList.add('bg-blue-500');
+      notification.style.backgroundColor = '#EF4444';
+    } else if (type === 'warning') {
+      notification.style.backgroundColor = '#F59E0B';
+    } else {
+      notification.style.backgroundColor = '#6366F1';
     }
     
-    notification.textContent = message;
-    notificationContainer.appendChild(notification);
-    
-    // Fade in
+    // Hide notification after 3 seconds
     setTimeout(() => {
-      notification.style.opacity = '1';
-    }, 10);
-    
-    // Fade out and remove
-    setTimeout(() => {
-      notification.style.opacity = '0';
-      setTimeout(() => {
-        notification.remove();
-      }, 500);
+      notification.className = 'notification';
     }, 3000);
   }
 
-  // Generate new packs
-  async function generatePacks() {
+  // Generate or retrieve user ID for localStorage
+  function getUserId() {
+    let userId = localStorage.getItem('rati_user_id');
+    if (!userId) {
+      userId = 'user_' + Date.now() + '_' + Math.random().toString(36).substring(2, 15);
+      localStorage.setItem('rati_user_id', userId);
+    }
+    return userId;
+  }
+
+  // Get user key from localStorage or request a new one
+  function getUserKey() {
+    const userId = getUserId();
+    const storedKey = localStorage.getItem(`rati_user_key_${userId}`);
+    
+    if (storedKey) {
+      try {
+        userKeyData = JSON.parse(storedKey);
+        displayUserKey(userKeyData.key);
+        return userKeyData;
+      } catch (error) {
+        console.error('Failed to parse stored user key:', error);
+      }
+    }
+    
+    return null;
+  }
+
+  // Display user key in the UI
+  function displayUserKey(key) {
+    if (elements.userKey) {
+      elements.userKey.textContent = key;
+      
+      if (elements.keyContainer) {
+        elements.keyContainer.classList.remove('hidden');
+      }
+    }
+  }
+
+  // Request a new user key from the server
+  async function requestUserKey() {
     try {
-      cardPackContainer.innerHTML = `
-        <div class="col-span-full flex items-center justify-center py-10">
-          <div class="loading-spinner"></div>
-          <p class="ml-3 text-gray-700">Generating card packs...</p>
+      const response = await fetch('/api/rati/user/key', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ userId: getUserId() })
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to request user key');
+      }
+      
+      const data = await response.json();
+      userKeyData = {
+        key: data.key,
+        issuedAt: new Date().toISOString()
+      };
+      
+      // Save to localStorage
+      localStorage.setItem(`rati_user_key_${getUserId()}`, JSON.stringify(userKeyData));
+      
+      // Display in UI
+      displayUserKey(userKeyData.key);
+      
+      showNotification('User key obtained successfully!', 'success');
+      
+      // After getting a key, fetch the packs associated with this user
+      fetchPacks();
+      
+      return userKeyData;
+    } catch (error) {
+      console.error('Error requesting user key:', error);
+      showNotification(error.message || 'Failed to request user key', 'error');
+      return null;
+    }
+  }
+
+  // Save pack to localStorage
+  function savePackToLocalStorage(pack) {
+    const userId = getUserId();
+    const userPacks = getUserPacks();
+    
+    // Check if pack already exists
+    const existingPackIndex = userPacks.findIndex(p => p.packId === pack.packId);
+    if (existingPackIndex !== -1) {
+      userPacks[existingPackIndex] = pack;
+    } else {
+      userPacks.push(pack);
+    }
+    
+    localStorage.setItem(`rati_packs_${userId}`, JSON.stringify(userPacks));
+  }
+
+  // Get user packs from localStorage
+  function getUserPacks() {
+    const userId = getUserId();
+    const packsJson = localStorage.getItem(`rati_packs_${userId}`);
+    return packsJson ? JSON.parse(packsJson) : [];
+  }
+
+  // Fetch packs from API and localStorage
+  async function fetchPacks(page = 1, limit = 9) {
+    try {
+      // Ensure user has a key before fetching packs
+      if (!userKeyData) {
+        const key = getUserKey();
+        if (!key) {
+          // No key available, show empty state with message
+          renderEmptyState('You need a user key to view packs', true);
+          return;
+        }
+      }
+      
+      // Fetch packs with pagination and user key
+      const response = await fetch(`/api/rati/packs/all?page=${page}&limit=${limit}&userKey=${userKeyData.key}`);
+      if (!response.ok) {
+        throw new Error('Failed to fetch packs');
+      }
+
+      const apiData = await response.json();
+      const apiPacks = apiData.packs || [];
+
+      // Get packs from localStorage
+      const localPacks = getUserPacks();
+
+      // Merge packs, preferring localStorage versions for opened packs
+      let mergedPacks = [...apiPacks];
+      localPacks.forEach(localPack => {
+        if (localPack.opened) {
+          mergedPacks = mergedPacks.filter(p => p.packId !== localPack.packId);
+          mergedPacks.push(localPack);
+        }
+      });
+
+      currentPacks = mergedPacks;
+      renderPacks(currentPacks);
+    } catch (error) {
+      console.error('Error fetching packs:', error);
+      showNotification('Failed to load packs. Please try again.', 'error');
+
+      // Fallback to localStorage packs if API fails
+      const localPacks = getUserPacks();
+      if (localPacks.length > 0) {
+        currentPacks = localPacks;
+        renderPacks(localPacks);
+        showNotification('Showing your saved packs.', 'info');
+      } else {
+        renderEmptyState();
+      }
+    }
+  }
+
+  // Render empty state when no packs are available
+  function renderEmptyState(message = 'No packs found', showKeyRequest = false) {
+    const { cardContainer } = elements;
+    cardContainer.innerHTML = `
+      <div class="text-center py-12 glassmorphism rounded-xl">
+        <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4"></path>
+        </svg>
+        <h3 class="mt-2 text-sm font-medium text-gray-900">${message}</h3>
+        <p class="mt-1 text-sm text-gray-500">Get started by redeeming a pack with your encryption key.</p>
+        ${showKeyRequest ? `
+          <button id="empty-state-request-key" class="mt-4 inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+            Request User Key
+          </button>
+        ` : ''}
+      </div>
+    `;
+    
+    // Add event listener for the request key button if it exists
+    const requestKeyBtn = document.getElementById('empty-state-request-key');
+    if (requestKeyBtn) {
+      requestKeyBtn.addEventListener('click', requestUserKey);
+    }
+  }
+
+  // Render packs in the UI
+  function renderPacks(packs) {
+    const { cardContainer } = elements;
+
+    // Ensure packs is a valid array
+    if (!Array.isArray(packs)) {
+      console.error('Invalid packs data:', packs);
+      renderEmptyState();
+      return;
+    }
+
+    // Handle empty packs array
+    if (packs.length === 0) {
+      renderEmptyState();
+      return;
+    }
+
+    // Create HTML for each pack
+    let packsHTML = '';
+    packsHTML += '<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">';
+    
+    packs.forEach(pack => {
+      // Determine if this pack has been opened
+      const isOpened = pack.opened === true;
+      
+      packsHTML += `
+        <div class="pack-card relative" data-id="${pack.packId || 'unknown'}">
+          <div class="card ${isOpened ? 'flipped' : ''}">
+            <div class="card-face card-back flex flex-col items-center justify-center">
+              <div class="text-white text-center">
+                <h3 class="font-bold text-lg mb-1">Mystery Pack</h3>
+                <p class="text-sm opacity-70">Click to reveal</p>
+              </div>
+            </div>
+            <div class="card-face card-front">
+              <div class="card-image-container">
+                <img class="card-image" src="${pack.imageUrl || 'https://via.placeholder.com/300x180?text=Card+Pack'}" alt="Card Pack">
+              </div>
+              <div class="card-content">
+                <h3 class="font-semibold text-indigo-800">Pack #${pack.packId || 'Unknown'}</h3>
+                ${isOpened ? '<p class="text-xs text-indigo-600">Opened</p>' : '<p class="text-xs text-gray-500">Click to open</p>'}
+              </div>
+            </div>
+          </div>
+          ${isOpened ? '<div class="absolute top-2 right-2 bg-indigo-600 text-white text-xs px-2 py-1 rounded-full">Opened</div>' : ''}
         </div>
       `;
+    });
+    
+    packsHTML += '</div>';
+    cardContainer.innerHTML = packsHTML;
 
-      const packCount = parseInt(packCountInput.value) || 5;
-      const response = await fetch('/api/rati/generate-packs', {
+    // Add event listeners to pack cards
+    const packCards = document.querySelectorAll('.card');
+    packCards.forEach(card => {
+      card.addEventListener('click', () => handlePackClick(card));
+    });
+  }
+
+  // Handle pack card click
+  function handlePackClick(card) {
+    const packId = card.parentElement.dataset.id;
+    const pack = currentPacks.find(p => p.packId == packId);
+    
+    if (!pack) {
+      showNotification('Pack not found', 'error');
+      return;
+    }
+    
+    if (pack.opened) {
+      // Pack is already opened, just display content
+      displayPackContent(pack);
+      if (!card.classList.contains('flipped')) {
+        card.classList.add('flipped');
+      }
+    } else {
+      // Pack is not opened, open it
+      openPack(packId, card);
+    }
+  }
+
+  // Open a pack and reveal its contents
+  async function openPack(packId, cardElement) {
+    try {
+      // Ensure user has a key
+      if (!userKeyData) {
+        showNotification('You need a user key to open packs', 'error');
+        return;
+      }
+      
+      const response = await fetch(`/api/rati/packs/${packId}/open`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ count: packCount, itemsPerPack: 4 }),
+        body: JSON.stringify({ userKey: userKeyData.key })
       });
-
+      
       if (!response.ok) {
-        throw new Error('Failed to generate packs');
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to open pack');
       }
-
+      
       const data = await response.json();
-      showNotification(`${data.totalPacks} card packs generated successfully!`);
       
-      // Fetch the newly generated packs
-      await fetchPacks();
+      // Mark pack as opened
+      const packIndex = currentPacks.findIndex(p => p.packId == packId);
+      if (packIndex !== -1) {
+        currentPacks[packIndex] = {
+          ...currentPacks[packIndex],
+          ...data.pack,
+          opened: true
+        };
+        
+        // Save opened pack to localStorage
+        savePackToLocalStorage(currentPacks[packIndex]);
+        
+        // Flip the card to reveal content
+        if (cardElement) {
+          cardElement.classList.add('flipped');
+        }
+        
+        // Display the content
+        displayPackContent(currentPacks[packIndex]);
+        
+        showNotification('Pack opened successfully!', 'success');
+      }
     } catch (error) {
-      console.error(error);
-      showNotification(`Error generating packs: ${error.message}`, 'error');
-      cardPackContainer.innerHTML = `
-        <div class="col-span-full text-center py-10 text-red-500">
-          <p>Failed to generate card packs. Please try again.</p>
-        </div>
-      `;
+      console.error('Error opening pack:', error);
+      showNotification(error.message || 'Failed to open pack', 'error');
     }
   }
 
-  // Fetch packs from the server
-  async function fetchPacks() {
-    try {
-      cardPackContainer.innerHTML = `
-        <div class="col-span-full flex items-center justify-center py-10">
-          <div class="loading-spinner"></div>
-          <p class="ml-3 text-gray-700">Loading card packs...</p>
-        </div>
-      `;
-
-      const response = await fetch('/api/rati/packs');
-      if (!response.ok) throw new Error('Failed to fetch packs');
-      const packs = await response.json();
-      
-      currentPacks = packs;
-      renderPacksGrid();
-      
-      // Enable export button if we have packs
-      exportAllPacksBtn.disabled = packs.length === 0;
-    } catch (error) {
-      console.error(error);
-      showNotification(`Error fetching packs: ${error.message}`, 'error');
-      cardPackContainer.innerHTML = `
-        <div class="col-span-full text-center py-10 text-red-500">
-          <p>Failed to load card packs. Please try again.</p>
-        </div>
-      `;
-    }
-  }
-
-  // Render packs in a grid layout
-  function renderPacksGrid() {
-    if (currentPacks.length === 0) {
-      cardPackContainer.innerHTML = `
-        <div class="col-span-full text-center py-10 text-gray-500 bg-gray-50 rounded-lg border-2 border-dashed border-gray-300">
-          <svg xmlns="http://www.w3.org/2000/svg" class="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
-          </svg>
-          <h3 class="mt-2 text-sm font-medium text-gray-900">No card packs available</h3>
-          <p class="mt-1 text-sm text-gray-500">Get started by generating some card packs</p>
-          <div class="mt-6">
-            <button id="empty-state-generate" class="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
-              <svg xmlns="http://www.w3.org/2000/svg" class="-ml-1 mr-2 h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-              </svg>
-              Generate Card Packs
-            </button>
-          </div>
-        </div>
-      `;
-      
-      // Re-add event listener to the empty state button
-      document.getElementById("empty-state-generate").addEventListener("click", generatePacks);
-      return;
-    }
-
-    cardPackContainer.innerHTML = "";
+  // Display pack content in the metadata viewer
+  function displayPackContent(pack) {
+    const { metadataViewer } = elements;
     
-    currentPacks.forEach((pack) => {
-      const packElement = document.createElement("div");
-      packElement.className = "card-pack bg-white rounded-lg overflow-hidden shadow-lg transition-all duration-300 hover:transform";
-      packElement.innerHTML = `
-        <div class="pack-header bg-gradient-to-r from-indigo-600 to-purple-700 px-4 py-3 text-white">
-          <h3 class="font-medium">Pack #${pack.packId}</h3>
-        </div>
-        <div class="pack-body p-4">
-          <div class="grid grid-cols-2 gap-2">
-            ${pack.content.map((card, index) => `
-              <div class="card${pack.opened ? ' flipped' : ''}" data-pack-id="${pack.packId}" data-card-index="${index}">
-                <div class="card-face card-back">
-                  <div class="flex items-center justify-center h-full w-full text-white font-bold">
-                    <span class="text-xl opacity-80">?</span>
-                  </div>
-                </div>
-                <div class="card-face card-front">
-                  <div class="card-image-container">
-                    <img src="${card.imageUrl || card.media?.image || 'placeholder.png'}" alt="${card.name}" class="card-image">
-                    <span class="card-type-badge">${card.type || 'Unknown'}</span>
-                  </div>
-                  <div class="card-content">
-                    <div>
-                      <h4 class="font-medium text-sm truncate">${card.name || 'Unknown'}</h4>
-                      <p class="card-rarity rarity-${card.rarity || 'common'} text-xs">${card.rarity || 'Common'}</p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            `).join('')}
-          </div>
-          <div class="mt-4 flex justify-center">
-            <button class="reveal-pack-btn px-3 py-1.5 bg-gradient-to-r from-indigo-500 to-purple-600 text-white rounded-md text-sm font-medium shadow hover:from-indigo-600 hover:to-purple-700 transition-colors ${pack.opened ? 'opacity-50 cursor-not-allowed' : ''}" data-pack-id="${pack.packId}" ${pack.opened ? 'disabled' : ''}>
-              ${pack.opened ? 'Cards Revealed' : 'Reveal Cards'}
-            </button>
-          </div>
-        </div>
-      `;
-      cardPackContainer.appendChild(packElement);
-    });
-
-    // Add card click listeners
-    document.querySelectorAll('.card').forEach(card => {
-      card.addEventListener('click', function() {
-        const packId = this.getAttribute('data-pack-id');
-        const cardIndex = this.getAttribute('data-card-index');
-        const pack = currentPacks.find(p => p.packId == packId);
-        
-        if (pack && !this.classList.contains('flipped')) {
-          this.classList.add('flipped', 'card-flash');
-          setTimeout(() => this.classList.remove('card-flash'), 500);
-          
-          // Display metadata
-          const cardData = pack.content[cardIndex];
-          metadataViewer.textContent = JSON.stringify(cardData, null, 2);
-        }
-      });
-    });
-
-    // Add reveal pack button listeners
-    document.querySelectorAll('.reveal-pack-btn').forEach(button => {
-      button.addEventListener('click', async function() {
-        const packId = this.getAttribute('data-pack-id');
-        const pack = currentPacks.find(p => p.packId == packId);
-        
-        if (pack && !pack.opened) {
-          try {
-            // Mark pack as opened
-            const response = await fetch(`/api/rati/packs/${packId}/open`, {
-              method: 'POST'
-            });
-            
-            if (!response.ok) throw new Error('Failed to open pack');
-            
-            // Update UI to show cards
-            const packCards = document.querySelectorAll(`.card[data-pack-id="${packId}"]`);
-            packCards.forEach((card, index) => {
-              setTimeout(() => {
-                card.classList.add('flipped', 'card-flash');
-                setTimeout(() => card.classList.remove('card-flash'), 500);
-              }, index * 200);
-            });
-            
-            // Update button state
-            this.textContent = 'Cards Revealed';
-            this.disabled = true;
-            this.classList.add('opacity-50', 'cursor-not-allowed');
-            
-            // Update pack in our data
-            pack.opened = true;
-            
-            showNotification(`Pack #${packId} opened successfully!`);
-          } catch (error) {
-            console.error(error);
-            showNotification(`Error opening pack: ${error.message}`, 'error');
-          }
-        }
-      });
-    });
+    // Format the pack content for display
+    let contentHTML = JSON.stringify(pack, null, 2);
+    
+    // Update metadata viewer
+    metadataViewer.textContent = contentHTML;
   }
 
-  // Open a random pack
+  // Handle random pack opening
   function openRandomPack() {
     const unopenedPacks = currentPacks.filter(pack => !pack.opened);
     
     if (unopenedPacks.length === 0) {
-      showNotification('No unopened packs available. Generate new packs first.', 'info');
+      showNotification('No unopened packs available', 'warning');
       return;
     }
     
+    // Select a random pack
     const randomIndex = Math.floor(Math.random() * unopenedPacks.length);
     const randomPack = unopenedPacks[randomIndex];
     
-    // Find and click the reveal button for this pack
-    const revealButton = document.querySelector(`.reveal-pack-btn[data-pack-id="${randomPack.packId}"]`);
-    if (revealButton) {
-      revealButton.click();
-      
+    // Find card element
+    const packCard = document.querySelector(`.pack-card[data-id="${randomPack.packId}"] .card`);
+    
+    if (packCard) {
       // Scroll to the pack
-      const packElement = document.querySelector(`.card-pack:has(.reveal-pack-btn[data-pack-id="${randomPack.packId}"])`);
-      if (packElement) {
-        packElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      packCard.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      
+      // Highlight the pack briefly
+      packCard.classList.add('ring-4', 'ring-indigo-500', 'ring-opacity-50');
+      setTimeout(() => {
+        packCard.classList.remove('ring-4', 'ring-indigo-500', 'ring-opacity-50');
+        
+        // Open the pack after highlighting
+        openPack(randomPack.packId, packCard);
+      }, 800);
+    } else {
+      // If card element not found, just open the pack
+      openPack(randomPack.packId);
+    }
+  }
+
+  // Redeem a pack using encryption key
+  async function redeemPack() {
+    const { encryptionKey } = elements;
+    const key = encryptionKey.value.trim();
+    
+    if (!key) {
+      showNotification('Please enter an encryption key', 'warning');
+      return;
+    }
+    
+    // Ensure user has a user key
+    if (!userKeyData) {
+      const userKey = await requestUserKey();
+      if (!userKey) {
+        showNotification('Failed to get user key. Cannot redeem pack.', 'error');
+        return;
       }
     }
-  }
-
-  // Export all packs data
-  function exportAllPacks() {
+    
     try {
-      const dataStr = JSON.stringify(currentPacks, null, 2);
-      const dataUri = 'data:application/json;charset=utf-8,'+ encodeURIComponent(dataStr);
-      const exportFileDefaultName = 'rati-card-packs.json';
+      const response = await fetch('/api/rati/packs/redeem', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ 
+          encryptionKey: key,
+          userKey: userKeyData.key 
+        })
+      });
       
-      const linkElement = document.createElement('a');
-      linkElement.setAttribute('href', dataUri);
-      linkElement.setAttribute('download', exportFileDefaultName);
-      linkElement.click();
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to redeem pack');
+      }
       
-      showNotification('Card packs exported successfully!');
+      const data = await response.json();
+      
+      // Clear input field
+      encryptionKey.value = '';
+      
+      // Add new packs to current packs
+      if (data.packs && Array.isArray(data.packs)) {
+        currentPacks = [...currentPacks, ...data.packs];
+        renderPacks(currentPacks);
+      }
+      
+      showNotification('Pack redeemed successfully!', 'success');
     } catch (error) {
-      console.error(error);
-      showNotification(`Error exporting packs: ${error.message}`, 'error');
+      console.error('Error redeeming pack:', error);
+      showNotification(error.message || 'Failed to redeem pack', 'error');
     }
   }
 
-  // Event listeners
-  generatePacksBtn.addEventListener("click", generatePacks);
-  emptyStateGenerateBtn.addEventListener("click", generatePacks);
-  openRandomPackBtn.addEventListener("click", openRandomPack);
-  exportAllPacksBtn.addEventListener("click", exportAllPacks);
+  // Initialize the app
+  function init() {
+    // Check for user key first
+    getUserKey();
+    
+    // If no user key, show empty state with request button
+    if (!userKeyData) {
+      renderEmptyState('You need a user key to view packs', true);
+    } else {
+      // Load packs if we have a user key
+      fetchPacks();
+    }
+    
+    // Add event listeners
+    if (elements.openRandomBtn) {
+      elements.openRandomBtn.addEventListener('click', openRandomPack);
+    }
+    
+    if (elements.redeemBtn) {
+      elements.redeemBtn.addEventListener('click', redeemPack);
+    }
+    
+    if (elements.requestKeyBtn) {
+      elements.requestKeyBtn.addEventListener('click', requestUserKey);
+    }
+    
+    // Set up localStorage sync (periodically save opened packs)
+    setInterval(() => {
+      // Find all opened packs and ensure they're saved
+      const openedPacks = currentPacks.filter(pack => pack.opened);
+      openedPacks.forEach(pack => savePackToLocalStorage(pack));
+    }, 60000); // Every minute
+  }
 
-  // Initialize by fetching packs
-  fetchPacks();
+  // Start the app
+  init();
 });

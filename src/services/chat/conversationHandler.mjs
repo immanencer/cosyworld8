@@ -423,7 +423,7 @@ Based on all of the above context, share an updated personality that reflects yo
           sentMessage = await sendAsWebhook(
             avatar.channelId,
             commandResults.map(t => `-# [${t}]`).join('\n'),
-            { name: `Command results for ${avatar.name}`, emoji: `🛠️`, imageUrl: avatar.imageUrl }
+            { name: `${avatar.name.split(',')[0]} used a command`, emoji: `🛠️`, imageUrl: avatar.imageUrl }
           );
         }
         avatar = await this.avatarService.getAvatarById(avatar._id);
