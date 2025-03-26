@@ -17,7 +17,6 @@ const logger = winston.createLogger({
   transports: [
     new winston.transports.Console({
       format: winston.format.combine(
-        winston.format.colorize(), // Adds color to console output
         logFormat                  // Uses the same custom format
       ),
       handleExceptions: true // ensures all exceptions are logged
@@ -56,7 +55,6 @@ async function main() {
     services = await initializeServices(logger, client);
 
     await client.login(process.env.DISCORD_BOT_TOKEN);
-    await new Promise((resolve) => client.once("ready", resolve));
     logger.info("✅ Discord client ready");
 
     process.on("SIGINT", () => shutdown("SIGINT", services));
