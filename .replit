@@ -9,6 +9,7 @@ channel = "stable-24_05"
 run = ["sh", "-c", "NODE_ENV=production node server/app.mjs"]
 deploymentTarget = "gce"
 build = ["sh", "-c", "NODE_OPTIONS='--max-old-space-size=4096' npm run build"]
+ignorePorts = true
 
 [[ports]]
 localPort = 3001
