@@ -1,14 +1,13 @@
 
 import express from 'express';
 import configService from '../../src/services/configService.mjs';
-import { client } from '../../src/services/discordService.mjs';
 
 const router = express.Router();
 
 const asyncHandler = (fn) => (req, res, next) =>
   Promise.resolve(fn(req, res, next)).catch(next);
 
-export default function(db) {
+export default function(db, client) {
   // Get all guild configurations
   router.get('/', asyncHandler(async (req, res) => {
     const guildConfigs = await configService.getAllGuildConfigs(db);

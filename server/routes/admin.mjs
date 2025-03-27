@@ -4,7 +4,6 @@ import path from 'path';
 import { ObjectId } from 'mongodb';
 
 import multer from 'multer';
-import { uploadImage } from '../../src/services/s3imageService/s3imageService.mjs';
 
 // Configure multer for memory storage
 const upload = multer({
