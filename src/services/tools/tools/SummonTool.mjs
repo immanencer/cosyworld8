@@ -105,7 +105,7 @@ export class SummonTool extends BasicTool {
       if (existingAvatar) {
         await this.discordService.reactToMessage(message.channel.id, message.id, existingAvatar.emoji || '🔮');
         const updatedAvatar = await this.mapService.updateAvatarPosition(existingAvatar._id, message.channel.id);
-        updatedAvatar.stats = await this.mapService.getAvatarStats(updatedAvatar._id);
+        updatedAvatar.stats = await this.avatarService.getAvatarStats(updatedAvatar._id);
         await this.avatarService.updateAvatar(updatedAvatar);
         await this.discordService.sendAvatarProfileEmbedFromObject(updatedAvatar);
         await this.conversationManager.sendResponse(message.channel, avatar);
@@ -151,7 +151,7 @@ export class SummonTool extends BasicTool {
         ? await this.services.aiService.getModel(createdAvatar.model)
         : await this.services.aiService.selectRandomModel();
       createdAvatar.summoner = avatar ? `AVATAR:${avatar._id}` : `${message.author.username}@${message.author.id}`;
-      createdAvatar.stats = await this.services.mapService.getAvatarStats(createdAvatar._id);
+      createdAvatar.stats = await this.services.avatarService.getAvatarStats(createdAvatar._id);
       createdAvatar.attributes = attributes;
 
       // Generate introduction

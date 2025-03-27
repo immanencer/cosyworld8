@@ -5,7 +5,7 @@ import process from 'process';
 import winston from 'winston';
 import Fuse from 'fuse.js';
 import { uploadImage } from './s3/s3imageService.mjs';
-import { ObjectId } from 'mongodb';
+import { toObjectId } from './utils/toObjectId.mjs';
 import fs from 'fs/promises';
 
 import { BasicService } from './BasicService.mjs';
@@ -85,17 +85,15 @@ export class AvatarService extends BasicService {
   // --- Avatar Management ---
 
   async getAvatarStats(avatarId) {
-    const db = this.ensureDb();
-    const objectId = this.toObjectId(avatarId);
-    const stats = await db.collection('dungeon_stats').findOne({ avatarId: objectId });
+    const objectId = toObjectId(avatarId);
+    const stats = await this.db.collection('dungeon_stats').findOne({ avatarId: objectId });
     return stats || { hp: 100, attack: 10, defense: 5, avatarId: objectId };
   }
 
   async updateAvatarStats(avatarId, stats) {
-    const db = this.ensureDb();
-    const objectId = this.toObjectId(avatarId);
+    const objectId = toObjectId(avatarId);
     delete stats._id;
-    await db.collection('dungeon_stats').updateOne(
+    await this.db.collection('dungeon_stats').updateOne(
       { avatarId: objectId },
       { $set: stats },
       { upsert: true }
@@ -104,7 +102,7 @@ export class AvatarService extends BasicService {
   }
 
   async initializeAvatar(avatarId, locationId) {
-    const objectId = this.toObjectId(avatarId);
+    const objectId = toObjectId(avatarId);
     const defaultStats = { hp: 100, attack: 10, defense: 5 };
     await this.updateAvatarStats(objectId, defaultStats);
     if (locationId) await this.updateAvatarPosition(objectId, locationId);

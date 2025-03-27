@@ -157,7 +157,7 @@ export class MoveTool extends BasicTool {
 
       // 5. Update the avatar's position in the database
       // Don't send profile yet - we'll do it separately below
-      const updatedAvatar = await this.toolService.updateAvatarPosition(
+      const updatedAvatar = await this.avatarService.updateAvatarPosition(
         avatar._id,
         newLocation.channel.id,
         currentLocationId,

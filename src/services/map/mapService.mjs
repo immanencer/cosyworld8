@@ -1,5 +1,6 @@
-import { ObjectId } from 'mongodb';
 import { BasicService } from '../BasicService.mjs';
+
+import { toObjectId } from '../utils/toObjectId.mjs';
 
 export class MapService extends BasicService {
   /**
@@ -24,16 +25,6 @@ export class MapService extends BasicService {
   ensureDb() {
     if (!this.db) throw new Error('Database connection unavailable');
     return this.db;
-  }
-
-  toObjectId(id) {
-    if (id instanceof ObjectId) return id;
-    try {
-      return new ObjectId(id);
-    } catch (error) {
-      this.logger.error(`Invalid ID format: ${id}`);
-      throw new Error(`Invalid ID: ${id}`);
-    }
   }
 
   // --- Database Initialization ---
@@ -76,7 +67,7 @@ export class MapService extends BasicService {
 
   async getAvatarLocation(avatarId) {
     const db = this.ensureDb();
-    const objectId = this.toObjectId(avatarId);
+    const objectId = toObjectId(avatarId);
     const position = await db.collection('dungeon_positions').findOne({ avatarId: objectId });
     if (!position) return null;
 
@@ -101,7 +92,7 @@ export class MapService extends BasicService {
   }
 
   async updateAvatarPosition(avatarId, newLocationId, previousLocationId = null, sendProfile = false) {
-    const objectId = this.toObjectId(avatarId);
+    const objectId = toObjectId(avatarId);
     const db = this.ensureDb();
     const session = await this.db.client.startSession();
 

@@ -113,7 +113,7 @@ export class OpenRouterAIService {
     let fallback = false;
     if (!this.modelIsAvailable(mergedOptions.model)) {
       console.error('Invalid model provided to chat:', mergedOptions.model);
-      mergedOptions.model = 'google/gemma-3-27b-it';
+      mergedOptions.model = 'deepseek/deepseek-chat-v3-0324:free';
       fallback = true;
     }
 
@@ -143,7 +143,7 @@ export class OpenRouterAIService {
         return '\n-# [⚠️ No response from OpenRouter]';
       }
 
-      return (result.content.trim() || '...') + (fallback ? '\n-# [⚠️ Fallback (auto) model used.]' : '');
+      return (result.content.trim() || '...') + (fallback ? `\n-# [⚠️ Fallback model (${mergedOptions.model}) used.]` : '');
     } catch (error) {
       console.error('Error while chatting with OpenRouter:', error);
       // Retry if the error is a rate limit error

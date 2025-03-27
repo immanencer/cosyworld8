@@ -45,8 +45,8 @@ export class AttackTool extends BasicTool {
     }
 
     // Get or create stats for attacker and target using MapService and StatGenerationService
-    const attackerStats = await this.getOrCreateStats(attackerId, services);
-    const targetStats = await this.getOrCreateStats(targetAvatar._id, services);
+    const attackerStats = await services.avatarService.getOrCreateStats(attackerId, services);
+    const targetStats = await services.avatarService.getOrCreateStats(targetAvatar._id, services);
 
     // D&D style attack roll: d20 + strength modifier
     const strMod = Math.floor((attackerStats.strength - 10) / 2);
@@ -61,7 +61,7 @@ export class AttackTool extends BasicTool {
       targetStats.isDefending = false; // Reset defense stance
 
       // Update target stats using MapService
-      await services.mapService.updateAvatarStats(targetAvatar._id, targetStats);
+      await services.avatarService.updateAvatarStats(targetAvatar._id, targetStats);
 
       if (targetStats.hp <= 0) {
         return await this.handleKnockout(message, targetAvatar, damage, services);
@@ -82,7 +82,7 @@ export class AttackTool extends BasicTool {
       return result;
      } else {
       targetStats.isDefending = false; // Reset defense stance on miss
-      await services.mapService.updateAvatarStats(targetAvatar._id, targetStats);
+      await services.avatarService.updateAvatarStats(targetAvatar._id, targetStats);
       return `🛡️ ${message.author.username}'s attack misses ${targetAvatar.name}! (${attackRoll} vs AC ${armorClass})`;
     }
   }
@@ -100,7 +100,7 @@ export class AttackTool extends BasicTool {
     // Reset stats upon knockout
     const newStats = services.statGenerationService.generateStatsFromDate(targetAvatar.createdAt);
     newStats.avatarId = targetAvatar._id;
-    await services.mapService.updateAvatarStats(targetAvatar._id, newStats);
+    await services.avatarService.updateAvatarStats(targetAvatar._id, newStats);
 
     await services.avatarService.updateAvatar(targetAvatar);
     return `💥 ${message.author.username} knocked out ${targetAvatar.name} for ${damage} damage! ${targetAvatar.lives} lives remaining! 💫`;
