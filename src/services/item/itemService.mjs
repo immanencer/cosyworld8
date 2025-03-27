@@ -2,7 +2,7 @@
 
 import fs from 'fs/promises';
 import Replicate from 'replicate';
-import { uploadImage } from '../s3imageService/s3imageService.mjs';
+import { uploadImage } from '../s3/s3imageService.mjs';
 import { SchemaValidator } from '../utils/schemaValidator.mjs';
 
 export class ItemService {

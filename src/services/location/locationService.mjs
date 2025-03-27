@@ -1,8 +1,8 @@
 import Fuse from 'fuse.js';
 import { AIService } from "../aiService.mjs";
 // import { AIService } from "../aiService.mjs";
-import { uploadImage } from '../s3imageService/s3imageService.mjs';
-import { sendAsWebhook } from '../discordService.mjs';
+import { uploadImage } from '../s3/s3imageService.mjs';
+
 import { ObjectId } from 'mongodb';
 import { SchemaValidator } from '../utils/schemaValidator.mjs';
 import Replicate from 'replicate';

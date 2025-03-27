@@ -2,7 +2,6 @@
 import { MemoryService } from '../../memoryService.mjs';
 import { AIService } from "../../aiService.mjs";
 import { BaseTool } from './BaseTool.mjs';
-import { sendAsWebhook } from '../../discordService.mjs';
 
 export class RememberTool extends BaseTool {
   constructor() {

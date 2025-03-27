@@ -5,7 +5,7 @@ Moonstone Sanctum is an **ecosystem** composed of interconnected services, each 
 - **Function**: Orchestrates immersive conversations between users and avatars.  
 - **AI Models**: GPT-4, Claude, Llama, etc., accessed via OpenRouter.  
 - **Features**:  
-  - **ConversationHandler** for routing messages  
+  - **ConversationManager** for routing messages  
   - **DecisionMaker** for avatar response logic  
   - **Rate Limiting** to maintain believable pace
 
@@ -14,7 +14,6 @@ Moonstone Sanctum is an **ecosystem** composed of interconnected services, each 
 - **Purpose**: Handles dynamic, AI-driven gameplay and combat.  
 - **Key Components**:  
   - **ToolService**: Maintains world state and events  
-  - **AvatarManager**: Tracks stats, health, and evolutions  
   - **Specialized Tools**: AttackTool, DefendTool, MoveTool, RememberTool, CreationTool, etc.
 
 

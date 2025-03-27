@@ -27,10 +27,6 @@ async function shutdown(signal, services) {
       await services.databaseService.close();
       logger.info("Closed MongoDB connection.");
     }
-    if (services.chatService) {
-      await services.chatService.stop();
-      logger.info("ChatService stopped.");
-    }
   } catch (error) {
     logger.error(`Error during shutdown: ${error.message}`);
   }

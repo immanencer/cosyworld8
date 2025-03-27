@@ -1,42 +1,23 @@
 // services/avatar_generation_service.mjs
 import { SchemaValidator } from './utils/schemaValidator.mjs';
-
-// Fallback validator in case the import fails
-class FallbackValidator {
-  validateAvatar(avatar) {
-    // Basic validation
-    const requiredFields = ['name', 'description', 'personality', 'imageUrl'];
-    const errors = [];
-    
-    for (const field of requiredFields) {
-      if (!avatar[field] || typeof avatar[field] !== 'string') {
-        errors.push(`Missing or invalid required field: ${field}`);
-      }
-    }
-    
-    return {
-      valid: errors.length === 0,
-      errors
-    };
-  }
-}
 import Replicate from 'replicate';
 import { AIService } from "./aiService.mjs";
 import process from 'process';
 import winston from 'winston';
-
 import Fuse from 'fuse.js';
-import { uploadImage } from './s3imageService/s3imageService.mjs';
+import { uploadImage } from './s3/s3imageService.mjs';
 import { ObjectId } from 'mongodb';
 import fs from 'fs/promises';
-import fetch from 'node-fetch';
 
-export class AvatarGenerationService {
+export class AvatarService { // Note: Renamed from AvatarGenerationService to match query
   constructor(db, config) {
     this.config = config;
     this.aiService = new AIService();
     this.db = db;
     this.logger = this.initializeLogger();
+
+    this.channelAvatars = new Map(); // channelId -> Set of avatarIds
+    this.avatarActivityCount = new Map(); // avatarId -> activity count
 
     try {
       const aiConfig = this.config.getAIConfig();
@@ -82,6 +63,62 @@ export class AvatarGenerationService {
       this.logger.warn('Replicate configuration is missing or invalid. Image generation will be disabled.');
       return null;
     }
+  }
+
+  async initializeDatabase() {
+    this.avatarsCollection = this.db.collection('avatars');
+    this.messagesCollection = this.db.collection('messages');
+    this.channelsCollection = this.db.collection('channels');
+    await Promise.all([
+      this.avatarsCollection.createIndex({ name: 1 }),
+      this.avatarsCollection.createIndex({ messageCount: -1 }),
+      this.messagesCollection.createIndex({ timestamp: 1 }),
+      this.channelsCollection.createIndex({ lastActive: 1 }),
+    ]);
+    this.logger.info('AvatarService database setup completed.');
+  }
+
+  async getActiveAvatars() {
+    const avatars = await this.getAllAvatars();
+    return avatars
+      .map((avatar) => ({
+        ...avatar,
+        id: avatar._id || avatar.id,
+        name: avatar.name || null,
+        active: avatar.active !== false,
+      }))
+      .filter((avatar) => avatar.id && avatar.name && avatar.active);
+  }
+
+  async getAvatarsInChannel(channelId) {
+    try {
+      const collection = this.db.collection(this.AVATARS_COLLECTION);
+      const avatars = await collection
+        .find({ channelId })
+        .sort({ createdAt: -1 })
+        .toArray();
+      return avatars.map(avatar => ({ ...avatar }));
+    } catch (error) {
+      this.logger.error(`Error fetching avatars in channel: ${error.message}`);
+      return [];
+    }
+  }
+
+  async manageChannelAvatars(channelId, newAvatarId) {
+    let avatars = this.channelAvatars.get(channelId) || new Set();
+    if (newAvatarId && avatars.size >= 8) {
+      let leastActive = [...avatars].reduce((min, id) => {
+        const count = this.avatarActivityCount.get(id) || 0;
+        return count < (this.avatarActivityCount.get(min) || 0) ? id : min;
+      });
+      avatars.delete(leastActive);
+    }
+    if (newAvatarId) {
+      avatars.add(newAvatarId);
+      this.avatarActivityCount.set(newAvatarId, (this.avatarActivityCount.get(newAvatarId) || 0) + 1);
+    }
+    this.channelAvatars.set(channelId, avatars);
+    return avatars;
   }
 
   async getAvatars(avatarIds) {
@@ -161,18 +198,6 @@ export class AvatarGenerationService {
     }
   
     return mentionedAvatars;
-  }
-
-  async getActiveAvatars() {
-    try {
-      const avatars = await this.db.collection(this.AVATARS_COLLECTION).find({
-        active: true
-      }).toArray();
-      return avatars;
-    } catch (error) {
-      this.logger.error(`Failed to fetch active avatars: ${error.message}`);
-      return [];
-    }
   }
 
   /**
@@ -301,20 +326,6 @@ export class AvatarGenerationService {
       return avatars.map(avatar => ({ ...avatar }));
     } catch (error) {
       this.logger.error(`Error fetching avatars: ${error.message}`);
-      return [];
-    }
-  }
-
-  async getAvatarsInChannel(channelId) {
-    try {
-      const collection = this.db.collection(this.AVATARS_COLLECTION);
-      const avatars = await collection
-        .find({ channelId })
-        .sort({ createdAt: -1 })
-        .toArray();
-      return avatars.map(avatar => ({ ...avatar }));
-    } catch (error) {
-      this.logger.error(`Error fetching avatars in channel: ${error.message}`);
       return [];
     }
   }

@@ -131,7 +131,7 @@ export class MapService {
 
       if (sendProfile) {
         const { sendAvatarProfileEmbedFromObject } = await import('../../services/discordService.mjs');
-        await sendAvatarProfileEmbedFromObject(updatedAvatar, newLocationId);
+        await this.services.discordService.sendAvatarProfileEmbedFromObject(updatedAvatar, newLocationId);
       }
 
       this.client.emit('avatarMoved', {

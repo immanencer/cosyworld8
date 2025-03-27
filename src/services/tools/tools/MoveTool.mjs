@@ -1,5 +1,4 @@
 import { BaseTool } from './BaseTool.mjs';
-import { sendAsWebhook } from '../../../services/discordService.mjs';
 import { EmbedBuilder } from 'discord.js';
 
 export class MoveTool extends BaseTool {
@@ -184,7 +183,7 @@ export class MoveTool extends BaseTool {
       // 7. Send the full profile to the new location
       try {
         const { sendAvatarProfileEmbedFromObject } = await import('../../../services/discordService.mjs');
-        await sendAvatarProfileEmbedFromObject(updatedAvatar, newLocation.channel.id);
+        await this.services.discordService.sendAvatarProfileEmbedFromObject(updatedAvatar, newLocation.channel.id);
         this.logger.debug(`Sent profile for ${updatedAvatar.name} to new location ${newLocation.channel.id}`);
       } catch (profileError) {
         this.logger.error(`Error sending profile after movement: ${profileError.message}`);

@@ -2,14 +2,18 @@
 import { DatabaseService } from "./databaseService.mjs";
 import { SpamControlService } from "./spamControlService.mjs";
 import { AIService } from "./aiService.mjs";
-import { AvatarGenerationService } from "./avatarService.mjs";
+import { AvatarService } from "./avatarService.mjs";
 import { ImageProcessingService } from "./imageProcessingService.mjs";
 import configService from "./configService.mjs";
-import { ChatService } from "./chat/chatService.mjs";
 import { ToolService } from "./tools/ToolService.mjs";
 import { MapService } from "./map/mapService.mjs";
 import { StatGenerationService } from "./tools/statGenerationService.mjs";
 import { DiscordService } from "./discordService.mjs";
+import { MessageHandler } from "./chat/messageHandler.mjs";
+import { PeriodicTaskManager } from "./chat/periodicTaskManager.mjs";
+import { ChannelManager } from "./chat/channelManager.mjs";
+import { ConversationManager } from "./chat/conversationManager.mjs";
+import { DecisionMaker } from "./chat/decisionMaker.mjs";
 
 export async function initializeServices(logger) {
   configService.validate();
@@ -48,11 +52,14 @@ export async function initializeServices(logger) {
 
   const aiService = new AIService();
   const imageProcessingService = new ImageProcessingService(logger, aiService);
-  const avatarService = new AvatarGenerationService(db, configService);
+  const avatarService = new AvatarService(db, configService);
+  await avatarService.initializeDatabase();
+
   const spamControlService = new SpamControlService(db, logger);
   const mapService = new MapService(discordService.client, logger, avatarService, db);
   await mapService.initializeDatabase();
 
+  const channelManager = new ChannelManager(discordService.client, logger, db);
   const services = {
     logger,
     avatarService,
@@ -62,13 +69,27 @@ export async function initializeServices(logger) {
     spamControlService,
     configService,
     mapService,
+    discordService,
     statGenerationService: new StatGenerationService(),
+    channelManager,
   };
 
   services.toolService = new ToolService(discordService.client, logger, avatarService, db, services);
-  const chatService = new ChatService(discordService.client, db, services);
-  await chatService.start();
 
+  services.conversationManager = new ConversationManager(services);
+  services.decisionMaker = new DecisionMaker(services);
+  services.messageHandler = new MessageHandler(services);
+  services.messageHandler.start();
+
+
+
+  services.periodicTaskManager = new PeriodicTaskManager(
+    services.avatarService,
+    services.channelManager,
+    services.logger,
+  );
+  services.periodicTaskManager.start();
+  
   try {
     await avatarService.updateAllArweavePrompts();
   } catch (error) {
@@ -80,7 +101,6 @@ export async function initializeServices(logger) {
     databaseService,
     aiService,
     avatarService,
-    chatService,
     spamControlService,
     imageProcessingService,
     configService,

@@ -1,10 +1,10 @@
 
 import { BaseTool } from './BaseTool.mjs';
-import { replyToMessage } from "../../../services/discordService.mjs";
 
 export class BreedTool extends BaseTool {
   constructor(services) {
     super();
+    this.services = services;
     this.name = 'breed';
     this.description = 'Breeds two avatars together';
     this.emoji = '🏹';
@@ -50,13 +50,13 @@ export class BreedTool extends BaseTool {
         .slice(-2);
 
       if (mentionedAvatars.length !== 2) {
-        await replyToMessage(message, "Please mention exactly two avatars to breed.");
+        await this.services.discordService.sendAsWebhook(message, "Please mention exactly two avatars to breed.");
         return "Failed to breed: Need exactly two avatars";
       }
 
       const [avatar1, avatar2] = mentionedAvatars;
       if (avatar1._id === avatar2._id) {
-        await replyToMessage(message, "Both avatars must be different to breed.");
+        await this.services.discordService.sendAsWebhook(message, "Both avatars must be different to breed.");
         return "Failed to breed: Cannot breed an avatar with itself";
       }
 
@@ -66,15 +66,15 @@ export class BreedTool extends BaseTool {
       };
 
       if (await checkRecentBreed(avatar1) || await checkRecentBreed(avatar2)) {
-        await replyToMessage(message, `${(await checkRecentBreed(avatar1) ? avatar1 : avatar2).name} has been bred in the last 24 hours.`);
+        await this.services.discordService.sendAsWebhook(message, `${(await checkRecentBreed(avatar1) ? avatar1 : avatar2).name} has been bred in the last 24 hours.`);
         return "Failed to breed: Avatar recently bred";
       }
 
-      await replyToMessage(message, `Breeding ${avatar1.name} with ${avatar2.name}...`);
+      await this.services.discordService.sendAsWebhook(message, `Breeding ${avatar1.name} with ${avatar2.name}...`);
 
       const buildNarrative = async (avatar) => {
         const memories = (await services.memoryService.getMemories(avatar._id)).map(m => m.memory).join("\n");
-        return services.chatService.conversationHandler.buildNarrativePrompt(avatar, [memories]);
+        return services.conversationManager.buildNarrativePrompt(avatar, [memories]);
       };
 
       const guildConfig = await services.configService.getGuildConfig(services.databaseService.getDatabase(), message.guild?.id, true);

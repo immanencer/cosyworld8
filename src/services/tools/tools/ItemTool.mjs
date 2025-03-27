@@ -1,7 +1,6 @@
 // ItemTool.mjs
 import { BaseTool } from './BaseTool.mjs';
 import { ItemService } from '../../item/itemService.mjs';
-import { sendAsWebhook } from '../../discordService.mjs';
 
 export class ItemTool extends BaseTool {
   constructor(services) {

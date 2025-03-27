@@ -178,7 +178,7 @@ export class DatabaseService {
           { key: { actor: 1 }, background: true },
           { key: { target: 1 }, background: true },
         ]),
-        db.collection('messages').createIndex({ hasImages: 1 }),
+        db.collection('messages').createIndexes({ hasImages: 1 }),
         db.collection('messages').createIndex({ imageDescription: 1 })
       ]);
       this.logger.info('Database indexes created successfully');

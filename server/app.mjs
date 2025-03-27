@@ -90,7 +90,7 @@ async function initializeApp() {
         const client = new Client({ intents: [] }); // Minimal client for admin tools
         
         // Import core services
-        const { ConversationHandler } = await import('../src/services/chat/conversationHandler.mjs');
+        const { ConversationManager } = await import('../src/services/chat/conversationManager.mjs');
         const { AIService } = await import('../src/services/aiService.mjs');
         const { AvatarGenerationService } = await import('../src/services/avatarService.mjs');
         
@@ -104,11 +104,11 @@ async function initializeApp() {
         }), getMongoConfig: () => ({ }) });
         
         // Create conversation handler
-        const conversationHandler = new ConversationHandler(client, aiService, logger, avatarService);
+        const conversationManager = new ConversationManager(client, aiService, logger, avatarService);
         
         // Make services available to routes
         app.locals.services = {
-          conversationHandler,
+          conversationManager,
           aiService,
           avatarService,
           client

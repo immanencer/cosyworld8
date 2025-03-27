@@ -598,12 +598,12 @@ function createRouter(db) {
 
     try {
       // Build a sample contextual prompt
-      const conversationHandler = req.app.locals.services?.conversationHandler;
+      const conversationManager = req.app.locals.services?.conversationManager;
       
       // If we have a conversation handler, use it to build an accurate prompt
-      if (conversationHandler) {
+      if (conversationManager) {
         // Get the system prompt and dungeon prompt for this avatar
-        const systemPrompt = await conversationHandler.buildSystemPrompt(avatar);
+        const systemPrompt = await conversationManager.buildSystemPrompt(avatar);
         let dungeonPrompt = '';
         
         if (avatar.channelId) {
@@ -611,7 +611,7 @@ function createRouter(db) {
             // Get guild ID from channel
             const channel = req.app.locals.client?.channels.cache.get(avatar.channelId);
             if (channel?.guild) {
-              dungeonPrompt = await conversationHandler.buildDungeonPrompt(avatar, channel.guild.id);
+              dungeonPrompt = await conversationManager.buildDungeonPrompt(avatar, channel.guild.id);
             }
           } catch (error) {
             console.error('Error getting guild context:', error);
@@ -620,9 +620,9 @@ function createRouter(db) {
 
         // Fetch summary if available
         let channelSummary = '';
-        if (avatar.channelId && conversationHandler.getChannelSummary) {
+        if (avatar.channelId && conversationManager.getChannelSummary) {
           try {
-            channelSummary = await conversationHandler.getChannelSummary(avatar._id, avatar.channelId);
+            channelSummary = await conversationManager.getChannelSummary(avatar._id, avatar.channelId);
           } catch (error) {
             console.error('Error getting channel summary:', error);
           }

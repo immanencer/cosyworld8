@@ -3,9 +3,10 @@ import { MemoryService } from '../memoryService.mjs';
 
 const GUILD_NAME = process.env.GUILD_NAME || 'The Guild';
 
-export class ConversationHandler {
+export class ConversationManager {
   constructor(services) {
     this.services = services;
+    this.logger = services.logger;
     this.services.memoryService = new MemoryService(this.logger);
     
     this.GLOBAL_NARRATIVE_COOLDOWN = 60 * 60 * 1000; // 1 hour

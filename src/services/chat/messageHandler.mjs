@@ -1,7 +1,5 @@
 import { saveMessageToDatabase } from "../../utils/databaseUtils.mjs";
 import { handleCommands } from "../../commands/commandHandler.mjs";
-import { sendAvatarProfileEmbedFromObject } from "../discordService.mjs";
-
 /**
  * Handles Discord messages by processing commands, managing avatars, and generating responses.
  */
@@ -11,19 +9,21 @@ export class MessageHandler {
    * @param {Object} services - An object containing all necessary service dependencies.
    */
   constructor(services) {
-    this.databaseService = services.databaseService;
-    this.spamControlService = services.spamControlService;
-    this.avatarManager = services.avatarManager;
-    this.channelManager = services.channelManager;
-    this.configService = services.configService;
-    this.aiService = services.aiService;
-    this.responseGenerator = services.responseGenerator;
-    this.toolService = services.toolService;
-    this.avatarService = services.avatarService;
-    this.statGenerationService = services.statGenerationService;
-    this.chatService = services.chatService;
-    this.client = services.client;
+    this.services = services;
     this.logger = services.logger;
+    this.databaseService = services.databaseService;
+    this.client = services.discordService.client;
+    this.periodicTaskManager = services.periodicTaskManager;
+  }
+
+  async start() {
+    this.client.on('messageCreate', (message) => this.handleMessage(message));
+    this.logger.info('MessageHandler started.');
+  }
+
+  async stop() {
+    this.periodicTaskManager.stop();
+    this.logger.info('MessageHandler stopped.');
   }
 
   /**
@@ -50,12 +50,6 @@ export class MessageHandler {
       }
     }
 
-    // Validate required services
-    if (!this.areServicesValid()) {
-      console.error("Missing required services. Message processing aborted.");
-      return;
-    }
-
     // Ensure the message is from a guild
     if (!message.guild) {
       this.logger.debug("Message not in a guild, skipping.");
@@ -69,7 +63,7 @@ export class MessageHandler {
     }
 
     // Apply spam control
-    if (!(await this.spamControlService.shouldProcessMessage(message))) {
+    if (!(await this.services.spamControlService.shouldProcessMessage(message))) {
       this.logger.debug("Message skipped by spam control.");
       return;
     }
@@ -81,7 +75,7 @@ export class MessageHandler {
     await this.saveMessage(message);
 
     // Process any commands in the message
-    await this.handleCommands(message);
+    await handleCommands(message, this.services);
 
     // Skip further processing if the author is a bot
     if (message.author.bot) {
@@ -90,9 +84,10 @@ export class MessageHandler {
     }
 
     const channelId = message.channel.id;
+    const guildId = message.guild.id;
 
     // Mark the channel as active
-    await this.markChannelActive(channelId, message.guild.id);
+    await this.services.channelManager.markChannelActive(channelId, guildId);
 
     // Process the channel (initial pass, e.g., for immediate responses)
     await this.processChannel(channelId, message);
@@ -107,35 +102,6 @@ export class MessageHandler {
   }
 
   /**
-   * Validates the presence of all required services.
-   * @returns {boolean} True if all services are present, false otherwise.
-   */
-  areServicesValid() {
-    const requiredServices = [
-      "databaseService",
-      "spamControlService",
-      "avatarManager",
-      "channelManager",
-      "configService",
-      "aiService",
-      "responseGenerator",
-      "toolService",
-      "avatarService",
-      "statGenerationService",
-      "chatService",
-      "client",
-      "logger",
-    ];
-    return requiredServices.every((service) => {
-      if (!this[service]) {
-        console.error(`Missing required service: ${service}`);
-        return false;
-      }
-      return true;
-    });
-  }
-
-  /**
    * Checks if the guild is authorized to use the bot.
    * @param {Object} message - The Discord message object.
    * @returns {Promise<boolean>} True if authorized, false otherwise.
@@ -147,10 +113,10 @@ export class MessageHandler {
       if (!this.client.authorizedGuilds?.get(guildId)) {
         const db = this.databaseService.getDatabase();
         if (!db) return false;
-        const guildConfig = await this.configService.getGuildConfig(db, guildId);
+        const guildConfig = await this.services.configService.getGuildConfig(db, guildId);
         const isAuthorized =
           guildConfig?.authorized === true ||
-          (await this.configService.get("authorizedGuilds") || []).includes(guildId);
+          (await this.services.configService.get("authorizedGuilds") || []).includes(guildId);
         this.client.authorizedGuilds = this.client.authorizedGuilds || new Map();
         this.client.authorizedGuilds.set(guildId, isAuthorized);
       }
@@ -212,50 +178,13 @@ export class MessageHandler {
   }
 
   /**
-   * Handles commands within the message.
-   * @param {Object} message - The Discord message object.
-   */
-  async handleCommands(message) {
-    try {
-      await handleCommands(message, {
-        client: this.client,
-        avatarService: this.avatarService,
-        toolService: this.toolService,
-        avatarManager: this.avatarManager,
-        configService: this.configService,
-        databaseService: this.databaseService,
-        responseGenerator: this.responseGenerator,
-        aiService: this.aiService,
-        logger: this.logger,
-        statGenerationService: this.statGenerationService,
-        chatService: this.chatService,
-      });
-    } catch (error) {
-      this.logger.error(`Error handling commands: ${error.message}`);
-    }
-  }
-
-  /**
-   * Marks the channel as active.
-   * @param {string} channelId - The ID of the channel.
-   * @param {string} guildId - The ID of the guild.
-   */
-  async markChannelActive(channelId, guildId) {
-    try {
-      await this.channelManager.markChannelActive(channelId, guildId);
-    } catch (error) {
-      this.logger.error(`Error marking channel active: ${error.message}`);
-    }
-  }
-
-  /**
    * Handles avatar creation or retrieval for the message author.
    * @param {Object} message - The Discord message object.
    * @param {string} channelId - The ID of the channel.
    */
   async handleAvatarCreation(message, channelId) {
     try {
-      const result = await this.avatarService.getOrCreateUniqueAvatarForUser(
+      const result = await this.services.avatarService.getOrCreateUniqueAvatarForUser(
         message.author.id,
         `A unique avatar for ${message.author.username} (${message.author.displayName})`,
         channelId
@@ -263,9 +192,10 @@ export class MessageHandler {
       if (result.new) {
         result.avatar.model = result.avatar.model || (await this.aiService.selectRandomModel());
         result.avatar.stats = await this.toolService.getAvatarStats(result.avatar._id);
-        await this.avatarManager.updateAvatar(result.avatar);
-        await sendAvatarProfileEmbedFromObject(result.avatar);
-        await this.responseGenerator.respondAsAvatar(message.channel, result.avatar);
+        await this.services.avatarService.updateAvatar(result.avatar);
+        await this.services.discordService.sendAvatarProfileEmbedFromObject(result.avatar);
+
+        await this.services.conversationManager.sendResponse(channel, avatar);
       }
     } catch (error) {
       this.logger.error(`Error handling avatar creation: ${error.message}`);
@@ -284,15 +214,18 @@ export class MessageHandler {
         this.logger.error(`Channel ${channelId} not found in cache.`);
         return;
       }
-      const allAvatars = await this.avatarManager.getAvatarsInChannel(channelId);
-      const avatarsToConsider = this.responseGenerator.decisionMaker.selectAvatarsToConsider(
+      const allAvatars = await this.services.avatarService.getAvatarsInChannel(channelId);
+      const avatarsToConsider = this.services.decisionMaker.selectAvatarsToConsider(
         allAvatars,
         message
       );
       await Promise.all(
-        avatarsToConsider.slice(0, 3).map((avatar) =>
-          this.responseGenerator.considerResponse(channel, avatar)
-        )
+        avatarsToConsider.slice(0, 3).map(async (avatar) => {
+          const shouldRespond = await this.decisionMaker.shouldRespond(channel, avatar, this.client);
+          if (shouldRespond) {
+            await this.conversationManager.sendResponse(channel, avatar);
+          }
+        })
       );
     } catch (error) {
       this.logger.error(`Error processing channel ${channelId}: ${error.message}`);
