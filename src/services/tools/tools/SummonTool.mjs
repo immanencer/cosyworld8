@@ -72,7 +72,7 @@ export class SummonTool extends BaseTool {
       const existingAvatar = await services.avatarService.getAvatarByName(avatarName);
 
       if (existingAvatar) {
-        await this.services.discordService.replyToMessage(message.channel.id, content, existingAvatar.emoji || "🔮");
+        await this.services.discordService.reactToMessage(message.channel.id, content, existingAvatar.emoji || "🔮");
         const updatedAvatar = await services.mapService.updateAvatarPosition(existingAvatar._id, message.channel.id);
         updatedAvatar.stats = await services.mapService.getAvatarStats(updatedAvatar._id);
         await services.avatarService.updateAvatar(updatedAvatar);
@@ -136,7 +136,7 @@ export class SummonTool extends BaseTool {
       await this.services.discordService.replyToMessage(message.channel.id, intro, createdAvatar);
 
       await services.toolService.initializeAvatar(createdAvatar._id, message.channel.id);
-      await this.services.discordService.replyToMessage(message, createdAvatar.emoji || "🎉");
+      await this.services.discordService.reactToMessage(message, createdAvatar.emoji || "🎉");
       
       if (!breed) {
         await this.trackSummon(message.author.id, services);
@@ -148,7 +148,7 @@ export class SummonTool extends BaseTool {
       return `${createdAvatar.name} has been summoned into existence.`;
     } catch (error) {
       services.logger.error(`Summon error: ${error.message}`);
-      await this.services.discordService.replyToMessage(message, "❌");
+      await this.services.discordService.reactToMessage(message, "❌");
       return `Failed to summon: ${error.message}`;
     }
   }

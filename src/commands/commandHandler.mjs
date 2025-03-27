@@ -30,13 +30,13 @@ export async function handleCommands(message, services) {
   if (isToolCommand) {
     try {
       // React to acknowledge we're processing
-      await services.discordService.replyToMessage(message, "⏳");
+      await services.discordService.reactToMessage(message, "⏳");
       
       // Get or create the user's avatar
       const avatarResult = await services.avatarService.summonUserAvatar(message, services);
       
       if (!avatarResult || !avatarResult.avatar) {
-        await services.discordService.replyToMessage(message, "❌");
+        await services.discordService.reactToMessage(message, "❌");
         await services.discordService.replyToMessage(message, "Sorry, I couldn't create or summon your avatar.");
         return;
       }
@@ -50,7 +50,7 @@ export async function handleCommands(message, services) {
       
       // Check if avatar object is valid and has required properties
       if (!avatar || !avatar.name || !avatar._id) {
-        await services.discordService.replyToMessage(message, "❌");
+        await services.discordService.reactToMessage(message, "❌");
         await services.discordService.replyToMessage(message, "Avatar data is incomplete. Unable to process command.");
         return;
       }
@@ -84,7 +84,7 @@ export async function handleCommands(message, services) {
       await services.conversationManager.sendResponse(message.channel, avatar);
     } catch (error) {
       console.error("Error handling tool command:", error);
-      await services.discordService.replyToMessage(message, "❌");
+      await services.discordService.reactToMessage(message, "❌");
       await services.discordService.replyToMessage(message, `There was an error processing your command: ${error.message}`);
     }
     return;
