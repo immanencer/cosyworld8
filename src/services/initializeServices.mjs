@@ -75,13 +75,15 @@ export async function initializeServices(logger) {
     channelManager,
   };
 
+  services.conversationManager = new ConversationManager(services);
+  
   services.itemService = new ItemService(
     discordService.client,
     services.aiService,
     db);
-  services.toolService = new ToolService(discordService.client, logger, avatarService, db, services);
+  services.toolService = new ToolService(
+    discordService.client, logger, avatarService, db, services);
 
-  services.conversationManager = new ConversationManager(services);
   services.decisionMaker = new DecisionMaker(services);
   services.messageHandler = new MessageHandler(services);
   services.messageHandler.start();

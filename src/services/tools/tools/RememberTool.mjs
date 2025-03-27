@@ -4,7 +4,7 @@ import { AIService } from "../../aiService.mjs";
 import { BaseTool } from './BaseTool.mjs';
 
 export class RememberTool extends BaseTool {
-  constructor() {
+  constructor(services) {
     super(services);
     this.aiService = new AIService();
     this.name = 'remember';

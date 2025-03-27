@@ -72,14 +72,14 @@ export class SummonTool extends BaseTool {
       const existingAvatar = await services.avatarService.getAvatarByName(avatarName);
 
       if (existingAvatar) {
-        await this.services.discordService.sendAsWebhook(message, existingAvatar.emoji || "🔮");
-        const updatedAvatar = await services.toolService.updateAvatarPosition(existingAvatar._id, message.channel.id);
-        updatedAvatar.stats = await services.toolService.getAvatarStats(updatedAvatar._id);
+        await this.services.discordService.replyToMessage(message.channel.id, content, existingAvatar.emoji || "🔮");
+        const updatedAvatar = await services.mapService.updateAvatarPosition(existingAvatar._id, message.channel.id);
+        updatedAvatar.stats = await services.mapService.getAvatarStats(updatedAvatar._id);
         await services.avatarService.updateAvatar(updatedAvatar);
         await this.services.discordService.sendAvatarProfileEmbedFromObject(updatedAvatar);
         
 
-        await this.services.conversationManager.sendResponse(channel, avatar);
+        await this.services.conversationManager.sendResponse(message.channel, avatar);
         
         return `${existingAvatar.name} has been summoned to this location.`;
       }
@@ -89,7 +89,7 @@ export class SummonTool extends BaseTool {
       const attributes = params.attributes || {};
       const canSummon = message.author.id === "1175877613017895032" || (await this.checkDailySummonLimit(message.author.id, services));
       if (!canSummon) {
-        await this.services.discordService.sendAsWebhook(message, `Daily summon limit of ${this.DAILY_SUMMON_LIMIT} reached. Try again tomorrow!`);
+        await this.services.discordService.replyToMessage(message, `Daily summon limit of ${this.DAILY_SUMMON_LIMIT} reached. Try again tomorrow!`);
         return `Failed to summon: Daily limit reached`;
       }
 
@@ -106,7 +106,7 @@ export class SummonTool extends BaseTool {
 
       const createdAvatar = await services.avatarService.createAvatar(avatarData);
       if (!createdAvatar || !createdAvatar.name) {
-        await this.services.discordService.sendAsWebhook(message, "Failed to create avatar. Try a more detailed description.");
+        await this.services.discordService.replyToMessage(message, "Failed to create avatar. Try a more detailed description.");
         return "Failed to create avatar. The description may be too vague.";
       }
 
@@ -120,7 +120,7 @@ export class SummonTool extends BaseTool {
       }
 
       createdAvatar.summoner = avatar ? `AVATAR:${avatar._id}` : `${message.author.username}@${message.author.id}`;
-      createdAvatar.stats = await services.toolService.getAvatarStats(createdAvatar._id);
+      createdAvatar.stats = await services.mapService.getAvatarStats(createdAvatar._id);
       await services.avatarService.updateAvatar(createdAvatar);
       await this.services.discordService.sendAvatarProfileEmbedFromObject(createdAvatar);
 
@@ -133,10 +133,10 @@ export class SummonTool extends BaseTool {
       createdAvatar.channelId = message.channel.id;
       createdAvatar.attributes = attributes;
       await services.avatarService.updateAvatar(createdAvatar);
-      await this.services.discordService.sendAsWebhook(message.channel.id, intro, createdAvatar);
+      await this.services.discordService.replyToMessage(message.channel.id, intro, createdAvatar);
 
       await services.toolService.initializeAvatar(createdAvatar._id, message.channel.id);
-      await this.services.discordService.sendAsWebhook(message, createdAvatar.emoji || "🎉");
+      await this.services.discordService.replyToMessage(message, createdAvatar.emoji || "🎉");
       
       if (!breed) {
         await this.trackSummon(message.author.id, services);
@@ -148,7 +148,7 @@ export class SummonTool extends BaseTool {
       return `${createdAvatar.name} has been summoned into existence.`;
     } catch (error) {
       services.logger.error(`Summon error: ${error.message}`);
-      await this.services.discordService.sendAsWebhook(message, "❌");
+      await this.services.discordService.replyToMessage(message, "❌");
       return `Failed to summon: ${error.message}`;
     }
   }

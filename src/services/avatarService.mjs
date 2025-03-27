@@ -1136,7 +1136,7 @@ export class AvatarService {
       // If avatar is not in this channel, move it
       if (userAvatar.channelId !== channelId) {
         this.logger.info(`Moving avatar ${userAvatar.name} to channel ${channelId}`);
-        await services.toolService.updateAvatarPosition(userAvatar._id, channelId, userAvatar.channelId);
+        await services.mapService.updateAvatarPosition(userAvatar._id, channelId, userAvatar.channelId);
         userAvatar = await this.getAvatarById(userAvatar._id);
       }
       

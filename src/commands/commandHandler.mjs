@@ -5,7 +5,7 @@ export async function handleCommands(message, services) {
   let summonEmoji = await getSummonEmoji();
 
   if (content.startsWith("!summon")) {
-    await services.discordService.sendAsWebhook(message, `Command Deprecated. Use ${summonEmoji} Instead.`);
+    await services.discordService.replyToMessage(message, `Command Deprecated. Use ${summonEmoji} Instead.`);
     return;
   }
   
@@ -30,14 +30,14 @@ export async function handleCommands(message, services) {
   if (isToolCommand) {
     try {
       // React to acknowledge we're processing
-      await services.discordService.sendAsWebhook(message, "⏳");
+      await services.discordService.replyToMessage(message, "⏳");
       
       // Get or create the user's avatar
       const avatarResult = await services.avatarService.summonUserAvatar(message, services);
       
       if (!avatarResult || !avatarResult.avatar) {
-        await services.discordService.sendAsWebhook(message, "❌");
-        await services.discordService.sendAsWebhook(message, "Sorry, I couldn't create or summon your avatar.");
+        await services.discordService.replyToMessage(message, "❌");
+        await services.discordService.replyToMessage(message, "Sorry, I couldn't create or summon your avatar.");
         return;
       }
       
@@ -45,13 +45,13 @@ export async function handleCommands(message, services) {
 
       // If it's a new avatar, inform the user
       if (avatarResult.isNewAvatar) {
-        await services.discordService.sendAsWebhook(message, `Created a new avatar called ${avatar.name} for you! Your avatar will now try to execute: ${content}`);
+        await services.discordService.replyToMessage(message, `Created a new avatar called ${avatar.name} for you! Your avatar will now try to execute: ${content}`);
       }
       
       // Check if avatar object is valid and has required properties
       if (!avatar || !avatar.name || !avatar._id) {
-        await services.discordService.sendAsWebhook(message, "❌");
-        await services.discordService.sendAsWebhook(message, "Avatar data is incomplete. Unable to process command.");
+        await services.discordService.replyToMessage(message, "❌");
+        await services.discordService.replyToMessage(message, "Avatar data is incomplete. Unable to process command.");
         return;
       }
       
@@ -84,8 +84,8 @@ export async function handleCommands(message, services) {
       await services.conversationManager.sendResponse(message.channel, avatar);
     } catch (error) {
       console.error("Error handling tool command:", error);
-      await services.discordService.sendAsWebhook(message, "❌");
-      await services.discordService.sendAsWebhook(message, `There was an error processing your command: ${error.message}`);
+      await services.discordService.replyToMessage(message, "❌");
+      await services.discordService.replyToMessage(message, `There was an error processing your command: ${error.message}`);
     }
     return;
   }

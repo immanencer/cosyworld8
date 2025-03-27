@@ -3,7 +3,7 @@ import { AIService } from "../../aiService.mjs";
 import { MemoryService } from '../../memoryService.mjs';
 
 export class ThinkTool extends BaseTool {
-  constructor() {
+  constructor(services) {
     super(services);
     this.name = 'think';
     this.description = 'Take a moment to reflect on a message or conversation, updating your thoughts and memories.';
