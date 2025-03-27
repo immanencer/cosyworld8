@@ -92,12 +92,12 @@ async function initializeApp() {
         // Import core services
         const { ConversationManager } = await import('../src/services/chat/conversationManager.mjs');
         const { AIService } = await import('../src/services/aiService.mjs');
-        const { AvatarGenerationService } = await import('../src/services/avatarService.mjs');
+        const { AvatarService } = await import('../src/services/avatarService.mjs');
         
         // Initialize minimal services
         const logger = console;
         const aiService = new AIService();
-        const avatarService = new AvatarGenerationService(db, { getAIConfig: () => ({
+        const avatarService = new AvatarService(db, { getAIConfig: () => ({
           replicate: {
             apiToken: process.env.REPLICATE_API_TOKEN,
           }

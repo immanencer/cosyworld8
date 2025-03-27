@@ -9,7 +9,7 @@ import { uploadImage } from './s3/s3imageService.mjs';
 import { ObjectId } from 'mongodb';
 import fs from 'fs/promises';
 
-export class AvatarService { // Note: Renamed from AvatarGenerationService to match query
+export class AvatarService {
   constructor(db, config) {
     this.config = config;
     this.aiService = new AIService();
