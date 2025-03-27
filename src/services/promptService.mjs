@@ -1,14 +1,20 @@
-import { loggers } from "winston";
+import { BasicService } from "./BasicService.mjs";
 
-export class PromptService {
-  constructor(avatarService, memoryService, toolService, imageProcessingService, client, itemService, mapService) {
-    this.avatarService = avatarService;
-    this.memoryService = memoryService;
-    this.toolService = toolService;
-    this.imageProcessingService = imageProcessingService;
-    this.itemService = itemService;
-    this.client = client; // Discord client for fetching channel data
-    this.mapService = mapService;
+export class PromptService extends BasicService {
+  constructor(services) {
+    super(services, [
+      "avatarService",
+      "memoryService",
+      "toolService",
+      "imageProcessingService",
+      "itemService",
+      "discordService",
+      "mapService",
+      "databaseService"
+    ]);
+
+    this.client = this.discordService.client;
+    this.db = this.databaseService.getDatabase();
   }
   /**
    * Builds the system prompt with just the avatar's basic identity.

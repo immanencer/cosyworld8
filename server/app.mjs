@@ -104,7 +104,14 @@ async function initializeApp() {
         }), getMongoConfig: () => ({ }) });
         
         // Create conversation handler
-        const conversationManager = new ConversationManager(client, aiService, logger, avatarService);
+        const conversationManager = new ConversationManager({
+          logger,
+          aiService,
+          avatarService,
+          databaseService: { getDatabase: () => db },
+          configService: { getGuildConfig: () => ({}) },
+          discordService: { client }
+        });
         
         // Make services available to routes
         app.locals.services = {

@@ -7,12 +7,11 @@ const logFormat = winston.format.printf(
 );
 
 const logger = winston.createLogger({
-  level: process.env.LOG_LEVEL || "info",
+  level: process.env.LOG_LEVEL || "debug",
   format: winston.format.combine(winston.format.timestamp(), logFormat),
   transports: [
     new winston.transports.Console({
       format: winston.format.combine(logFormat),
-      handleExceptions: true,
     }),
   ],
 });

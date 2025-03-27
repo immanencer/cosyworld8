@@ -401,4 +401,8 @@ export class ItemService {
       }
     };
   }
+
+  getItemsDescription(avatar) {
+    return (avatar.items || []).map((item) => item.name).join(', ');
+  }
 }

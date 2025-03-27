@@ -1,13 +1,14 @@
+import { BasicService } from '../BasicService.mjs';
+
 // Configuration constants (consider moving to a config file or env variables)
 const DECISION_MODEL = 'google/gemma-3-4b-it:free';
 const BASE_RESPONSE_CHANCE = 0.25;
 const DAILY_RESPONSE_LIMIT = 100; // Max immediate responses per human per day
 const DAILY_RESET_INTERVAL = 24 * 60 * 60 * 1000; // 24 hours in ms
 
-export class DecisionMaker {
-  constructor(aiService, logger, config = {}) {
-    this.aiService = aiService;
-    this.logger = logger;
+export class DecisionMaker extends BasicService {
+  constructor(services, config = {}) {
+    super(services, ['aiService', 'logger']);
 
     // Configurable constants with defaults
     this.config = {

@@ -1,3 +1,4 @@
+import { BasicService } from '../BasicService.mjs';
 import { AIService } from "../aiService.mjs";
 import { ActionLog } from './ActionLog.mjs';
 import { AttackTool } from './tools/AttackTool.mjs';
@@ -13,7 +14,7 @@ import { BreedTool } from './tools/BreedTool.mjs';
 import configService from '../configService.mjs';
 import { LocationService } from '../location/locationService.mjs';
 
-export class ToolService {
+export class ToolService extends BasicService {
   /**
    * Constructs a new ToolService instance for managing tools and actions.
    * @param {Object} client - The Discord client instance.
@@ -22,16 +23,20 @@ export class ToolService {
    * @param {import('mongodb').Db} db - MongoDB database connection.
    * @param {Object} services - Additional services (e.g., mapService, itemService).
    */
-  constructor(client, logger, avatarService, db, services) {
-    this.services = { ...services, client, toolService: this };
-    this.db = db;
-    this.client = client;
-    this.logger = logger;
-    this.avatarService = avatarService;
-    this.itemService = services.itemService;
-
+  constructor(services) {
+    super(services, [
+      'avatarService',
+      'itemService',
+      'discordService',
+      'databaseService',
+      'configService',
+      'mapService',
+    ]);
+    this.client = this.discordService.client;
+    this.db = this.databaseService.getDatabase();
+    
     // Tools & Logging
-    this.ActionLog = new ActionLog(logger);
+    this.ActionLog = new ActionLog(services.logger);
     this.tools = new Map();
     this.toolEmojis = new Map();
 
@@ -122,6 +127,7 @@ export class ToolService {
   async processAction(message, command, params, avatar) {
     this.logger.info(`Processing command '${command}' by ${avatar.name} (ID: ${avatar._id})`);
     const tool = this.tools.get(command);
+    const target = params[0];
 
     if (!tool) {
       this.logger.debug(`Unknown command '${command}', using CreationTool`);
@@ -132,7 +138,7 @@ export class ToolService {
           action: command,
           actorId: message.author.id,
           actorName: message.author.username,
-          target: params[0],
+          target,
           result,
           isCustom: true,
         });
@@ -151,7 +157,7 @@ export class ToolService {
         actorId: message.author.id,
         actorName: message.author.username,
         displayName: `${tool.emoji || '🛠️'} ${message.author.username}`,
-        target: params[0],
+        target,
         result,
         memory: command === 'remember' ? result.replace(/^\[🧠 Memory generated: "(.*)"\]$/, '$1') : null,
         tool: command,

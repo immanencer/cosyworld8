@@ -231,6 +231,7 @@ export class MessageHandler {
       );
     } catch (error) {
       this.logger.error(`Error processing channel ${channelId}: ${error.message}`);
+      throw error;
     }
   }
 }

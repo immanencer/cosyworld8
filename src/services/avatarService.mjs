@@ -1,7 +1,6 @@
 // services/avatar_generation_service.mjs
 import { SchemaValidator } from './utils/schemaValidator.mjs';
 import Replicate from 'replicate';
-import { AIService } from "./aiService.mjs";
 import process from 'process';
 import winston from 'winston';
 import Fuse from 'fuse.js';
@@ -9,21 +8,25 @@ import { uploadImage } from './s3/s3imageService.mjs';
 import { ObjectId } from 'mongodb';
 import fs from 'fs/promises';
 
-export class AvatarService {
-  constructor(db, config) {
-    this.config = config;
-    this.aiService = new AIService();
-    this.db = db;
-    this.logger = this.initializeLogger();
+import { BasicService } from './BasicService.mjs';
 
+export class AvatarService extends BasicService {
+  constructor(services) {
+    super(services, [
+      'databaseService',
+      'statGenerationService',
+      'aiService',
+      'configService',
+    ]);
+    this.db = this.databaseService.getDatabase();
     this.channelAvatars = new Map(); // channelId -> Set of avatarIds
     this.avatarActivityCount = new Map(); // avatarId -> activity count
 
     try {
-      const aiConfig = this.config.getAIConfig();
+      const aiConfig = this.configService.getAIConfig();
       this.replicate = this.initializeReplicate(aiConfig);
 
-      const mongoConfig = this.config.getMongoConfig();
+      const mongoConfig = this.configService.getMongoConfig();
       this.IMAGE_URL_COLLECTION = mongoConfig?.collections?.imageUrls || 'image_urls';
       this.AVATARS_COLLECTION = mongoConfig?.collections?.avatars || 'avatars';
     } catch (error) {
@@ -71,11 +74,53 @@ export class AvatarService {
     this.channelsCollection = this.db.collection('channels');
     await Promise.all([
       this.avatarsCollection.createIndex({ name: 1 }),
+      this.avatarsCollection.createIndex({ channelId: 1 }),
+      this.avatarsCollection.createIndex({ createdAt: -1 }),
       this.avatarsCollection.createIndex({ messageCount: -1 }),
       this.messagesCollection.createIndex({ timestamp: 1 }),
       this.channelsCollection.createIndex({ lastActive: 1 }),
     ]);
     this.logger.info('AvatarService database setup completed.');
+  }
+  // --- Avatar Management ---
+
+  async getAvatarStats(avatarId) {
+    const db = this.ensureDb();
+    const objectId = this.toObjectId(avatarId);
+    const stats = await db.collection('dungeon_stats').findOne({ avatarId: objectId });
+    return stats || { hp: 100, attack: 10, defense: 5, avatarId: objectId };
+  }
+
+  async updateAvatarStats(avatarId, stats) {
+    const db = this.ensureDb();
+    const objectId = this.toObjectId(avatarId);
+    delete stats._id;
+    await db.collection('dungeon_stats').updateOne(
+      { avatarId: objectId },
+      { $set: stats },
+      { upsert: true }
+    );
+    this.logger.debug(`Updated stats for avatar ${avatarId}`);
+  }
+
+  async initializeAvatar(avatarId, locationId) {
+    const objectId = this.toObjectId(avatarId);
+    const defaultStats = { hp: 100, attack: 10, defense: 5 };
+    await this.updateAvatarStats(objectId, defaultStats);
+    if (locationId) await this.updateAvatarPosition(objectId, locationId);
+    this.logger.info(`Initialized avatar ${avatarId}${locationId ? ` at ${locationId}` : ''}`);
+    return { ...defaultStats, avatarId: objectId };
+  }
+
+  async getOrCreateStats(avatarId, services) {
+    let stats = await services.avatarService.getAvatarStats(avatarId);
+    if (!stats || !services.statGenerationService.validateStats(stats)) {
+      const avatar = await services.avatarService.getAvatarById(avatarId);
+      stats = services.statGenerationService.generateStatsFromDate(avatar?.createdAt || new Date());
+      stats.avatarId = avatarId;
+      await services.avatarService.updateAvatarStats(avatarId, stats);
+    }
+    return stats;
   }
 
   async getActiveAvatars() {
@@ -405,7 +450,7 @@ export class AvatarService {
       let systemPrompt = null;
       if (guildId) {
         try {
-          const guildPrompts = await this.config.getGuildPrompts(this.db, guildId);
+          const guildPrompts = await this.configService.getGuildPrompts(this.db, guildId);
           systemPrompt = guildPrompts.summon;
         } catch (error) {
           this.logger.error(`Failed to fetch guild prompts for guild ${guildId}: ${error.message}`);
@@ -510,7 +555,7 @@ export class AvatarService {
     }
 
     try {
-      const aiConfig = this.config.getAIConfig() || {};
+      const aiConfig = this.configService.getAIConfig() || {};
       const replicateConfig = aiConfig.replicate || {};
       const trigger = replicateConfig.loraTriggerWord || '';
       const model = replicateConfig.model;
@@ -645,9 +690,9 @@ export class AvatarService {
     let guildId = null;
 
     // Fetch guild ID from channel ID if available
-    if (data.channelId && this.config.client) {
+    if (data.channelId && this.configService.client) {
       try {
-        const channel = await this.config.client.channels.fetch(data.channelId);
+        const channel = await this.configService.client.channels.fetch(data.channelId);
         guildId = channel.guild.id;
       } catch (error) {
         this.logger.error(`Failed to fetch guild ID for channel ${data.channelId}: ${error.message}`);

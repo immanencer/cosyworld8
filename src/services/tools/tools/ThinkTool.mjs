@@ -1,8 +1,8 @@
-import { BaseTool } from './BaseTool.mjs';
+import { BasicTool } from '../BasicTool.mjs';
 import { AIService } from "../../aiService.mjs";
 import { MemoryService } from '../../memoryService.mjs';
 
-export class ThinkTool extends BaseTool {
+export class ThinkTool extends BasicTool {
   constructor(services) {
     super(services);
     this.name = 'think';

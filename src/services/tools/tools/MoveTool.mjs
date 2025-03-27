@@ -1,7 +1,7 @@
-import { BaseTool } from './BaseTool.mjs';
+import { BasicTool } from '../BasicTool.mjs';
 import { EmbedBuilder } from 'discord.js';
 
-export class MoveTool extends BaseTool {
+export class MoveTool extends BasicTool {
   /**
    * Constructs a new MoveTool.
    * @param {Object} services - The services container

@@ -1,9 +1,9 @@
 
 import { MemoryService } from '../../memoryService.mjs';
 import { AIService } from "../../aiService.mjs";
-import { BaseTool } from './BaseTool.mjs';
+import { BasicTool } from '../BasicTool.mjs';
 
-export class RememberTool extends BaseTool {
+export class RememberTool extends BasicTool {
   constructor(services) {
     super(services);
     this.aiService = new AIService();

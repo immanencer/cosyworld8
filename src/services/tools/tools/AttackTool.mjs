@@ -1,15 +1,16 @@
-import { BaseTool } from './BaseTool.mjs';
+import { BasicTool } from '../BasicTool.mjs';
 
-export class AttackTool extends BaseTool {
+export class AttackTool extends BasicTool {
   constructor(services) {
-    super(services);
+    super(services, [
+      'configService',
+      'avatarService',
+      'databaseService',
+      'statGenerationService',
+    ]);
     this.name = 'attack';
     this.description = 'Attacks the specified avatar';
     this.emoji = '⚔️';
-    this.configService = services?.configService;
-    this.avatarService = services?.avatarService;
-    this.databaseService = services?.databaseService;
-    this.toolService = services?.toolService;
   }
 
   async execute(message, params, avatar, services) {
@@ -66,8 +67,20 @@ export class AttackTool extends BaseTool {
         return await this.handleKnockout(message, targetAvatar, damage, services);
       }
 
-      return `⚔️ ${message.author.username} hits ${targetAvatar.name} for ${damage} damage! (${attackRoll} vs AC ${armorClass})`;
-    } else {
+      const result = `⚔️ ${message.author.username} hits ${targetAvatar.name} for ${damage} damage! (${attackRoll} vs AC ${armorClass})`;
+
+      const attackerAvatar = await services.avatarService.getAvatarById(attackerId);
+      // Send messages in sequence to simulate combat
+      setTimeout(async () => {
+        await services.conversationManager.sendResponse(message.channel, targetAvatar);
+        setTimeout(async () => {
+          await services.conversationManager.sendResponse(message.channel, attackerAvatar);
+        }, 1000);
+      }
+      , 1000);
+
+      return result;
+     } else {
       targetStats.isDefending = false; // Reset defense stance on miss
       await services.mapService.updateAvatarStats(targetAvatar._id, targetStats);
       return `🛡️ ${message.author.username}'s attack misses ${targetAvatar.name}! (${attackRoll} vs AC ${armorClass})`;
@@ -91,17 +104,6 @@ export class AttackTool extends BaseTool {
 
     await services.avatarService.updateAvatar(targetAvatar);
     return `💥 ${message.author.username} knocked out ${targetAvatar.name} for ${damage} damage! ${targetAvatar.lives} lives remaining! 💫`;
-  }
-
-  async getOrCreateStats(avatarId, services) {
-    let stats = await services.mapService.getAvatarStats(avatarId);
-    if (!stats || !services.statGenerationService.validateStats(stats)) {
-      const avatar = await services.avatarService.getAvatarById(avatarId);
-      stats = services.statGenerationService.generateStatsFromDate(avatar?.createdAt || new Date());
-      stats.avatarId = avatarId;
-      await services.mapService.updateAvatarStats(avatarId, stats);
-    }
-    return stats;
   }
 
   getDescription() {

@@ -1,7 +1,7 @@
 // ItemTool.mjs
-import { BaseTool } from './BaseTool.mjs';
+import { BasicTool } from '../BasicTool.mjs';
 
-export class ItemTool extends BaseTool {
+export class ItemTool extends BasicTool {
   constructor(services) {
     super(services);
     this.avatarService = services.avatarService;

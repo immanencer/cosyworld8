@@ -1,7 +1,7 @@
 
-import { BaseTool } from './BaseTool.mjs';
+import { BasicTool } from '../BasicTool.mjs';
 
-export class BreedTool extends BaseTool {
+export class BreedTool extends BasicTool {
   constructor(services) {
     super(services);
     this.name = 'breed';

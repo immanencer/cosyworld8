@@ -1,4 +1,4 @@
-import { BaseTool } from './BaseTool.mjs';
+import { BasicTool } from '../BasicTool.mjs';
 import { TwitterApi } from 'twitter-api-v2';
 import { MongoClient } from 'mongodb';
 import { MemoryService } from '../../memoryService.mjs';
@@ -7,7 +7,7 @@ import { encrypt, decrypt } from '../../utils/encryption.mjs'; // Placeholder fo
 
 let mongoClient = null;
 
-export class XSocialTool extends BaseTool {
+export class XSocialTool extends BasicTool {
     constructor(toolService) {
         super(toolService);
         this.emoji = '🐦';

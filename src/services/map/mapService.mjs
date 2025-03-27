@@ -1,6 +1,7 @@
 import { ObjectId } from 'mongodb';
+import { BasicService } from '../BasicService.mjs';
 
-export class MapService {
+export class MapService extends BasicService {
   /**
    * Constructs a new MapService instance for managing dungeon state.
    * @param {Object} client - The Discord client instance.
@@ -8,11 +9,14 @@ export class MapService {
    * @param {Object} avatarService - Service for avatar operations.
    * @param {import('mongodb').Db} db - MongoDB database connection.
    */
-  constructor(client, logger, avatarService, db) {
-    this.client = client;
-    this.logger = logger;
-    this.avatarService = avatarService;
-    this.db = db;
+  constructor(services) {
+    super(services, [
+      'discordService',
+      'avatarService',
+      'databaseService',
+    ]);
+    this.client = this.discordService.client;
+    this.db = this.databaseService.getDatabase();
   }
 
   // --- Utility Methods ---
@@ -126,8 +130,7 @@ export class MapService {
       if (!updatedAvatar) throw new Error(`Failed to retrieve updated avatar ${avatarId}`);
 
       if (actualPreviousLocationId && actualPreviousLocationId !== newLocationId) {
-        const { sendAsWebhook } = await import('../../services/discordService.mjs');
-        await this.services.discordService.sendAsWebhook(
+        await this.discordService.sendAsWebhook(
           actualPreviousLocationId,
           `*${updatedAvatar.name} has departed to <#${newLocationId}>*`,
           updatedAvatar
@@ -135,8 +138,7 @@ export class MapService {
       }
 
       if (sendProfile) {
-        const { sendAvatarProfileEmbedFromObject } = await import('../../services/discordService.mjs');
-        await this.services.discordService.sendAvatarProfileEmbedFromObject(updatedAvatar, newLocationId);
+        await this.discordService.sendAvatarProfileEmbedFromObject(updatedAvatar, newLocationId);
       }
 
       this.client.emit('avatarMoved', {
@@ -153,35 +155,5 @@ export class MapService {
     } finally {
       await session.endSession();
     }
-  }
-
-  // --- Avatar Management ---
-
-  async getAvatarStats(avatarId) {
-    const db = this.ensureDb();
-    const objectId = this.toObjectId(avatarId);
-    const stats = await db.collection('dungeon_stats').findOne({ avatarId: objectId });
-    return stats || { hp: 100, attack: 10, defense: 5, avatarId: objectId };
-  }
-
-  async updateAvatarStats(avatarId, stats) {
-    const db = this.ensureDb();
-    const objectId = this.toObjectId(avatarId);
-    delete stats._id;
-    await db.collection('dungeon_stats').updateOne(
-      { avatarId: objectId },
-      { $set: stats },
-      { upsert: true }
-    );
-    this.logger.debug(`Updated stats for avatar ${avatarId}`);
-  }
-
-  async initializeAvatar(avatarId, locationId) {
-    const objectId = this.toObjectId(avatarId);
-    const defaultStats = { hp: 100, attack: 10, defense: 5 };
-    await this.updateAvatarStats(objectId, defaultStats);
-    if (locationId) await this.updateAvatarPosition(objectId, locationId);
-    this.logger.info(`Initialized avatar ${avatarId}${locationId ? ` at ${locationId}` : ''}`);
-    return { ...defaultStats, avatarId: objectId };
   }
 }

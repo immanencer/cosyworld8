@@ -1,20 +1,21 @@
 
-import { BaseTool } from './BaseTool.mjs';
+import { BasicTool } from '../BasicTool.mjs';
 
-export class DefendTool extends BaseTool {
+export class DefendTool extends BasicTool {
   constructor(services) {
-    super(services);
+    super(services, [
+      'configService',
+      'avatarService',
+      'databaseService',
+    ]);
     this.name = 'defend';
     this.description = 'Take a defensive stance';
     this.emoji = '🛡️';
-    this.configService = services?.configService;
-    this.avatarService = services?.avatarService;
-    this.databaseService = services?.databaseService;
   }
 
   async execute(message, params, avatar, services) {
     const avatarId = avatar._id;
-    const stats = await services.toolService.getOrCreateStatsForAvatar(avatarId, services);
+    const stats = await services.avatarService.getOrCreateStatsForAvatar(avatarId, services);
     
     stats.isDefending = true;
     await services.toolService.updateAvatarStats(avatarId, stats);

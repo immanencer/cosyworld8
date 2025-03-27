@@ -1,7 +1,8 @@
-export class BaseTool {
+import { BasicService } from '../BasicService.mjs';
+export class BasicTool extends BasicService {
 
-  constructor(services) {
-    this.services = services;
+  constructor(services, requiredServices) { 
+    super(services, requiredServices);
   }
 
   async execute(message, params, avatar, services) {

@@ -1,7 +1,7 @@
-import { BaseTool } from './BaseTool.mjs';
+import { BasicTool } from '../BasicTool.mjs';
 import { AIService } from "../../aiService.mjs";
 
-export class CreationTool extends BaseTool {
+export class CreationTool extends BasicTool {
   constructor(services) {
     super(services);
     this.cache = new Map(); // Cache for generated descriptions

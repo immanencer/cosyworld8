@@ -1,4 +1,4 @@
-import { BaseTool } from './BaseTool.mjs';
+import { BasicTool } from './BasicTool.mjs';
 import { TwitterApi } from 'twitter-api-v2';
 import { MongoClient } from 'mongodb';
 import { encrypt, decrypt } from 'crypto'; // Assuming a crypto module for encryption
@@ -6,7 +6,7 @@ import { encrypt, decrypt } from 'crypto'; // Assuming a crypto module for encry
 // Singleton MongoClient for connection pooling
 let mongoClient = null;
 
-export class XPostTool extends BaseTool {
+export class XPostTool extends BasicTool {
     constructor() {
         super(services);
         this.emoji = '🐦';

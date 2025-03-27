@@ -8,16 +8,6 @@ export class ConversationManager {
   constructor(services) {
     this.services = services;
     this.logger = services.logger;
-    this.services.memoryService = new MemoryService(this.logger);
-    this.services.promptService = new PromptService(
-      this.services.avatarService,
-      this.services.memoryService,
-      this.services.toolService,
-      this.services.imageProcessingService, // Assuming it’s available
-      this.services.discordService.client,
-      this.services.itemService,
-      this.services.mapService
-    );
     this.GLOBAL_NARRATIVE_COOLDOWN = 60 * 60 * 1000; // 1 hour
     this.lastGlobalNarrativeTime = 0;
     this.channelLastMessage = new Map();
@@ -390,7 +380,7 @@ export class ConversationManager {
       return response;
     } catch (error) {
       this.logger.error(`CONVERSATION: Error sending response for ${avatar.name}: ${error.message}`);
-      return null;
+      throw error;
     }
   }
 }
