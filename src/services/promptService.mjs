@@ -1,10 +1,10 @@
 import { loggers } from "winston";
 
 export class PromptService {
-  constructor(avatarService, memoryService, dungeonService, imageProcessingService, client) {
+  constructor(avatarService, memoryService, toolService, imageProcessingService, client) {
     this.avatarService = avatarService;
     this.memoryService = memoryService;
-    this.dungeonService = dungeonService;
+    this.toolService = toolService;
     this.imageProcessingService = imageProcessingService;
     this.client = client; // Discord client for fetching channel data
   }
@@ -108,7 +108,7 @@ ${lastNarrative ? lastNarrative.content : 'No previous reflection.'}
   }
 
   async getRecentActions(avatar) {
-    const recentActions = await this.dungeonService.dungeonLog.getRecentActions(avatar.channelId);
+    const recentActions = await this.toolService.ActionLog.getRecentActions(avatar.channelId);
     return recentActions
       .filter(action => action.actorId === avatar._id.toString())
       .map(a => `${a.description || a.action}`)
@@ -135,9 +135,9 @@ ${lastNarrative ? lastNarrative.content : 'No previous reflection.'}
   }
 
   async getAvailableCommands(avatar, channel) {
-    const commandsDescription = this.dungeonService.getCommandsDescription(avatar, channel.guild.id) || '';
-    const location = await this.dungeonService.getLocationDescription(avatar.channelId, channel.name);
-    const items = await this.dungeonService.getItemsDescription(avatar);
+    const commandsDescription = this.toolService.getCommandsDescription(avatar, channel.guild.id) || '';
+    const location = await this.mapService.getLocationDescription(avatar.channelId, channel.name);
+    const items = await this.toolService.getItemsDescription(avatar);
     const locationText = location
       ? `You are currently in ${location.name}. ${location.description}`
       : `You are in ${channel.name || 'a chat channel'}.`;

@@ -74,8 +74,8 @@ export class SummonTool extends BaseTool {
 
       if (existingAvatar) {
         await reactToMessage(message, existingAvatar.emoji || "🔮");
-        const updatedAvatar = await services.dungeonService.updateAvatarPosition(existingAvatar._id, message.channel.id);
-        updatedAvatar.stats = await services.dungeonService.getAvatarStats(updatedAvatar._id);
+        const updatedAvatar = await services.toolService.updateAvatarPosition(existingAvatar._id, message.channel.id);
+        updatedAvatar.stats = await services.toolService.getAvatarStats(updatedAvatar._id);
         await services.avatarService.updateAvatar(updatedAvatar);
         await sendAvatarProfileEmbedFromObject(updatedAvatar);
         
@@ -122,7 +122,7 @@ export class SummonTool extends BaseTool {
       }
 
       createdAvatar.summoner = avatar ? `AVATAR:${avatar._id}` : `${message.author.username}@${message.author.id}`;
-      createdAvatar.stats = await services.dungeonService.getAvatarStats(createdAvatar._id);
+      createdAvatar.stats = await services.toolService.getAvatarStats(createdAvatar._id);
       await services.avatarService.updateAvatar(createdAvatar);
       await sendAvatarProfileEmbedFromObject(createdAvatar);
 
@@ -135,9 +135,9 @@ export class SummonTool extends BaseTool {
       createdAvatar.channelId = message.channel.id;
       createdAvatar.attributes = attributes;
       await services.avatarService.updateAvatar(createdAvatar);
-      await sendAsWebhook(message.channel.id, intro, createdAvatar);
+      await this.services.discordService.sendAsWebhook(message.channel.id, intro, createdAvatar);
 
-      await services.dungeonService.initializeAvatar(createdAvatar._id, message.channel.id);
+      await services.toolService.initializeAvatar(createdAvatar._id, message.channel.id);
       await reactToMessage(message, createdAvatar.emoji || "🎉");
       
       if (!breed) {

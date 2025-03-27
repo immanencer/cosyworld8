@@ -9,8 +9,9 @@ export class AttackTool extends BaseTool {
     this.configService = services?.configService;
     this.avatarService = services?.avatarService;
     this.databaseService = services?.databaseService;
-    this.dungeonService = services?.dungeonService;
+    this.toolService = services?.toolService;
   }
+
   async execute(message, params, avatar, services) {
     if (!params || !params[0]) {
       return "🤺 Attack what? Specify a target!";
@@ -28,21 +29,27 @@ export class AttackTool extends BaseTool {
   }
 
   async attack(message, targetName, attackerId, services) {
-    const location = await services.dungeonService.getAvatarLocation(attackerId);
-    const targetAvatar = await services.dungeonService.findAvatarInArea(targetName, location);
+    // Get the attacker's location using MapService
+    const attackerLocation = await services.mapService.getAvatarLocation(attackerId);
+    if (!attackerLocation) return `🤔 You don't seem to be anywhere!`;
 
+    // Get all avatars in the same location using AvatarService
+    const avatarsInLocation = await services.avatarService.getAvatarsInChannel(attackerLocation.id);
+    const targetAvatar = avatarsInLocation.find(a => a.name.toLowerCase() === targetName.toLowerCase());
     if (!targetAvatar) return `🫠 Target [${targetName}] not found in this area.`;
+
+    // Check if the target is already dead
     if (targetAvatar.status === 'dead') {
       return `⚰️ ${targetAvatar.name} is already dead! Have some respect for the fallen.`;
     }
 
-    const stats = await services.dungeonService.getOrCreateStatsForAvatar(attackerId, services);
-    const targetStats = await services.dungeonService.getOrCreateStatsForAvatar(targetAvatar._id, services);
+    // Get or create stats for attacker and target using MapService and StatGenerationService
+    const attackerStats = await this.getOrCreateStats(attackerId, services);
+    const targetStats = await this.getOrCreateStats(targetAvatar._id, services);
 
     // D&D style attack roll: d20 + strength modifier
-    const strMod = Math.floor((stats.strength - 10) / 2);
+    const strMod = Math.floor((attackerStats.strength - 10) / 2);
     const dexMod = Math.floor((targetStats.dexterity - 10) / 2);
-    
     const attackRoll = Math.floor(Math.random() * 20) + 1 + strMod;
     const armorClass = 10 + dexMod + (targetStats.isDefending ? 2 : 0);
 
@@ -52,19 +59,20 @@ export class AttackTool extends BaseTool {
       targetStats.hp -= damage;
       targetStats.isDefending = false; // Reset defense stance
 
+      // Update target stats using MapService
+      await services.mapService.updateAvatarStats(targetAvatar._id, targetStats);
+
       if (targetStats.hp <= 0) {
         return await this.handleKnockout(message, targetAvatar, damage, services);
       }
 
-      await services.dungeonService.updateAvatarStats(attackerId, stats);
       return `⚔️ ${message.author.username} hits ${targetAvatar.name} for ${damage} damage! (${attackRoll} vs AC ${armorClass})`;
+    } else {
+      targetStats.isDefending = false; // Reset defense stance on miss
+      await services.mapService.updateAvatarStats(targetAvatar._id, targetStats);
+      return `🛡️ ${message.author.username}'s attack misses ${targetAvatar.name}! (${attackRoll} vs AC ${armorClass})`;
     }
-
-    targetStats.isDefending = false; // Reset defense stance on miss
-    await services.dungeonService.updateAvatarStats(targetAvatar._id, targetStats);
-    return `🛡️ ${message.author.username}'s attack misses ${targetAvatar.name}! (${attackRoll} vs AC ${armorClass})`;
   }
-
 
   async handleKnockout(message, targetAvatar, damage, services) {
     targetAvatar.lives = (targetAvatar.lives || 3) - 1;
@@ -76,14 +84,24 @@ export class AttackTool extends BaseTool {
       return `💀 ${message.author.username} has dealt the final blow! ${targetAvatar.name} has fallen permanently! ☠️`;
     }
 
-    await services.dungeonService.updateAvatarStats(targetAvatar._id, {
-      hp: 100,
-      attack: 10,
-      defense: 5
-    });
+    // Reset stats upon knockout
+    const newStats = services.statGenerationService.generateStatsFromDate(targetAvatar.createdAt);
+    newStats.avatarId = targetAvatar._id;
+    await services.mapService.updateAvatarStats(targetAvatar._id, newStats);
 
     await services.avatarService.updateAvatar(targetAvatar);
     return `💥 ${message.author.username} knocked out ${targetAvatar.name} for ${damage} damage! ${targetAvatar.lives} lives remaining! 💫`;
+  }
+
+  async getOrCreateStats(avatarId, services) {
+    let stats = await services.mapService.getAvatarStats(avatarId);
+    if (!stats || !services.statGenerationService.validateStats(stats)) {
+      const avatar = await services.avatarService.getAvatarById(avatarId);
+      stats = services.statGenerationService.generateStatsFromDate(avatar?.createdAt || new Date());
+      stats.avatarId = avatarId;
+      await services.mapService.updateAvatarStats(avatarId, stats);
+    }
+    return stats;
   }
 
   getDescription() {
@@ -92,13 +110,13 @@ export class AttackTool extends BaseTool {
 
   async getEmoji(guildId) {
     if (!this.configService) return this.emoji;
-    
+
     try {
       const guildConfig = await this.configService.getGuildConfig(
         this.databaseService.getDatabase(),
         guildId
       );
-      
+
       if (guildConfig?.toolEmojis?.attack) {
         return guildConfig.toolEmojis.attack;
       }

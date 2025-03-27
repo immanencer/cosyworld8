@@ -1,43 +1,32 @@
 // index.mjs
 import winston from "winston";
-import { initializeServices } from "./services/serviceInitializer.mjs";
-import { client } from "./services/discordService.mjs";
+import { initializeServices } from "./services/initializeServices.mjs";
 
-// Define the log format once
 const logFormat = winston.format.printf(
   ({ timestamp, level, message }) => `${timestamp} [${level.toUpperCase()}]: ${message}`
 );
 
 const logger = winston.createLogger({
   level: process.env.LOG_LEVEL || "info",
-  format: winston.format.combine(
-    winston.format.timestamp(), // Adds timestamp to log entries
-    logFormat                  // Applies the custom format
-  ),
+  format: winston.format.combine(winston.format.timestamp(), logFormat),
   transports: [
     new winston.transports.Console({
-      format: winston.format.combine(
-        logFormat                  // Uses the same custom format
-      ),
-      handleExceptions: true // ensures all exceptions are logged
+      format: winston.format.combine(logFormat),
+      handleExceptions: true,
     }),
   ],
 });
 
 async function shutdown(signal, services) {
   logger.info(`Received ${signal}. Shutting down gracefully...`);
-  
   try {
-    if (services.client) {
-      await services.client.destroy();
-      logger.info("Disconnected from Discord.");
+    if (services.discordService) {
+      await services.discordService.shutdown();
     }
-    
     if (services.databaseService) {
       await services.databaseService.close();
       logger.info("Closed MongoDB connection.");
     }
-    
     if (services.chatService) {
       await services.chatService.stop();
       logger.info("ChatService stopped.");
@@ -45,23 +34,19 @@ async function shutdown(signal, services) {
   } catch (error) {
     logger.error(`Error during shutdown: ${error.message}`);
   }
-  
   process.exit(0);
 }
 
 async function main() {
-  let services = { client };
   try {
-    services = await initializeServices(logger, client);
-
-    await client.login(process.env.DISCORD_BOT_TOKEN);
-    logger.info("✅ Discord client ready");
+    const services = await initializeServices(logger);
+    logger.info("✅ Application services initialized");
 
     process.on("SIGINT", () => shutdown("SIGINT", services));
     process.on("SIGTERM", () => shutdown("SIGTERM", services));
   } catch (error) {
     logger.error(`Fatal startup error: ${error.stack}`);
-    await shutdown("STARTUP_ERROR", { client, databaseService: services?.databaseService });
+    await shutdown("STARTUP_ERROR", { databaseService: services?.databaseService });
   }
 }
 

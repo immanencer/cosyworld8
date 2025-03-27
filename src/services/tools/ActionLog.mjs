@@ -1,6 +1,6 @@
 import { MongoClient } from 'mongodb';
 
-export class DungeonLog {
+export class ActionLog {
   constructor(logger) {
     this.logger = logger;
   }

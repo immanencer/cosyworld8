@@ -14,10 +14,10 @@ export class DefendTool extends BaseTool {
 
   async execute(message, params, avatar, services) {
     const avatarId = avatar._id;
-    const stats = await services.dungeonService.getOrCreateStatsForAvatar(avatarId, services);
+    const stats = await services.toolService.getOrCreateStatsForAvatar(avatarId, services);
     
     stats.isDefending = true;
-    await services.dungeonService.updateAvatarStats(avatarId, stats);
+    await services.toolService.updateAvatarStats(avatarId, stats);
 
     return `🛡️ ${message.author.username} takes a defensive stance! AC increased by 2 until next attack.`;
   }

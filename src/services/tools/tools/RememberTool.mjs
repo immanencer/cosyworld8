@@ -42,14 +42,14 @@ export class RememberTool extends BaseTool {
     // Post the memory to the avatar narrative channel
     if (avatar.innerMonologueChannel) {
       // Post dynamic personality to the inner monologue channel
-      sendAsWebhook(
+      await this.services.discordService.sendAsWebhook(
         avatar.innerMonologueChannel,
-        `🧠 Memory Generated: ${formattedMemory}`,
+        `-# [🧠 Memory Generated]\n${formattedMemory}`,
         avatar
       );
     }
     this.logger?.debug(`Generated memory: ${formattedMemory}`);
-    return `-# [🧠 Memory Generated ]`;
+    return `🧠 memory generated`;
   }
 
   getDescription() {

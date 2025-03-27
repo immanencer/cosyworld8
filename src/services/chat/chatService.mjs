@@ -8,7 +8,7 @@ import { PeriodicTaskManager } from './periodicTaskManager.mjs';
 
 
 export class ChatService {
-  constructor(client, db, options = {}) {
+  constructor(client, db, services = {}) {
     this.client = client;
     this.logger = options.logger || console;
     this.db = db;
@@ -16,7 +16,7 @@ export class ChatService {
     // Initialize dependencies
     this.avatarService = options.avatarService;
     this.aiService = options.aiService;
-    this.dungeonService = options.dungeonService;
+    this.toolService = options.toolService;
     this.statGenerationService = options.statGenerationService;
     this.imageService = options.imageProcessingService;
 
@@ -24,14 +24,7 @@ export class ChatService {
     this.avatarManager = new AvatarManager(db, this.avatarService, this.logger);
     this.channelManager = new ChannelManager(client, this.logger);
     this.decisionMaker = new DecisionMaker(this.aiService, this.logger);
-    this.conversationHandler = new ConversationHandler(
-      client,
-      this.aiService,
-      this.logger,
-      this.avatarService,
-      this.dungeonService,
-      this.imageService
-    );
+    this.conversationHandler = new ConversationHandler(services);
     this.responseGenerator = new ResponseGenerator(
       this.decisionMaker,
       this.conversationHandler,

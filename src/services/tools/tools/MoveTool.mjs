@@ -18,7 +18,7 @@ export class MoveTool extends BaseTool {
     this.databaseService = services?.databaseService;
     
     // These will be set when the tool is used
-    this.dungeonService = null;
+    this.toolService = null;
     this.locationService = null;
   }
 
@@ -105,11 +105,11 @@ export class MoveTool extends BaseTool {
    */
   async execute(message, params, avatar, services) {
     // Initialize services if not already set
-    this.dungeonService = services.dungeonService;
-    this.locationService = this.dungeonService?.locationService;
+    this.toolService = services.toolService;
+    this.locationService = this.toolService?.locationService;
     
-    if (!this.dungeonService) {
-      return 'DungeonService not available';
+    if (!this.toolService) {
+      return 'ToolService not available';
     }
     
     if (!this.locationService) {
@@ -123,8 +123,8 @@ export class MoveTool extends BaseTool {
     }
 
     try {
-      // 1. Get current location from the dungeonService
-      const currentLocation = await this.dungeonService.getAvatarLocation(avatar._id);
+      // 1. Get current location from the toolService
+      const currentLocation = await this.mapService.getAvatarLocation(avatar._id);
       const currentLocationId = currentLocation?.channel?.id || avatar.channelId;
 
       // 2. Find or create the new location
@@ -159,7 +159,7 @@ export class MoveTool extends BaseTool {
 
       // 5. Update the avatar's position in the database
       // Don't send profile yet - we'll do it separately below
-      const updatedAvatar = await this.dungeonService.updateAvatarPosition(
+      const updatedAvatar = await this.toolService.updateAvatarPosition(
         avatar._id,
         newLocation.channel.id,
         currentLocationId,
@@ -195,7 +195,7 @@ export class MoveTool extends BaseTool {
       try {
         const arrivalMessage = await this.locationService.generateAvatarResponse(updatedAvatar, newLocation);
         // Post to the new location channel via webhook
-        await sendAsWebhook(
+        await this.services.discordService.sendAsWebhook(
           newLocation.channel.id,
           arrivalMessage,
           updatedAvatar

@@ -1,25 +1,23 @@
 import { MongoClient } from 'mongodb';
-import { sendAsWebhook } from '../discordService.mjs';
 import { MemoryService } from '../memoryService.mjs';
 
 const GUILD_NAME = process.env.GUILD_NAME || 'The Guild';
 
 export class ConversationHandler {
-  constructor(client, aiService, logger, avatarService, dungeonService, imageProcessingService) {
-    this.client = client;
-    this.aiService = aiService;
-    this.logger = logger;
-    this.avatarService = avatarService;
-    this.dungeonService = dungeonService;
-    this.imageProcessingService = imageProcessingService;
-    this.memoryService = new MemoryService(this.logger);
+  constructor(services) {
+    this.services = services;
+    this.services.memoryService = new MemoryService(this.logger);
+    
     this.GLOBAL_NARRATIVE_COOLDOWN = 60 * 60 * 1000; // 1 hour
     this.lastGlobalNarrativeTime = 0;
     this.channelLastMessage = new Map();
+   
     this.CHANNEL_COOLDOWN = 5 * 1000; // 30 seconds
     this.MAX_RESPONSES_PER_MESSAGE = 2;
     this.channelResponders = new Map();
+   
     this.requiredPermissions = ['ViewChannel', 'SendMessages', 'ReadMessageHistory', 'ManageWebhooks'];
+   
     this.dbClient = null;
     this.db = null;
     this._initializeDb().catch(err => this.logger.error(`Failed to initialize DB: ${err.message}`));
@@ -73,12 +71,12 @@ export class ConversationHandler {
         return null;
       }
       if (!avatar.model) {
-        avatar.model = await this.aiService.selectRandomModel();
-        await this.avatarService.updateAvatar(avatar);
+        avatar.model = await this.services.aiService.selectRandomModel();
+        await this.services.avatarService.updateAvatar(avatar);
       }
       const [memoryRecords, recentActions] = await Promise.all([
-        this.memoryService.getMemories(avatar._id),
-        this.dungeonService.dungeonLog.getRecentActions(avatar.channelId)
+        this.services.memoryService.getMemories(avatar._id),
+        this.services.toolService.ActionLog.getRecentActions(avatar.channelId)
       ]);
       const memories = (memoryRecords || []).map(m => m.memory).join('\n');
       const actions = (recentActions || [])
@@ -99,7 +97,7 @@ export class ConversationHandler {
         }
       }
       const prompt = this.buildNarrativePrompt(avatar, memories, actions, narrativeContent);
-      const narrative = await this.aiService.chat([
+      const narrative = await this.services.aiService.chat([
         { role: 'system', content: avatar.prompt || `You are ${avatar.name}. ${avatar.personality}` },
         { role: 'assistant', content: `Current personality: ${avatar.dynamicPersonality || 'None yet'}\n\nMemories: ${memories}\n\nRecent actions: ${actions}\n\nNarrative thoughts: ${narrativeContent}` },
         { role: 'user', content: prompt }
@@ -112,7 +110,7 @@ export class ConversationHandler {
       this.updateNarrativeHistory(avatar, narrative);
       avatar.prompt = await this.buildSystemPrompt(avatar);
       avatar.dynamicPrompt = narrative;
-      await this.avatarService.updateAvatar(avatar);
+      await this.services.avatarService.updateAvatar(avatar);
       this.lastGlobalNarrativeTime = Date.now();
       return narrative;
     } catch (error) {
@@ -165,13 +163,6 @@ Based on all of the above context, share an updated personality that reflects yo
     }
   }
 
-  /**
-   * Fetches recent messages from a channel to provide conversation context
-   * Relies on pre-populated image descriptions from the database.
-   * @param {string} channelId - The ID of the channel
-   * @param {number} limit - Maximum number of messages to retrieve
-   * @returns {Promise<Array>} Array of message objects
-   */
   async getChannelContext(channelId, limit = 50) {
     try {
       this.logger.info(`Fetching channel context for channel ${channelId}`);
@@ -252,7 +243,7 @@ Based on all of the above context, share an updated personality that reflects yo
       messagesToSummarize.reverse();
     }
     if (messagesToSummarize.length === 0) return summaryDoc ? summaryDoc.summary : '';
-    const avatar = await this.avatarService.getAvatarById(avatarId);
+    const avatar = await this.services.avatarService.getAvatarById(avatarId);
     if (!avatar) {
       this.logger.error(`Avatar ${avatarId} not found for summarization.`);
       return summaryDoc ? summaryDoc.summary : '';
@@ -278,7 +269,7 @@ Based on all of the above context, share an updated personality that reflects yo
   ${messagesText}
       `.trim();
     }
-    const summary = await this.aiService.chat([
+    const summary = await this.services.aiService.chat([
       { role: 'system', content: avatar.prompt || `You are ${avatar.name}. ${avatar.personality}` },
       { role: 'user', content: prompt }
     ], { model: avatar.model, max_tokens: 500 });
@@ -300,10 +291,10 @@ Based on all of the above context, share an updated personality that reflects yo
     return summary;
   }
 
-  updateNarrativeHistory(avatar, content) {
+  async updateNarrativeHistory(avatar, content) {
     if (!content) return;
     if (avatar.innerMonologueChannel) {
-      sendAsWebhook(avatar.innerMonologueChannel, `🌪️ Dynamic Personality Update: ${avatar.dynamicPersonality || ''}`, avatar);
+      await this.services.discordService.sendAsWebhook(avatar.innerMonologueChannel, `-# [Narrative Update ${Date.now().toLocaleString()}] \n\n ${content}`, avatar);
     }
     const guildName = GUILD_NAME;
     const narrativeData = { timestamp: Date.now(), content, guildName };
@@ -355,7 +346,7 @@ Based on all of the above context, share an updated personality that reflects yo
           break;
         }
       }
-      if (recentImageMessage && this.aiService.supportsMultimodal) {
+      if (recentImageMessage && this.services.aiService.supportsMultimodal) {
         const attachment = recentImageMessage.attachments.find(a => a.contentType?.startsWith('image/'));
         if (attachment) {
           imagePromptParts.push({ type: 'image_url', image_url: { url: attachment.url } });
@@ -386,13 +377,13 @@ Based on all of the above context, share an updated personality that reflects yo
         ${imageDescriptions.length > 0 ? 'Incorporate the described images into your response naturally.' : ''}
       `.trim();
       let userContent;
-      if (this.aiService.supportsMultimodal && imagePromptParts.length > 0) {
+      if (this.services.aiService.supportsMultimodal && imagePromptParts.length > 0) {
         userContent = [...imagePromptParts, { type: 'text', text: contextualPrompt }];
       } else {
         const imageContext = imageDescriptions.length > 0 ? `\nRecent image descriptions:\n${imageDescriptions.join('\n')}\n` : '';
         userContent = `${imageContext}${contextualPrompt}`;
       }
-      let response = await this.aiService.chat([
+      let response = await this.services.aiService.chat([
         { role: 'system', content: systemPrompt },
         { role: 'assistant', content: lastNarrative?.content || 'No previous reflection' },
         { role: 'user', content: userContent }
@@ -403,30 +394,30 @@ Based on all of the above context, share an updated personality that reflects yo
       }
       response = this.removeAvatarPrefix(response, avatar);
 
-      const { commands, cleanText } = this.dungeonService.extractToolCommands(response);
+      const { commands, cleanText } = this.services.toolService.extractToolCommands(response);
       let sentMessage = null;
       let commandResults = [];
       if (commands.length > 0) {
         this.logger.info(`Processing ${commands.length} command(s) for ${avatar.name}`);
         commandResults = await Promise.all(
           commands.map(cmd =>
-            this.dungeonService.processAction(
+            this.services.toolService.processAction(
               { channel, author: { id: avatar._id, username: avatar.name }, content: response },
               cmd.command,
               cmd.params,
               avatar,
-              { avatarService: this.avatarService }
+              this.services // Pass the entire services object
             )
           )
         );
         if (commandResults.length) {
-          sentMessage = await sendAsWebhook(
+          sentMessage = await this.services.discordService.sendAsWebhook(
             avatar.channelId,
             commandResults.map(t => `-# [${t}]`).join('\n'),
             { name: `${avatar.name.split(',')[0]} used a command`, emoji: `🛠️`, imageUrl: avatar.imageUrl }
           );
         }
-        avatar = await this.avatarService.getAvatarById(avatar._id);
+        avatar = await this.services.avatarService.getAvatarById(avatar._id);
       }
       const finalText = commands.length ? cleanText : response;
       // Process <think> tags
@@ -452,19 +443,16 @@ Based on all of the above context, share an updated personality that reflects yo
               avatar.narrativeHistory.unshift(narrativeData);
             }
           });
-          // Limit narrative history to 5 entries (consistent with updateNarrativeHistory)
           avatar.narrativeHistory = avatar.narrativeHistory.slice(0, 5);
-          // Update narrativesSummary
           avatar.narrativesSummary = avatar.narrativeHistory
             .map(r => `[${new Date(r.timestamp).toLocaleDateString()}] ${r.guildName}: ${r.content}`)
             .join('\n\n');
-          // Persist the updated avatar
-          await this.avatarService.updateAvatar(avatar);
+          await this.services.avatarService.updateAvatar(avatar);
         }
 
         // Send the cleaned text as the response
         if (cleanedText) {
-          sentMessage = await sendAsWebhook(avatar.channelId, cleanedText, avatar);
+          sentMessage = await this.services.discordService.sendAsWebhook(avatar.channelId, cleanedText, avatar);
         }
       }
 
@@ -479,13 +467,14 @@ Based on all of the above context, share an updated personality that reflects yo
   }
 
   async buildDungeonPrompt(avatar, guildId) {
-    const commandsDescription = this.dungeonService.getCommandsDescription(guildId) || '';
-    const location = await this.dungeonService.getLocationDescription(avatar.channelId, avatar.channelName);
-    const items = await this.dungeonService.getItemsDescription(avatar);
+    const commandsDescription = this.services.toolService.getCommandsDescription(guildId) || '';
+    // Assuming mapService is part of services object
+    const location = await this.services.mapService.getLocationDescription(avatar.channelId, avatar.channelName);
+    const items = await this.services.toolService.getItemsDescription(avatar);
     const locationText = location ? `You are currently in ${location.name}. ${location.description}` : `You are in ${avatar.channelName || 'a chat channel'}.`;
     const selectedItem = avatar.selectedItemId ? avatar.inventory.find(i => i._id === avatar.selectedItemId) : null;
     const selectedItemText = selectedItem ? `Selected item: ${selectedItem.name}` : 'No item selected.';
-    const groundItems = await this.dungeonService.itemService.searchItems(avatar.channelId, '');
+    const groundItems = await this.services.toolService.itemService.searchItems(avatar.channelId, '');
     const groundItemsText = groundItems.length > 0 ? `Items on the ground: ${groundItems.map(i => i.name).join(', ')}` : 'There are no items on the ground.';
     let summonEmoji = '🔮';
     let breedEmoji = '🏹';

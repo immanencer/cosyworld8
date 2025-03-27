@@ -17,11 +17,9 @@ export async function handleCommands(message, services) {
   
   // First try to get tools from ToolService if available
   if (services.toolService) {
-    toolEmojis = services.toolService.getAllEmojis();
-  } else if (services.dungeonService) {
-    // Fall back to DungeonService
+    // Fall back to ToolService
     try {
-      toolEmojis = Array.from(services.dungeonService.toolEmojis.keys());
+      toolEmojis = Array.from(services.toolService.toolEmojis.keys());
     } catch (error) {
       // Final fallback to default emojis
       toolEmojis = [summonEmoji, "⚔️", "🛡️", "🏹", "🔍", "🧠", "🧪", "🏃"];
@@ -47,6 +45,11 @@ export async function handleCommands(message, services) {
       }
       
       const avatar = avatarResult.avatar;
+
+      // If it's a new avatar, inform the user
+      if (avatarResult.isNewAvatar) {
+        await replyToMessage(message, `Created a new avatar called ${avatar.name} for you! Your avatar will now try to execute: ${content}`);
+      }
       
       // Check if avatar object is valid and has required properties
       if (!avatar || !avatar.name || !avatar._id) {
@@ -55,61 +58,29 @@ export async function handleCommands(message, services) {
         return;
       }
       
-      // If it's a new avatar, inform the user
-      if (avatarResult.isNewAvatar) {
-        await replyToMessage(message, `Created a new avatar called ${avatar.name} for you! Your avatar will now try to execute: ${content}`);
-      }
-      
-      // Create a dummy message with the user's avatar as sender
-      const avatarMessage = {
-        ...message,
-        author: {
-          id: avatar._id.toString(),
-          username: avatar.name
-        },
-        channel: { id: message.channel.id }
-      };
-      
-      const args = content.slice(1).trim().split(" ");
-      const emoji = toolEmojis.find(emoji => content.startsWith(emoji));
-      
-      // Execute the tool using the appropriate service
-      let result;
-      
-      // First try to use the ToolService if available
-      if (services.toolService) {
-        await reactToMessage(message, emoji);
-        result = await services.toolService.executeToolByEmoji(emoji, avatarMessage, args, avatar);
-        await reactToMessage(message, "✅");
-      } 
-      // Fall back to DungeonService
-      else if (services.dungeonService) {
-        const toolName = services.dungeonService.toolEmojis.get(emoji);
-        
-        if (toolName) {
-          const tool = services.dungeonService.tools.get(toolName);
-          if (tool) {
-            await reactToMessage(message, emoji);
-            result = await services.dungeonService.processAction(
-              avatarMessage, 
-              toolName, 
-              args, 
-              avatar
-            );
-            await reactToMessage(message, "✅");
-          } else {
-            await replyToMessage(message, `Tool ${toolName} not found.`);
-            await reactToMessage(message, "❌");
-          }
-        } else {
-          await replyToMessage(message, `No tool found for emoji ${emoji}.`);
-          await reactToMessage(message, "❌");
+      const { commands, cleanText } = services.toolService.extractToolCommands(message.content);
+      let sentMessage = null;
+      let commandResults = [];
+      if (commands.length > 0) {
+        services.logger.info(`Processing ${commands.length} command(s) for ${avatar.name}`);
+        commandResults = await Promise.all(
+          commands.map(cmd =>
+            services.toolService.processAction(
+              { channel: message.channel, author: { id: avatar._id, username: avatar.name }, content: message.content },
+              cmd.command,
+              cmd.params,
+              avatar,
+              services
+            )
+          )
+        );
+        if (commandResults.length) {
+          sentMessage = await this.services.discordService.sendAsWebhook(
+            avatar.channelId,
+            commandResults.map(t => `-# [${t}]`).join('\n'),
+            { name: `${avatar.name.split(',')[0]} used a command`, emoji: `🛠️`, imageUrl: avatar.imageUrl }
+          );
         }
-      }
-      
-      // If we got a result and it's meaningful, show it
-      if (result && typeof result === 'string' && result.trim().length > 0) {
-        await sendAsWebhook(message.channel, result, avatar);
       }
 
       // Respond as the user's avatar

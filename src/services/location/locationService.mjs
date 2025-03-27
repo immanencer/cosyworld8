@@ -349,7 +349,7 @@ If already suitable, return as is. If it needs editing, revise it while preservi
       };
 
       // Post the evocative description as a webhook
-      await sendAsWebhook(thread.id, evocativeDescription, locationDocument);
+      await this.services.discordService.sendAsWebhook(thread.id, evocativeDescription, locationDocument);
 
       // Validate location schema
       const schemaValidator = new SchemaValidator();
@@ -517,7 +517,7 @@ ${messagesText}`;
       ]);
 
       // Send the summary as the location
-      await sendAsWebhook(location.id, summary, location);
+      await this.services.discordService.sendAsWebhook(location.id, summary, location);
     } catch (error) {
       console.error('Error generating location summary:', error);
     }

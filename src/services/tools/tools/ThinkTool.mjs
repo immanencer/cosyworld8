@@ -67,12 +67,14 @@ export class ThinkTool extends BaseTool {
 
       // Step 4: Store the reflection as a memory
       const memoryService = new MemoryService(this.logger);
-      await memoryService.addMemory(avatar._id, "[💭 Reflection]\n" + reflection);
+      await memoryService.addMemory(avatar._id, reflection);
       if (avatar.innerMonologueChannel) {
-        sendAsWebhook(avatar.innerMonologueChannel, reflection, avatar);
+        await this.services.discordService.sendAsWebhook(
+          avatar.innerMonologueChannel, reflection, avatar
+        );
       }
 
-      return '💭 reflection generated.';
+      return '💭 reflection generated';
     } catch (error) {
       console.error('Error in ThinkTool:', error);
       return `Error generating reflection: ${error.message}`;

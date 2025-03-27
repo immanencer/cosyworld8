@@ -19,8 +19,8 @@ export class ItemTool extends BaseTool {
   }
 
   async postItemDetails(channelId, item) {
-    await sendAsWebhook(channelId, item.imageUrl, item);
-    await sendAsWebhook(channelId, `**${item.name}**\n\n${item.description}`, item);
+    await this.services.discordService.sendAsWebhook(channelId, item.imageUrl, item);
+    await this.services.discordService.sendAsWebhook(channelId, `**${item.name}**\n\n${item.description}`, item);
   }
 
   async execute(message, params, avatar) {

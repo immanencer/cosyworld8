@@ -55,7 +55,7 @@ export class XPostTool extends BaseTool {
                 await db.collection('x_auth').deleteOne({ avatarId: auth.avatarId });
                 throw new Error('X authorization expired. Please reconnect your account.');
             }
-            this.dungeonService.logger.error(`Error refreshing token: ${error.message}`, { error });
+            this.toolService.logger.error(`Error refreshing token: ${error.message}`, { error });
             throw error;
         }
     }
@@ -78,7 +78,7 @@ export class XPostTool extends BaseTool {
             }
             return new Date() < new Date(auth.expiresAt);
         } catch (error) {
-            this.dungeonService.logger.error(`Error checking X authorization: ${error.message}`, { error });
+            this.toolService.logger.error(`Error checking X authorization: ${error.message}`, { error });
             return false;
         }
     }
@@ -144,7 +144,7 @@ export class XPostTool extends BaseTool {
             if (error.code === 401) {
                 return '❌ X authorization invalid. Please reconnect your account.';
             }
-            this.dungeonService.logger.error(`Error posting to X: ${error.message}`, { error });
+            this.toolService.logger.error(`Error posting to X: ${error.message}`, { error });
             return `❌ Failed to post to X: ${error.message}`;
         }
     }

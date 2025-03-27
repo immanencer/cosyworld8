@@ -302,7 +302,7 @@ export class DecisionMaker {
         ], { model: DECISION_MODEL });
 
         const { sendAsWebhook } = await import('../discordService.mjs');
-        await sendAsWebhook(avatar.innerMonologueChannel, `🧠 [${this.currentMode}]\n${haiku}`, avatar);
+        await this.services.discordService.sendAsWebhook(avatar.innerMonologueChannel, `🧠 [${this.currentMode}]\n${haiku}`, avatar);
       } catch (error) {
         this.logger.error(`Haiku generation error: ${error.message}`);
       }

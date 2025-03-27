@@ -8,8 +8,8 @@ import { encrypt, decrypt } from '../../utils/encryption.mjs'; // Placeholder fo
 let mongoClient = null;
 
 export class XSocialTool extends BaseTool {
-    constructor(dungeonService) {
-        super(dungeonService);
+    constructor(toolService) {
+        super(toolService);
         this.emoji = '🐦';
         this.name = 'xsocial';
         this.description = 'Manage X social interactions (post, reply, quote, follow, like, repost, block) using avatar context.';

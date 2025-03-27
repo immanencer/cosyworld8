@@ -89,7 +89,7 @@ export class BreedTool extends BaseTool {
       message.content = `🔮 ${prompt}`;
       
       // Use SummonTool directly
-      const summonTool = services.toolService?.getTool('summon') || services.dungeonService.tools.get('summon');
+      const summonTool = services.toolService?.getTool('summon') || services.toolService.tools.get('summon');
       if (!summonTool) {
         throw new Error('Summon tool not available');
       }

@@ -18,7 +18,7 @@ export class MessageHandler {
     this.configService = services.configService;
     this.aiService = services.aiService;
     this.responseGenerator = services.responseGenerator;
-    this.dungeonService = services.dungeonService;
+    this.toolService = services.toolService;
     this.avatarService = services.avatarService;
     this.statGenerationService = services.statGenerationService;
     this.chatService = services.chatService;
@@ -119,7 +119,7 @@ export class MessageHandler {
       "configService",
       "aiService",
       "responseGenerator",
-      "dungeonService",
+      "toolService",
       "avatarService",
       "statGenerationService",
       "chatService",
@@ -220,7 +220,7 @@ export class MessageHandler {
       await handleCommands(message, {
         client: this.client,
         avatarService: this.avatarService,
-        dungeonService: this.dungeonService,
+        toolService: this.toolService,
         avatarManager: this.avatarManager,
         configService: this.configService,
         databaseService: this.databaseService,
@@ -262,7 +262,7 @@ export class MessageHandler {
       );
       if (result.new) {
         result.avatar.model = result.avatar.model || (await this.aiService.selectRandomModel());
-        result.avatar.stats = await this.dungeonService.getAvatarStats(result.avatar._id);
+        result.avatar.stats = await this.toolService.getAvatarStats(result.avatar._id);
         await this.avatarManager.updateAvatar(result.avatar);
         await sendAvatarProfileEmbedFromObject(result.avatar);
         await this.responseGenerator.respondAsAvatar(message.channel, result.avatar);
