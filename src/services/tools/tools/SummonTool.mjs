@@ -2,7 +2,7 @@ import { BaseTool } from './BaseTool.mjs';
 
 export class SummonTool extends BaseTool {
   constructor(services) {
-    super();
+    super(services);
     this.name = 'summon';
     this.description = 'Summons a new avatar';
     this.emoji = '🔮'; // Default emoji

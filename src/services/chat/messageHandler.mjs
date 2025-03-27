@@ -14,6 +14,8 @@ export class MessageHandler {
     this.databaseService = services.databaseService;
     this.client = services.discordService.client;
     this.periodicTaskManager = services.periodicTaskManager;
+    this.decisionMaker = services.decisionMaker;
+    this.conversationManager = services.conversationManager;
   }
 
   async start() {
@@ -215,7 +217,7 @@ export class MessageHandler {
         return;
       }
       const allAvatars = await this.services.avatarService.getAvatarsInChannel(channelId);
-      const avatarsToConsider = this.services.decisionMaker.selectAvatarsToConsider(
+      const avatarsToConsider = this.decisionMaker.selectAvatarsToConsider(
         allAvatars,
         message
       );

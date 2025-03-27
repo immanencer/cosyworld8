@@ -3,8 +3,7 @@ import { BaseTool } from './BaseTool.mjs';
 
 export class BreedTool extends BaseTool {
   constructor(services) {
-    super();
-    this.services = services;
+    super(services);
     this.name = 'breed';
     this.description = 'Breeds two avatars together';
     this.emoji = '🏹';

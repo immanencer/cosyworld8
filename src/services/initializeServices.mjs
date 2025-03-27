@@ -14,6 +14,7 @@ import { PeriodicTaskManager } from "./chat/periodicTaskManager.mjs";
 import { ChannelManager } from "./chat/channelManager.mjs";
 import { ConversationManager } from "./chat/conversationManager.mjs";
 import { DecisionMaker } from "./chat/decisionMaker.mjs";
+import { ItemService } from "./item/itemService.mjs";
 
 export async function initializeServices(logger) {
   configService.validate();
@@ -74,6 +75,10 @@ export async function initializeServices(logger) {
     channelManager,
   };
 
+  services.itemService = new ItemService(
+    discordService.client,
+    services.aiService,
+    db);
   services.toolService = new ToolService(discordService.client, logger, avatarService, db, services);
 
   services.conversationManager = new ConversationManager(services);

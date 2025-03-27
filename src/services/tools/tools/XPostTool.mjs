@@ -8,7 +8,7 @@ let mongoClient = null;
 
 export class XPostTool extends BaseTool {
     constructor() {
-        super();
+        super(services);
         this.emoji = '🐦';
         this.name = 'post';
         this.description = 'Post a relevant message to X/Twitter with preview option.';

@@ -67,6 +67,7 @@ export class OpenRouterAIService {
   }
 
   modelIsAvailable(model) {
+    if (!model) return false;
     return this.modelConfig.some(m => m.model === model.replace(':online', ''));
   }
 
@@ -112,7 +113,7 @@ export class OpenRouterAIService {
     let fallback = false;
     if (!this.modelIsAvailable(mergedOptions.model)) {
       console.error('Invalid model provided to chat:', mergedOptions.model);
-      mergedOptions.model = 'gryphe/mythomax-l2-13b';
+      mergedOptions.model = 'google/gemma-3-27b-it';
       fallback = true;
     }
 

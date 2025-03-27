@@ -34,7 +34,7 @@ export class PeriodicTaskManager {
   }
 
   async generateReflections() {
-    const avatars = await this.avatarService.getActiveAvatars();
+    const avatars = await this.services.avatarService.getActiveAvatars();
     for (const avatar of avatars.sort(() => Math.random() - 0.5)) {
       await this.services.conversationManager.generateNarrative(avatar);
     }

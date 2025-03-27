@@ -5,7 +5,7 @@ import { BaseTool } from './BaseTool.mjs';
 
 export class RememberTool extends BaseTool {
   constructor() {
-    super();
+    super(services);
     this.aiService = new AIService();
     this.name = 'remember';
     this.description = 'Generates a memory from the current context.';

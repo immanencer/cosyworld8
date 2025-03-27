@@ -12,7 +12,6 @@ import { SummonTool } from './tools/SummonTool.mjs';
 import { BreedTool } from './tools/BreedTool.mjs';
 import configService from '../configService.mjs';
 import { LocationService } from '../location/locationService.mjs';
-import { ItemService } from '../item/itemService.mjs';
 
 export class ToolService {
   /**
@@ -29,6 +28,7 @@ export class ToolService {
     this.client = client;
     this.logger = logger;
     this.avatarService = avatarService;
+    this.itemService = services.itemService;
 
     // Tools & Logging
     this.ActionLog = new ActionLog(logger);
@@ -66,7 +66,6 @@ export class ToolService {
     // Service dependencies
     this.aiService = new AIService();
     this.locationService = new LocationService(this.client, this.aiService, this.db);
-    this.itemService = new ItemService(this.client, this.aiService, this.db);
 
     // Event listener for avatar movements
     this.client.on('avatarMoved', ({ avatarId, newChannelId, temporary }) => {

@@ -1,5 +1,6 @@
 import { MongoClient } from 'mongodb';
 import { MemoryService } from '../memoryService.mjs';
+import { PromptService } from '../promptService.mjs';
 
 const GUILD_NAME = process.env.GUILD_NAME || 'The Guild';
 
@@ -8,17 +9,22 @@ export class ConversationManager {
     this.services = services;
     this.logger = services.logger;
     this.services.memoryService = new MemoryService(this.logger);
-    
+    this.services.promptService = new PromptService(
+      this.services.avatarService,
+      this.services.memoryService,
+      this.services.toolService,
+      this.services.imageProcessingService, // Assuming it’s available
+      this.services.discordService.client,
+      this.services.itemService,
+      this.services.mapService
+    );
     this.GLOBAL_NARRATIVE_COOLDOWN = 60 * 60 * 1000; // 1 hour
     this.lastGlobalNarrativeTime = 0;
     this.channelLastMessage = new Map();
-   
-    this.CHANNEL_COOLDOWN = 5 * 1000; // 30 seconds
+    this.CHANNEL_COOLDOWN = 5 * 1000; // 5 seconds
     this.MAX_RESPONSES_PER_MESSAGE = 2;
     this.channelResponders = new Map();
-   
     this.requiredPermissions = ['ViewChannel', 'SendMessages', 'ReadMessageHistory', 'ManageWebhooks'];
-   
     this.dbClient = null;
     this.db = null;
     this._initializeDb().catch(err => this.logger.error(`Failed to initialize DB: ${err.message}`));
@@ -46,7 +52,7 @@ export class ConversationManager {
         this.logger.warn(`Channel ${channel.id} has no associated guild.`);
         return false;
       }
-      const member = channel.guild.members.cache.get(this.client.user.id);
+      const member = channel.guild.members.cache.get(this.services.discordService.client.user.id);
       if (!member) return false;
       const permissions = channel.permissionsFor(member);
       const missingPermissions = this.requiredPermissions.filter(perm => !permissions.has(perm));
@@ -75,41 +81,15 @@ export class ConversationManager {
         avatar.model = await this.services.aiService.selectRandomModel();
         await this.services.avatarService.updateAvatar(avatar);
       }
-      const [memoryRecords, recentActions] = await Promise.all([
-        this.services.memoryService.getMemories(avatar._id),
-        this.services.toolService.ActionLog.getRecentActions(avatar.channelId)
-      ]);
-      const memories = (memoryRecords || []).map(m => m.memory).join('\n');
-      const actions = (recentActions || [])
-        .filter(action => action.actorId === avatar._id.toString())
-        .map(a => `${a.description || a.action}`)
-        .join('\n');
-      let narrativeContent = '';
-      if (avatar.innerMonologueChannel) {
-        try {
-          const channel = await this.client.channels.fetch(avatar.innerMonologueChannel);
-          const messages = await channel.messages.fetch({ limit: 10 });
-          narrativeContent = messages
-            .filter(m => !m.content.startsWith('🌪️'))
-            .map(m => m.content)
-            .join('\n');
-        } catch (error) {
-          this.logger.error(`Error fetching narrative content: ${error.message}`);
-        }
-      }
-      const prompt = this.buildNarrativePrompt(avatar, memories, actions, narrativeContent);
-      const narrative = await this.services.aiService.chat([
-        { role: 'system', content: avatar.prompt || `You are ${avatar.name}. ${avatar.personality}` },
-        { role: 'assistant', content: `Current personality: ${avatar.dynamicPersonality || 'None yet'}\n\nMemories: ${memories}\n\nRecent actions: ${actions}\n\nNarrative thoughts: ${narrativeContent}` },
-        { role: 'user', content: prompt }
-      ], { model: avatar.model, max_tokens: 2048 });
+      const chatMessages = await this.services.promptService.getNarrativeChatMessages(avatar);
+      const narrative = await this.services.aiService.chat(chatMessages, { model: avatar.model, max_tokens: 2048 });
       if (!narrative) {
         this.logger.error(`No narrative generated for ${avatar.name}.`);
         return null;
       }
       await this.storeNarrative(avatar._id, narrative);
       this.updateNarrativeHistory(avatar, narrative);
-      avatar.prompt = await this.buildSystemPrompt(avatar);
+      avatar.prompt = await this.services.promptService.getFullSystemPrompt(avatar, this.db);
       avatar.dynamicPrompt = narrative;
       await this.services.avatarService.updateAvatar(avatar);
       this.lastGlobalNarrativeTime = Date.now();
@@ -118,22 +98,6 @@ export class ConversationManager {
       this.logger.error(`Error generating narrative for ${avatar.name}: ${error.message}`);
       return null;
     }
-  }
-
-  buildNarrativePrompt(avatar, memories, actions, narrativeContent) {
-    return `
-You are ${avatar.name || ''}.
-Base personality: ${avatar.personality || ''}
-Current dynamic personality: ${avatar.dynamicPersonality || 'None yet'}
-Physical description: ${avatar.description || ''}
-Recent memories:
-${memories}
-Recent actions:
-${actions}
-Recent thoughts and reflections:
-${narrativeContent}
-Based on all of the above context, share an updated personality that reflects your recent experiences, actions, and growth. Focus on how these events have shaped your character.
-    `.trim();
   }
 
   async storeNarrative(avatarId, content) {
@@ -355,46 +319,19 @@ Based on all of the above context, share an updated personality that reflects yo
         }
       }
       const channelHistory = await this.getChannelContext(channel.id, 50);
-      const channelContextText = channelHistory.map(msg =>
-        `${msg.authorUsername || 'User'}: ${msg.content || '[No content]'}${msg.imageDescription ? ` [Image: ${msg.imageDescription}]` : ''}`
-      ).join('\n');
-      const imageDescriptions = channelHistory
-        .filter(msg => msg.imageDescription)
-        .map(msg => `[Image: ${msg.imageDescription}]`);
-      const context = { channelName: channel.name, guildName: channel.guild?.name || 'Unknown Guild' };
-      const systemPrompt = await this.buildSystemPrompt(avatar);
-      const dungeonPrompt = await this.buildDungeonPrompt(avatar, channel.guild.id);
-      const lastNarrative = await this.getLastNarrative(avatar._id);
       const channelSummary = await this.getChannelSummary(avatar._id, channel.id);
-      const contextualPrompt = `
-        Channel: #${context.channelName} in ${context.guildName}
-        Channel summary:
-        ${channelSummary}
-        Actions Available:
-        ${dungeonPrompt}
-        Recent conversation history (including image descriptions):
-        ${channelContextText}
-        Reply in character as ${avatar.name} with a single short message that responds to the context.
-        ${imageDescriptions.length > 0 ? 'Incorporate the described images into your response naturally.' : ''}
-      `.trim();
-      let userContent;
+      let chatMessages = await this.services.promptService.getResponseChatMessages(avatar, channel, channelHistory, channelSummary, this.db);
+      let userContent = chatMessages.find(msg => msg.role === 'user').content;
       if (this.services.aiService.supportsMultimodal && imagePromptParts.length > 0) {
-        userContent = [...imagePromptParts, { type: 'text', text: contextualPrompt }];
-      } else {
-        const imageContext = imageDescriptions.length > 0 ? `\nRecent image descriptions:\n${imageDescriptions.join('\n')}\n` : '';
-        userContent = `${imageContext}${contextualPrompt}`;
+        userContent = [...imagePromptParts, { type: 'text', text: userContent }];
+        chatMessages = chatMessages.map(msg => msg.role === 'user' ? { role: 'user', content: userContent } : msg);
       }
-      let response = await this.services.aiService.chat([
-        { role: 'system', content: systemPrompt },
-        { role: 'assistant', content: lastNarrative?.content || 'No previous reflection' },
-        { role: 'user', content: userContent }
-      ], { model: avatar.model, max_tokens: 1024 });
+      let response = await this.services.aiService.chat(chatMessages, { model: avatar.model, max_tokens: 1024 });
       if (!response) {
         this.logger.error(`Empty response generated for ${avatar.name}`);
         return null;
       }
       response = this.removeAvatarPrefix(response, avatar);
-
       const { commands, cleanText } = this.services.toolService.extractToolCommands(response);
       let sentMessage = null;
       let commandResults = [];
@@ -407,7 +344,7 @@ Based on all of the above context, share an updated personality that reflects yo
               cmd.command,
               cmd.params,
               avatar,
-              this.services // Pass the entire services object
+              this.services
             )
           )
         );
@@ -421,7 +358,6 @@ Based on all of the above context, share an updated personality that reflects yo
         avatar = await this.services.avatarService.getAvatarById(avatar._id);
       }
       const finalText = commands.length ? cleanText : response;
-      // Process <think> tags
       if (finalText && finalText.trim()) {
         const thinkRegex = /<think>(.*?)<\/think>/gs;
         const thoughts = [];
@@ -429,18 +365,12 @@ Based on all of the above context, share an updated personality that reflects yo
           thoughts.push(thought.trim());
           return '';
         }).trim();
-
-        // Store thoughts in narrative history
         if (thoughts.length > 0) {
           avatar.narrativeHistory = avatar.narrativeHistory || [];
           const guildName = GUILD_NAME;
           thoughts.forEach(thought => {
-            if (thought) { // Skip empty thoughts
-              const narrativeData = {
-                timestamp: Date.now(),
-                content: thought,
-                guildName: guildName
-              };
+            if (thought) {
+              const narrativeData = { timestamp: Date.now(), content: thought, guildName };
               avatar.narrativeHistory.unshift(narrativeData);
             }
           });
@@ -450,13 +380,10 @@ Based on all of the above context, share an updated personality that reflects yo
             .join('\n\n');
           await this.services.avatarService.updateAvatar(avatar);
         }
-
-        // Send the cleaned text as the response
         if (cleanedText) {
           sentMessage = await this.services.discordService.sendAsWebhook(avatar.channelId, cleanedText, avatar);
         }
       }
-
       this.channelLastMessage.set(channel.id, Date.now());
       this.channelResponders.get(channel.id).add(avatar._id);
       setTimeout(() => this.channelResponders.set(channel.id, new Set()), this.CHANNEL_COOLDOWN);
@@ -465,53 +392,5 @@ Based on all of the above context, share an updated personality that reflects yo
       this.logger.error(`CONVERSATION: Error sending response for ${avatar.name}: ${error.message}`);
       return null;
     }
-  }
-
-  async buildDungeonPrompt(avatar, guildId) {
-    const commandsDescription = this.services.toolService.getCommandsDescription(guildId) || '';
-    // Assuming mapService is part of services object
-    const location = await this.services.mapService.getLocationDescription(avatar.channelId, avatar.channelName);
-    const items = await this.services.toolService.getItemsDescription(avatar);
-    const locationText = location ? `You are currently in ${location.name}. ${location.description}` : `You are in ${avatar.channelName || 'a chat channel'}.`;
-    const selectedItem = avatar.selectedItemId ? avatar.inventory.find(i => i._id === avatar.selectedItemId) : null;
-    const selectedItemText = selectedItem ? `Selected item: ${selectedItem.name}` : 'No item selected.';
-    const groundItems = await this.services.toolService.itemService.searchItems(avatar.channelId, '');
-    const groundItemsText = groundItems.length > 0 ? `Items on the ground: ${groundItems.map(i => i.name).join(', ')}` : 'There are no items on the ground.';
-    let summonEmoji = '🔮';
-    let breedEmoji = '🏹';
-    try {
-      if (avatar.channelId) {
-        const channel = await this.client.channels.fetch(avatar.channelId);
-        if (channel && channel.guild && this.db) {
-          const guildConfig = await this.db.collection('guild_configs').findOne({ guildId: channel.guild.id });
-          if (guildConfig && guildConfig.toolEmojis) {
-            summonEmoji = guildConfig.toolEmojis.summon || summonEmoji;
-            breedEmoji = guildConfig.toolEmojis.breed || breedEmoji;
-          }
-        }
-      }
-    } catch (error) {
-      this.logger.error(`Error getting guild config emojis: ${error.message}`);
-    }
-    return `
-  These commands are available in this location:
-  ${summonEmoji} <any concept or thing> - Summon an avatar to your location.
-  ${breedEmoji} <avatar one> <avatar two> - Breed two avatars together.
-  ${commandsDescription}
-  ${locationText}
-  ${selectedItemText}
-  ${groundItemsText}
-  You can also use these items in your inventory:
-  ${items}
-    `.trim();
-  }
-
-  async buildSystemPrompt(avatar) {
-    const lastNarrative = await this.getLastNarrative(avatar._id);
-    return `
-You are ${avatar.name}.
-${avatar.personality}
-${lastNarrative ? lastNarrative.content : ''}
-    `.trim();
   }
 }

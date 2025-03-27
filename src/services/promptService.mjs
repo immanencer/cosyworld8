@@ -1,107 +1,186 @@
 import { loggers } from "winston";
 
 export class PromptService {
-  constructor(avatarService, memoryService, toolService, imageProcessingService, client) {
+  constructor(avatarService, memoryService, toolService, imageProcessingService, client, itemService, mapService) {
     this.avatarService = avatarService;
     this.memoryService = memoryService;
     this.toolService = toolService;
     this.imageProcessingService = imageProcessingService;
+    this.itemService = itemService;
     this.client = client; // Discord client for fetching channel data
+    this.mapService = mapService;
   }
-
   /**
-   * Builds a prompt for narrative generation.
+   * Builds the system prompt with just the avatar's basic identity.
    * @param {Object} avatar - The avatar object.
-   * @returns {Promise<string>} The assembled narrative prompt.
+   * @returns {Promise<string>} The basic system prompt.
    */
-  async buildNarrativePrompt(avatar) {
-    const identity = this.getAvatarIdentity(avatar);
-    const dynamicPersonality = this.getDynamicPersonality(avatar);
-    const memories = await this.getMemories(avatar);
-    const recentActions = await this.getRecentActions(avatar);
-    const narrativeContent = await this.getNarrativeContent(avatar);
-
-    return `
-${identity}
-
-Dynamic Personality: ${dynamicPersonality}
-
-Memories:
-${memories || 'No memories yet.'}
-
-Recent Actions:
-${recentActions || 'No recent actions.'}
-
-Previous Narrative:
-${narrativeContent || 'No previous narrative content.'}
-
-Based on the above, reflect on your recent experiences and how they have shaped your character.
-    `.trim();
+  async getBasicSystemPrompt(avatar) {
+    return `You are ${avatar.name}. ${avatar.personality}`;
   }
 
   /**
-   * Builds a prompt for a conversation response.
-   * @param {Object} avatar - The avatar object.
-   * @param {Object} channel - The Discord channel object.
-   * @param {Array} messages - Array of recent message objects.
-   * @returns {Promise<string>} The assembled response prompt.
-   */
-  async buildResponsePrompt(avatar, channel, messages) {
-    const identity = this.getAvatarIdentity(avatar);
-    const dynamicPersonality = this.getDynamicPersonality(avatar);
-    const conversationHistory = this.getConversationHistory(messages);
-    const availableCommands = await this.getAvailableCommands(avatar, channel);
-    const imageDescriptions = await this.getImageDescriptions(messages);
-    const context = `You are in channel #${channel.name} in ${channel.guild?.name || 'Unknown Guild'}.`;
-
-    const prompt = `
-${identity}
-
-Dynamic Personality: ${dynamicPersonality}
-
-${context}
-
-Recent Conversation:
-${conversationHistory || 'No recent conversation.'}
-
-${imageDescriptions.length > 0 ? 'Recent Images:\n' + imageDescriptions.join('\n') : ''}
-
-Available Commands:
-${availableCommands || 'No commands available.'}
-
-Respond to the conversation in character with a single short message.
-    `.trim();
-
-    console.debug(`Prompt: ${prompt}`);
-  }
-
-  /**
-   * Builds a system prompt for the AI model.
+   * Builds the full system prompt including the last narrative.
    * @param {Object} avatar - The avatar object.
    * @param {Object} db - The MongoDB database instance.
-   * @returns {Promise<string>} The system prompt.
+   * @returns {Promise<string>} The full system prompt.
    */
-  async buildSystemPrompt(avatar, db) {
+  async getFullSystemPrompt(avatar, db) {
     const lastNarrative = await this.getLastNarrative(avatar, db);
     return `
 You are ${avatar.name}.
-
 ${avatar.personality}
-
-${lastNarrative ? lastNarrative.content : 'No previous reflection.'}
-    `.trim();
+${lastNarrative ? lastNarrative.content : ''}
+  `.trim();
   }
 
-  // Helper Methods
-
-  getAvatarIdentity(avatar) {
-    return `You are ${avatar.name || 'Unnamed Avatar'}. Base Personality: ${avatar.personality || 'No personality defined.'} Physical Description: ${avatar.description || 'No description.'}`;
+  /**
+   * Builds the assistant context for narrative generation.
+   * @param {Object} avatar - The avatar object.
+   * @returns {Promise<string>} The assistant context.
+   */
+  async getNarrativeAssistantContext(avatar) {
+    const memories = await this.getMemories(avatar);
+    const recentActions = await this.getRecentActions(avatar);
+    const narrativeContent = await this.getNarrativeContent(avatar);
+    return `Current personality: ${avatar.dynamicPersonality || 'None yet'}\n\nMemories: ${memories}\n\nRecent actions: ${recentActions}\n\nNarrative thoughts: ${narrativeContent}`;
   }
 
-  getDynamicPersonality(avatar) {
-    return avatar.dynamicPersonality || 'None yet';
+  /**
+   * Builds the user prompt for narrative generation (moved from ConversationManager).
+   * @param {Object} avatar - The avatar object.
+   * @returns {Promise<string>} The narrative user prompt.
+   */
+  async buildNarrativePrompt(avatar) {
+    const memories = await this.getMemories(avatar);
+    const recentActions = await this.getRecentActions(avatar);
+    const narrativeContent = await this.getNarrativeContent(avatar);
+    return `
+You are ${avatar.name || ''}.
+Base personality: ${avatar.personality || ''}
+Current dynamic personality: ${avatar.dynamicPersonality || 'None yet'}
+Physical description: ${avatar.description || ''}
+Recent memories:
+${memories}
+Recent actions:
+${recentActions}
+Recent thoughts and reflections:
+${narrativeContent}
+Based on all of the above context, share an updated personality that reflects your recent experiences, actions, and growth. Focus on how these events have shaped your character.
+  `.trim();
   }
 
+  /**
+   * Builds the dungeon prompt (moved from ConversationManager).
+   * @param {Object} avatar - The avatar object.
+   * @param {string} guildId - The guild ID.
+   * @returns {Promise<string>} The dungeon prompt.
+   */
+  async buildDungeonPrompt(avatar, guildId) {
+    const commandsDescription = this.toolService.getCommandsDescription(guildId) || '';
+    const location = await this.mapService.getLocationDescription(avatar.channelId, avatar.channelName);
+    const items = await this.itemService.getItemsDescription(avatar);
+    const locationText = location ? `You are currently in ${location.name}. ${location.description}` : `You are in ${avatar.channelName || 'a chat channel'}.`;
+    const selectedItem = avatar.selectedItemId ? avatar.inventory.find(i => i._id === avatar.selectedItemId) : null;
+    const selectedItemText = selectedItem ? `Selected item: ${selectedItem.name}` : 'No item selected.';
+    const groundItems = await this.itemService.searchItems(avatar.channelId, '');
+    const groundItemsText = groundItems.length > 0 ? `Items on the ground: ${groundItems.map(i => i.name).join(', ')}` : 'There are no items on the ground.';
+    let summonEmoji = '🔮';
+    let breedEmoji = '🏹';
+    try {
+      if (avatar.channelId) {
+        const channel = await this.client.channels.fetch(avatar.channelId);
+        if (channel && channel.guild && this.db) {
+          const guildConfig = await this.db.collection('guild_configs').findOne({ guildId: channel.guild.id });
+          if (guildConfig && guildConfig.toolEmojis) {
+            summonEmoji = guildConfig.toolEmojis.summon || summonEmoji;
+            breedEmoji = guildConfig.toolEmojis.breed || breedEmoji;
+          }
+        }
+      }
+    } catch (error) {
+      console.error(`Error getting guild config emojis: ${error.message}`);
+    }
+    return `
+These commands are available in this location:
+${summonEmoji} <any concept or thing> - Summon an avatar to your location.
+${breedEmoji} <avatar one> <avatar two> - Breed two avatars together.
+${commandsDescription}
+${locationText}
+${selectedItemText}
+${groundItemsText}
+You can also use these items in your inventory:
+${items}
+  `.trim();
+  }
+
+  /**
+   * Builds the user content for response generation.
+   * @param {Object} avatar - The avatar object.
+   * @param {Object} channel - The Discord channel object.
+   * @param {Array} messages - Array of message objects from getChannelContext.
+   * @param {string} channelSummary - The channel summary.
+   * @returns {Promise<string>} The response user content.
+   */
+  async getResponseUserContent(avatar, channel, messages, channelSummary) {
+    const channelContextText = messages.map(msg =>
+      `${msg.authorUsername || 'User'}: ${msg.content || '[No content]'}${msg.imageDescription ? ` [Image: ${msg.imageDescription}]` : ''}`
+    ).join('\n');
+    const imageDescriptions = messages
+      .filter(msg => msg.imageDescription)
+      .map(msg => `[Image: ${msg.imageDescription}]`);
+    const context = { channelName: channel.name, guildName: channel.guild?.name || 'Unknown Guild' };
+    const dungeonPrompt = await this.buildDungeonPrompt(avatar, channel.guild.id);
+    return `
+Channel: #${context.channelName} in ${context.guildName}
+Channel summary:
+${channelSummary}
+Actions Available:
+${dungeonPrompt}
+Recent conversation history (including image descriptions):
+${channelContextText}
+Reply in character as ${avatar.name} with a single short message that responds to the context.
+${imageDescriptions.length > 0 ? 'Incorporate the described images into your response naturally.' : ''}
+  `.trim();
+  }
+
+  /**
+   * Builds the complete chat messages array for narrative generation.
+   * @param {Object} avatar - The avatar object.
+   * @returns {Promise<Array>} Array of chat messages.
+   */
+  async getNarrativeChatMessages(avatar) {
+    const systemPrompt = await this.getBasicSystemPrompt(avatar);
+    const assistantContext = await this.getNarrativeAssistantContext(avatar);
+    const userPrompt = await this.buildNarrativePrompt(avatar);
+    return [
+      { role: 'system', content: systemPrompt },
+      { role: 'assistant', content: assistantContext },
+      { role: 'user', content: userPrompt }
+    ];
+  }
+
+  /**
+   * Builds the complete chat messages array for response generation.
+   * @param {Object} avatar - The avatar object.
+   * @param {Object} channel - The Discord channel object.
+   * @param {Array} messages - Array of message objects.
+   * @param {string} channelSummary - The channel summary.
+   * @param {Object} db - The MongoDB database instance.
+   * @returns {Promise<Array>} Array of chat messages.
+   */
+  async getResponseChatMessages(avatar, channel, messages, channelSummary, db) {
+    const systemPrompt = await this.getFullSystemPrompt(avatar, db);
+    const lastNarrative = await this.getLastNarrative(avatar, db);
+    const userContent = await this.getResponseUserContent(avatar, channel, messages, channelSummary);
+    return [
+      { role: 'system', content: systemPrompt },
+      { role: 'assistant', content: lastNarrative?.content || 'No previous reflection' },
+      { role: 'user', content: userContent }
+    ];
+  }
+
+  // Existing helper methods (unchanged unless noted)
   async getMemories(avatar) {
     const memoryRecords = await this.memoryService.getMemories(avatar._id);
     return memoryRecords.map(m => m.memory).join('\n');
@@ -130,25 +209,14 @@ ${lastNarrative ? lastNarrative.content : 'No previous reflection.'}
     }
   }
 
-  getConversationHistory(messages) {
-    return messages.map(msg => `${msg.author.username || 'User'}: ${msg.content || '[No content]'}`).join('\n');
-  }
-
-  async getAvailableCommands(avatar, channel) {
-    const commandsDescription = this.toolService.getCommandsDescription(avatar, channel.guild.id) || '';
-    const location = await this.mapService.getLocationDescription(avatar.channelId, channel.name);
-    const items = await this.toolService.getItemsDescription(avatar);
-    const locationText = location
-      ? `You are currently in ${location.name}. ${location.description}`
-      : `You are in ${channel.name || 'a chat channel'}.`;
-
-    return `
-${commandsDescription}
-
-${locationText}
-
-Items in your inventory: ${items || 'None'}
-    `.trim();
+  async getLastNarrative(avatar, db) {
+    if (!db) return null;
+    return await db
+      .collection('narratives')
+      .findOne(
+        { $or: [{ avatarId: avatar._id }, { avatarId: avatar._id.toString() }] },
+        { sort: { timestamp: -1 } }
+      );
   }
 
   async getImageDescriptions(messages) {
@@ -165,15 +233,5 @@ Items in your inventory: ${items || 'None'}
       }
     }
     return descriptions;
-  }
-
-  async getLastNarrative(avatar, db) {
-    if (!db) return null;
-    return await db
-      .collection('narratives')
-      .findOne(
-        { $or: [{ avatarId: avatar._id }, { avatarId: avatar._id.toString() }] },
-        { sort: { timestamp: -1 } }
-      );
   }
 }

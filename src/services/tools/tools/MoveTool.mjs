@@ -7,8 +7,7 @@ export class MoveTool extends BaseTool {
    * @param {Object} services - The services container
    */
   constructor(services) {
-    super();
-    this.services = services;
+    super(services);
     this.name = 'move';
     this.description = 'Move to the location specified, creating it if it does not exist.';
     this.emoji = '🏃‍♂️';
@@ -182,7 +181,6 @@ export class MoveTool extends BaseTool {
 
       // 7. Send the full profile to the new location
       try {
-        const { sendAvatarProfileEmbedFromObject } = await import('../../../services/discordService.mjs');
         await this.services.discordService.sendAvatarProfileEmbedFromObject(updatedAvatar, newLocation.channel.id);
         this.logger.debug(`Sent profile for ${updatedAvatar.name} to new location ${newLocation.channel.id}`);
       } catch (profileError) {

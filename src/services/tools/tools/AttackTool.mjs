@@ -2,7 +2,7 @@ import { BaseTool } from './BaseTool.mjs';
 
 export class AttackTool extends BaseTool {
   constructor(services) {
-    super();
+    super(services);
     this.name = 'attack';
     this.description = 'Attacks the specified avatar';
     this.emoji = '⚔️';

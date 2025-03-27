@@ -39,8 +39,8 @@ export class MapService {
     const collections = await db.listCollections().toArray();
     const collectionNames = collections.map(c => c.name);
 
-    if (!collectionNames.includes('dungeon_locations')) {
-      await db.createCollection('dungeon_locations');
+    if (!collectionNames.includes('locations')) {
+      await db.createCollection('locations');
     }
     if (!collectionNames.includes('dungeon_positions')) {
       await db.createCollection('dungeon_positions');
@@ -57,7 +57,7 @@ export class MapService {
 
   async getLocationDescription(locationId, locationName) {
     const db = this.ensureDb();
-    const location = await db.collection('dungeon_locations').findOne({
+    const location = await db.collection('locations').findOne({
       $or: [{ channelId: locationId }, { name: locationName }],
     });
     return location?.description || null;
@@ -65,7 +65,7 @@ export class MapService {
 
   async findLocation(destination) {
     const db = this.ensureDb();
-    return await db.collection('dungeon_locations').findOne({
+    return await db.collection('locations').findOne({
       $or: [{ id: destination }, { name: { $regex: new RegExp(destination, 'i') } }],
     });
   }
@@ -76,8 +76,13 @@ export class MapService {
     const position = await db.collection('dungeon_positions').findOne({ avatarId: objectId });
     if (!position) return null;
 
-    const location = await db.collection('dungeon_locations').findOne({ channelId: position.locationId });
-    if (!location) return null;
+    const location = await db.collection('locations').findOne({ channelId: position.locationId });
+    if (!location) return {
+      id: position.locationId,
+      name: 'Unknown',
+      description: 'An unknown location',
+      imageUrl: null,
+    };
 
     const guild = this.client.guilds.cache.first();
     const channel = await guild.channels.fetch(location.id);

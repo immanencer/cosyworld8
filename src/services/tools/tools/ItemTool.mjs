@@ -1,16 +1,11 @@
 // ItemTool.mjs
 import { BaseTool } from './BaseTool.mjs';
-import { ItemService } from '../../item/itemService.mjs';
 
 export class ItemTool extends BaseTool {
   constructor(services) {
-    super();
+    super(services);
     this.avatarService = services.avatarService;
-    this.itemService = new ItemService(
-      services.client,
-      services.aiService,
-      services.databaseService.db
-    );
+    this.itemService = services.itemService;
 
     this.name = 'item';
     this.description = 'Manage items in your inventory';

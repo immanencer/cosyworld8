@@ -3,8 +3,7 @@ import { AIService } from "../../aiService.mjs";
 
 export class CreationTool extends BaseTool {
   constructor(services) {
-    super();
-    this.services = services;
+    super(services);
     this.cache = new Map(); // Cache for generated descriptions
     this.aiService = services?.aiService || new AIService(); // Use service if available or create new
     this.logger = services?.logger;

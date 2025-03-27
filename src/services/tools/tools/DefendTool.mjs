@@ -3,7 +3,7 @@ import { BaseTool } from './BaseTool.mjs';
 
 export class DefendTool extends BaseTool {
   constructor(services) {
-    super();
+    super(services);
     this.name = 'defend';
     this.description = 'Take a defensive stance';
     this.emoji = '🛡️';
