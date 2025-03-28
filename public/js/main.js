@@ -16,7 +16,7 @@ document.addEventListener("DOMContentLoaded", initializeApplication);
  * Initialize the application
  */
 function initializeApplication() {
-  console.log("Initializing Moonstone Sanctum application...");
+  console.log("Initializing CosyWorld application...");
   
   // Initialize state from localStorage
   initializeStateFromStorage();
@@ -37,7 +37,7 @@ function initializeApplication() {
   setupModalEventListeners();
   
   // Show welcome toast
-  showToast("Welcome to Moonstone Sanctum!");
+  showToast("Welcome to CosyWorld!");
   
   // Make global functions available
   registerGlobalFunctions();

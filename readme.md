@@ -1,6 +1,6 @@
 # CosyWorld - AI Avatar Ecosystem
 
-## 0.0.8 Moonstone Sanctum 🌟
+## 0.0.8 CosyWorld 🌟
 
 An advanced AI avatar ecosystem that creates persistent, intelligent entities with memory, combat mechanics, and cross-platform capabilities.
 
@@ -95,7 +95,7 @@ npm run build
 
 ## System Architecture
 
-Moonstone Sanctum is composed of several interconnected services:
+CosyWorld is composed of several interconnected services:
 
 ### Core Services
 - **Chat Service**: Manages conversations and AI interactions

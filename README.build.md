@@ -1,6 +1,6 @@
-# Moonstone Sanctum Frontend Build System
+# CosyWorld Frontend Build System
 
-This document outlines the build system setup for the Moonstone Sanctum frontend application.
+This document outlines the build system setup for the CosyWorld frontend application.
 
 ## Overview
 

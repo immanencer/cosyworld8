@@ -1,5 +1,5 @@
 #!/bin/bash
-# Deployment script for Moonstone Sanctum
+# Deployment script for CosyWorld
 # This script deploys the application to a production server
 
 # Exit on error
@@ -17,7 +17,7 @@ RED='\033[0;31m'
 YELLOW='\033[0;33m'
 NC='\033[0m' # No Color
 
-echo -e "${GREEN}Deploying Moonstone Sanctum to production${NC}"
+echo -e "${GREEN}Deploying CosyWorld to production${NC}"
 echo -e "${YELLOW}Target: ${DEPLOY_USER}@${DEPLOY_HOST}:${DEPLOY_PATH}${NC}"
 
 # Step 1: Build the application locally

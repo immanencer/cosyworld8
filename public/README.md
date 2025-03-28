@@ -1,6 +1,6 @@
-# Moonstone Sanctum Frontend Documentation
+# CosyWorld Frontend Documentation
 
-This documentation covers the frontend architecture, organization, and development guidelines for the Moonstone Sanctum project.
+This documentation covers the frontend architecture, organization, and development guidelines for the CosyWorld project.
 
 ## Table of Contents
 
@@ -15,7 +15,7 @@ This documentation covers the frontend architecture, organization, and developme
 
 ## Project Overview
 
-Moonstone Sanctum is a web application that provides an interface to interact with avatars, tribes, and social features. The frontend is built using vanilla JavaScript with a modular architecture and Tailwind CSS for styling.
+CosyWorld is a web application that provides an interface to interact with avatars, tribes, and social features. The frontend is built using vanilla JavaScript with a modular architecture and Tailwind CSS for styling.
 
 The application offers several key features:
 - Wallet integration for cryptocurrency connections
