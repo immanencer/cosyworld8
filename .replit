@@ -15,10 +15,6 @@ ignorePorts = true
 localPort = 3001
 externalPort = 80
 
-[[ports]]
-localPort = 8080
-externalPort = 8080
-
 [workflows]
 runButton = "Production"
 
