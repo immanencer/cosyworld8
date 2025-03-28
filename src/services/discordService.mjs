@@ -260,7 +260,7 @@ export class DiscordService extends BasicService {
       .setTitle(`${emoji} ${name}`)
       .setURL(innerMonologueThreadId ? `https://discord.com/channels/${channelId}/${innerMonologueThreadId}` : null)
       .setAuthor({ name: `${name} ${emoji || ''}`, iconURL: imageUrl })
-      .setDescription(short_description || (description ? description.slice(0, 4096) : 'No description available'))
+      .setDescription((short_description || (description ? description.slice(0, 4096) : 'No description available')).split('. ')[0] + '.') // Truncate to first sentence;
       .setThumbnail(imageUrl)
       .addFields(
         { name: '🎂 Summonsday', value: `<t:${Math.floor(new Date(createdAt || Date.now()).getTime() / 1000)}:F>`, inline: true },
