@@ -148,10 +148,10 @@ export class DatabaseService {
     try {
       await Promise.all([
         db.collection('messages').createIndexes([
-          { key: { authorUsername: 1 }, background: true },
+          { key: { "author.username": 1 }, background: true },
           { key: { timestamp: -1 }, background: true },
           { key: { avatarId: 1 }, background: true },
-          { messageId: 1 }, { unique: true }
+          { key: { messageId: 1 }, unique: true }
         ]),
         db.collection('avatars').createIndexes([
           { key: { name: 1, createdAt: -1 }, background: true },
@@ -178,12 +178,13 @@ export class DatabaseService {
           { key: { actor: 1 }, background: true },
           { key: { target: 1 }, background: true },
         ]),
-        db.collection('messages').createIndexes({ hasImages: 1 }),
+        db.collection('messages').createIndex({ hasImages: 1 }),
         db.collection('messages').createIndex({ imageDescription: 1 })
       ]);
       this.logger.info('Database indexes created successfully');
     } catch (error) {
       this.logger.error(`Error creating indexes: ${error.message}`);
+      throw error;
     }
   }
 

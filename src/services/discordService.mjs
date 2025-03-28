@@ -104,6 +104,7 @@ export class DiscordService extends BasicService {
       }
     } catch (error) {
       this.logger.error('Error updating connected guilds: ' + error.message);
+      throw error;
     }
   }
 
