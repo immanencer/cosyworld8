@@ -2,6 +2,7 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
 /* Custom spacing for documentation */
 .documentation-container {
   @apply max-w-4xl mx-auto px-6 py-8;
@@ -17,6 +18,7 @@
 
 .feature-title {
   @apply text-2xl font-semibold mb-4 text-purple-400;
+}
 
 /* Markdown content styling */
 .prose ul {
@@ -53,8 +55,6 @@
 
 .prose blockquote {
   @apply border-l-4 border-purple-400 pl-4 my-4 italic;
-}
-
 }
 
 .feature-description {
