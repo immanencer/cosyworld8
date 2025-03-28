@@ -63,7 +63,7 @@ export async function handleCommands(message, services) {
         commandResults = await Promise.all(
           commands.map(cmd =>
             services.toolService.processAction(
-              { channel: message.channel, author: { id: avatar._id, username: avatar.name }, content: message.content },
+              message,
               cmd.command,
               cmd.params,
               avatar,

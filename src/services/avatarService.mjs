@@ -439,28 +439,51 @@ export class AvatarService extends BasicService {
         }
       }
 
-      const responseSchema = {
-        type: "OBJECT",
-        properties: {
-          name: { type: "STRING", description: "The character's name" },
-          description: { type: "STRING", description: "A detailed physical description of the character" },
-          personality: { type: "STRING", description: "A description of the character's personality, traits, and background" },
-          emoji: { type: "STRING", description: "A single emoji that represents the character" },
-          model: { type: "STRING", description: "The model used to generate the avatar, if provided" }
-        },
-        required: ["name", "description", "personality"]
+      const response_format = {
+        type: "json_schema",
+        json_schema: {
+          name: "avatar",
+          strict: true,
+          schema: {
+            type: "object",
+            properties: {
+              name: {
+                type: "string",
+                description: "The character's name"
+              },
+              description: {
+                type: "string",
+                description: "A detailed physical description of the character"
+              },
+              personality: {
+                type: "string",
+                description: "A description of the character's personality, traits, and background"
+              },
+              emoji: {
+                type: "string",
+                description: "A single emoji that represents the character"
+              },
+              model: {
+                type: ["string", "null"],
+                description: "The model to be used for this avatar, if provided by the user."
+              }
+            },
+            required: ["name", "description", "personality", "emoji", "model"],
+            additionalProperties: false
+          }
+        }
       };
+      
 
       const aiResponse = await this.aiService.chat(
         [{ role: 'system', content: systemPrompt },
          { role: 'user', content: prompt }],
         {
           model: process.env.META_PROMPT_MODEL,
-          maxOutputTokens: 2048,
           temperature: 1.0,
           topP: 0.95,
           topK: 40,
-          responseSchema: responseSchema
+          response_format
         }
       );
 
@@ -783,6 +806,7 @@ export class AvatarService extends BasicService {
         // Continue even if request tracking fails
       }
 
+
       const avatarDocument = {
         name: avatar.name,
         model: avatar.model || (await this.aiService.selectRandomModel()),
@@ -872,18 +896,9 @@ export class AvatarService extends BasicService {
             _id: result.insertedId, 
             ...avatarDocument 
           };
+
+          newAvatar.stats = await this.getOrCreateStats(newAvatar._id);
           
-          // Validate the avatar object before returning
-          if (!newAvatar._id || !newAvatar.name) {
-            this.logger.error(`Created avatar is missing required fields: ${JSON.stringify(newAvatar)}`);
-            // Try to retrieve the full document from the database
-            const retrievedAvatar = await this.getAvatarById(result.insertedId);
-            if (retrievedAvatar && retrievedAvatar._id && retrievedAvatar.name) {
-              this.logger.info(`Retrieved complete avatar from database`);
-              return retrievedAvatar;
-            }
-            this.logger.error(`Could not retrieve valid avatar, this is a critical error`);
-          }
           
           return newAvatar;
         } else {

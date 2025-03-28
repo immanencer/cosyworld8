@@ -15,7 +15,8 @@
             "name": "Launch Discord Bot",
             "runtimeExecutable": "npm",
             "runtimeArgs": ["run", "dev"],
-            "envFile": "${workspaceFolder}/.env"
+            "envFile": "${workspaceFolder}/.env",
+            "console": "integratedTerminal"
         }
     ]
 }

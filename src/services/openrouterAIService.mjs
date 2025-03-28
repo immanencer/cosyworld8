@@ -99,7 +99,7 @@ export class OpenRouterAIService {
       ...this.defaultChatOptions,
       ...options,
       // Preserve any special response format instructions
-      response_format: options.response_format || this.defaultChatOptions.response_format,
+      response_format: options.responseSchema || options.response_format || this.defaultChatOptions.response_format,
       functions: options.functions,
       function_call: options.function_call,
       tools: options.tools,

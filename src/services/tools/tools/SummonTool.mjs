@@ -105,7 +105,7 @@ export class SummonTool extends BasicTool {
       if (existingAvatar) {
         await this.discordService.reactToMessage(message, existingAvatar.emoji || '🔮');
         const updatedAvatar = await this.mapService.updateAvatarPosition(existingAvatar._id, message.channel.id);
-        updatedAvatar.stats = await this.avatarService.getAvatarStats(updatedAvatar._id);
+        updatedAvatar.stats = await this.avatarService.getOrCreateStats(updatedAvatar._id);
         await this.avatarService.updateAvatar(updatedAvatar);
         await this.discordService.sendAvatarProfileEmbedFromObject(updatedAvatar);
         await this.conversationManager.sendResponse(message.channel, updatedAvatar);
@@ -174,11 +174,10 @@ export class SummonTool extends BasicTool {
 
       // Send profile and introduction
       await this.services.discordService.sendAvatarProfileEmbedFromObject(createdAvatar);
-      await this.services.discordService.replyToMessage(message, intro, createdAvatar);
+      await this.services.discordService.sendAsWebhook(message.channel.id, intro, createdAvatar);
 
       // Initialize avatar and react
       await this.services.avatarService.initializeAvatar(createdAvatar._id, message.channel.id);
-      await this.services.discordService.reactToMessage(message, createdAvatar.emoji || '🎉');
 
       // Track summon if not breeding
       if (!breed) await this.trackSummon(message.author.id);

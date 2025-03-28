@@ -1,5 +1,6 @@
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import defaultModels from '../models.google.config.mjs';
+import { response } from 'express';
 
 export class GoogleAIService {
   constructor(config = {}) {
@@ -94,6 +95,30 @@ export class GoogleAIService {
     }
   }
 
+  toResponseSchema(formatObject, schemaName = "character") {
+    return {
+      type: "json_schema",
+      json_schema: {
+        name: schemaName,
+        strict: true,
+        schema: {
+          type: "object",
+          properties: Object.fromEntries(
+            Object.entries(formatObject.properties).map(([key, value]) => ({
+              [key]: {
+                type: value.type.toLowerCase(),
+                description: value.description || ""
+              }
+            }))
+          ),
+          required: formatObject.required,
+          additionalProperties: false
+        }
+      }
+    };
+  }
+  
+
   async chat(messages, options = {}) {
     try {
       // Extract system instruction if present
@@ -141,7 +166,8 @@ export class GoogleAIService {
         temperature: options.temperature || 0.7,
         maxOutputTokens: options.max_tokens || 1024,
         topP: options.top_p || 0.95,
-        topK: options.top_k || 40
+        topK: options.top_k || 40,
+        responseSchema: options.responseSchema || (options.response_format ? this.toResponseSchema(options.response_format) : undefined),
       };
 
       // Generate response

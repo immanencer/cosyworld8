@@ -142,7 +142,7 @@ export class MapService extends BasicService {
       });
 
       // Allow string IDs by converting to ObjectId if necessary
-      const updatedAvatar = this.getAvatarById(avatarId);
+      const updatedAvatar = await this.getAvatarById(avatarId);
       if (!updatedAvatar) throw new Error(`Failed to retrieve updated avatar ${avatarId}`);
 
       if (actualPreviousLocationId && actualPreviousLocationId !== newLocationId) {
