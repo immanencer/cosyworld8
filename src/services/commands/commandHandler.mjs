@@ -1,4 +1,4 @@
-import { getSummonEmoji } from "../utils/utils.mjs";
+import { getSummonEmoji } from "../../utils/utils.mjs";
 
 export async function handleCommands(message, services) {
   const content = message.content.trim();

@@ -12,8 +12,8 @@ export default (env, argv) => {
   return {
     mode: isProduction ? 'production' : 'development',
     entry: {
-      main: './public/js/main.js',
-      adminPanel: './public/js/adminPanel.js',
+      main: './src/services/web/public/js/main.js',
+      adminPanel: './src/services/web/public/js/adminPanel.js',
     },
     output: {
       filename: '[name].bundle.js',

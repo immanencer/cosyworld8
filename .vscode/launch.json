@@ -4,15 +4,7 @@
         {
             "type": "node",
             "request": "launch",
-            "name": "Launch Server",
-            "runtimeExecutable": "npm",
-            "runtimeArgs": ["run", "serve"],
-            "envFile": "${workspaceFolder}/.env"
-        },
-        {
-            "type": "node",
-            "request": "launch",
-            "name": "Launch Discord Bot",
+            "name": "Launch Services",
             "runtimeExecutable": "npm",
             "runtimeArgs": ["run", "dev"],
             "envFile": "${workspaceFolder}/.env",

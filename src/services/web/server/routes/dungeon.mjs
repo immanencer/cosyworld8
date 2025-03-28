@@ -116,14 +116,22 @@ export default function dungeonRoutes(db) {
         return acc;
       }, {});
 
+      // Utility function to escape special characters in a string for use in a regular expression
+      function escapeRegex(string) {
+        return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      }
+
       const enrichedLog = await Promise.all(combatLog.map(async (entry) => {
+        const actorNameRegex = entry.actorName ? new RegExp(escapeRegex(entry.actorName), "i") : null;
+        const targetNameRegex = entry.target ? new RegExp(escapeRegex(entry.target), "i") : null;
+
         const [actor, target] = await Promise.all([
           db.collection('avatars').findOne(
-            { $or: [{ _id: entry.actorId ? new ObjectId(entry.actorId) : null }, { name: entry.actor }] },
+            { $or: [{ _id: entry.actorId }, { name: actorNameRegex }] },
             { projection: { _id: 1, name: 1, imageUrl: 1, emoji: 1 } }
           ),
           entry.target ? db.collection('avatars').findOne(
-            { $or: [{ _id: entry.targetId ? new ObjectId(entry.targetId) : null }, { name: entry.target }] },
+            { $or: [{ _id: entry.targetId }, { name: targetNameRegex }] },
             { projection: { _id: 1, name: 1, imageUrl: 1, emoji: 1 } }
           ) : null
         ]);
@@ -145,6 +153,12 @@ export default function dungeonRoutes(db) {
         } else if (entry.action === 'xpost') {
           const tweet = await db.collection('tweets').findOne({ avatarId: actor?._id, timestamp: entry.timestamp });
           if (tweet) additionalData.tweet = tweet.content;
+        } else if (entry.action === 'item') {
+          const item = await db.collection('items').findOne({ _id: new ObjectId(entry.itemId) });
+          if (item) additionalData.item = item;
+        } else if (entry.action === 'respond') {
+          const response = await db.collection('responses').findOne({ avatarId: actor?._id, timestamp: entry.timestamp });
+          if (response) additionalData.response = response.content;
         }
 
         const locationData = locationDetails[entry.target || entry.location];

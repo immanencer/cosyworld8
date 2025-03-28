@@ -5,7 +5,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import dotenv from 'dotenv';
 
-import { initializeServices } from '../src/services/initializeServices.mjs';
+import { initializeServices } from '../../initializeServices.mjs';
 
 // Load environment variables based on NODE_ENV
 const envFile = process.env.NODE_ENV === 'production' ? '.env.production' : '.env';
@@ -56,7 +56,7 @@ async function initializeApp() {
     const services = await initializeServices(console);
 
     // Connect to MongoDB
-    const db = services.databaseService.connect();
+    const db = await services.databaseService.connect();
     console.log(`Connected to MongoDB database`);
 
     // Store services in app.locals for route access

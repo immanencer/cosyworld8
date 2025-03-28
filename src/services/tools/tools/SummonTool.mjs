@@ -107,9 +107,10 @@ export class SummonTool extends BasicTool {
         const updatedAvatar = await this.mapService.updateAvatarPosition(existingAvatar._id, message.channel.id);
         updatedAvatar.stats = await this.avatarService.getOrCreateStats(updatedAvatar._id);
         await this.avatarService.updateAvatar(updatedAvatar);
-        await this.discordService.sendAvatarProfileEmbedFromObject(updatedAvatar);
-        await this.conversationManager.sendResponse(message.channel, updatedAvatar);
-        setTimeout(() => this.conversationManager.sendResponse(message.channel, avatar), 1000);
+        setTimeout(async () => {
+          await this.discordService.sendAvatarProfileEmbedFromObject(updatedAvatar);
+          await this.services.conversationManager.sendResponse(message.channel, updatedAvatar)
+        }, 1000);
         return `${existingAvatar.name} has been summoned to this location.`;
       }
 
@@ -183,8 +184,9 @@ export class SummonTool extends BasicTool {
       if (!breed) await this.trackSummon(message.author.id);
 
       // Send final response
+      await this.services.conversationManager.sendResponse(message.channel, avatar);
       await this.services.conversationManager.sendResponse(message.channel, createdAvatar);
-      setTimeout(() => this.services.conversationManager.sendResponse(message.channel, avatar), 1000);
+      await this.services.discordService.reactToMessage(message, createdAvatar.emoji || '🔮');
       return `${createdAvatar.name} has been summoned into existence.`;
     } catch (error) {
       this.services.logger.error(`Summon error: ${error.message}`);

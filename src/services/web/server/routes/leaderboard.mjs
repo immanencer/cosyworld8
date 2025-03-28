@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { ObjectId } from 'mongodb';
-import models from '../../src/models.config.mjs';
+import models from '../../../../models.config.mjs';
 import { thumbnailService } from '../services/thumbnailService.mjs';
 
 const rarityToTier = {

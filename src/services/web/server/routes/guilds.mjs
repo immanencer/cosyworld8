@@ -1,6 +1,6 @@
 
 import express from 'express';
-import configService from '../../src/services/configService.mjs';
+import configService from '../../../configService.mjs';
 
 const router = express.Router();
 

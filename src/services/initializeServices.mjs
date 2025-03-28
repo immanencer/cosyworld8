@@ -17,6 +17,7 @@ import { DecisionMaker } from "./chat/decisionMaker.mjs";
 import { ItemService } from "./item/itemService.mjs";
 import { PromptService } from "./promptService.mjs";
 import { MemoryService } from "./memoryService.mjs";
+import { WebService } from "./webService.mjs";
 
 /**
  * Validates the environment variables and sets defaults or exits as needed.
@@ -162,6 +163,12 @@ export async function initializeServices(logger) {
   services.periodicTaskManager.start();
   services.logger.info("PeriodicTaskManager started.");
 
+  // WebService
+  services.logger.info("Initializing WebService...");
+  services.webService = new WebService(services.logger);
+  await services.webService.start();
+  services.logger.info("WebService initialized.");
+
   // Update Arweave prompts
   services.logger.info("Updating Arweave prompts...");
   try {
@@ -183,5 +190,6 @@ export async function initializeServices(logger) {
     mapService: services.mapService,
     toolService: services.toolService,
     logger: services.logger,
+    webService: services.webService, // Added WebService to the returned object
   };
 }

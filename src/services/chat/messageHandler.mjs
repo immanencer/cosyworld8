@@ -1,5 +1,5 @@
 import { saveMessageToDatabase } from "../../utils/databaseUtils.mjs";
-import { handleCommands } from "../../commands/commandHandler.mjs";
+import { handleCommands } from "../commands/commandHandler.mjs";
 /**
  * Handles Discord messages by processing commands, managing avatars, and generating responses.
  */

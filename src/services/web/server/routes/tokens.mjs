@@ -1,8 +1,8 @@
 
 import express from 'express';
-import { TokenService } from '../../src/services/tokenService.mjs';
+import { TokenService } from '../../../tokenService.mjs';
 import { ObjectId } from 'mongodb';
-import { processImage } from '../../src/services/utils/processImage.mjs';
+import { processImage } from '../../../utils/processImage.mjs';
 import { PublicKey } from '@solana/web3.js';
 import * as bs58 from 'bs58';
 import nacl from 'tweetnacl';

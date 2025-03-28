@@ -15,14 +15,14 @@ export async function loadContent() {
   if (!content) return;
   
   try {
-    const posts = await SocialAPI.getPosts({ sort: state.socialSort });
+    const data = await SocialAPI.getPosts({ sort: state.socialSort });
     
-    if (!posts || posts.length === 0) {
+    if (!data || !data.posts|| data.posts.length === 0) {
       renderEmptyState(content);
       return;
     }
     
-    renderSocialFeed(content, posts);
+    renderSocialFeed(content, data.posts);
   } catch (err) {
     console.error("Load Social Content error:", err);
     content.innerHTML = `
@@ -59,6 +59,7 @@ function renderEmptyState(container) {
  * @param {Array} posts - List of posts to render
  */
 function renderSocialFeed(container, posts) {
+  console.log(posts);
   container.innerHTML = `
     <div class="max-w-6xl mx-auto px-4">
       <div class="flex flex-col md:flex-row justify-between items-center mb-6">
