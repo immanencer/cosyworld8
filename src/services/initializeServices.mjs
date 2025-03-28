@@ -79,7 +79,7 @@ export async function initializeServices(logger) {
 
   // DiscordService
   services.logger.info("Initializing DiscordService...");
-  services.discordService = new DiscordService(services.logger, services.configService, services.databaseService);
+  services.discordService = new DiscordService(services);
   await services.discordService.initialize();
   services.logger.info("DiscordService initialized.");
 
@@ -103,17 +103,17 @@ export async function initializeServices(logger) {
   services.statGenerationService = new StatGenerationService(services);
   services.logger.info("StatGenerationService initialized.");
 
-  // AvatarService
-  services.logger.info("Initializing AvatarService...");
-  services.avatarService = new AvatarService(services);
-  await services.avatarService.initializeDatabase();
-  services.logger.info("AvatarService initialized.");
-
   // MapService
   services.logger.info("Initializing MapService...");
   services.mapService = new MapService(services);
   await services.mapService.initializeDatabase();
   services.logger.info("MapService initialized.");
+  
+  // AvatarService
+  services.logger.info("Initializing AvatarService...");
+  services.avatarService = new AvatarService(services);
+  await services.avatarService.initializeDatabase();
+  services.logger.info("AvatarService initialized.");
   
   // ChannelManager
   services.logger.info("Initializing ChannelManager...");

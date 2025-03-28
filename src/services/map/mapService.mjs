@@ -5,19 +5,22 @@ import { toObjectId } from '../utils/toObjectId.mjs';
 export class MapService extends BasicService {
   /**
    * Constructs a new MapService instance for managing dungeon state.
-   * @param {Object} client - The Discord client instance.
-   * @param {Object} logger - Logging interface.
-   * @param {Object} avatarService - Service for avatar operations.
-   * @param {import('mongodb').Db} db - MongoDB database connection.
-   */
+   * @param {Object} services - Service instances to manage.
+   **/
   constructor(services) {
     super(services, [
       'discordService',
-      'avatarService',
       'databaseService',
+      'configService',
     ]);
     this.client = this.discordService.client;
     this.db = this.databaseService.getDatabase();
+
+    const mongoConfig = this.configService.getMongoConfig();
+    this.AVATARS_COLLECTION = mongoConfig.collections.avatars || 'avatars';
+    this.LOCATIONS_COLLECTION = mongoConfig.collections.locations || 'locations';
+    this.DUNGEON_POSITIONS_COLLECTION = mongoConfig.collections.dungeonPositions || 'dungeon_positions';
+    this.DUNGEON_STATS_COLLECTION = mongoConfig.collections.dungeonStats || 'dungeon_stats';
   }
 
   // --- Utility Methods ---
@@ -91,14 +94,35 @@ export class MapService extends BasicService {
     };
   }
 
+  /**
+   * Fetches an avatar by its ID.
+   * @param {ObjectId|string} id - The ID of the avatar to fetch.
+   * @returns {Object} - The avatar object.
+   * @throws {Error} - If the avatar is not found.
+   */
+  async getAvatarById(id) {
+    try {
+      const collection = this.db.collection(this.AVATARS_COLLECTION);
+      // Allow string IDs by converting to ObjectId if necessary
+      const avatar = await collection.findOne({ _id: typeof id === 'string' ? new ObjectId(id) : id });
+      if (!avatar) {
+        throw new Error(`Avatar with ID "${id}" not found.`);
+      }
+      return avatar;
+    } catch (error) {
+      this.logger.error(`Error fetching avatar by ID: ${error.message}`);
+      throw error;
+    }
+  }
+
   async updateAvatarPosition(avatarId, newLocationId, previousLocationId = null, sendProfile = false) {
-    const objectId = toObjectId(avatarId);
     const db = this.ensureDb();
     const session = await this.db.client.startSession();
 
     try {
-      const currentAvatar = await this.avatarService?.getAvatarById(objectId);
-      if (!currentAvatar) throw new Error(`Avatar not found: ${objectId}`);
+      const currentAvatar = await this.getAvatarById(avatarId);
+      const objectId = toObjectId(avatarId);
+      if (!currentAvatar) throw new Error(`Avatar not found: ${avatarId}`);
       const actualPreviousLocationId = previousLocationId || currentAvatar?.channelId;
 
       if (actualPreviousLocationId === newLocationId) return currentAvatar;
@@ -117,7 +141,8 @@ export class MapService extends BasicService {
         );
       });
 
-      const updatedAvatar = await this.avatarService?.getAvatarById(objectId);
+      // Allow string IDs by converting to ObjectId if necessary
+      const updatedAvatar = this.getAvatarById(avatarId);
       if (!updatedAvatar) throw new Error(`Failed to retrieve updated avatar ${avatarId}`);
 
       if (actualPreviousLocationId && actualPreviousLocationId !== newLocationId) {

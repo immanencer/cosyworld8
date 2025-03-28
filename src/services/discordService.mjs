@@ -5,22 +5,21 @@ import {
   Partials,
   WebhookClient,
   EmbedBuilder,
-  ButtonBuilder,
-  ButtonStyle,
-  ActionRowBuilder,
 } from 'discord.js';
-import winston from 'winston';
-import configService from './configService.mjs';
 import { chunkMessage } from './utils/messageChunker.mjs';
 import { processMessageLinks } from './utils/linkProcessor.mjs';
 import models from '../models.config.mjs';
 import rarityColors from './utils/rarityColors.mjs';
 
-export class DiscordService {
-  constructor(logger, configService, databaseService) {
-    this.logger = logger;
-    this.configService = configService;
-    this.databaseService = databaseService;
+import { BasicService } from './BasicService.mjs';
+
+export class DiscordService extends BasicService {
+  constructor(services) {
+    super(services, [
+      'logger',
+      'configService',
+      'databaseService'
+    ]);
     this.webhookCache = new Map();
     this.client = new Client({
       intents: [
@@ -31,7 +30,7 @@ export class DiscordService {
       ],
       partials: [Partials.Message, Partials.Channel, Partials.Reaction],
     });
-    this.db = databaseService.getDatabase();
+    this.db = services.databaseService.getDatabase();
     this.setupEventListeners();
   }
 
@@ -199,7 +198,7 @@ export class DiscordService {
     }
   }
 
-  async sendAvatarProfileEmbedFromObject(avatar, targetChannelId) {
+  async sendAvatarProfileEmbedFromObject(avatar, targetChannelId, services) {
     this.validateAvatar(avatar);
     const channelId = targetChannelId || avatar.channelId;
     if (!channelId || typeof channelId !== 'string') throw new Error('Invalid channel ID in avatar object');
@@ -215,8 +214,8 @@ export class DiscordService {
       if (!channel || !channel.isTextBased()) throw new Error(`Channel not found or not text-based: ${channelId}`);
       const webhook = await this.getOrCreateWebhook(channel);
       if (!webhook) throw new Error('Failed to obtain webhook');
-      const embed = await this.buildAvatarEmbed(avatar);
-      const components = await this.buildAvatarComponents(avatar);
+      const embed = await this.buildAvatarEmbed(avatar, services);
+      const components = await this.buildAvatarComponents(avatar, services);
       await webhook.send({
         embeds: [embed],
         components,
@@ -230,11 +229,32 @@ export class DiscordService {
     }
   }
 
-  async buildAvatarEmbed(avatar) {
-    const { _id, name, emoji, short_description, description, imageUrl, model, createdAt, updatedAt, stats, traits, innerMonologueThreadId, channelId } = avatar;
+  async buildAvatarEmbed(avatar, services) {
+    // Destructure avatar properties
+    const {
+      _id,
+      name,
+      emoji,
+      short_description,
+      description,
+      imageUrl,
+      model,
+      createdAt,
+      updatedAt,
+      traits,
+      innerMonologueThreadId,
+      channelId,
+      stats,
+      inventory = [], // Default to empty array if missing
+    } = avatar;
+  
+    // Get rarity and color for the embed
     const rarity = this.getModelRarity(model);
     const embedColor = rarityColors[rarity.toLowerCase()] || rarityColors.undefined;
     const tier = { legendary: 'S', rare: 'A', uncommon: 'B', common: 'C', undefined: 'U' }[rarity.toLowerCase()] || 'U';
+  
+  
+    // Create the embed
     const embed = new EmbedBuilder()
       .setColor(embedColor)
       .setTitle(`${emoji} ${name}`)
@@ -245,22 +265,53 @@ export class DiscordService {
       .addFields(
         { name: '🎂 Summonsday', value: `<t:${Math.floor(new Date(createdAt || Date.now()).getTime() / 1000)}:F>`, inline: true },
         { name: `🧠 Tier ${tier}`, value: model || 'N/A', inline: true }
-      )
+      );
+  
+    // Add D&D-style stats and health
+    if (stats) {
+      const { strength, dexterity, constitution, intelligence, wisdom, charisma, hp } = stats;
+
+      // Calculate modifiers and derived stats
+      const conModifier = Math.floor((constitution - 10) / 2);
+      const maxHp = 10 + conModifier; // Assuming level 1 with d10 hit die
+      const dexModifier = Math.floor((dexterity - 10) / 2);
+      const ac = 10 + dexModifier; // Base AC without armor
+      
+      // Combine all stats into a single string
+      const statsString = [
+        `🛡️ AC ${ac} ❤️ HP ${hp} / ${maxHp}`,
+        `-# ⚔️ ${strength} 🏃 ${dexterity} 🩸 ${constitution}`,
+        `-# 🧠 ${intelligence} 🌟 ${wisdom} 💬 ${charisma}`,
+      ].join('\n');
+      
+      // Add the single field to the embed
+      embed.addFields({
+        name: 'Stats',
+        value: statsString,
+        inline: false
+      });
+    }
+  
+    // Add inventory
+    if (inventory && inventory.length > 0) {
+      const inventoryList = inventory.map(item => `• ${item.name}`).join('\n');
+      // Truncate if too long to avoid exceeding field limit (1024 characters)
+      const truncatedList = inventoryList.length > 1000 ? `${inventoryList.slice(0, 997)}...` : inventoryList;
+      embed.addFields({ name: '🎒 Inventory', value: truncatedList || 'No items', inline: false });
+    } else {
+      embed.addFields({ name: '🎒 Inventory', value: 'Empty', inline: false });
+    }
+  
+    // Add optional fields
+    if (traits) embed.addFields({ name: '🧬 Traits', value: traits, inline: false });
+    if (innerMonologueThreadId) embed.addFields({ name: '🧵 Inner Monologue', value: `<#${innerMonologueThreadId}>`, inline: false });
+  
+    // Set footer and image
+    embed
       .setImage(imageUrl)
       .setTimestamp(new Date(updatedAt || Date.now()))
       .setFooter({ text: `Profile of ${name}`, iconURL: imageUrl });
-    if (traits) embed.addFields({ name: '🧬 Traits', value: traits, inline: false });
-    if (innerMonologueThreadId) embed.addFields({ name: '🧵 Inner Monologue', value: `<#${innerMonologueThreadId}>`, inline: false });
-    if (stats) {
-      const { attack, defense, hp } = stats;
-      embed.addFields({
-        name: 'Stats',
-        value: `${this.generateProgressBar(attack, 5, '⚔️')} ${attack}\n${this.generateProgressBar(defense, 5, '🛡️')} ${defense}\n${this.generateProgressBar(hp, 33, '❣️')} ${hp}`,
-        inline: true,
-      });
-    } else {
-      embed.addFields({ name: 'Stats', value: 'N/A', inline: true });
-    }
+  
     return embed;
   }
 

@@ -17,6 +17,7 @@ export class AvatarService extends BasicService {
       'statGenerationService',
       'aiService',
       'configService',
+      'mapService',
     ]);
     this.db = this.databaseService.getDatabase();
     this.channelAvatars = new Map(); // channelId -> Set of avatarIds
@@ -38,23 +39,6 @@ export class AvatarService extends BasicService {
 
     this.prompts = null;
     this.avatarCache = [];
-  }
-
-  initializeLogger() {
-    const logger = winston.createLogger({
-      level: 'info',
-      format: winston.format.combine(
-        winston.format.timestamp(),
-        winston.format.printf(
-          ({ timestamp, level, message }) => `${timestamp} [${level.toUpperCase()}]: ${message}`
-        )
-      ),
-      transports: [
-        new winston.transports.Console(),
-        new winston.transports.File({ filename: 'avatarService.log' }),
-      ],
-    });
-    return logger;
   }
 
   initializeReplicate(aiConfig) {
@@ -105,7 +89,7 @@ export class AvatarService extends BasicService {
     const objectId = toObjectId(avatarId);
     const defaultStats = { hp: 100, attack: 10, defense: 5 };
     await this.updateAvatarStats(objectId, defaultStats);
-    if (locationId) await this.updateAvatarPosition(objectId, locationId);
+    if (locationId) await this.mapService.updateAvatarPosition(objectId, locationId);
     this.logger.info(`Initialized avatar ${avatarId}${locationId ? ` at ${locationId}` : ''}`);
     return { ...defaultStats, avatarId: objectId };
   }

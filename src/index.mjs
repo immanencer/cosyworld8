@@ -1,20 +1,6 @@
 // index.mjs
-import winston from "winston";
+import { logger } from "./services/logger.mjs";
 import { initializeServices } from "./services/initializeServices.mjs";
-
-const logFormat = winston.format.printf(
-  ({ timestamp, level, message }) => `${timestamp} [${level.toUpperCase()}]: ${message}`
-);
-
-const logger = winston.createLogger({
-  level: process.env.LOG_LEVEL || "debug",
-  format: winston.format.combine(winston.format.timestamp(), logFormat),
-  transports: [
-    new winston.transports.Console({
-      format: winston.format.combine(logFormat),
-    }),
-  ],
-});
 
 async function shutdown(signal, services) {
   logger.info(`Received ${signal}. Shutting down gracefully...`);
