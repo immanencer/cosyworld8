@@ -87,20 +87,20 @@ export class AvatarService extends BasicService {
 
   async initializeAvatar(avatarId, locationId) {
     const objectId = toObjectId(avatarId);
-    const defaultStats = { hp: 100, attack: 10, defense: 5 };
+    const defaultStats = await this.getOrCreateStats(avatarId);
     await this.updateAvatarStats(objectId, defaultStats);
     if (locationId) await this.mapService.updateAvatarPosition(objectId, locationId);
     this.logger.info(`Initialized avatar ${avatarId}${locationId ? ` at ${locationId}` : ''}`);
     return { ...defaultStats, avatarId: objectId };
   }
 
-  async getOrCreateStats(avatarId, services) {
-    let stats = await services.avatarService.getAvatarStats(avatarId);
-    if (!stats || !services.statGenerationService.validateStats(stats)) {
-      const avatar = await services.avatarService.getAvatarById(avatarId);
-      stats = services.statGenerationService.generateStatsFromDate(avatar?.createdAt || new Date());
+  async getOrCreateStats(avatarId) {
+    let stats = await this.getAvatarStats(avatarId);
+    if (!stats || !this.statGenerationService.validateStats(stats)) {
+      const avatar = await this.getAvatarById(avatarId);
+      stats = this.statGenerationService.generateStatsFromDate(avatar?.createdAt || new Date());
       stats.avatarId = avatarId;
-      await services.avatarService.updateAvatarStats(avatarId, stats);
+      await this.updateAvatarStats(avatarId, stats);
     }
     return stats;
   }
