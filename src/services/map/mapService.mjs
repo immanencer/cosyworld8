@@ -1,4 +1,4 @@
-import { BasicService } from '../BasicService.mjs';
+import { BasicService } from '../basicService.mjs';
 
 import { toObjectId } from '../utils/toObjectId.mjs';
 
@@ -15,8 +15,8 @@ export class MapService extends BasicService {
     ]);
     this.client = this.discordService.client;
     this.db = this.databaseService.getDatabase();
+    const mongoConfig = this.configService.config.mongo;
 
-    const mongoConfig = this.configService.getMongoConfig();
     this.AVATARS_COLLECTION = mongoConfig.collections.avatars || 'avatars';
     this.LOCATIONS_COLLECTION = mongoConfig.collections.locations || 'locations';
     this.DUNGEON_POSITIONS_COLLECTION = mongoConfig.collections.dungeonPositions || 'dungeon_positions';

@@ -8,7 +8,7 @@ import { uploadImage } from './s3/s3imageService.mjs';
 import { toObjectId } from './utils/toObjectId.mjs';
 import fs from 'fs/promises';
 
-import { BasicService } from './BasicService.mjs';
+import { BasicService } from './basicService.mjs';
 
 export class AvatarService extends BasicService {
   constructor(services) {
@@ -24,10 +24,10 @@ export class AvatarService extends BasicService {
     this.avatarActivityCount = new Map(); // avatarId -> activity count
 
     try {
-      const aiConfig = this.configService.getAIConfig();
+      const aiConfig = this.configService.config.ai;
       this.replicate = this.initializeReplicate(aiConfig);
 
-      const mongoConfig = this.configService.getMongoConfig();
+      const mongoConfig = this.configService.config.mongo;
       this.IMAGE_URL_COLLECTION = mongoConfig?.collections?.imageUrls || 'image_urls';
       this.AVATARS_COLLECTION = mongoConfig?.collections?.avatars || 'avatars';
     } catch (error) {
@@ -424,7 +424,7 @@ export class AvatarService extends BasicService {
         "name": "Character Name",
         "description": "Detailed physical description of the character",
         "personality": "Description of the character's personality traits and background",
-        "emoji": "🔮",
+        "emoji": "${this.configService.getGuildConfig(guildId).summonEmoji}",
         "model": "optional model name (if specifically provided)"
       }`;
 
@@ -560,7 +560,7 @@ export class AvatarService extends BasicService {
     }
 
     try {
-      const aiConfig = this.configService.getAIConfig() || {};
+      const aiConfig = this.configService.config.ai || {};
       const replicateConfig = aiConfig.replicate || {};
       const trigger = replicateConfig.loraTriggerWord || '';
       const model = replicateConfig.model;

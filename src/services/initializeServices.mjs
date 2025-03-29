@@ -1,10 +1,10 @@
 // initializeServices.mjs
 import { DatabaseService } from "./databaseService.mjs";
+import { ConfigService } from "./configService.mjs";
 import { SpamControlService } from "./spamControlService.mjs";
 import { AIService } from "./aiService.mjs";
 import { AvatarService } from "./avatarService.mjs";
 import { ImageProcessingService } from "./imageProcessingService.mjs";
-import configService from "./configService.mjs";
 import { ToolService } from "./tools/ToolService.mjs";
 import { MapService } from "./map/mapService.mjs";
 import { StatGenerationService } from "./tools/statGenerationService.mjs";
@@ -24,7 +24,6 @@ import { WebService } from "./webService.mjs";
  * @param {Object} logger - The logger instance for logging warnings and errors.
  */
 async function validateEnvironment(logger) {
-  configService.validate();
   const { MONGO_URI, DISCORD_BOT_TOKEN, DISCORD_CLIENT_ID, NODE_ENV } = process.env;
   const isDev = NODE_ENV === "development" || NODE_ENV === "test" || !NODE_ENV;
 
@@ -64,8 +63,7 @@ export async function initializeServices(logger) {
 
   // Initialize services object with logger and configService
   const services = {
-    logger,
-    configService,
+    logger
   };
 
   // DatabaseService
@@ -77,6 +75,13 @@ export async function initializeServices(logger) {
     throw new Error("Database connection failed in production mode.");
   }
   services.logger.info("DatabaseService initialized.");
+
+  // ConfigService
+  services.logger.info("Initializing ConfigService...");
+  services.configService = new ConfigService(services);
+  services.configService.validate();
+  services.logger.info("ConfigService initialized.");
+
 
   // DiscordService
   services.logger.info("Initializing DiscordService...");
@@ -96,7 +101,7 @@ export async function initializeServices(logger) {
 
   // SpamControlService
   services.logger.info("Initializing SpamControlService...");
-  services.spamControlService = new SpamControlService(db, services.logger);
+  services.spamControlService = new SpamControlService(services);
   services.logger.info("SpamControlService initialized.");
 
   // StatGenerationService
@@ -165,7 +170,7 @@ export async function initializeServices(logger) {
 
   // WebService
   services.logger.info("Initializing WebService...");
-  services.webService = new WebService(services.logger);
+  services.webService = new WebService(services);
   await services.webService.start();
   services.logger.info("WebService initialized.");
 

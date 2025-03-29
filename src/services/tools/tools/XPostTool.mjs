@@ -165,12 +165,3 @@ export class XPostTool extends BasicTool {
         }
     }
 }
-
-// Ensure indexes for performance
-async function ensureIndexes() {
-    const client = await new XPostTool({}).getMongoClient();
-    const db = client.db(process.env.MONGO_DB_NAME);
-    await db.collection('x_auth').createIndex({ avatarId: 1 }, { unique: true });
-    await db.collection('social_posts').createIndex({ avatarId: 1, timestamp: -1 });
-}
-ensureIndexes().catch(console.error);

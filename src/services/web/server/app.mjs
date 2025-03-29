@@ -5,8 +5,6 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import dotenv from 'dotenv';
 
-import { initializeServices } from '../../initializeServices.mjs';
-
 // Load environment variables based on NODE_ENV
 const envFile = process.env.NODE_ENV === 'production' ? '.env.production' : '.env';
 dotenv.config({ path: envFile });
@@ -51,17 +49,14 @@ app.get('/admin/avatar-management', (req, res) => {
 /**
  * Initializes the application, including database, services, and routes.
  */
-async function initializeApp() {
+async function initializeApp(services) {
   try {
-    const services = await initializeServices(console);
-
-    // Connect to MongoDB
-    const db = await services.databaseService.connect();
-    console.log(`Connected to MongoDB database`);
 
     // Store services in app.locals for route access
     app.locals.services = services;
     console.log('Core services initialized and stored in app.locals');
+
+    const db = await services.databaseService.getDatabase();
 
     // **Route Setup**
     // Pass db to routes; services are accessed via req.app.locals.services
@@ -75,7 +70,8 @@ async function initializeApp() {
     app.use('/api/wiki', (await import('./routes/wiki.mjs')).default(db));
     app.use('/api/social', (await import('./routes/social.mjs')).default(db));
     app.use('/api/claims', (await import('./routes/claims.mjs')).default(db));
-    app.use('/api/guilds', (await import('./routes/guilds.mjs')).default(db, services.discordService.client));
+    app.use('/api/guilds', (await import('./routes/guilds.mjs')).default(
+      db, services.discordService.client, services.configService));
     app.use('/api/admin', (await import('./routes/admin.mjs')).default(db));
     app.use('/api/rati', (await import('./routes/rati.mjs')).default(db));
 
@@ -142,9 +138,7 @@ async function initializeApp() {
     console.error('Failed to initialize server:', error);
     process.exit(1);
   }
+  return app;
 }
 
-// Start the application
-initializeApp().catch(console.error);
-
-export default app;
+export default initializeApp;

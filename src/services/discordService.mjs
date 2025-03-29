@@ -11,7 +11,7 @@ import { processMessageLinks } from './utils/linkProcessor.mjs';
 import models from '../models.config.mjs';
 import rarityColors from './utils/rarityColors.mjs';
 
-import { BasicService } from './BasicService.mjs';
+import { BasicService } from './basicService.mjs';
 
 export class DiscordService extends BasicService {
   constructor(services) {

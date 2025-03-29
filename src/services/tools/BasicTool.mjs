@@ -1,4 +1,4 @@
-import { BasicService } from '../BasicService.mjs';
+import { BasicService } from '../basicService.mjs';
 export class BasicTool extends BasicService {
 
   constructor(services, requiredServices) { 

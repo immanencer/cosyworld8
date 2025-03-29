@@ -25,6 +25,7 @@ export async function saveMessageToDatabase(message, services) {
   }));
 
   const messageData = {
+    guildId: message.guild.id,
     messageId: message.id,
     channelId: message.channel.id,
     authorId: message.author.id,

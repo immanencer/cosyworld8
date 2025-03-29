@@ -22,19 +22,19 @@ export class DatabaseService {
     if (this.db) {
       return this.db;
     }
-    
+
     // Check if we're in development mode
     const isDev = process.env.NODE_ENV === 'development' || process.env.NODE_ENV === 'test' || !process.env.NODE_ENV;
-    
+
     if (!process.env.MONGO_URI) {
       this.logger.error('MongoDB URI not provided in environment variables.');
-      
+
       if (isDev) {
         this.logger.warn('Creating mock database for development mode');
         this.setupMockDatabase();
         return this.db;
       }
-      
+
       return null;
     }
 
@@ -44,7 +44,7 @@ export class DatabaseService {
         serverSelectionTimeoutMS: 5000,
         connectTimeoutMS: 10000,
       });
-      
+
       await this.dbClient.connect();
       this.db = this.dbClient.db(this.dbName);
       this.connected = true;
@@ -54,7 +54,7 @@ export class DatabaseService {
     } catch (error) {
       this.connected = false;
       this.logger.error(`MongoDB connection failed: ${error.message}`);
-      
+
       if (this.dbClient) {
         try {
           await this.dbClient.close();
@@ -78,7 +78,7 @@ export class DatabaseService {
       return null;
     }
   }
-  
+
   /**
    * Sets up a mock database for development/testing
    */
@@ -98,7 +98,7 @@ export class DatabaseService {
       listCollections: () => ({ toArray: async () => [] }),
       createCollection: async () => ({}),
     };
-    
+
     this.connected = true;
     this.logger.info('Mock database initialized for development mode');
   }
@@ -159,6 +159,7 @@ export class DatabaseService {
           { key: { emoji: 1 }, background: true },
           { key: { parents: 1 }, background: true },
           { key: { createdAt: -1 }, background: true },
+          { key: { channelId: 1 }, background: true },
           { key: { name: 'text', description: 'text' }, background: true },
         ]),
         db.collection('dungeon_stats').createIndex(
@@ -179,7 +180,9 @@ export class DatabaseService {
           { key: { target: 1 }, background: true },
         ]),
         db.collection('messages').createIndex({ hasImages: 1 }),
-        db.collection('messages').createIndex({ imageDescription: 1 })
+        db.collection('messages').createIndex({ imageDescription: 1 }),
+        db.collection('x_auth').createIndex({ avatarId: 1 }, { unique: true }),
+        db.collection('social_posts').createIndex({ avatarId: 1, timestamp: -1 }),
       ]);
       this.logger.info('Database indexes created successfully');
     } catch (error) {

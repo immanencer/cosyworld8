@@ -9,7 +9,7 @@ export class BreedTool extends BasicTool {
       'memoryService',
       'configService',
       'databaseService',
-      'discordService'
+      'discordService',
     ]);
     this.name = 'breed';
     this.description = 'Breeds two avatars together';
@@ -25,7 +25,6 @@ export class BreedTool extends BasicTool {
     
     try {
       const guildConfig = await this.configService.getGuildConfig(
-        this.databaseService.getDatabase(),
         guildId
       );
       
@@ -43,12 +42,16 @@ export class BreedTool extends BasicTool {
     const emoji = await this.getEmoji(guildId);
     return `${emoji} <avatar1> <avatar2>`;
   }
+  async getMemories(avatar, count = 10) {
+    const memoryRecords = await this.memoryService.getMemories(avatar._id, count);
+    return memoryRecords.map(m => m.memory).join('\n');
+  }
 
-  async execute(message, params, avatar, services) {
+  async execute(message, params, avatar) {
     try {
       const commandLine = message.content.trim().substring(2).trim();
-      const avatars = await services.avatarService.getAvatarsInChannel(message.channel.id);
-      const mentionedAvatars = Array.from(services.avatarService.extractMentionedAvatars(commandLine, avatars))
+      const avatars = await this.avatarService.getAvatarsInChannel(message.channel.id);
+      const mentionedAvatars = Array.from(this.avatarService.extractMentionedAvatars(commandLine, avatars))
         .sort(() => Math.random() - 0.5)
         .slice(-2);
 
@@ -64,7 +67,7 @@ export class BreedTool extends BasicTool {
       }
 
       const checkRecentBreed = async (avatar) => {
-        const lastBred = await services.avatarService.getLastBredDate(avatar._id.toString());
+        const lastBred = await this.avatarService.getLastBredDate(avatar._id.toString());
         return lastBred && (Date.now() - new Date(lastBred) < 24 * 60 * 60 * 1000);
       };
 
@@ -75,18 +78,21 @@ export class BreedTool extends BasicTool {
 
       await this.discordService.replyToMessage(message, `Breeding ${avatar1.name} with ${avatar2.name}...`);
       
+      const avatar1memories = await this.getMemories(avatar1, 100);
+      const avatar2memories = await this.getMemories(avatar2, 100);
+
       const prompt = `Breed the following avatars to combine them, develop a short backstory for the offspring:\n\n` +
-        `AVATAR 1: ${avatar1.name} - ${avatar1.prompt}\n${avatar1.description}\n${avatar1.personality}\n${await services.memoryService.getMemories(avatar1._id, 100)}\n\n` +
-        `AVATAR 2: ${avatar2.name} - ${avatar2.prompt}\n${avatar2.description}\n${avatar2.personality}\n${await services.memoryService.getMemories(avatar1._id, 100)}\n\n` +
+        `AVATAR 1: ${avatar1.name} - ${avatar1.prompt}\n${avatar1.description}\n${avatar1.personality}\n\nMemories\n\n${avatar1memories}\n\n` +
+        `AVATAR 2: ${avatar2.name} - ${avatar2.prompt}\n${avatar2.description}\n${avatar2.personality}\n\nMemories\n\n${avatar2memories}\n\n` +
         `Combine their attributes creatively, avoiding cosmic or mystical elements and aiming for a down-to-earth feel suitable for the Monstone Sanctum.`;
 
       const originalContent = message.content;
-      message.content = `🔮 ${prompt}`;
+      message.content = `${this.configService.getGuildConfig(message.guildId).summonEmoji} ${prompt}`;
 
       console.log('BreedTool: executing SummonTool with prompt:', message.content);
       
-      const summonTool = new SummonTool(services);
-      const result = await summonTool.execute(message, { breed: true, attributes: { parents: [avatar1._id, avatar2._id] } }, avatar, services);
+      const summonTool = new SummonTool(this.services);
+      const result = await summonTool.execute(message, { breed: true, attributes: { parents: [avatar1._id, avatar2._id] } }, avatar);
       message.content = originalContent;
       
       return `Successfully bred: ${result}`;

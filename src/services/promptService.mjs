@@ -1,4 +1,4 @@
-import { BasicService } from "./BasicService.mjs";
+import { BasicService } from "./basicService.mjs";
 
 export class PromptService extends BasicService {
   constructor(services) {
@@ -10,7 +10,8 @@ export class PromptService extends BasicService {
       "itemService",
       "discordService",
       "mapService",
-      "databaseService"
+      "databaseService",
+      "configService",
     ]);
 
     this.client = this.discordService.client;
@@ -46,7 +47,7 @@ ${lastNarrative ? lastNarrative.content : ''}
    * @returns {Promise<string>} The assistant context.
    */
   async getNarrativeAssistantContext(avatar) {
-    const memories = await this.getMemories(avatar);
+    const memories = await this.getMemories(avatar,100);
     const recentActions = await this.getRecentActions(avatar);
     const narrativeContent = await this.getNarrativeContent(avatar);
     return `Current personality: ${avatar.dynamicPersonality || 'None yet'}\n\nMemories: ${memories}\n\nRecent actions: ${recentActions}\n\nNarrative thoughts: ${narrativeContent}`;
@@ -58,7 +59,7 @@ ${lastNarrative ? lastNarrative.content : ''}
    * @returns {Promise<string>} The narrative user prompt.
    */
   async buildNarrativePrompt(avatar) {
-    const memories = await this.getMemories(avatar);
+    const memories = await this.getMemories(avatar,100);
     const recentActions = await this.getRecentActions(avatar);
     const narrativeContent = await this.getNarrativeContent(avatar);
     return `
@@ -91,7 +92,7 @@ Based on all of the above context, share an updated personality that reflects yo
     const selectedItemText = selectedItem ? `Selected item: ${selectedItem.name}` : 'No item selected.';
     const groundItems = await this.itemService.searchItems(avatar.channelId, '');
     const groundItemsText = groundItems.length > 0 ? `Items on the ground: ${groundItems.map(i => i.name).join(', ')}` : 'There are no items on the ground.';
-    let summonEmoji = '🔮';
+    let summonEmoji = this.configService.getGuildConfig(guildId)?.summonEmoji || '🔮';
     let breedEmoji = '🏹';
     try {
       if (avatar.channelId) {
@@ -187,8 +188,8 @@ ${imageDescriptions.length > 0 ? 'Incorporate the described images into your res
   }
 
   // Existing helper methods (unchanged unless noted)
-  async getMemories(avatar) {
-    const memoryRecords = await this.memoryService.getMemories(avatar._id);
+  async getMemories(avatar, count = 10) {
+    const memoryRecords = await this.memoryService.getMemories(avatar._id, count);
     return memoryRecords.map(m => m.memory).join('\n');
   }
 

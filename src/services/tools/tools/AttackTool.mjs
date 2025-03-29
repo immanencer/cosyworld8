@@ -115,7 +115,6 @@ export class AttackTool extends BasicTool {
 
     try {
       const guildConfig = await this.configService.getGuildConfig(
-        this.databaseService.getDatabase(),
         guildId
       );
 

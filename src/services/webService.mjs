@@ -1,11 +1,11 @@
 import { BasicService } from './basicService.mjs';
-import app from './web/server/app.mjs';
+import initializeApp from './web/server/app.mjs';
 
 export class WebService extends BasicService {
   async start() {
     try {
       console.log('Starting WebService...');
-      await app; // Ensure the app is initialized
+      await initializeApp(this.services); // Ensure the app is initialized
       console.log('WebService started successfully.');
     } catch (error) {
       console.error('Failed to start WebService:', error);

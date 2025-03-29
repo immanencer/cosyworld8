@@ -1,13 +1,12 @@
 
 import express from 'express';
-import configService from '../../../configService.mjs';
 
 const router = express.Router();
 
 const asyncHandler = (fn) => (req, res, next) =>
   Promise.resolve(fn(req, res, next)).catch(next);
 
-export default function(db, client) {
+export default function(db, client, configService) {
   // Get all guild configurations
   router.get('/', asyncHandler(async (req, res) => {
     const guildConfigs = await configService.getAllGuildConfigs(db);
@@ -153,12 +152,12 @@ export default function(db, client) {
 
     try {
       // Check if guild config already exists
-      const existingConfig = await configService.getGuildConfig(db, guildData.guildId);
+      const existingConfig = await configService.getGuildConfig(guildData.guildId);
 
       // If it exists, update it
       if (existingConfig) {
         const result = await configService.updateGuildConfig(db, guildData.guildId, guildData);
-        const updatedConfig = await configService.getGuildConfig(db, guildData.guildId);
+        const updatedConfig = await configService.getGuildConfig(guildData.guildId);
         return res.json(updatedConfig);
       }
 
@@ -222,7 +221,7 @@ export default function(db, client) {
 
       const result = await db.collection('guild_configs').insertOne(newGuildConfig);
 
-      const createdConfig = await configService.getGuildConfig(db, guildData.guildId);
+      const createdConfig = await configService.getGuildConfig(guildData.guildId);
       res.status(201).json(createdConfig);
     } catch (error) {
       console.error('Error creating guild configuration:', error);
@@ -233,7 +232,7 @@ export default function(db, client) {
   // Get a specific guild configuration
   router.get('/:guildId', asyncHandler(async (req, res) => {
     const { guildId } = req.params;
-    const guildConfig = await configService.getGuildConfig(db, guildId);
+    const guildConfig = await configService.getGuildConfig(guildId);
 
     if (!guildConfig) {
       return res.status(404).json({ error: 'Guild configuration not found' });
@@ -249,7 +248,7 @@ export default function(db, client) {
 
     try {
       const result = await configService.updateGuildConfig(db, guildId, updates);
-      const updatedConfig = await configService.getGuildConfig(db, guildId);
+      const updatedConfig = await configService.getGuildConfig(guildId);
       res.json(updatedConfig);
     } catch (error) {
       res.status(400).json({ error: error.message });
@@ -263,7 +262,7 @@ export default function(db, client) {
 
     try {
       const result = await configService.updateGuildConfig(db, guildId, updates);
-      const updatedConfig = await configService.getGuildConfig(db, guildId);
+      const updatedConfig = await configService.getGuildConfig(guildId);
       res.json(updatedConfig);
     } catch (error) {
       res.status(400).json({ error: error.message });

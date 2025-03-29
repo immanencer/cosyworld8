@@ -16,9 +16,15 @@ export class MessageHandler {
     this.periodicTaskManager = services.periodicTaskManager;
     this.decisionMaker = services.decisionMaker;
     this.conversationManager = services.conversationManager;
+    this.started = false;
   }
 
   async start() {
+    if (this.started) {
+      this.logger.warn("MessageHandler is already started.");
+      return;
+    }
+    this.started = true;
     this.client.on('messageCreate', (message) => this.handleMessage(message));
     this.logger.info('MessageHandler started.');
   }
@@ -115,7 +121,7 @@ export class MessageHandler {
       if (!this.client.authorizedGuilds?.get(guildId)) {
         const db = this.databaseService.getDatabase();
         if (!db) return false;
-        const guildConfig = await this.services.configService.getGuildConfig(db, guildId);
+        const guildConfig = await this.services.configService.getGuildConfig(guildId);
         const isAuthorized =
           guildConfig?.authorized === true ||
           (await this.services.configService.get("authorizedGuilds") || []).includes(guildId);

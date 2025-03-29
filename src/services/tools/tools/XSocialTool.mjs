@@ -8,13 +8,16 @@ import { encrypt, decrypt } from '../../utils/encryption.mjs'; // Placeholder fo
 let mongoClient = null;
 
 export class XSocialTool extends BasicTool {
-    constructor(toolService) {
-        super(toolService);
+    constructor(services) {
+        super(services, [
+            'avatarService',
+            'databaseService',
+            'aiService',
+            'memoryService'
+        ]);
         this.emoji = '🐦';
         this.name = 'xsocial';
         this.description = 'Manage X social interactions (post, reply, quote, follow, like, repost, block) using avatar context.';
-        this.aiService = new AIService();
-        this.memoryService = new MemoryService(this.logger);
     }
 
     async getMongoClient() {
@@ -66,7 +69,7 @@ export class XSocialTool extends BasicTool {
     }
 
     async generateSocialActions(avatar, context, timeline, notifications) {
-        const memories = await this.memoryService.getMemories(avatar._id, 5); // Last 5 memories
+        const memories = await this.memoryService.getMemories(avatar._id, 20); // Last 5 memories
         const systemPrompt = `You are an AI managing an avatar's X social presence. Based on the avatar's personality, memories, and current X context (timeline and notifications), generate a set of social actions (post, reply, quote, follow, like, repost, block). Return a JSON object with actions, each with a type and relevant details. Keep posts/replies under 280 characters. Example:
         {
           "actions": [
@@ -98,7 +101,7 @@ export class XSocialTool extends BasicTool {
 
         const aiResponse = await this.aiService.chat([
             { role: 'system', content: systemPrompt },
-            { role: 'user', content: `Avatar: ${JSON.stringify(avatar)}\nMemories: ${memories.join('\n')}\nContext: ${context}\nTimeline: ${JSON.stringify(timeline)}\nNotifications: ${JSON.stringify(notifications)}` }
+            { role: 'user', content: `Avatar: ${JSON.stringify(avatar)}\nMemories: ${memories.map(m => m.content).join('\n')}\nContext: ${context}\nTimeline: ${JSON.stringify(timeline)}\nNotifications: ${JSON.stringify(notifications)}` }
         ], { responseSchema });
 
         return typeof aiResponse === 'string' ? JSON.parse(aiResponse.match(/\{[\s\S]*\}/)[0]) : aiResponse;
@@ -190,11 +193,3 @@ export class XSocialTool extends BasicTool {
         mongoClient = null;
     }
 }
-
-async function ensureIndexes() {
-    const client = await new XSocialTool({}).getMongoClient();
-    const db = client.db(process.env.MONGO_DB_NAME);
-    await db.collection('x_auth').createIndex({ avatarId: 1 }, { unique: true });
-    await db.collection('social_posts').createIndex({ avatarId: 1, timestamp: -1 });
-}
-ensureIndexes().catch(console.error);

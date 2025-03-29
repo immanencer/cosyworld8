@@ -1,18 +1,18 @@
 import path from 'path';
 import fs from 'fs/promises';
 import { fileURLToPath } from 'url';
-import dotenv from 'dotenv';
 
-dotenv.config();
+import { BasicService } from './basicService.mjs';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const CONFIG_DIR = path.resolve(__dirname, '../config');
 
-let clientInstance = null;
-
-class ConfigService {
-  constructor() {
+export class ConfigService extends BasicService {
+  constructor(services) {
+    super(services, [ 'databaseService' ]);
+    this.db = this.databaseService.getDatabase();
+    // Initialize global configuration with defaults from environment variables
     this.config = {
       prompt: {
         summon: process.env.SUMMON_PROMPT || "Create a twisted avatar, a servant of dark V.A.L.I.S.",
@@ -36,34 +36,30 @@ class ConfigService {
         dbName: process.env.MONGO_DB_NAME || 'discord-bot',
         collections: {
           avatars: 'avatars',
-          imageUrls: 'image_urls'
+          imageUrls: 'image_urls',
+          guildConfigs: 'guild_configs'
         }
       },
-      webhooks: {} // Initialize webhooks to an empty object
+      webhooks: {}
     };
-    this.loaded = false;
-    this.client = null;
-    this.guildConfigCache = new Map(); // Initialize cache for guild configs
+    
+    this.guildConfigCache = new Map(); // Cache for guild configurations
   }
 
-  setClient(client) {
-    this.client = client;
-    clientInstance = client;
-  }
 
+  // Load global configuration from JSON files
   async loadConfig() {
     try {
       const defaultConfig = JSON.parse(
         await fs.readFile(path.join(CONFIG_DIR, 'default.config.json'), 'utf8')
       );
       let userConfig = {};
-
       try {
         userConfig = JSON.parse(
           await fs.readFile(path.join(CONFIG_DIR, 'user.config.json'), 'utf8')
         );
       } catch (error) {
-        // If user config doesn't exist, create it with default values
+        // If user config doesn't exist, create it with defaults
         await fs.writeFile(
           path.join(CONFIG_DIR, 'user.config.json'),
           JSON.stringify(this.config, null, 2)
@@ -71,61 +67,23 @@ class ConfigService {
         userConfig = this.config;
       }
 
-      // Merge configs with user config taking precedence
-      this.config = {
-        ...this.config,
-        ...defaultConfig,
-        ...userConfig
-      };
-      this.loaded = true;
+      // Merge configs, with user config taking precedence
+      this.config = { ...this.config, ...defaultConfig, ...userConfig };
     } catch (error) {
       console.error('Error loading config:', error);
     }
   }
 
-  async saveUserConfig(updates) {
-    try {
-      const userConfigPath = path.join(CONFIG_DIR, 'user.config.json');
-      const currentConfig = await this.getUserConfig();
-      const updatedConfig = { ...currentConfig, ...updates };
-
-      await fs.writeFile(
-        userConfigPath,
-        JSON.stringify(updatedConfig, null, 2)
-      );
-
-      await this.loadConfig(); // Reload configs
-      return true;
-    } catch (error) {
-      console.error('Error saving user config:', error);
-      return false;
-    }
-  }
-
-
-  async getUserConfig() {
-    try {
-      return JSON.parse(
-        await fs.readFile(path.join(CONFIG_DIR, 'user.config.json'), 'utf8')
-      );
-    } catch (error) {
-      return {};
-    }
-  }
-
-  async get(key) {
-    if (key.includes('mongo')) {
-      return this.config.mongo;
-    }
+  // Get a specific global configuration key
+  get(key) {
     return this.config[key];
   }
 
+  // Get Discord-specific configuration
   getDiscordConfig() {
-    // Check if environment variables are present
     if (!process.env.DISCORD_BOT_TOKEN) {
-      console.warn('Warning: DISCORD_BOT_TOKEN not found in environment variables');
+      console.warn('DISCORD_BOT_TOKEN not found in environment variables');
     }
-
     return {
       botToken: process.env.DISCORD_BOT_TOKEN,
       clientId: process.env.DISCORD_CLIENT_ID,
@@ -133,110 +91,85 @@ class ConfigService {
     };
   }
 
-  async getGuildConfig(db, guildId, forceRefresh = false) {
+  // Get default guild configuration
+  getDefaultGuildConfig(guildId) {
+    return {
+      guildId,
+      whitelisted: false,
+      summonerRole: "🔮",
+      summonEmoji: "🔮",
+      prompts: {
+        summon: this.config.prompt.summon,
+        introduction: this.config.prompt.introduction
+      }
+    };
+  }
+
+  // Merge database guild config with defaults
+  mergeWithDefaults(guildConfig, guildId) {
+    const defaults = this.getDefaultGuildConfig(guildId);
+    return {
+      ...defaults,
+      ...guildConfig,
+      prompts: {
+        summon: guildConfig?.prompts?.summon || defaults.prompts.summon,
+        introduction: guildConfig?.prompts?.introduction || defaults.prompts.introduction
+      }
+    };
+  }
+
+  // Get guild configuration with caching
+  async getGuildConfig(guildId, forceRefresh = false) {
+    if (!guildId) {
+      console.warn(`Invalid guild ID: ${guildId}`);
+      return this.getDefaultGuildConfig(guildId);
+    }
+
+    // Check cache first
+    if (!forceRefresh && this.guildConfigCache.has(guildId)) {
+      return this.guildConfigCache.get(guildId);
+    }
+
+    // Resolve database connection
+    let db = this.db || (this.client?.db) || (global.databaseService ? await global.databaseService.getDatabase() : null);
+    if (!db) {
+      console.warn(`No database connection for guild ${guildId}`);
+      return this.getDefaultGuildConfig(guildId);
+    }
+
     try {
-      // First, check if we have a valid guild ID
-      if (!guildId) {
-        console.warn(`Invalid guild ID provided to getGuildConfig: ${guildId}`);
-        return { guildId: null, whitelisted: false, summonerRole: "🔮", summonEmoji: "🔮" };
-      }
-
-      // Check first if we have a cached version of the whitelist (in memory)
-      if (!forceRefresh && this.client && this.client.guildWhitelist && this.client.guildWhitelist.has(guildId)) {
-        const whitelisted = this.client.guildWhitelist.get(guildId);
-        console.debug(`Retrieved guild config for ${guildId} from memory cache: whitelisted=${whitelisted}`);
-        // Note: This only returns whitelist status from cache, might need a more complete cache solution
-        return { guildId, whitelisted, summonerRole: "🔮", summonEmoji: "🔮" };
-      }
-
-      // Try to get a database connection, with multiple fallbacks
-      let dbToUse = null;
-
-      // Option 1: Use the provided DB
-      if (db) {
-        dbToUse = db;
-      }
-      // Option 2: Try to get from client
-      else if (this.client && this.client.db) {
-        dbToUse = this.client.db;
-      }
-      // Option 3: Try to get from global database service
-      else if (global.databaseService) {
-        // First check if already connected
-        dbToUse = global.databaseService.getDatabase();
-
-        // If not connected yet, try to connect but don't wait too long
-        if (!dbToUse) {
-          try {
-            // Attempt to get a connection with a short timeout
-            const timeoutPromise = new Promise((_, reject) =>
-              setTimeout(() => reject(new Error('Database connection timeout')), 500));
-
-            // Race between a connection attempt and timeout
-            dbToUse = await Promise.race([
-              global.databaseService.waitForConnection(1, 300),
-              timeoutPromise
-            ]);
-          } catch (connErr) {
-            console.warn(`Could not establish database connection in time: ${connErr.message}`);
-          }
-        }
-      }
-
-      // If we still don't have a database connection, return default
-      if (!dbToUse) {
-        console.warn(`No database connection available to fetch guild config for guild ${guildId}, using default`);
-        return { guildId, whitelisted: false };
-      }
-
-      // Now try to fetch from database
-      try {
-        const collection = dbToUse.collection('guild_configs');
-        if (!collection) {
-          throw new Error('guild_configs collection not available');
-        }
-
-        const guildConfig = await collection.findOne({ guildId });
-
-        // Return the found config or a default with guildId and whitelisted property
-        const result = guildConfig || { guildId, whitelisted: false };
-        console.debug(`Retrieved guild config for ${guildId} from database: whitelisted=${result.whitelisted}`);
-
-        // Cache this result for future use
-        if (this.client) {
-          if (!this.client.guildWhitelist) this.client.guildWhitelist = new Map();
-          this.client.guildWhitelist.set(guildId, result.whitelisted);
-        }
-
-        return result;
-      } catch (dbErr) {
-        console.error(`Error accessing guild_configs collection: ${dbErr.message}`);
-        return { guildId, whitelisted: false };
-      }
+      const collection = db.collection(this.config.mongo.collections.guildConfigs);
+      const guildConfig = await collection.findOne({ guildId });
+      const mergedConfig = this.mergeWithDefaults(guildConfig, guildId);
+      this.guildConfigCache.set(guildId, mergedConfig);
+      return mergedConfig;
     } catch (error) {
-      console.error(`Error fetching guild config for guild ${guildId}:`, error);
-      // Return a default config with whitelisted explicitly set to false
-      return { guildId, whitelisted: false };
+      console.error(`Error fetching guild config for ${guildId}:`, error);
+      return this.getDefaultGuildConfig(guildId);
     }
   }
 
-  async updateGuildConfig(db, guildId, updates) {
-    if (!db || !guildId) throw new Error('Database and guildId are required');
+  // Update guild configuration
+  async updateGuildConfig(guildId, updates) {
+    if (!guildId) throw new Error('guildId is required');
+
+    // Resolve database connection
+    let db = this.db || (this.client?.db) || (global.databaseService ? await global.databaseService.getDatabase() : null);
+    if (!db) throw new Error('No database connection available');
 
     try {
-      const updatedConfig = {
-        ...updates,
-        guildId,
-        updatedAt: new Date()
-      };
-
-      // Upsert the guild config
-      const result = await db.collection('guild_configs').updateOne(
+      const collection = db.collection(this.config.mongo.collections.guildConfigs);
+      const setUpdates = { ...updates, updatedAt: new Date() };
+      const result = await collection.updateOne(
         { guildId },
-        { $set: updatedConfig },
+        { $set: setUpdates },
         { upsert: true }
       );
 
+      // Update cache with the latest config
+      const newGuildConfig = await collection.findOne({ guildId });
+      const mergedConfig = this.mergeWithDefaults(newGuildConfig, guildId);
+      this.guildConfigCache.set(guildId, mergedConfig);
       return result;
     } catch (error) {
       console.error(`Error updating guild config for ${guildId}:`, error);
@@ -244,82 +177,34 @@ class ConfigService {
     }
   }
 
+  // Get all guild configurations
   async getAllGuildConfigs(db) {
-    if (!db) throw new Error('Database is required');
+    db = db || this.db || (this.client?.db) || (global.databaseService ? await global.databaseService.getDatabase() : null);
+    if (!db) throw new Error('No database connection available');
 
     try {
-      return await db.collection('guild_configs').find({}).toArray();
+      const collection = db.collection(this.config.mongo.collections.guildConfigs);
+      return await collection.find({}).toArray();
     } catch (error) {
-      console.error('Error getting all guild configs:', error);
+      console.error('Error fetching all guild configs:', error);
       throw error;
     }
   }
 
-  getMongoConfig() {
-    return this.config.mongo;
+  // Get guild-specific prompts
+  async getGuildPrompts(guildId) {
+    const guildConfig = await this.getGuildConfig(guildId);
+    return guildConfig.prompts;
   }
 
-  getAIConfig() {
-    return this.config.ai;
-  }
-
-  getStorageConfig() {
-    return this.config.storage;
-  }
-
-  getXConfig() {
-    return this.config.x;
-  }
-
-  getSolanaConfig() {
-    return this.config.solana;
-  }
-
-  // Add method to get guild-specific prompts
-  async getGuildPrompts(db, guildId) {
-    if (!guildId) return this.config.prompt;
-
-    const guildConfig = await this.getGuildConfig(db, guildId);
-    return {
-      summon: guildConfig?.prompts?.summon || this.config.prompt.summon,
-      introduction: guildConfig?.prompts?.introduction || this.config.prompt.introduction
-    };
-  }
-
-  // Add method to update guild-specific prompts
-  async updateGuildPrompts(db, guildId, promptType, value) {
-    if (!db || !guildId) throw new Error('Database and guildId are required');
-    if (!['summon', 'introduction'].includes(promptType)) throw new Error('Invalid prompt type');
-
-    const updates = {
-      prompts: {
-        [promptType]: value
-      }
-    };
-
-    return await this.updateGuildConfig(db, guildId, updates);
-  }
-
-  // Modify existing getPromptConfig to be guild-aware
-  async getPromptConfig(db, guildId) {
-    if (!guildId) return this.config.prompt;
-    return await this.getGuildPrompts(db, guildId);
-  }
-
+  // Validate critical configurations
   validate() {
-    // Basic validation to ensure critical configs exist
     if (!this.config.mongo.uri) {
-      console.warn('MongoDB URI is not configured. Database functionality will be limited.');
+      console.warn('MongoDB URI not configured. Database functionality will be limited.');
     }
-
-    // Log warning but don't fail if Replicate isn't configured
     if (!this.config.ai.replicate.apiToken) {
-      console.warn('Replicate API token is not configured. Image generation will be disabled.');
+      console.warn('Replicate API token not configured. Image generation will be disabled.');
     }
-
     return true;
   }
 }
-
-export const configService = new ConfigService();
-export default configService;

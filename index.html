@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Chat with Me!</title>
+  <style>
+    #chat-container {
+      width: 300px;
+      border: 1px solid #ccc;
+      padding: 10px;
+    }
+    #chat-messages {
+      height: 200px;
+      overflow-y: scroll; /* Enable scrolling if content overflows */
+      border: 1px solid #ccc;
+      padding: 5px;
+    }
+  </style>
+
+<script src="https://cdn.jsdelivr.net/npm/ollama-js-client@1.0.2/dist/browser/index.min.js"></script>
+</head>
+<body>
+  <div id="chat-container">
+    <div id="chat-messages">
+      <!-- Messages will appear here -->
+    </div>
+  </div>
+
+  <input type="text" id="messageInput" placeholder="Type your message...">
+
+  <script>
+    const sendButton = document.createElement("button");
+    sendButton.textContent = "Send Message";
+    sendButton.addEventListener("click", sendMessage);
+
+    function sendMessage() {
+      const messageInput = document.getElementById("messageInput");
+      const message = messageInput.value;
+      if (message) {
+        displayMessage(message);
+        // You'd need to send this message to me (the server) here.
+      }
+    }
+
+    const messageInput = document.getElementById("messageInput");
+    const chatMessages = document.getElementById("chat-messages");
+
+    messageInput.addEventListener("keydown", function(event) {
+      if (event.key === "Enter") {
+        event.preventDefault(); // Prevent form submission
+        sendMessage();
+      }
+    });
+  </script>
+</body>
+</html>

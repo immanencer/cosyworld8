@@ -14,6 +14,6 @@ export async function findAvatarByName(name, avatars) {
 }
 
 export async function getSummonEmoji(guildId, services) {
-  const guildConfig = guildId ? await services.configService.getGuildConfig(services.databaseService.getDatabase(), guildId) : null;
+  const guildConfig = guildId ? await services.configService.getGuildConfig(guildId) : null;
   return guildConfig?.toolEmojis?.summon || guildConfig?.summonEmoji || process.env.DEFAULT_SUMMON_EMOJI || "🔮";
 }

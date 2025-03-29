@@ -9,6 +9,7 @@ export class SummonTool extends BasicTool {
       'avatarService',
       'configService',
       'databaseService',
+      'aiService',
     ]);
     this.name = 'summon';
     this.description = 'Summons a new avatar';
@@ -26,7 +27,7 @@ export class SummonTool extends BasicTool {
     if (!this.configService) return this.emoji;
 
     try {
-      const guildConfig = await this.configService.getGuildConfig(this.db, guildId);
+      const guildConfig = await this.configService.getGuildConfig(guildId);
       return guildConfig?.toolEmojis?.summon || guildConfig?.summonEmoji || this.emoji;
     } catch (error) {
       console.error(`Error getting summon emoji: ${error.message}`);
@@ -67,7 +68,7 @@ export class SummonTool extends BasicTool {
       });
       return count < this.DAILY_SUMMON_LIMIT;
     } catch (error) {
-      this.services.logger.error(`Error checking summon limit: ${error.message}`);
+      this.logger.error(`Error checking summon limit: ${error.message}`);
       return false;
     }
   }
@@ -83,7 +84,7 @@ export class SummonTool extends BasicTool {
         timestamp: new Date(),
       });
     } catch (error) {
-      this.services.logger.error(`Error tracking summon: ${error.message}`);
+      this.logger.error(`Error tracking summon: ${error.message}`);
     }
   }
 
@@ -101,7 +102,7 @@ export class SummonTool extends BasicTool {
       const [avatarName] = content.split('\n').map(line => line.trim());
 
       // Check for existing avatar
-      const existingAvatar = await this.services.avatarService.getAvatarByName(avatarName);
+      const existingAvatar = await this.avatarService.getAvatarByName(avatarName);
       if (existingAvatar) {
         await this.discordService.reactToMessage(message, existingAvatar.emoji || '🔮');
         const updatedAvatar = await this.mapService.updateAvatarPosition(existingAvatar._id, message.channel.id);
@@ -109,7 +110,7 @@ export class SummonTool extends BasicTool {
         await this.avatarService.updateAvatar(updatedAvatar);
         setTimeout(async () => {
           await this.discordService.sendAvatarProfileEmbedFromObject(updatedAvatar);
-          await this.services.conversationManager.sendResponse(message.channel, updatedAvatar)
+          await this.conversationManager.sendResponse(message.channel, updatedAvatar)
         }, 1000);
         return `${existingAvatar.name} has been summoned to this location.`;
       }
@@ -119,13 +120,13 @@ export class SummonTool extends BasicTool {
       const attributes = params.attributes || {};
       const canSummon = message.author.id === '1175877613017895032' || (await this.checkDailySummonLimit(message.author.id));
       if (!canSummon) {
-        await this.services.discordService.replyToMessage(message, `Daily summon limit of ${this.DAILY_SUMMON_LIMIT} reached. Try again tomorrow!`);
+        await this.discordService.replyToMessage(message, `Daily summon limit of ${this.DAILY_SUMMON_LIMIT} reached. Try again tomorrow!`);
         return 'Failed to summon: Daily limit reached';
       }
 
       // Get guild configuration
-      const guildId = message.guild?.id || message.guildId;
-      const guildConfig = await this.services.configService.getGuildConfig(this.db, guildId, true);
+      const guildId = message.guildId || message.guild?.id;
+      const guildConfig = await this.configService.getGuildConfig(guildId, true);
       let summonPrompt = guildConfig?.prompts?.summon || 'Create an avatar with the following description:';
       let arweavePrompt = null;
       if (summonPrompt.match(/^(https:\/\/.*\.arweave\.net\/|ar:\/\/)/)) {
@@ -142,23 +143,23 @@ export class SummonTool extends BasicTool {
       };
 
       // Create new avatar
-      const createdAvatar = await this.services.avatarService.createAvatar(avatarData);
+      const createdAvatar = await this.avatarService.createAvatar(avatarData);
       if (!createdAvatar || !createdAvatar.name) {
-        await this.services.discordService.replyToMessage(message, 'Failed to create avatar. Try a more detailed description.');
+        await this.discordService.replyToMessage(message, 'Failed to create avatar. Try a more detailed description.');
         return 'Failed to create avatar. The description may be too vague.';
       }
 
       // Set avatar properties
       createdAvatar.model = createdAvatar.model
-        ? await this.services.aiService.getModel(createdAvatar.model)
-        : await this.services.aiService.selectRandomModel();
+        ? await this.aiService.getModel(createdAvatar.model)
+        : await this.aiService.selectRandomModel();
       createdAvatar.summoner = avatar ? `AVATAR:${avatar._id}` : `${message.author.username}@${message.author.id}`;
-      createdAvatar.stats = await this.services.avatarService.getAvatarStats(createdAvatar._id);
+      createdAvatar.stats = await this.avatarService.getAvatarStats(createdAvatar._id);
       createdAvatar.attributes = attributes;
 
       // Generate introduction
       const introPrompt = guildConfig?.prompts?.introduction || 'You\'ve just arrived. Introduce yourself.';
-      const intro = await this.services.aiService.chat(
+      const intro = await this.aiService.chat(
         [
           {
             role: 'system',
@@ -171,26 +172,26 @@ export class SummonTool extends BasicTool {
       createdAvatar.dynamicPersonality = intro;
 
       // Update avatar with all changes at once
-      await this.services.avatarService.updateAvatar(createdAvatar);
+      await this.avatarService.updateAvatar(createdAvatar);
 
       // Send profile and introduction
-      await this.services.discordService.sendAvatarProfileEmbedFromObject(createdAvatar);
-      await this.services.discordService.sendAsWebhook(message.channel.id, intro, createdAvatar);
+      await this.discordService.sendAvatarProfileEmbedFromObject(createdAvatar);
+      await this.discordService.sendAsWebhook(message.channel.id, intro, createdAvatar);
 
       // Initialize avatar and react
-      await this.services.avatarService.initializeAvatar(createdAvatar._id, message.channel.id);
+      await this.avatarService.initializeAvatar(createdAvatar._id, message.channel.id);
 
       // Track summon if not breeding
       if (!breed) await this.trackSummon(message.author.id);
 
       // Send final response
-      await this.services.conversationManager.sendResponse(message.channel, avatar);
-      await this.services.conversationManager.sendResponse(message.channel, createdAvatar);
-      await this.services.discordService.reactToMessage(message, createdAvatar.emoji || '🔮');
+      await this.conversationManager.sendResponse(message.channel, avatar);
+      await this.conversationManager.sendResponse(message.channel, createdAvatar);
+      await this.discordService.reactToMessage(message, createdAvatar.emoji || '🔮');
       return `${createdAvatar.name} has been summoned into existence.`;
     } catch (error) {
-      this.services.logger.error(`Summon error: ${error.message}`);
-      await this.services.discordService.reactToMessage(message, '❌');
+      this.logger.error(`Summon error: ${error.message}`);
+      await this.discordService.reactToMessage(message, '❌');
       return `Failed to summon: ${error.message}`;
     }
   }

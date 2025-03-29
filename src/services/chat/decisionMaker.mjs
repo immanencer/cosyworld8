@@ -1,4 +1,4 @@
-import { BasicService } from '../BasicService.mjs';
+import { BasicService } from '../basicService.mjs';
 
 // Configuration constants (consider moving to a config file or env variables)
 const DECISION_MODEL = 'google/gemma-3-4b-it:free';

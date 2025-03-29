@@ -1,4 +1,4 @@
-import { BasicService } from '../BasicService.mjs';
+import { BasicService } from '../basicService.mjs';
 import { AIService } from "../aiService.mjs";
 import { ActionLog } from './ActionLog.mjs';
 import { AttackTool } from './tools/AttackTool.mjs';
@@ -11,7 +11,6 @@ import { ItemTool } from './tools/ItemTool.mjs';
 import { ThinkTool } from './tools/ThinkTool.mjs';
 import { SummonTool } from './tools/SummonTool.mjs';
 import { BreedTool } from './tools/BreedTool.mjs';
-import configService from '../configService.mjs';
 import { LocationService } from '../location/locationService.mjs';
 
 export class ToolService extends BasicService {
@@ -61,7 +60,7 @@ export class ToolService extends BasicService {
     });
 
     // Load emoji mappings from config
-    const configEmojis = configService.get('toolEmojis') || {};
+    const configEmojis = this.configService.get('toolEmojis') || {};
     Object.entries(configEmojis).forEach(([emoji, toolName]) => {
       this.toolEmojis.set(emoji, toolName);
     });

@@ -1,6 +1,7 @@
-import configService from './configService.mjs';
+import e from "express";
+import { BasicService } from "./basicService.mjs";
 
-export class SpamControlService {
+export class SpamControlService extends BasicService {
   /**
    * @param {Db} db - The connected MongoDB database instance.
    * @param {Object} logger - Your logger instance.
@@ -9,13 +10,14 @@ export class SpamControlService {
    * @param {number} [options.spamTimeWindow=10000] - Time window in ms (default 10 seconds).
    * @param {number} [options.basePenalty=10000] - Base penalty in ms (default 10 seconds).
    */
-  constructor(db, logger, options = {}) {
-    this.logger = logger;
+  constructor(services, options = {}) {
+    super(services, ["databaseService", "logger"]);
     this.spamThreshold = options.spamThreshold || 5;
     this.spamTimeWindow = options.spamTimeWindow || 10 * 1000;
     this.basePenalty = options.basePenalty || 10 * 1000;
     // In-memory tracker for recent message timestamps per user
     this.spamTracker = new Map();
+    const db = this.databaseService.getDatabase();
     // MongoDB collection for persistent penalty records
     this.spamPenaltyCollection = db.collection('user_spam_penalties');
 
