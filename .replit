@@ -6,7 +6,7 @@ modules = ["nodejs-20:v8-20230920-bd784b9"]
 channel = "stable-24_05"
 
 [deployment]
-run = ["sh", "-c", "NODE_ENV=production node server/app.mjs"]
+run = ["sh", "-c", "NODE_ENV=production node src/index.mjs"]
 deploymentTarget = "gce"
 build = ["sh", "-c", "NODE_OPTIONS='--max-old-space-size=4096' npm run build"]
 ignorePorts = true
@@ -14,6 +14,10 @@ ignorePorts = true
 [[ports]]
 localPort = 3001
 externalPort = 80
+
+[[ports]]
+localPort = 8080
+externalPort = 8080
 
 [workflows]
 runButton = "Production"

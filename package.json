@@ -4,8 +4,8 @@
   "main": "src/index.mjs",
   "type": "module",
   "scripts": {
-    "start": "concurrently \"node src/index.mjs\" \"node server/app.mjs\"",
-    "dev": "node src/index.mjs",
+    "start": "node src/index.mjs",
+    "dev": "nodemon src/index.mjs",
     "build:js": "webpack --mode production --progress",
     "dev:js": "webpack --mode development --watch",
     "build:css": "cross-env NODE_ENV=production tailwindcss -i ./src/tailwind.css -o ./dist/css/tailwind.css --minify",
@@ -14,8 +14,8 @@
     "clean": "rimraf dist",
     "copy-assets": "node scripts/copy-assets.mjs",
     "wiki": "npm run build:wiki",
-    "serve": "node server/app.mjs",
-    "serve:prod": "cross-env NODE_ENV=production node server/app.mjs"
+    "serve": "node src/index.mjs",
+    "serve:prod": "cross-env NODE_ENV=production node src/index.mjs"
   },
   "keywords": [
     "discord",
