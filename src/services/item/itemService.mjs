@@ -402,6 +402,85 @@ export class ItemService {
     };
   }
 
+  // itemService.mjs (add this method to the existing class)
+
+  async createCraftedItem(inputItems, creatorId) {
+    const now = new Date();
+    const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const itemsCreatedToday = await this.db.collection('items').countDocuments({
+      createdAt: { $gte: startOfToday.toISOString() }
+    });
+    if (itemsCreatedToday >= this.itemCreationLimit) {
+      return null;
+    }
+
+    // Generate prompt with input item names
+    const inputNames = inputItems.map(i => i.name).join(', ');
+    const craftPrompt = `Combine the following items into a new unique item: ${inputNames}. Provide a JSON object with 'name' and 'description' for the new item.`;
+    const responseSchema = {
+      type: "OBJECT",
+      properties: {
+        name: { type: "STRING", description: "The name of the new item" },
+        description: { type: "STRING", description: "The description of the new item" }
+      },
+      required: ["name", "description"]
+    };
+
+    let newItemData;
+    try {
+      newItemData = await this.aiService.chat(
+        [
+          { role: 'system', content: 'You are a master craftsman creating a new item.' },
+          { role: 'user', content: craftPrompt }
+        ],
+        { responseSchema }
+      );
+    } catch (error) {
+      console.error('Error generating crafted item data:', error);
+      return null;
+    }
+
+    if (!newItemData || !newItemData.name || !newItemData.description) {
+      return null;
+    }
+
+    const refinedItemName = this.cleanItemName(newItemData.name.trim().slice(0, 50));
+    const description = newItemData.description.trim();
+    const imageUrl = await this.generateItemImage(refinedItemName, description);
+    const type = await this.determineItemType(refinedItemName, description);
+    const rarity = await this.determineItemRarity(refinedItemName, description);
+    const properties = await this.generateItemProperties(refinedItemName, description);
+
+    const newItem = {
+      key: refinedItemName.toLowerCase(),
+      name: refinedItemName,
+      description,
+      type,
+      rarity,
+      properties,
+      imageUrl,
+      creator: creatorId,
+      owner: creatorId,
+      locationId: null,
+      createdAt: now.toISOString(),
+      updatedAt: now.toISOString(),
+      version: this.CURRENT_SCHEMA_VERSION
+    };
+
+    const validation = this.validateItem(newItem);
+    if (!validation.valid) {
+      console.error('Crafted item validation failed:', validation.errors);
+      return null;
+    }
+
+    const result = await this.db.collection('items').insertOne(newItem);
+    if (result.insertedId) {
+      newItem._id = result.insertedId;
+      return newItem;
+    }
+    return null;
+  }
+
   getItemsDescription(avatar) {
     return (avatar.items || []).map((item) => item.name).join(', ');
   }

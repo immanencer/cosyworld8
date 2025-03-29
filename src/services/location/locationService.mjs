@@ -379,6 +379,90 @@ If already suitable, return as is. If it needs editing, revise it while preservi
   }
 
   /**
+ * Retrieves or creates a location document based on the channel ID.
+ * @param {string} channelId - The Discord channel or thread ID.
+ * @returns {Promise<Object>} - The location document.
+ */
+  async getLocationByChannelId(channelId) {
+    this.ensureDbConnection();
+
+    let location = await this.db.collection('locations').findOne({ channelId });
+    if (!location) {
+      // Fetch the channel from Discord
+      const channel = await this.client.channels.fetch(channelId);
+      if (!channel) {
+        throw new Error(`Channel with ID ${channelId} not found`);
+      }
+
+      // Use the channel name as the base
+      let locationName = channel.name;
+
+      // Refine the name with AI for a fantasy setting (optional)
+      const cleanLocationName = await this.aiService.chat(
+        [
+          { role: 'system', content: 'You are an expert editor.' },
+          {
+            role: 'user',
+            content: `Refine this channel name for a fantasy location: "${locationName}". Return ONLY the refined name, less than 80 characters.`
+          }
+        ],
+        { model: OPENROUTER_MODEL }
+      ).catch(() => locationName.slice(0, 80)); // Fallback to original name if AI fails
+
+      // Generate a description
+      const description = await this.aiService.chat(
+        [
+          { role: 'system', content: 'Generate a brief, atmospheric description of this fantasy location.' },
+          { role: 'user', content: `Describe ${cleanLocationName} in 2-3 sentences.` }
+        ],
+        { model: OPENROUTER_MODEL }
+      );
+
+      // Generate an image
+      const imageUrl = await this.generateLocationImage(cleanLocationName, description);
+
+      // Create the location document
+      location = {
+        name: cleanLocationName,
+        description,
+        imageUrl,
+        channelId,
+        type: channel.isThread() ? 'thread' : 'channel',
+        parentId: channel.isThread() ? channel.parentId : null,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        lastSummaryUpdate: null, // Initialize for ambiance tracking
+        version: '1.0.0'
+      };
+
+      await this.db.collection('locations').insertOne(location);
+
+      // Optionally post the description and image to the channel
+      await this.services.discordService.sendAsWebhook(channelId, description, { files: [imageUrl] });
+    }
+    return location;
+  }
+
+  /**
+ * Checks if the location's summary is stale (older than 48 hours).
+ * @param {string} channelId - The Discord channel or thread ID.
+ * @returns {Promise<boolean>} - True if the summary is stale or missing.
+ */
+  async summaryIsStale(channelId) {
+    this.ensureDbConnection();
+
+    const location = await this.db.collection('locations').findOne({ channelId });
+    if (!location || !location.lastSummaryUpdate) {
+      return true; // Needs update if no summary exists
+    }
+
+    const lastUpdate = new Date(location.lastSummaryUpdate);
+    const now = new Date();
+    const hoursSinceUpdate = (now - lastUpdate) / (1000 * 60 * 60); // Convert ms to hours
+    return hoursSinceUpdate > 48;
+  }
+
+  /**
    * Returns all text-based channels and active threads in the guild as location objects.
    * @param {import('discord.js').Guild} guild
    * @returns {Promise<Array<{ name: string, channel: import('discord.js').BaseGuildTextChannel }>>}
@@ -480,13 +564,17 @@ If already suitable, return as is. If it needs editing, revise it while preservi
   }
 
   /**
-   * Generates a summary of recent messages for a location, posts via webhook as "the location."
+   * Generates a summary of recent messages for a location, posts it with the location image via webhook as "the location,"
+   * and includes a small chance to create an item based on recent activity.
    * @param {string} locationId - The channel or thread ID in Discord.
    */
   async generateLocationSummary(locationId) {
     try {
       const locationData = this.locationMessages.get(locationId);
-      if (!locationData) return;
+      if (!locationData) {
+        console.warn('No message data found for location ID', locationId);
+        return;
+      }
 
       const location = await this.findLocationById(locationId);
       if (!location) {
@@ -494,10 +582,12 @@ If already suitable, return as is. If it needs editing, revise it while preservi
         return;
       }
 
+      // Compile recent messages into a text block
       const messagesText = locationData.messages
         .map((m) => `${m.author}: ${m.content}`)
         .join('\n');
 
+      // Generate the ambiance summary
       const prompt = `As ${location.name}, observe the recent events and characters within your boundaries.
 Describe the current atmosphere, notable characters present, and significant events that have occurred.
 Focus on the mood, interactions, and any changes in the environment.
@@ -507,8 +597,7 @@ ${messagesText}`;
       const summary = await this.aiService.chat([
         {
           role: 'system',
-          content:
-            'You are a mystical location describing the events and characters within your bounds.'
+          content: 'You are a mystical location describing the events and characters within your bounds.'
         },
         {
           role: 'user',
@@ -516,8 +605,59 @@ ${messagesText}`;
         }
       ]);
 
-      // Send the summary as the location
-      await this.services.discordService.sendAsWebhook(location.id, summary, location);
+      // Post the summary along with the location's current image
+      await this.services.discordService.sendAsWebhook(location.id, {
+        content: summary,
+        files: location.imageUrl ? [location.imageUrl] : []
+      }, location);
+
+      // Small chance (5%) to create an item based on recent activity
+      const createItemChance = 0.05;
+      if (Math.random() < createItemChance) {
+        const itemPrompt = `Based on the recent events in ${location.name}, suggest a unique item that could be found here.
+Provide a name and a brief description in the format:
+Name: [item name]
+Description: [item description]`;
+
+        const itemResponse = await this.aiService.chat([
+          {
+            role: 'system',
+            content: 'You are a creative item generator for a fantasy setting.'
+          },
+          {
+            role: 'user',
+            content: itemPrompt
+          }
+        ]);
+
+        // Parse the item response
+        const lines = itemResponse.split('\n');
+        const nameLine = lines.find(line => line.startsWith('Name:'));
+        const descLine = lines.find(line => line.startsWith('Description:'));
+        const itemName = nameLine ? nameLine.replace('Name:', '').trim() : 'Mysterious Item';
+        const itemDesc = descLine ? descLine.replace('Description:', '').trim() : 'An item of unknown origin.';
+
+        // Create the item using ItemService
+        const newItem = await this.services.itemService.createItem({
+          name: itemName,
+          description: itemDesc,
+          locationId: location.id
+        });
+
+        // Announce the item's appearance
+        const announcement = `A new item has appeared: **${newItem.name}** - ${newItem.description}`;
+        await this.services.discordService.sendAsWebhook(location.id, announcement, location);
+      }
+      // Update lastSummaryUpdate in the database
+      await this.db.collection('locations').updateOne(
+        { channelId },
+        { $set: { lastSummaryUpdate: new Date().toISOString(), updatedAt: new Date().toISOString() } }
+      );
+
+      // Reset message count if triggered by threshold
+      if (locationData.count >= this.SUMMARY_THRESHOLD) {
+        locationData.count = 0;
+      }
     } catch (error) {
       console.error('Error generating location summary:', error);
     }

@@ -175,8 +175,8 @@ export class SummonTool extends BasicTool {
       await this.avatarService.updateAvatar(createdAvatar);
 
       // Send profile and introduction
-      await this.discordService.sendAvatarProfileEmbedFromObject(createdAvatar);
       await this.discordService.sendAsWebhook(message.channel.id, intro, createdAvatar);
+      await this.discordService.sendAvatarProfileEmbedFromObject(createdAvatar);
 
       // Initialize avatar and react
       await this.avatarService.initializeAvatar(createdAvatar._id, message.channel.id);
