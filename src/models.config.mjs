@@ -56,19 +56,19 @@ export default [
     "rarity": "rare"
   },
   {
-    "model": "anthropic/claude-2:beta",
-    "rarity": "rare"
-  },
-  {
-    "model": "anthropic/claude-2",
-    "rarity": "rare"
-  },
-  {
     "model": "anthropic/claude-2.1:beta",
     "rarity": "rare"
   },
   {
     "model": "anthropic/claude-2.1",
+    "rarity": "rare"
+  },
+  {
+    "model": "anthropic/claude-2:beta",
+    "rarity": "rare"
+  },
+  {
+    "model": "anthropic/claude-2",
     "rarity": "rare"
   },
   {
@@ -168,11 +168,11 @@ export default [
     "rarity": "rare"
   },
   {
-    "model": "inflection/inflection-3-pi",
+    "model": "inflection/inflection-3-productivity",
     "rarity": "rare"
   },
   {
-    "model": "inflection/inflection-3-productivity",
+    "model": "inflection/inflection-3-pi",
     "rarity": "rare"
   },
   {
@@ -300,19 +300,11 @@ export default [
     "rarity": "uncommon"
   },
   {
-    "model": "openai/o1-mini-2024-09-12",
-    "rarity": "uncommon"
-  },
-  {
     "model": "openai/o1-mini",
     "rarity": "uncommon"
   },
   {
-    "model": "anthropic/claude-3.5-haiku-20241022:beta",
-    "rarity": "uncommon"
-  },
-  {
-    "model": "anthropic/claude-3.5-haiku-20241022",
+    "model": "openai/o1-mini-2024-09-12",
     "rarity": "uncommon"
   },
   {
@@ -321,6 +313,14 @@ export default [
   },
   {
     "model": "anthropic/claude-3.5-haiku",
+    "rarity": "uncommon"
+  },
+  {
+    "model": "anthropic/claude-3.5-haiku-20241022:beta",
+    "rarity": "uncommon"
+  },
+  {
+    "model": "anthropic/claude-3.5-haiku-20241022",
     "rarity": "uncommon"
   },
   {
@@ -460,6 +460,10 @@ export default [
     "rarity": "uncommon"
   },
   {
+    "model": "thedrummer/anubis-pro-105b-v1",
+    "rarity": "uncommon"
+  },
+  {
     "model": "cognitivecomputations/dolphin-mixtral-8x22b",
     "rarity": "uncommon"
   },
@@ -476,7 +480,7 @@ export default [
     "rarity": "uncommon"
   },
   {
-    "model": "thedrummer/anubis-pro-105b-v1",
+    "model": "scb10x/llama3.1-typhoon2-70b-instruct",
     "rarity": "uncommon"
   },
   {
@@ -616,10 +620,6 @@ export default [
     "rarity": "common"
   },
   {
-    "model": "google/gemma-3-27b-it",
-    "rarity": "common"
-  },
-  {
     "model": "mistralai/mistral-saba",
     "rarity": "common"
   },
@@ -740,6 +740,10 @@ export default [
     "rarity": "common"
   },
   {
+    "model": "scb10x/llama3.1-typhoon2-8b-instruct",
+    "rarity": "common"
+  },
+  {
     "model": "deepseek/deepseek-r1-distill-qwen-1.5b",
     "rarity": "common"
   },
@@ -749,6 +753,10 @@ export default [
   },
   {
     "model": "nousresearch/nous-hermes-llama2-13b",
+    "rarity": "common"
+  },
+  {
+    "model": "google/gemma-3-27b-it",
     "rarity": "common"
   },
   {
@@ -813,6 +821,10 @@ export default [
   },
   {
     "model": "amazon/nova-micro-v1",
+    "rarity": "common"
+  },
+  {
+    "model": "google/gemma-3-12b-it",
     "rarity": "common"
   },
   {
@@ -888,6 +900,10 @@ export default [
     "rarity": "common"
   },
   {
+    "model": "google/gemma-3-4b-it",
+    "rarity": "common"
+  },
+  {
     "model": "liquid/lfm-3b",
     "rarity": "common"
   },
@@ -904,11 +920,31 @@ export default [
     "rarity": "common"
   },
   {
+    "model": "allenai/molmo-7b-d:free",
+    "rarity": "common"
+  },
+  {
+    "model": "bytedance-research/ui-tars-72b:free",
+    "rarity": "common"
+  },
+  {
+    "model": "qwen/qwen2.5-vl-3b-instruct:free",
+    "rarity": "common"
+  },
+  {
+    "model": "google/gemini-2.5-pro-exp-03-25:free",
+    "rarity": "common"
+  },
+  {
     "model": "qwen/qwen2.5-vl-32b-instruct:free",
     "rarity": "common"
   },
   {
     "model": "deepseek/deepseek-chat-v3-0324:free",
+    "rarity": "common"
+  },
+  {
+    "model": "featherless/qwerky-72b:free",
     "rarity": "common"
   },
   {
@@ -1020,10 +1056,6 @@ export default [
     "rarity": "common"
   },
   {
-    "model": "google/gemini-exp-1206:free",
-    "rarity": "common"
-  },
-  {
     "model": "meta-llama/llama-3.3-70b-instruct:free",
     "rarity": "common"
   },
@@ -1057,6 +1089,10 @@ export default [
   },
   {
     "model": "qwen/qwen-2.5-72b-instruct:free",
+    "rarity": "common"
+  },
+  {
+    "model": "qwen/qwen-2.5-vl-7b-instruct:free",
     "rarity": "common"
   },
   {
