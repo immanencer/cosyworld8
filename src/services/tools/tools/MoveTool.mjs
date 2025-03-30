@@ -181,7 +181,7 @@ export class MoveTool extends BasicTool {
 
       // 7. Send the full profile to the new location
       try {
-        await this.services.discordService.sendAvatarProfileEmbedFromObject(updatedAvatar, newLocation.channel.id);
+        await this.services.discordService.sendAvatarEmbed(updatedAvatar, newLocation.channel.id);
         this.logger.debug(`Sent profile for ${updatedAvatar.name} to new location ${newLocation.channel.id}`);
       } catch (profileError) {
         this.logger.error(`Error sending profile after movement: ${profileError.message}`);

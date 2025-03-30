@@ -3,48 +3,6 @@ import cors from 'cors';
 import process from 'process';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import dotenv from 'dotenv';
-
-// Load environment variables based on NODE_ENV
-const envFile = process.env.NODE_ENV === 'production' ? '.env.production' : '.env';
-dotenv.config({ path: envFile });
-console.log(`Loading environment from ${envFile}`);
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-
-// Set static file directory based on environment
-const staticDir = process.env.NODE_ENV === 'production'
-  ? path.join(__dirname, '..', 'dist')
-  : path.join(__dirname, '..', 'public');
-console.log(`Static files will be served from: ${staticDir}`);
-
-const app = express();
-const PORT = process.env.WEB_PORT || 3001;
-
-// Middleware setup
-app.use(cors());
-app.use(express.json({ limit: '1mb' }));
-app.use(express.static(staticDir, { maxAge: '1h', etag: false }));
-app.use((req, res, next) => {
-  res.setHeader('Cache-Control', 'no-cache');
-  next();
-});
-app.use((req, res, next) => {
-  res.setTimeout(30000, () => res.status(408).send('Request timeout'));
-  next();
-});
-
-// Explicit routes for admin UI and API docs
-app.get('/api-docs', (req, res) => {
-  res.sendFile('api-docs.html', { root: staticDir });
-});
-app.get('/admin/guild-settings', (req, res) => {
-  res.sendFile('admin/guild-settings.html', { root: staticDir });
-});
-app.get('/admin/avatar-management', (req, res) => {
-  res.sendFile('admin/avatar-management.html', { root: staticDir });
-});
 
 /**
  * Initializes the application, including database, services, and routes.
@@ -52,9 +10,47 @@ app.get('/admin/avatar-management', (req, res) => {
 async function initializeApp(services) {
   try {
 
+    const __filename = fileURLToPath(import.meta.url);
+    const __dirname = path.dirname(__filename);
+
+    // Set static file directory based on environment
+    const staticDir = process.env.NODE_ENV === 'production'
+      ? path.join(__dirname, '..', 'dist')
+      : path.join(__dirname, '..', 'public');
+
+    const app = express();
+    const PORT = process.env.WEB_PORT || 3001;
+
+    // Middleware setup
+    app.use(cors());
+    app.use(express.json({ limit: '1mb' }));
+    app.use(express.static(staticDir, { maxAge: '1h', etag: false }));
+    app.use((req, res, next) => {
+      res.setHeader('Cache-Control', 'no-cache');
+      next();
+    });
+    app.use((req, res, next) => {
+      res.setTimeout(30000, () => res.status(408).send('Request timeout'));
+      next();
+    });
+
+    // Explicit routes for admin UI and API docs
+    app.get('/api-docs', (req, res) => {
+      res.sendFile('api-docs.html', { root: staticDir });
+    });
+    app.get('/admin/guild-settings', (req, res) => {
+      res.sendFile('admin/guild-settings.html', { root: staticDir });
+    });
+    app.get('/admin/avatar-management', (req, res) => {
+      res.sendFile('admin/avatar-management.html', { root: staticDir });
+    });
+
+    const logger = services.logger;
+    logger.info('Initializing application...');
+
     // Store services in app.locals for route access
     app.locals.services = services;
-    console.log('Core services initialized and stored in app.locals');
+    logger.info('Core services initialized and stored in app.locals');
 
     const db = await services.databaseService.getDatabase();
 
@@ -85,7 +81,7 @@ async function initializeApp(services) {
         }
         res.status(200).json({ message: 'Claim renounced successfully' });
       } catch (error) {
-        console.error('Error renouncing claim:', error);
+        logger.error('Error renouncing claim:', error);
         res.status(500).json({ error: 'Internal server error' });
       }
     });
@@ -113,32 +109,32 @@ async function initializeApp(services) {
 
     // Start the server
     app.listen(PORT, '0.0.0.0', () => {
-      console.log(`Server running in ${process.env.NODE_ENV || 'development'} mode`);
-      console.log(`Server running at http://0.0.0.0:${PORT}`);
-      console.log(`API documentation available at http://0.0.0.0:${PORT}/api-docs`);
+      logger.info(`Server running in ${process.env.NODE_ENV || 'development'} mode`);
+      logger.info(`Server running at http://0.0.0.0:${PORT}`);
+      logger.info(`API documentation available at http://0.0.0.0:${PORT}/api-docs`);
     });
 
     // **Graceful Shutdown**
     process.on('SIGINT', async () => {
       try {
         await app.locals.services.databaseService.close();
-        console.log('MongoDB connection closed');
+        logger.info('MongoDB connection closed');
         if (app.locals.services.discordService.client) {
           await app.locals.services.discordService.client.destroy();
-          console.log('Discord client destroyed');
+          logger.info('Discord client destroyed');
         }
         process.exit(0);
       } catch (error) {
-        console.error('Error during shutdown:', error);
+        logger.error('Error during shutdown:', error);
         process.exit(1);
       }
     });
 
+    return app;
   } catch (error) {
-    console.error('Failed to initialize server:', error);
+    logger.error('Failed to initialize server:', error);
     process.exit(1);
   }
-  return app;
 }
 
 export default initializeApp;

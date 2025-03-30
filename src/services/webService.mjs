@@ -2,24 +2,27 @@ import { BasicService } from './basicService.mjs';
 import initializeApp from './web/server/app.mjs';
 
 export class WebService extends BasicService {
+  constructor(services) {
+    super(services);
+  }
   async start() {
     try {
-      console.log('Starting WebService...');
+      this.logger.info('Starting WebService...');
       await initializeApp(this.services); // Ensure the app is initialized
-      console.log('WebService started successfully.');
+      this.logger.info('WebService started successfully.');
     } catch (error) {
-      console.error('Failed to start WebService:', error);
+      this.logger.error('Failed to start WebService:', error);
       throw error;
     }
   }
 
   async stop() {
     try {
-      console.log('Stopping WebService...');
+      this.logger.info('Stopping WebService...');
       // Perform any cleanup if necessary
-      console.log('WebService stopped successfully.');
+      this.logger.info('WebService stopped successfully.');
     } catch (error) {
-      console.error('Failed to stop WebService:', error);
+      this.logger.error('Failed to stop WebService:', error);
       throw error;
     }
   }

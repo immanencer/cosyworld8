@@ -106,11 +106,9 @@ export class SummonTool extends BasicTool {
       const existingAvatar = await this.avatarService.getAvatarByName(avatarName);
       if (existingAvatar) {
         await this.discordService.reactToMessage(message, existingAvatar.emoji || '🔮');
-        updatedAvatar.stats = await this.avatarService.getOrCreateStats(updatedAvatar._id);
-        await this.avatarService.updateAvatar(updatedAvatar);
         setTimeout(async () => {
-          await this.discordService.sendAvatarProfileEmbedFromObject(updatedAvatar);
-          await this.conversationManager.sendResponse(message.channel, updatedAvatar)
+          await this.discordService.sendAvatarEmbed(existingAvatar, message.channel.id);
+          await this.conversationManager.sendResponse(message.channel, existingAvatar)
         }, 1000);
         return `${existingAvatar.name} has been summoned to this location.`;
       }
@@ -188,7 +186,7 @@ export class SummonTool extends BasicTool {
       setImmediate(async () => {
         // Send profile and introduction
         await this.discordService.sendAsWebhook(message.channel.id, intro, createdAvatar);
-        await this.discordService.sendAvatarProfileEmbedFromObject(createdAvatar);
+        await this.discordService.sendAvatarEmbed(createdAvatar, message.channel.id);
         await this.conversationManager.sendResponse(message.channel, avatar);
         await this.conversationManager.sendResponse(message.channel, createdAvatar);
         await this.discordService.reactToMessage(message, createdAvatar.emoji || '🔮');

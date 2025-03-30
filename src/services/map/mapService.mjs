@@ -150,7 +150,7 @@ export class MapService extends BasicService {
       }
 
       if (sendProfile) {
-        await this.discordService.sendAvatarProfileEmbedFromObject(updatedAvatar, newLocationId);
+        await this.discordService.sendAvatarEmbed(updatedAvatar, newLocationId);
       }
 
       this.client.emit('avatarMoved', {

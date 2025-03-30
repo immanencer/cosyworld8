@@ -497,15 +497,16 @@ If already suitable, return as is. If it needs editing, revise it while preservi
         { role: 'user', content: prompt }
       ]);
 
-      const embed = this.discordService.buildLocationEmbed(location, summary, items, avatars);
-      await this.discordService.sendAsWebhookRaw(locationId, { embeds: [embed] });
+      this.discordService.sendLocationEmbed(location, items, avatars, locationId);
+      await this.discordService.sendAsWebhook(locationId, summary, {
+        name: location.name,
+        imageUrl: location.imageUrl
+      });
 
       await this.db.collection('locations').updateOne(
         { channelId: locationId },
         { $set: { lastSummaryUpdate: new Date().toISOString(), updatedAt: new Date().toISOString() } }
       );
-
-      locationData.count = 0; // Reset message count
     } catch (error) {
       console.error('Error generating location summary:', error);
     }

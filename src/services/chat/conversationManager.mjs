@@ -64,7 +64,7 @@ export class ConversationManager extends BasicService {
         return null;
       }
       await this.storeNarrative(avatar._id, narrative);
-      this.updateNarrativeHistory(avatar, narrative);
+      await this.updateNarrativeHistory(avatar, narrative);
       avatar.prompt = await this.services.promptService.getFullSystemPrompt(avatar, this.db);
       avatar.dynamicPrompt = narrative;
       await this.avatarService.updateAvatar(avatar);
@@ -72,7 +72,7 @@ export class ConversationManager extends BasicService {
       return narrative;
     } catch (error) {
       this.logger.error(`Error generating narrative for ${avatar.name}: ${error.message}`);
-      return null;
+      throw error;
     }
   }
 

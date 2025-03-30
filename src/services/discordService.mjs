@@ -171,38 +171,7 @@ export class DiscordService extends BasicService {
     }
   }
 
-  buildLocationEmbed(location, summary, items, avatars) {
-      const embed = new EmbedBuilder()
-        .setTitle(location.name)
-        .setDescription((location.description || 'No description available').split('. ')[0] + '.')
-        .setImage(location.imageUrl)
-        .addFields(
-          { name: 'Update', value: summary || 'No updates available', inline: false },
-          { name: 'Rarity', value: location.rarity || 'common', inline: true },
-          { name: 'Items', value: items.length || 'None', inline: true },
-          { name: 'Avatars', value: avatars.length || 'None', inline: true }
-        )
-        .setTimestamp(new Date())
-        .setFooter({ text: 'Location Update' });
-      return embed;
-    }
 
-  async sendAsWebhookRaw(channelId, content) {
-    if (!channelId || typeof channelId !== 'string') throw new Error('Invalid channel ID');
-    if (!content || typeof content !== 'string') throw new Error('Content is required and must be a string');
-    try {
-      const channel = await this.client.channels.fetch(channelId);
-      if (!channel || !channel.isTextBased()) throw new Error('Channel not accessible or not text-based');
-      const webhook = await this.getOrCreateWebhook(channel);
-      if (!webhook) throw new Error('Failed to obtain webhook');
-      channel.isThread() ? content.threadId = channelId : undefined
-      const sentMessage = await webhook.send(content);
-      this.logger.info(`Sent message to channel ${channelId}`);
-      return sentMessage;
-    } catch (error) {
-      this.logger.error(`Failed to send webhook message to ${channelId}: ${error.message}`);
-    }
-  }
   async sendAsWebhook(channelId, content, avatar) {
     try {
       this.validateAvatar(avatar);
@@ -235,122 +204,150 @@ export class DiscordService extends BasicService {
     }
   }
 
-  async sendAvatarProfileEmbedFromObject(avatar, targetChannelId, services) {
-    this.validateAvatar(avatar);
-    const channelId = targetChannelId || avatar.channelId;
-    if (!channelId || typeof channelId !== 'string') throw new Error('Invalid channel ID in avatar object');
-    if (targetChannelId && targetChannelId !== avatar.channelId) {
-      this.logger.debug(`Overriding avatar ${avatar.name}'s channelId ${avatar.channelId} with ${targetChannelId}`);
-    }
-    if (!this.db) {
-      this.logger.error('Database not connected, cannot send avatar profile');
-      return;
-    }
+  buildAvatarEmbed(avatar) {
     try {
+      this.validateAvatar(avatar);
+
+      const {
+        name,
+        emoji = '',
+        short_description,
+        description,
+        imageUrl,
+        model,
+        createdAt,
+        updatedAt,
+        traits,
+        stats,
+        inventory = [],
+      } = avatar;
+
+      const rarity = this.getModelRarity(model);
+      const embedColor = rarityColors[rarity.toLowerCase()] || rarityColors.undefined;
+      const tier = { legendary: 'S', rare: 'A', uncommon: 'B', common: 'C', undefined: 'U' }[rarity.toLowerCase()] || 'U';
+
+      const embed = new EmbedBuilder()
+        .setColor(embedColor)
+        .setTitle(`${emoji} ${name}`)
+        .setDescription(short_description || (description ? description.split('. ')[0] + '.' : 'No description available'))
+        .setThumbnail(imageUrl)
+        .addFields(
+          { name: '🎂 Summonsday', value: `<t:${Math.floor(new Date(createdAt || Date.now()).getTime() / 1000)}:F>`, inline: true },
+          { name: `🧠 Tier ${tier}`, value: model || 'N/A', inline: true }
+        )
+        .setTimestamp(new Date(updatedAt || Date.now()))
+        .setFooter({ text: `Profile of ${name}`, iconURL: imageUrl });
+
+      if (stats) {
+        const { strength, dexterity, constitution, intelligence, wisdom, charisma, hp } = stats;
+        const conModifier = Math.floor((constitution - 10) / 2);
+        const maxHp = 10 + conModifier;
+        const dexModifier = Math.floor((dexterity - 10) / 2);
+        const ac = 10 + dexModifier;
+
+        const statsString = [
+          `🛡️ AC ${ac} ❤️ HP ${hp} / ${maxHp}`,
+          `-# ⚔️ ${strength} 🏃 ${dexterity} 🩸 ${constitution}`,
+          `-# 🧠 ${intelligence} 🌟 ${wisdom} 💬 ${charisma}`,
+        ].join('\n');
+
+        embed.addFields({ name: 'Stats', value: statsString, inline: false });
+      }
+
+      if (inventory.length > 0) {
+        const inventoryList = inventory.map(item => `• ${item.name}`).join('\n');
+        const truncatedList = inventoryList.length > 1000 ? `${inventoryList.slice(0, 997)}...` : inventoryList;
+        embed.addFields({ name: '🎒 Inventory', value: truncatedList || 'No items', inline: false });
+      } else {
+        embed.addFields({ name: '🎒 Inventory', value: 'Empty', inline: false });
+      }
+
+      if (traits) embed.addFields({ name: '🧬 Traits', value: traits, inline: false });
+
+      return embed;
+    } catch (error) {
+      this.logger.error(`Error building avatar embed: ${error.message}`);
+      throw error;
+    }
+  }
+
+  buildLocationEmbed(location, items = [], avatars = []) {
+    try {
+      if (!location || typeof location !== 'object') throw new Error('Invalid location object');
+
+      const { name, description, imageUrl, rarity = 'common' } = location;
+      const embedColor = rarityColors[rarity.toLowerCase()] || rarityColors.undefined;
+
+      const embed = new EmbedBuilder()
+        .setColor(embedColor)
+        .setTitle(name)
+        .setDescription(description ? description.split('. ')[0] + '.' : 'No description available')
+        .setImage(imageUrl)
+        .addFields(
+          { name: 'Rarity', value: rarity, inline: true },
+          { name: 'Items', value: `${items.length}` || 'None', inline: true },
+          { name: 'Avatars', value: `${avatars.length}` || 'None', inline: true }
+        )
+        .setTimestamp()
+        .setFooter({ text: 'Location Update' });
+
+      return embed;
+    } catch (error) {
+      this.logger.error(`Error building location embed: ${error.message}`);
+      throw error;
+    }
+  }
+
+  async sendEmbedAsWebhook(channelId, embed, username, avatarURL) {
+    try {
+      if (!channelId || typeof channelId !== 'string') throw new Error('Invalid channel ID');
+      if (!embed) throw new Error('Embed is required');
+
       const channel = await this.client.channels.fetch(channelId);
-      if (!channel || !channel.isTextBased()) throw new Error(`Channel not found or not text-based: ${channelId}`);
+      if (!channel || !channel.isTextBased()) throw new Error('Channel not accessible or not text-based');
+
       const webhook = await this.getOrCreateWebhook(channel);
       if (!webhook) throw new Error('Failed to obtain webhook');
-      const embed = await this.buildAvatarEmbed(avatar, services);
-      const components = await this.buildAvatarComponents(avatar, services);
+
       await webhook.send({
         embeds: [embed],
-        components,
-        username: `${avatar.name.slice(0, 78)}${avatar.emoji || ''}`.slice(0, 80),
-        avatarURL: avatar.imageUrl,
+        username: username ? username.slice(0, 80) : undefined,
+        avatarURL,
         threadId: channel.isThread() ? channelId : undefined,
       });
-      this.logger.info(`Sent avatar profile for ${avatar.name} to channel ${channelId}`);
+
+      this.logger.info(`Sent embed to channel ${channelId} as ${username}`);
     } catch (error) {
-      this.logger.error(`Failed to send avatar profile to ${channelId}: ${error.message}`);
+      this.logger.error(`Failed to send embed to ${channelId}: ${error.message}`);
+      throw error;
     }
   }
 
-  async buildAvatarEmbed(avatar, services) {
-    // Destructure avatar properties
-    const {
-      _id,
-      name,
-      emoji,
-      short_description,
-      description,
-      imageUrl,
-      model,
-      createdAt,
-      updatedAt,
-      traits,
-      innerMonologueThreadId,
-      channelId,
-      stats,
-      inventory = [], // Default to empty array if missing
-    } = avatar;
-  
-    // Get rarity and color for the embed
-    const rarity = this.getModelRarity(model);
-    const embedColor = rarityColors[rarity.toLowerCase()] || rarityColors.undefined;
-    const tier = { legendary: 'S', rare: 'A', uncommon: 'B', common: 'C', undefined: 'U' }[rarity.toLowerCase()] || 'U';
-  
-  
-    // Create the embed
-    const embed = new EmbedBuilder()
-      .setColor(embedColor)
-      .setTitle(`${emoji} ${name}`)
-      .setURL(innerMonologueThreadId ? `https://discord.com/channels/${channelId}/${innerMonologueThreadId}` : null)
-      .setAuthor({ name: `${name} ${emoji || ''}`, iconURL: imageUrl })
-      .setDescription((short_description || (description ? description.slice(0, 4096) : 'No description available')).split('. ')[0] + '.') // Truncate to first sentence;
-      .setThumbnail(imageUrl)
-      .addFields(
-        { name: '🎂 Summonsday', value: `<t:${Math.floor(new Date(createdAt || Date.now()).getTime() / 1000)}:F>`, inline: true },
-        { name: `🧠 Tier ${tier}`, value: model || 'N/A', inline: true }
-      );
-  
-    // Add D&D-style stats and health
-    if (stats) {
-      const { strength, dexterity, constitution, intelligence, wisdom, charisma, hp } = stats;
-
-      // Calculate modifiers and derived stats
-      const conModifier = Math.floor((constitution - 10) / 2);
-      const maxHp = 10 + conModifier; // Assuming level 1 with d10 hit die
-      const dexModifier = Math.floor((dexterity - 10) / 2);
-      const ac = 10 + dexModifier; // Base AC without armor
-      
-      // Combine all stats into a single string
-      const statsString = [
-        `🛡️ AC ${ac} ❤️ HP ${hp} / ${maxHp}`,
-        `-# ⚔️ ${strength} 🏃 ${dexterity} 🩸 ${constitution}`,
-        `-# 🧠 ${intelligence} 🌟 ${wisdom} 💬 ${charisma}`,
-      ].join('\n');
-      
-      // Add the single field to the embed
-      embed.addFields({
-        name: 'Stats',
-        value: statsString,
-        inline: false
-      });
+  async sendAvatarEmbed(avatar, targetChannelId) {
+    this.validateAvatar(avatar);
+    const channelId = targetChannelId || avatar.channelId;
+    if (!channelId || typeof channelId !== 'string') {
+      throw new Error('Invalid channel ID in avatar object');
     }
-  
-    // Add inventory
-    if (inventory && inventory.length > 0) {
-      const inventoryList = inventory.map(item => `• ${item.name}`).join('\n');
-      // Truncate if too long to avoid exceeding field limit (1024 characters)
-      const truncatedList = inventoryList.length > 1000 ? `${inventoryList.slice(0, 997)}...` : inventoryList;
-      embed.addFields({ name: '🎒 Inventory', value: truncatedList || 'No items', inline: false });
-    } else {
-      embed.addFields({ name: '🎒 Inventory', value: 'Empty', inline: false });
+    try {
+      const embed = await this.buildAvatarEmbed(avatar);
+      await this.sendEmbedAsWebhook(channelId, embed, avatar.name, avatar.imageUrl);
+    } catch (error) {
+      this.logger.error(`Failed to send avatar embed to ${channelId}: ${error.message}`);
     }
-  
-    // Add optional fields
-    if (traits) embed.addFields({ name: '🧬 Traits', value: traits, inline: false });
-    if (innerMonologueThreadId) embed.addFields({ name: '🧵 Inner Monologue', value: `<#${innerMonologueThreadId}>`, inline: false });
-  
-    // Set footer and image
-    embed
-      .setImage(imageUrl)
-      .setTimestamp(new Date(updatedAt || Date.now()))
-      .setFooter({ text: `Profile of ${name}`, iconURL: imageUrl });
-  
-    return embed;
   }
+  async sendLocationEmbed(location, items, avatars, channelId) {
+    if (!channelId || typeof channelId !== 'string') {
+      throw new Error('Invalid channel ID');
+    }
+    try {
+      const embed = this.buildLocationEmbed(location, items, avatars);
+      await this.sendEmbedAsWebhook(channelId, embed, 'Location Update', this.client.user.displayAvatarURL());
+    } catch (error) {
+      this.logger.error(`Failed to send location embed to ${channelId}: ${error.message}`);
+    }
+  }
+  
 
   async buildAvatarComponents(avatar) {
     const components = [];

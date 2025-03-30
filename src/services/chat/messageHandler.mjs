@@ -250,7 +250,7 @@ export class MessageHandler extends BasicService {
         await this.services.avatarService.updateAvatar(result.avatar);
 
         await this.services.conversationManager.sendResponse(channel, avatar);
-        await this.services.discordService.sendAvatarProfileEmbedFromObject(result.avatar);
+        await this.services.discordService.sendAvatarEmbed(result.avatar, channel.id);
       }
     } catch (error) {
       this.logger.error(`Error handling avatar creation: ${error.message}`);
