@@ -177,7 +177,7 @@ export class DiscordService extends BasicService {
         .setDescription((location.description || 'No description available').split('. ')[0] + '.')
         .setImage(location.imageUrl)
         .addFields(
-          { name: 'Update', value: summary || 'No updates available', inline: true },
+          { name: 'Update', value: summary || 'No updates available', inline: false },
           { name: 'Rarity', value: location.rarity || 'common', inline: true },
           { name: 'Items', value: items.length || 'None', inline: true },
           { name: 'Avatars', value: avatars.length || 'None', inline: true }
