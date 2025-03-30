@@ -378,7 +378,9 @@ If already suitable, return as is. If it needs editing, revise it while preservi
       await this.db.collection('locations').insertOne(location);
 
       // Optionally post the description and image to the channel
-      await this.discordService.sendAsWebhook(channelId, description, { files: [imageUrl] });
+      await this.discordService.sendLocationEmbed(location, [], [], channelId);
+      await this.discordService.sendAsWebhook(channelId, description, 
+        { name: cleanLocationName, imageUrl });
     }
     return location;
   }

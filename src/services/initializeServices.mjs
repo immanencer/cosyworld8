@@ -118,22 +118,11 @@ export async function initializeServices(logger) {
   services.statGenerationService = new StatGenerationService(services);
   services.logger.info("StatGenerationService initialized.");
 
-  // MapService
-  services.logger.info("Initializing MapService...");
-  services.mapService = new MapService(services);
-  await services.mapService.initializeDatabase();
-  services.logger.info("MapService initialized.");
-  
   // CreationService
   services.logger.info("Initializing CreationService...");
   services.creationService = new CreationService(services);
   services.logger.info("CreationService initialized.");
 
-  // AvatarService
-  services.logger.info("Initializing AvatarService...");
-  services.avatarService = new AvatarService(services);
-  await services.avatarService.initializeDatabase();
-  services.logger.info("AvatarService initialized.");
   
   // ChannelManager
   services.logger.info("Initializing ChannelManager...");
@@ -150,22 +139,33 @@ export async function initializeServices(logger) {
   services.itemService = new ItemService(services);
   services.logger.info("ItemService initialized.");
 
-
   // DecisionMaker
   services.logger.info("Initializing DecisionMaker...");
   services.decisionMaker = new DecisionMaker(services);
   services.logger.info("DecisionMaker initialized.");
 
-  
+  // MapService
+  services.logger.info("Initializing MapService...");
+  services.mapService = new MapService(services);
+  await services.mapService.initializeDatabase();
+  services.logger.info("MapService initialized.");
+
+  // AvatarService
+  services.logger.info("Initializing AvatarService...");
+  services.avatarService = new AvatarService(services);
+  await services.avatarService.initializeDatabase();
+  services.logger.info("AvatarService initialized.");
+
   // ConversationManager
   services.logger.info("Initializing ConversationManager...");
   services.conversationManager = new ConversationManager(services);
   services.logger.info("ConversationManager initialized.");
-  
+
   // LocationService
   services.logger.info("Initializing LocationService...");
   services.locationService = new LocationService(services);
   services.logger.info("LocationService initialized.");
+  
 
   // ToolService
   services.logger.info("Initializing ToolService...");

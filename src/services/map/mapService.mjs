@@ -178,9 +178,9 @@ export class MapService extends BasicService {
     const db = this.ensureDb();
 
     // Fetch location details
-    const location = await db.collection(this.LOCATIONS_COLLECTION).findOne({ channelId: locationId });
+    const location = await this.services.locationService?.getLocationByChannelId(locationId);
     if (!location) {
-      throw new Error(`Location with ID ${locationId} not found.`);
+      throw new Error(`Location with ID "${locationId}" not found.`);
     }
 
     // Fetch avatars in the location
