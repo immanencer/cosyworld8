@@ -178,8 +178,8 @@ export class DiscordService extends BasicService {
         .setImage(location.imageUrl)
         .addFields(
           { name: 'Rarity', value: location.rarity || 'common', inline: true },
-          { name: 'Items', value: items.map(i => i.name).join(', ') || 'None', inline: true },
-          { name: 'Avatars', value: avatars.map(a => a.name).join(', ') || 'None', inline: true }
+          { name: 'Items', value: items.length || 'None', inline: true },
+          { name: 'Avatars', value: avatars.length || 'None', inline: true }
         )
         .setTimestamp(new Date())
         .setFooter({ text: 'Location Update' });
