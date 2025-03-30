@@ -497,8 +497,8 @@ If already suitable, return as is. If it needs editing, revise it while preservi
         { role: 'user', content: prompt }
       ]);
 
-      const embed = this.buildLocationEmbed(location, summary, items, avatars);
-      await this.discordService.sendAsWebhook(locationId, { embeds: [embed] });
+      const embed = this.discordService.buildLocationEmbed(location, summary, items, avatars);
+      await this.discordService.sendAsWebhookRaw(locationId, { embeds: [embed] });
 
       await this.db.collection('locations').updateOne(
         { channelId: locationId },
@@ -509,21 +509,6 @@ If already suitable, return as is. If it needs editing, revise it while preservi
     } catch (error) {
       console.error('Error generating location summary:', error);
     }
-  }
-
-  buildLocationEmbed(location, summary, items, avatars) {
-    const embed = new EmbedBuilder()
-      .setTitle(location.name)
-      .setDescription(summary)
-      .setImage(location.imageUrl)
-      .addFields(
-        { name: 'Rarity', value: location.rarity || 'common', inline: true },
-        { name: 'Items', value: items.map(i => i.name).join(', ') || 'None', inline: true },
-        { name: 'Avatars', value: avatars.map(a => a.name).join(', ') || 'None', inline: true }
-      )
-      .setTimestamp(new Date())
-      .setFooter({ text: 'Location Update' });
-    return embed;
   }
 
   /**

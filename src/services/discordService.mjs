@@ -171,6 +171,37 @@ export class DiscordService extends BasicService {
     }
   }
 
+  buildLocationEmbed(location, summary, items, avatars) {
+      const embed = new EmbedBuilder()
+        .setTitle(location.name)
+        .setDescription(summary)
+        .setImage(location.imageUrl)
+        .addFields(
+          { name: 'Rarity', value: location.rarity || 'common', inline: true },
+          { name: 'Items', value: items.map(i => i.name).join(', ') || 'None', inline: true },
+          { name: 'Avatars', value: avatars.map(a => a.name).join(', ') || 'None', inline: true }
+        )
+        .setTimestamp(new Date())
+        .setFooter({ text: 'Location Update' });
+      return embed;
+    }
+
+  async sendAsWebhookRaw(channelId, content) {
+    if (!channelId || typeof channelId !== 'string') throw new Error('Invalid channel ID');
+    if (!content || typeof content !== 'string') throw new Error('Content is required and must be a string');
+    try {
+      const channel = await this.client.channels.fetch(channelId);
+      if (!channel || !channel.isTextBased()) throw new Error('Channel not accessible or not text-based');
+      const webhook = await this.getOrCreateWebhook(channel);
+      if (!webhook) throw new Error('Failed to obtain webhook');
+      channel.isThread() ? content.threadId = channelId : undefined
+      const sentMessage = await webhook.send(content);
+      this.logger.info(`Sent message to channel ${channelId}`);
+      return sentMessage;
+    } catch (error) {
+      this.logger.error(`Failed to send webhook message to ${channelId}: ${error.message}`);
+    }
+  }
   async sendAsWebhook(channelId, content, avatar) {
     try {
       this.validateAvatar(avatar);
