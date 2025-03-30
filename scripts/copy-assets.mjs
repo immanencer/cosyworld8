@@ -12,7 +12,7 @@ const __dirname = dirname(__filename);
 const rootDir = path.resolve(__dirname, '..');
 
 // Define source and destination directories
-const srcDir = path.join(rootDir, 'public');
+const srcDir = path.join(rootDir, 'src/services/web/public');
 const destDir = path.join(rootDir, 'dist');
 
 // Files and directories to copy
@@ -26,9 +26,6 @@ const assetsToCopy = [
   { src: 'admin/index.html', dest: 'admin/index.html', transform: true }
 ];
 
-/**
- * Ensures a directory exists
- */
 function ensureDirectoryExists(dirPath) {
   if (!fs.existsSync(dirPath)) {
     fs.mkdirSync(dirPath, { recursive: true });
@@ -36,19 +33,14 @@ function ensureDirectoryExists(dirPath) {
   }
 }
 
-/**
- * Copy a file from source to destination
- */
 function copyFile(src, dest, transform = false) {
   const srcPath = path.join(srcDir, src);
   const destPath = path.join(destDir, dest);
 
-  // Ensure the destination directory exists
-  const destDirPath = path.dirname(destPath);
-  ensureDirectoryExists(destDirPath);
+  ensureDirectoryExists(path.dirname(destPath));
 
   if (!fs.existsSync(srcPath)) {
-    console.warn(`Warning: Source file not found: ${srcPath}`);
+    console.warn(`Warning: Source path does not exist: ${srcPath}`);
     return;
   }
 
@@ -66,55 +58,15 @@ function copyFile(src, dest, transform = false) {
   }
 }
 
-/**
- * Copy a directory recursively
- */
-function copyDirectory(src, dest) {
-  const srcPath = path.join(srcDir, src);
-  const destPath = path.join(destDir, dest);
-
-  if (!fs.existsSync(srcPath)) {
-    console.warn(`Warning: Source directory not found: ${srcPath}`);
-    return;
-  }
-
-  ensureDirectoryExists(destPath);
-
-  const entries = fs.readdirSync(srcPath, { withFileTypes: true });
-
-  for (const entry of entries) {
-    const srcEntry = path.join(src, entry.name);
-    const destEntry = path.join(dest, entry.name);
-
-    if (entry.isDirectory()) {
-      copyDirectory(srcEntry, destEntry);
-    } else {
-      copyFile(srcEntry, destEntry);
-    }
-  }
-
-  console.log(`Copied directory: ${src} -> ${dest}`);
-}
-
-/**
- * Main execution function
- */
 function copyAssets() {
   console.log('Starting to copy assets...');
   ensureDirectoryExists(destDir);
 
   for (const asset of assetsToCopy) {
-    const srcPath = path.join(srcDir, asset.src);
-
-    if (fs.existsSync(srcPath)) {
-      copyFile(asset.src, asset.dest, asset.transform);
-    } else {
-      console.warn(`Warning: Source path does not exist: ${srcPath}`);
-    }
+    copyFile(asset.src, asset.dest, asset.transform);
   }
 
   console.log('Assets copied successfully!');
 }
 
-// Execute the copy
 copyAssets();
