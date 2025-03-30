@@ -22,6 +22,7 @@ export class LocationService extends BasicService {
       'avatarService',
       'channelManager',
       'conversationManager',
+      'mapService',
     ]);
 
     this.client = this.discordService.client;
@@ -477,20 +478,19 @@ If already suitable, return as is. If it needs editing, revise it while preservi
         return;
       }
 
-      const location = await this.findLocationById(locationId);
+      const { location, avatars } = await this.mapService.getLocationAndAvatars(locationId);
+
       if (!location) {
         console.warn('No location found with ID', locationId);
         return;
       }
 
       const items = await this.itemService.searchItems(locationId, '');
-      const avatars = await this.avatarService.getAvatarsInChannel(locationId);
-
       const prompt = `
         As ${location.name}, describe the recent events, notable characters, and items present.
         Focus on the atmosphere, interactions, and changes in the environment.
         Recent activity:
-        ${locationData.messages.map(m => `${m.author}: ${m.content}`).join('\n')}
+        ${channelHistory.map(m => `${m.author}: ${m.content}`).join('\n')}
       `;
       const summary = await this.aiService.chat([
         { role: 'system', content: 'You are a mystical location describing events and characters.' },
@@ -534,35 +534,9 @@ If already suitable, return as is. If it needs editing, revise it while preservi
    */
   async findLocationById(locationId) {
     try {
-      const guild = this.client.guilds.cache.first();
-      if (!guild) {
-        console.warn('No guild found in the Discord client');
-        return null;
-      }
-
-      try {
-        const channel = await guild.channels.fetch(locationId);
-        if (!channel) return null;
-      } catch (error) {
-        console.warn('Error fetching channel:', error);
-        return null;
-      }
-
-      // Optionally, fetch DB info
-      let dbLocation = null;
-      if (this.db) {
-        dbLocation = await this.db.collection('locations').findOne({
-          $or: [{ channelId: locationId }, { _id: new ObjectId(locationId) }]
-        });
-      }
-
-      return {
-        id: channel.id,
-        name: channel.name,
-        channel,
-        description: dbLocation?.description || channel.topic || '',
-        imageUrl: dbLocation?.imageUrl || null
-      };
+      return await this.db.collection('locations').findOne({
+        $or: [{ channelId: locationId }, { _id: ObjectId.createFromTime(locationId) }]
+      });
     } catch (error) {
       console.error('Error finding location by ID:', error);
       return null;

@@ -1,11 +1,14 @@
 // PeriodicTaskManager.mjs
-
-export class PeriodicTaskManager {
+import { BasicService } from '../basicService.mjs';
+export class PeriodicTaskManager extends BasicService {
   constructor(services) {
-    this.services = services;
-    this.avatarService = services.avatarService;
-    this.channelManager = services.channelManager;
-    this.logger = services.logger;
+    super(services, [
+      'avatarService',
+      'locationService',
+      'mapService',
+      'conversationManager',
+      'channelManager',
+    ]);
     this.intervals = [];
     this.AMBIENT_CHECK_INTERVAL = 60 * 60 * 1000; // 1 hour
     this.REFLECTION_INTERVAL = 1 * 3600 * 1000; // 1 hour
@@ -45,7 +48,7 @@ export class PeriodicTaskManager {
       }
 
       // Handle avatar responses
-      const avatars = await this.avatarService.getAvatarsInChannel(channel.id);
+      const avatars = (await this.mapService.getLocationAndAvatars(channel.id)).avatars;
       const selected = avatars.sort(() => Math.random() - 0.5).slice(0, 2);
       for (const avatar of selected) {
         await this.services.conversationManager.sendResponse(channel, avatar);
