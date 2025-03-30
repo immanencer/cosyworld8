@@ -1,0 +1,374 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Avatar Management - Admin Dashboard</title>
+    <link
+      href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css"
+      rel="stylesheet"
+    />
+  </head>
+  <body class="bg-gray-100">
+    <div class="min-h-screen flex flex-col">
+      <!-- Navigation -->
+      <nav class="bg-gray-800 text-white shadow-lg">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div class="flex items-center justify-between h-16">
+            <div class="flex items-center">
+              <div class="flex-shrink-0">
+                <h1 class="text-xl font-bold">RATi Admin Panel</h1>
+              </div>
+              <div class="ml-10 flex items-baseline space-x-4">
+                <a
+                  href="/admin"
+                  class="px-3 py-2 rounded-md text-sm font-medium text-gray-300 hover:text-white hover:bg-gray-700"
+                  >Dashboard</a
+                >
+                <a
+                  href="/admin/guild-settings"
+                  class="px-3 py-2 rounded-md text-sm font-medium text-gray-300 hover:text-white hover:bg-gray-700"
+                  >Guild Settings</a
+                >
+                <a
+                  href="/admin/avatar-management"
+                  class="px-3 py-2 rounded-md text-sm font-medium text-white bg-gray-700"
+                  >Avatar Management</a
+                >
+              </div>
+            </div>
+          </div>
+        </div>
+      </nav>
+
+      <!-- Main Content -->
+      <main class="flex-grow">
+        <div class="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
+          <div class="px-4 py-6 sm:px-0">
+            <div class="bg-white shadow overflow-hidden sm:rounded-lg">
+              <div class="px-4 py-5 sm:px-6 flex justify-between items-center">
+                <div>
+                  <h2 class="text-lg leading-6 font-medium text-gray-900">
+                    Avatar Management
+                  </h2>
+                  <p class="mt-1 max-w-2xl text-sm text-gray-500">
+                    View and manage all avatars in the system
+                  </p>
+                </div>
+                <div class="flex space-x-2">
+                  <button
+                    id="new-avatar"
+                    class="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700"
+                  >
+                    New Avatar
+                  </button>
+                  <input
+                    id="avatar-search"
+                    type="text"
+                    placeholder="Search avatars..."
+                    class="px-3 py-1 border border-gray-300 rounded shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                  />
+                  <div class="flex space-x-2">
+                    <select
+                      id="status-filter"
+                      class="px-3 py-1 border border-gray-300 rounded shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                    >
+                      <option value="all">All Status</option>
+                      <option value="alive">Alive</option>
+                      <option value="dead">Dead</option>
+                      <option value="inactive">Inactive</option>
+                    </select>
+                    <select
+                      id="model-filter"
+                      class="px-3 py-1 border border-gray-300 rounded shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                    >
+                      <option value="all">All Models</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+
+              <div class="border-t border-gray-200 px-4 py-5 sm:p-6">
+                <div id="avatars-table" class="overflow-x-auto">
+                  <table class="min-w-full divide-y divide-gray-200">
+                    <thead class="bg-gray-50">
+                      <tr>
+                        <th
+                          scope="col"
+                          class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                        >
+                          Avatar
+                        </th>
+                        <th
+                          scope="col"
+                          class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                        >
+                          Name
+                        </th>
+                        <th
+                          scope="col"
+                          class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                        >
+                          ID
+                        </th>
+                        <th
+                          scope="col"
+                          class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                        >
+                          Status
+                        </th>
+                        <th
+                          scope="col"
+                          class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                        >
+                          Model
+                        </th>
+                        <th
+                          scope="col"
+                          class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                        >
+                          Created
+                        </th>
+                        <th
+                          scope="col"
+                          class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                        >
+                          Actions
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody
+                      id="avatars-body"
+                      class="bg-white divide-y divide-gray-200"
+                    >
+                      <tr>
+                        <td
+                          colspan="7"
+                          class="px-6 py-4 whitespace-nowrap text-center text-sm text-gray-500"
+                        >
+                          Loading avatars...
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+
+                <div class="mt-4 flex justify-between items-center">
+                  <div id="pagination-info" class="text-sm text-gray-500">
+                    Showing 1-20 of 0 avatars
+                  </div>
+                  <div class="flex space-x-2">
+                    <button
+                      id="prev-page"
+                      class="px-3 py-1 border border-gray-300 rounded shadow-sm bg-white text-gray-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      Previous
+                    </button>
+                    <button
+                      id="next-page"
+                      class="px-3 py-1 border border-gray-300 rounded shadow-sm bg-white text-gray-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      Next
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </main>
+
+      <!-- Avatar Edit Modal -->
+      <div
+        id="avatar-modal"
+        class="fixed inset-0 bg-gray-600 bg-opacity-75 hidden flex items-center justify-center"
+      >
+        <div
+          class="bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-screen overflow-y-auto"
+        >
+          <div
+            class="px-6 py-4 bg-gray-100 border-b flex justify-between items-center"
+          >
+            <h3 class="text-lg font-medium text-gray-900" id="modal-title">
+              Edit Avatar
+            </h3>
+            <button id="close-modal" class="text-gray-400 hover:text-gray-500">
+              <svg
+                class="h-6 w-6"
+                xmlns="http://www.w3.org/2000/svg"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M6 18L18 6M6 6l12 12"
+                />
+              </svg>
+            </button>
+          </div>
+          <form id="avatar-form" class="px-6 py-4">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div class="space-y-4">
+                <div>
+                  <label
+                    for="avatar-name"
+                    class="block text-sm font-medium text-gray-700"
+                    >Name</label
+                  >
+                  <input
+                    type="text"
+                    id="avatar-name"
+                    name="name"
+                    class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                    required
+                  />
+                </div>
+                <div>
+                  <label
+                    for="avatar-status"
+                    class="block text-sm font-medium text-gray-700"
+                    >Status</label
+                  >
+                  <select
+                    id="avatar-status"
+                    name="status"
+                    class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                  >
+                    <option value="alive">Alive</option>
+                    <option value="dead">Dead</option>
+                    <option value="inactive">Inactive</option>
+                  </select>
+                </div>
+                <div>
+                  <label
+                    for="avatar-model"
+                    class="block text-sm font-medium text-gray-700"
+                    >AI Model</label
+                  >
+                  <select
+                    id="avatar-model"
+                    name="model"
+                    class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                  >
+                    <!-- Models will be populated dynamically -->
+                  </select>
+                </div>
+                <div>
+                  <label
+                    for="avatar-emoji"
+                    class="block text-sm font-medium text-gray-700"
+                    >Emoji</label
+                  >
+                  <input
+                    type="text"
+                    id="avatar-emoji"
+                    name="emoji"
+                    class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                  />
+                </div>
+              </div>
+              <div class="space-y-4">
+                <div>
+                  <label
+                    for="avatar-description"
+                    class="block text-sm font-medium text-gray-700"
+                    >Description</label
+                  >
+                  <textarea
+                    id="avatar-description"
+                    name="description"
+                    rows="3"
+                    class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                  ></textarea>
+                </div>
+                <div>
+                  <label
+                    for="avatar-personality"
+                    class="block text-sm font-medium text-gray-700"
+                    >Personality</label
+                  >
+                  <textarea
+                    id="avatar-personality"
+                    name="personality"
+                    rows="3"
+                    class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                  ></textarea>
+                </div>
+                <div>
+                  <label
+                    for="avatar-image-url"
+                    class="block text-sm font-medium text-gray-700"
+                    >Avatar Image URL</label
+                  >
+                  <input
+                    type="url"
+                    id="avatar-image-url"
+                    name="imageUrl"
+                    class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                  />
+                  <img
+                    id="avatar-image-preview"
+                    src=""
+                    alt="Avatar Preview"
+                    class="mt-2 h-32 w-32 rounded-full object-cover border border-gray-300 hidden"
+                  />
+                </div>
+              </div>
+            </div>
+            <div class="mt-6">
+              <button
+                type="button"
+                id="preview-prompt"
+                class="inline-flex justify-center py-2 px-4 border border-blue-400 shadow-sm text-sm font-medium rounded-md text-blue-700 bg-blue-50 hover:bg-blue-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+              >
+                Preview Prompt
+              </button>
+              <div id="prompt-preview-container" class="mt-4 p-4 bg-gray-50 rounded-md border border-gray-300 hidden">
+                <h4 class="font-medium text-gray-700 mb-2">Sample Contextual Prompt</h4>
+                <div id="prompt-preview-content" class="text-sm text-gray-600 whitespace-pre-wrap"></div>
+              </div>
+            </div>
+            <div class="mt-6 flex justify-end space-x-3">
+              <button
+                type="button"
+                id="delete-avatar"
+                class="hidden inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
+              >
+                Delete
+              </button>
+              <button
+                type="button"
+                id="cancel-edit"
+                class="inline-flex justify-center py-2 px-4 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                id="save-avatar"
+                class="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+              >
+                Save Changes
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+
+      <!-- Footer -->
+      <footer class="bg-white">
+        <div class="max-w-7xl mx-auto py-4 px-4 sm:px-6 lg:px-8">
+          <p class="text-center text-sm text-gray-500">
+            ARGOS Admin Panel © 2024
+          </p>
+        </div>
+      </footer>
+    </div>
+
+    <!-- External JavaScript -->
+    <script src="avatar-management.js"></script>
+  </body>
+</html>

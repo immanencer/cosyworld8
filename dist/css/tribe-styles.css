@@ -1,0 +1,87 @@
+.tribe-card {
+  position: relative;
+  overflow: hidden;
+  transition: all 0.3s ease;
+}
+
+.tribe-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.3);
+}
+
+.tribe-card::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  height: 4px;
+  width: 100%;
+  background: linear-gradient(90deg, #4f46e5, #6366f1);
+  transform: scaleX(0);
+  transform-origin: bottom right;
+  transition: transform 0.3s ease;
+}
+
+.tribe-card:hover::after {
+  transform: scaleX(1);
+  transform-origin: bottom left;
+}
+
+/* Animations */
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.tribe-fade-in {
+  animation: fadeIn 0.5s ease forwards;
+}
+
+/* Custom emoji sizes for different contexts */
+.emoji-large {
+  font-size: 4rem;
+  line-height: 1;
+}
+
+.emoji-medium {
+  font-size: 2.5rem;
+  line-height: 1;
+}
+
+.emoji-small {
+  font-size: 1.5rem;
+  line-height: 1;
+}
+
+/* Filter UI for tribes */
+.tribe-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-bottom: 1.5rem;
+  padding: 1rem;
+  background-color: rgba(31, 41, 55, 0.5);
+  border-radius: 0.5rem;
+}
+
+.tribe-filter-button {
+  padding: 0.5rem 1rem;
+  border-radius: 9999px;
+  font-size: 0.875rem;
+  font-weight: 500;
+  transition: all 0.2s ease;
+}
+
+.tribe-filter-button.active {
+  background-color: #4f46e5;
+  color: white;
+}
+
+.tribe-filter-button:not(.active) {
+  background-color: rgba(55, 65, 81, 0.5);
+  color: #d1d5db;
+}
+
+.tribe-filter-button:hover:not(.active) {
+  background-color: rgba(75, 85, 99, 0.5);
+}
