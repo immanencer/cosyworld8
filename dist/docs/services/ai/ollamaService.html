@@ -1,0 +1,174 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Ollama Service - CosyWorld Documentation</title>
+  <!-- Mermaid script for diagram rendering -->
+  <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      mermaid.initialize({ 
+        startOnLoad: true,
+        theme: 'dark',
+        securityLevel: 'loose'
+      });
+    });
+  </script>
+  <style>
+    body { 
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; 
+      line-height: 1.6;
+      color: #333;
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 1rem;
+      display: flex;
+    }
+    nav {
+      width: 250px;
+      padding-right: 2rem;
+      flex-shrink: 0;
+    }
+    main {
+      flex-grow: 1;
+    }
+    code {
+      background: #f5f5f5;
+      padding: 0.2em 0.4em;
+      border-radius: 3px;
+      font-family: SFMono-Regular, Consolas, Liberation Mono, Menlo, monospace;
+      font-size: 85%;
+    }
+    pre {
+      background: #f5f5f5;
+      padding: 1rem;
+      border-radius: 5px;
+      overflow: auto;
+    }
+    pre code {
+      background: none;
+      padding: 0;
+    }
+    a { color: #0366d6; text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    h1, h2, h3, h4 { margin-top: 1.5em; margin-bottom: 0.5em; }
+    h1 { border-bottom: 1px solid #eaecef; padding-bottom: 0.3em; }
+    nav ul { list-style-type: none; padding-left: 1.2em; }
+    nav > ul { padding-left: 0; }
+    .section-title { 
+      font-weight: bold; 
+      margin-top: 1em;
+      color: #24292e;
+    }
+    /* Mermaid diagram styling */
+    .mermaid {
+      margin: 1rem 0;
+    }
+  </style>
+</head>
+<body>
+  <nav><ul><li><a href="../../index.html">Home</a></li><li><span class="section-title">Overview</span><ul><li><a href="../../overview/03-system-diagram.html">System Diagram</a></li><li><a href="../../overview/02-system-overview.html">System Overview</a></li><li><a href="../../overview/01-introduction.html">CosyWorld Introduction</a></li></ul></li><li><span class="section-title">Systems</span><ul><li><a href="../../systems/06-dungeon-system.html">Dungeon System</a></li><li><a href="../../systems/05-intelligence-system.html">Intelligence System</a></li><li><a href="../../systems/04-action-system.html">Action System</a></li></ul></li><li><span class="section-title">Services</span><ul><li><a href="../../services/x-authentication.html">X (Twitter) Authentication and Integration</a></li><li><a href="../../services/architecture-report.html">CosyWorld Architecture Report</a></li><li><a href="../../services/README.html">CosyWorld Services Documentation</a></li><li><span class="section-title">World</span><ul><li><a href="../../services/world/questGeneratorService.html">Quest Generator Service</a></li><li><a href="../../services/world/locationService.html">Location Service</a></li><li><a href="../../services/world/itemService.html">Item Service</a></li></ul></li><li><span class="section-title">Web</span><ul><li><a href="../../services/web/webService.html">Web Service</a></li></ul></li><li><span class="section-title">Tools</span><ul><li><a href="../../services/tools/toolService.html">Tool Service</a></li></ul></li><li><span class="section-title">S3</span><ul><li><a href="../../services/s3/s3Service.html">S3 Service</a></li></ul></li><li><span class="section-title">Quest</span><ul><li><a href="../../services/quest/questGeneratorService.html">Quest Generator Service</a></li></ul></li><li><span class="section-title">Media</span><ul><li><a href="../../services/media/s3Service.html">S3 Service</a></li><li><a href="../../services/media/imageProcessingService.html">Image Processing Service</a></li></ul></li><li><span class="section-title">Location</span><ul><li><a href="../../services/location/locationService.html">Location Service</a></li></ul></li><li><span class="section-title">Item</span><ul><li><a href="../../services/item/itemService.html">Item Service</a></li></ul></li><li><span class="section-title">Integration</span><ul><li><a href="../../services/integration/x-authentication.html">X (Twitter) Authentication and Integration</a></li></ul></li><li><span class="section-title">Foundation</span><ul><li><a href="../../services/foundation/logger.html">Logger Service</a></li><li><a href="../../services/foundation/databaseService.html">Database Service</a></li><li><a href="../../services/foundation/configService.html">Config Service</a></li><li><a href="../../services/foundation/basicService.html">Basic Service</a></li></ul></li><li><span class="section-title">Entity</span><ul><li><a href="../../services/entity/memoryService.html">Memory Service</a></li><li><a href="../../services/entity/avatarService.html">Avatar Service</a></li></ul></li><li><span class="section-title">Core</span><ul><li><a href="../../services/core/promptService.html">Prompt Service</a></li><li><a href="../../services/core/memoryService.html">Memory Service</a></li><li><a href="../../services/core/databaseService.html">Database Service</a></li><li><a href="../../services/core/basicService.html">Basic Service</a></li><li><a href="../../services/core/avatarService.html">Avatar Service</a></li><li><a href="../../services/core/aiService.html">AI Service</a></li></ul></li><li><span class="section-title">Communication</span><ul><li><a href="../../services/communication/conversationManager.html">Conversation Manager</a></li></ul></li><li><span class="section-title">Chat</span><ul><li><a href="../../services/chat/conversationManager.html">Conversation Manager</a></li></ul></li><li><span class="section-title">Blockchain</span><ul><li><a href="../../services/blockchain/tokenService.html">Token Service</a></li></ul></li><li><span class="section-title">Ai</span><ul><li><a href="../../services/ai/replicateService.html">Replicate Service</a></li><li><a href="../../services/ai/promptService.html">Prompt Service</a></li><li><a href="../../services/ai/openrouterAIService.html">OpenRouter AI Service</a></li><li><a href="../../services/ai/ollamaService.html">Ollama Service</a></li><li><a href="../../services/ai/googleAIService.html">Google AI Service</a></li><li><a href="../../services/ai/aiService.html">AI Service</a></li></ul></li></ul></li><li><span class="section-title">Deployment</span><ul><li><a href="../../deployment/08-future-work.html">Future Work Priorities</a></li><li><a href="../../deployment/07-deployment.html">Deployment Guide</a></li></ul></li></ul></nav>
+  <main><h1>Ollama Service</h1>
+<h2>Overview</h2>
+<p>The Ollama Service provides integration with locally-hosted AI models through the Ollama framework. This service enables the system to use open-source large language models running on local hardware, offering privacy, reduced costs, and offline capabilities.</p>
+<h2>Functionality</h2>
+<ul>
+<li><strong>Local Model Access</strong>: Connect to locally running Ollama instance</li>
+<li><strong>Chat Completions</strong>: Generate conversational responses from message chains</li>
+<li><strong>Text Completions</strong>: Generate text from simple prompts</li>
+<li><strong>Image Analysis</strong>: Basic support for analyzing images with multimodal models</li>
+<li><strong>Model Verification</strong>: Check for model availability in the local Ollama instance</li>
+</ul>
+<h2>Implementation</h2>
+<p>The Ollama Service uses the Ollama JavaScript client to communicate with a locally running Ollama server. It implements the standard AI service interface, making it compatible with the rest of the system.</p>
+<pre><code class="language-javascript">// Example initialization
+const ollamaService = new OllamaService({
+  defaultModel: 'llama3.2'
+}, services);
+
+// Example usage
+const response = await ollamaService.chat([
+  { role: 'user', content: 'What are the benefits of local AI?' }
+]);
+</code></pre>
+<h3>Key Methods</h3>
+<ul>
+<li><strong>chat()</strong>: Process a conversation with multiple messages</li>
+<li><strong>generateCompletion()</strong>: Generate text from a single prompt</li>
+<li><strong>analyzeImage()</strong>: Process an image with a text prompt</li>
+<li><strong>modelIsAvailable()</strong>: Check if a specific model is available on the Ollama server</li>
+</ul>
+<h2>Configuration</h2>
+<p>The service is configured with sensible defaults but can be customized:</p>
+<pre><code class="language-javascript">// Default chat options
+this.defaultChatOptions = {
+  temperature: 0.7,
+  max_tokens: 1000,
+  top_p: 1.0,
+  frequency_penalty: 0,
+  presence_penalty: 0,
+};
+</code></pre>
+<h2>Advantages of Local AI</h2>
+<p>Using Ollama for local model hosting provides several benefits:</p>
+<ul>
+<li><strong>Privacy</strong>: Data stays on your own hardware</li>
+<li><strong>Cost-effective</strong>: No API usage fees</li>
+<li><strong>Offline capability</strong>: Works without internet connectivity</li>
+<li><strong>Customization</strong>: Fine-tune models for specific needs</li>
+<li><strong>Reduced latency</strong>: No network roundtrip for requests</li>
+</ul>
+<h2>Model Support</h2>
+<p>Ollama supports a variety of open-source models:</p>
+<ul>
+<li>Llama 3.2</li>
+<li>Mistral</li>
+<li>Gemma</li>
+<li>And many other compatible models</li>
+</ul>
+<h2>Dependencies</h2>
+<ul>
+<li>Ollama client library (<code>ollama</code>)</li>
+<li>Local Ollama server running on the same machine or network</li>
+<li>(Optional) Environment variable: <code>OLLAMA_API_KEY</code> for secure setups</li>
+</ul>
+<h2>Usage Examples</h2>
+<h3>Chat Completion</h3>
+<pre><code class="language-javascript">const response = await ollamaService.chat([
+  { role: 'system', content: 'You are a helpful assistant.' },
+  { role: 'user', content: 'Explain quantum computing.' },
+  { role: 'assistant', content: 'Quantum computing uses quantum mechanics...' },
+  { role: 'user', content: 'How is that different from classical computing?' }
+]);
+</code></pre>
+<h3>Text Completion</h3>
+<pre><code class="language-javascript">const story = await ollamaService.generateCompletion(
+  'Once upon a time in a digital realm,',
+  { temperature: 0.9, max_tokens: 2000 }
+);
+</code></pre>
+<h3>Image Analysis</h3>
+<pre><code class="language-javascript">const description = await ollamaService.analyzeImage(
+  imageBase64Data,
+  'image/jpeg',
+  'What objects do you see in this image?'
+);
+</code></pre>
+<h2>Error Handling</h2>
+<p>The service includes graceful error handling to prevent failures from disrupting the application:</p>
+<ul>
+<li>Returns <code>null</code> instead of throwing exceptions</li>
+<li>Logs detailed error information</li>
+<li>Validates responses before returning them</li>
+</ul>
+<h2>Limitations</h2>
+<ul>
+<li>Performance depends on local hardware capabilities</li>
+<li>Advanced image processing may be limited compared to cloud services</li>
+<li>Not all models support all features (e.g., multimodal capabilities)</li>
+</ul>
+</main>
+</body>
+</html>

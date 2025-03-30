@@ -1,6 +1,5 @@
 
 // imageProcessingService.mjs
-import fetch from 'node-fetch';
 
 export class ImageProcessingService {
   constructor(logger, aiService) {

@@ -1,0 +1,241 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Config Service - CosyWorld Documentation</title>
+  <!-- Mermaid script for diagram rendering -->
+  <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      mermaid.initialize({ 
+        startOnLoad: true,
+        theme: 'dark',
+        securityLevel: 'loose'
+      });
+    });
+  </script>
+  <style>
+    body { 
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; 
+      line-height: 1.6;
+      color: #333;
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 1rem;
+      display: flex;
+    }
+    nav {
+      width: 250px;
+      padding-right: 2rem;
+      flex-shrink: 0;
+    }
+    main {
+      flex-grow: 1;
+    }
+    code {
+      background: #f5f5f5;
+      padding: 0.2em 0.4em;
+      border-radius: 3px;
+      font-family: SFMono-Regular, Consolas, Liberation Mono, Menlo, monospace;
+      font-size: 85%;
+    }
+    pre {
+      background: #f5f5f5;
+      padding: 1rem;
+      border-radius: 5px;
+      overflow: auto;
+    }
+    pre code {
+      background: none;
+      padding: 0;
+    }
+    a { color: #0366d6; text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    h1, h2, h3, h4 { margin-top: 1.5em; margin-bottom: 0.5em; }
+    h1 { border-bottom: 1px solid #eaecef; padding-bottom: 0.3em; }
+    nav ul { list-style-type: none; padding-left: 1.2em; }
+    nav > ul { padding-left: 0; }
+    .section-title { 
+      font-weight: bold; 
+      margin-top: 1em;
+      color: #24292e;
+    }
+    /* Mermaid diagram styling */
+    .mermaid {
+      margin: 1rem 0;
+    }
+  </style>
+</head>
+<body>
+  <nav><ul><li><a href="../../index.html">Home</a></li><li><span class="section-title">Overview</span><ul><li><a href="../../overview/03-system-diagram.html">System Diagram</a></li><li><a href="../../overview/02-system-overview.html">System Overview</a></li><li><a href="../../overview/01-introduction.html">CosyWorld Introduction</a></li></ul></li><li><span class="section-title">Systems</span><ul><li><a href="../../systems/06-dungeon-system.html">Dungeon System</a></li><li><a href="../../systems/05-intelligence-system.html">Intelligence System</a></li><li><a href="../../systems/04-action-system.html">Action System</a></li></ul></li><li><span class="section-title">Services</span><ul><li><a href="../../services/x-authentication.html">X (Twitter) Authentication and Integration</a></li><li><a href="../../services/architecture-report.html">CosyWorld Architecture Report</a></li><li><a href="../../services/README.html">CosyWorld Services Documentation</a></li><li><span class="section-title">World</span><ul><li><a href="../../services/world/questGeneratorService.html">Quest Generator Service</a></li><li><a href="../../services/world/locationService.html">Location Service</a></li><li><a href="../../services/world/itemService.html">Item Service</a></li></ul></li><li><span class="section-title">Web</span><ul><li><a href="../../services/web/webService.html">Web Service</a></li></ul></li><li><span class="section-title">Tools</span><ul><li><a href="../../services/tools/toolService.html">Tool Service</a></li></ul></li><li><span class="section-title">S3</span><ul><li><a href="../../services/s3/s3Service.html">S3 Service</a></li></ul></li><li><span class="section-title">Quest</span><ul><li><a href="../../services/quest/questGeneratorService.html">Quest Generator Service</a></li></ul></li><li><span class="section-title">Media</span><ul><li><a href="../../services/media/s3Service.html">S3 Service</a></li><li><a href="../../services/media/imageProcessingService.html">Image Processing Service</a></li></ul></li><li><span class="section-title">Location</span><ul><li><a href="../../services/location/locationService.html">Location Service</a></li></ul></li><li><span class="section-title">Item</span><ul><li><a href="../../services/item/itemService.html">Item Service</a></li></ul></li><li><span class="section-title">Integration</span><ul><li><a href="../../services/integration/x-authentication.html">X (Twitter) Authentication and Integration</a></li></ul></li><li><span class="section-title">Foundation</span><ul><li><a href="../../services/foundation/logger.html">Logger Service</a></li><li><a href="../../services/foundation/databaseService.html">Database Service</a></li><li><a href="../../services/foundation/configService.html">Config Service</a></li><li><a href="../../services/foundation/basicService.html">Basic Service</a></li></ul></li><li><span class="section-title">Entity</span><ul><li><a href="../../services/entity/memoryService.html">Memory Service</a></li><li><a href="../../services/entity/avatarService.html">Avatar Service</a></li></ul></li><li><span class="section-title">Core</span><ul><li><a href="../../services/core/promptService.html">Prompt Service</a></li><li><a href="../../services/core/memoryService.html">Memory Service</a></li><li><a href="../../services/core/databaseService.html">Database Service</a></li><li><a href="../../services/core/basicService.html">Basic Service</a></li><li><a href="../../services/core/avatarService.html">Avatar Service</a></li><li><a href="../../services/core/aiService.html">AI Service</a></li></ul></li><li><span class="section-title">Communication</span><ul><li><a href="../../services/communication/conversationManager.html">Conversation Manager</a></li></ul></li><li><span class="section-title">Chat</span><ul><li><a href="../../services/chat/conversationManager.html">Conversation Manager</a></li></ul></li><li><span class="section-title">Blockchain</span><ul><li><a href="../../services/blockchain/tokenService.html">Token Service</a></li></ul></li><li><span class="section-title">Ai</span><ul><li><a href="../../services/ai/replicateService.html">Replicate Service</a></li><li><a href="../../services/ai/promptService.html">Prompt Service</a></li><li><a href="../../services/ai/openrouterAIService.html">OpenRouter AI Service</a></li><li><a href="../../services/ai/ollamaService.html">Ollama Service</a></li><li><a href="../../services/ai/googleAIService.html">Google AI Service</a></li><li><a href="../../services/ai/aiService.html">AI Service</a></li></ul></li></ul></li><li><span class="section-title">Deployment</span><ul><li><a href="../../deployment/08-future-work.html">Future Work Priorities</a></li><li><a href="../../deployment/07-deployment.html">Deployment Guide</a></li></ul></li></ul></nav>
+  <main><h1>Config Service</h1>
+<h2>Overview</h2>
+<p>The Config Service manages configuration settings throughout the CosyWorld system. It provides a centralized approach to handling global defaults, environment variables, and guild-specific configurations. This service ensures consistent configuration access and caching for improved performance.</p>
+<h2>Functionality</h2>
+<ul>
+<li><strong>Global Configuration</strong>: Manages system-wide settings from multiple sources</li>
+<li><strong>Environment Variable Integration</strong>: Incorporates environment variables as configuration values</li>
+<li><strong>Guild-Specific Settings</strong>: Manages unique configurations for individual Discord guilds</li>
+<li><strong>Configuration Caching</strong>: Improves performance by caching frequently accessed configurations</li>
+<li><strong>Configuration Validation</strong>: Ensures critical configuration values are present</li>
+<li><strong>Configuration Merging</strong>: Combines defaults with customized settings</li>
+</ul>
+<h2>Implementation</h2>
+<p>The ConfigService extends the BasicService class and maintains multiple configuration layers:</p>
+<pre><code class="language-javascript">export class ConfigService extends BasicService {
+  constructor(services) {
+    super(services, ['databaseService']);
+    this.db = this.databaseService.getDatabase();
+    
+    // Initialize global configuration with defaults from environment variables
+    this.config = {
+      prompt: {
+        summon: process.env.SUMMON_PROMPT || &quot;Create a twisted avatar...&quot;,
+        introduction: process.env.INTRODUCTION_PROMPT || &quot;You've just arrived. Introduce yourself.&quot;
+      },
+      ai: {
+        openrouter: {
+          apiKey: process.env.OPENROUTER_API_KEY || process.env.OPENROUTER_API_TOKEN,
+          model: process.env.OPENROUTER_MODEL || 'meta-llama/llama-3.2-3b-instruct',
+          // Additional AI configuration...
+        },
+        // More AI service configurations...
+      },
+      mongo: {
+        uri: process.env.MONGO_URI,
+        dbName: process.env.MONGO_DB_NAME || 'discord-bot',
+        collections: {
+          avatars: 'avatars',
+          imageUrls: 'image_urls',
+          guildConfigs: 'guild_configs'
+        }
+      },
+      webhooks: {}
+    };
+    
+    this.guildConfigCache = new Map(); // Cache for guild configurations
+  }
+}
+</code></pre>
+<h3>Key Methods</h3>
+<h4>Loading Configuration Files</h4>
+<pre><code class="language-javascript">async loadConfig() {
+  try {
+    const defaultConfig = JSON.parse(
+      await fs.readFile(path.join(CONFIG_DIR, 'default.config.json'), 'utf8')
+    );
+    let userConfig = {};
+    try {
+      userConfig = JSON.parse(
+        await fs.readFile(path.join(CONFIG_DIR, 'user.config.json'), 'utf8')
+      );
+    } catch (error) {
+      // Create user config with defaults if it doesn't exist
+      await fs.writeFile(
+        path.join(CONFIG_DIR, 'user.config.json'),
+        JSON.stringify(this.config, null, 2)
+      );
+      userConfig = this.config;
+    }
+
+    // Merge configs, with user config taking precedence
+    this.config = { ...this.config, ...defaultConfig, ...userConfig };
+  } catch (error) {
+    console.error('Error loading config:', error);
+  }
+}
+</code></pre>
+<h4>Guild Configuration Management</h4>
+<pre><code class="language-javascript">async getGuildConfig(guildId, forceRefresh = false) {
+  if (!guildId) {
+    console.warn(`Invalid guild ID: ${guildId}`);
+    return this.getDefaultGuildConfig(guildId);
+  }
+
+  // Check cache first
+  if (!forceRefresh &amp;&amp; this.guildConfigCache.has(guildId)) {
+    return this.guildConfigCache.get(guildId);
+  }
+
+  // Fetch from database and cache the result
+  try {
+    const collection = db.collection(this.config.mongo.collections.guildConfigs);
+    const guildConfig = await collection.findOne({ guildId });
+    const mergedConfig = this.mergeWithDefaults(guildConfig, guildId);
+    this.guildConfigCache.set(guildId, mergedConfig);
+    return mergedConfig;
+  } catch (error) {
+    console.error(`Error fetching guild config for ${guildId}:`, error);
+    return this.getDefaultGuildConfig(guildId);
+  }
+}
+</code></pre>
+<h3>Configuration Structure</h3>
+<p>The service maintains configuration in a hierarchical structure:</p>
+<ul>
+<li>
+<p><strong>Global Configuration</strong>: System-wide settings</p>
+<ul>
+<li><strong>Prompts</strong>: Default prompts for system operations</li>
+<li><strong>AI Settings</strong>: Configuration for various AI providers</li>
+<li><strong>Database Settings</strong>: MongoDB connection and collection details</li>
+<li><strong>Webhooks</strong>: External communication endpoints</li>
+</ul>
+</li>
+<li>
+<p><strong>Guild Configuration</strong>: Discord guild-specific settings</p>
+<ul>
+<li><strong>Permissions</strong>: Role-based access control</li>
+<li><strong>Custom Prompts</strong>: Guild-specific prompt overrides</li>
+<li><strong>UI Settings</strong>: Custom emojis and visual elements</li>
+<li><strong>Feature Toggles</strong>: Guild-specific feature enablement</li>
+</ul>
+</li>
+</ul>
+<h2>Dependencies</h2>
+<ul>
+<li><strong>DatabaseService</strong>: For storing and retrieving guild configurations</li>
+<li><strong>Environment Variables</strong>: For sensitive configuration values</li>
+<li><strong>Configuration Files</strong>: For persistent configuration storage</li>
+</ul>
+<h2>Usage Examples</h2>
+<h3>Accessing Global Configuration</h3>
+<pre><code class="language-javascript">// Get AI configuration
+const aiConfig = configService.get('ai');
+console.log(`Using AI model: ${aiConfig.openrouter.model}`);
+
+// Get Discord-specific configuration
+const discordConfig = configService.getDiscordConfig();
+</code></pre>
+<h3>Working with Guild Configurations</h3>
+<pre><code class="language-javascript">// Get configuration for a specific guild
+const guildConfig = await configService.getGuildConfig('123456789012345678');
+console.log(`Guild summon prompt: ${guildConfig.prompts.summon}`);
+
+// Update guild configuration
+await configService.updateGuildConfig('123456789012345678', {
+  'prompts.summon': 'Create a heroic avatar to join your adventure',
+  'summonEmoji': '⚔️'
+});
+</code></pre>
+<h3>Configuration Validation</h3>
+<pre><code class="language-javascript">// Validate critical configuration values
+if (configService.validate()) {
+  console.log('Configuration is valid');
+} else {
+  console.error('Configuration validation failed');
+}
+</code></pre>
+<h2>Best Practices</h2>
+<ul>
+<li>Use environment variables for sensitive values (API keys, tokens)</li>
+<li>Use configuration files for complex defaults and non-sensitive values</li>
+<li>Cache frequently accessed configurations</li>
+<li>Provide sensible defaults for all configuration values</li>
+<li>Validate critical configuration values during initialization</li>
+</ul>
+</main>
+</body>
+</html>

@@ -1,0 +1,180 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Logger Service - CosyWorld Documentation</title>
+  <!-- Mermaid script for diagram rendering -->
+  <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      mermaid.initialize({ 
+        startOnLoad: true,
+        theme: 'dark',
+        securityLevel: 'loose'
+      });
+    });
+  </script>
+  <style>
+    body { 
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; 
+      line-height: 1.6;
+      color: #333;
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 1rem;
+      display: flex;
+    }
+    nav {
+      width: 250px;
+      padding-right: 2rem;
+      flex-shrink: 0;
+    }
+    main {
+      flex-grow: 1;
+    }
+    code {
+      background: #f5f5f5;
+      padding: 0.2em 0.4em;
+      border-radius: 3px;
+      font-family: SFMono-Regular, Consolas, Liberation Mono, Menlo, monospace;
+      font-size: 85%;
+    }
+    pre {
+      background: #f5f5f5;
+      padding: 1rem;
+      border-radius: 5px;
+      overflow: auto;
+    }
+    pre code {
+      background: none;
+      padding: 0;
+    }
+    a { color: #0366d6; text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    h1, h2, h3, h4 { margin-top: 1.5em; margin-bottom: 0.5em; }
+    h1 { border-bottom: 1px solid #eaecef; padding-bottom: 0.3em; }
+    nav ul { list-style-type: none; padding-left: 1.2em; }
+    nav > ul { padding-left: 0; }
+    .section-title { 
+      font-weight: bold; 
+      margin-top: 1em;
+      color: #24292e;
+    }
+    /* Mermaid diagram styling */
+    .mermaid {
+      margin: 1rem 0;
+    }
+  </style>
+</head>
+<body>
+  <nav><ul><li><a href="../../index.html">Home</a></li><li><span class="section-title">Overview</span><ul><li><a href="../../overview/03-system-diagram.html">System Diagram</a></li><li><a href="../../overview/02-system-overview.html">System Overview</a></li><li><a href="../../overview/01-introduction.html">CosyWorld Introduction</a></li></ul></li><li><span class="section-title">Systems</span><ul><li><a href="../../systems/06-dungeon-system.html">Dungeon System</a></li><li><a href="../../systems/05-intelligence-system.html">Intelligence System</a></li><li><a href="../../systems/04-action-system.html">Action System</a></li></ul></li><li><span class="section-title">Services</span><ul><li><a href="../../services/x-authentication.html">X (Twitter) Authentication and Integration</a></li><li><a href="../../services/architecture-report.html">CosyWorld Architecture Report</a></li><li><a href="../../services/README.html">CosyWorld Services Documentation</a></li><li><span class="section-title">World</span><ul><li><a href="../../services/world/questGeneratorService.html">Quest Generator Service</a></li><li><a href="../../services/world/locationService.html">Location Service</a></li><li><a href="../../services/world/itemService.html">Item Service</a></li></ul></li><li><span class="section-title">Web</span><ul><li><a href="../../services/web/webService.html">Web Service</a></li></ul></li><li><span class="section-title">Tools</span><ul><li><a href="../../services/tools/toolService.html">Tool Service</a></li></ul></li><li><span class="section-title">S3</span><ul><li><a href="../../services/s3/s3Service.html">S3 Service</a></li></ul></li><li><span class="section-title">Quest</span><ul><li><a href="../../services/quest/questGeneratorService.html">Quest Generator Service</a></li></ul></li><li><span class="section-title">Media</span><ul><li><a href="../../services/media/s3Service.html">S3 Service</a></li><li><a href="../../services/media/imageProcessingService.html">Image Processing Service</a></li></ul></li><li><span class="section-title">Location</span><ul><li><a href="../../services/location/locationService.html">Location Service</a></li></ul></li><li><span class="section-title">Item</span><ul><li><a href="../../services/item/itemService.html">Item Service</a></li></ul></li><li><span class="section-title">Integration</span><ul><li><a href="../../services/integration/x-authentication.html">X (Twitter) Authentication and Integration</a></li></ul></li><li><span class="section-title">Foundation</span><ul><li><a href="../../services/foundation/logger.html">Logger Service</a></li><li><a href="../../services/foundation/databaseService.html">Database Service</a></li><li><a href="../../services/foundation/configService.html">Config Service</a></li><li><a href="../../services/foundation/basicService.html">Basic Service</a></li></ul></li><li><span class="section-title">Entity</span><ul><li><a href="../../services/entity/memoryService.html">Memory Service</a></li><li><a href="../../services/entity/avatarService.html">Avatar Service</a></li></ul></li><li><span class="section-title">Core</span><ul><li><a href="../../services/core/promptService.html">Prompt Service</a></li><li><a href="../../services/core/memoryService.html">Memory Service</a></li><li><a href="../../services/core/databaseService.html">Database Service</a></li><li><a href="../../services/core/basicService.html">Basic Service</a></li><li><a href="../../services/core/avatarService.html">Avatar Service</a></li><li><a href="../../services/core/aiService.html">AI Service</a></li></ul></li><li><span class="section-title">Communication</span><ul><li><a href="../../services/communication/conversationManager.html">Conversation Manager</a></li></ul></li><li><span class="section-title">Chat</span><ul><li><a href="../../services/chat/conversationManager.html">Conversation Manager</a></li></ul></li><li><span class="section-title">Blockchain</span><ul><li><a href="../../services/blockchain/tokenService.html">Token Service</a></li></ul></li><li><span class="section-title">Ai</span><ul><li><a href="../../services/ai/replicateService.html">Replicate Service</a></li><li><a href="../../services/ai/promptService.html">Prompt Service</a></li><li><a href="../../services/ai/openrouterAIService.html">OpenRouter AI Service</a></li><li><a href="../../services/ai/ollamaService.html">Ollama Service</a></li><li><a href="../../services/ai/googleAIService.html">Google AI Service</a></li><li><a href="../../services/ai/aiService.html">AI Service</a></li></ul></li></ul></li><li><span class="section-title">Deployment</span><ul><li><a href="../../deployment/08-future-work.html">Future Work Priorities</a></li><li><a href="../../deployment/07-deployment.html">Deployment Guide</a></li></ul></li></ul></nav>
+  <main><h1>Logger Service</h1>
+<h2>Overview</h2>
+<p>The Logger Service provides consistent, formatted logging capabilities throughout the CosyWorld system. It uses Winston, a versatile logging library for Node.js, to output formatted logs to both the console and log files, enabling effective debugging and system monitoring.</p>
+<h2>Functionality</h2>
+<ul>
+<li><strong>Multi-transport Logging</strong>: Outputs logs to both console and file</li>
+<li><strong>Formatted Output</strong>: Provides structured, readable log formats</li>
+<li><strong>Log Levels</strong>: Supports different log levels (info, warn, error, debug)</li>
+<li><strong>Timestamp Integration</strong>: Automatically adds timestamps to all log entries</li>
+<li><strong>Colorized Console Output</strong>: Enhances readability in terminal sessions</li>
+</ul>
+<h2>Implementation</h2>
+<p>The Logger Service is implemented as a Winston logger instance with customized formatting:</p>
+<pre><code class="language-javascript">import winston from 'winston';
+
+const { combine, timestamp, printf, colorize, json } = winston.format;
+
+// Pretty log format for console
+const consoleFormat = printf(({ level, message, timestamp }) =&gt; {
+  return `[${timestamp}] ${level}: ${message}`;
+});
+
+export const logger = winston.createLogger({
+  level: 'info',
+  format: combine(
+    timestamp({ format: 'YYYY-MM-DD HH:mm:ss' }),
+    json() // File format stays clean
+  ),
+  transports: [
+    new winston.transports.Console({
+      format: combine(
+        colorize(),
+        timestamp({ format: 'HH:mm:ss' }),
+        consoleFormat
+      )
+    }),
+    new winston.transports.File({ filename: 'app.log' })
+  ],
+});
+</code></pre>
+<h3>Log Formats</h3>
+<h4>Console Output</h4>
+<p>The console format is optimized for readability during development:</p>
+<ul>
+<li>Colorized by log level (info, warn, error)</li>
+<li>Compact timestamp (HH:mm:ss)</li>
+<li>Clean, single-line output</li>
+</ul>
+<p>Example: <code>[14:27:35] info: Avatar 'Mage' created successfully</code></p>
+<h4>File Output</h4>
+<p>The file format is optimized for parsing and analysis:</p>
+<ul>
+<li>JSON structure for programmatic consumption</li>
+<li>Full timestamp (YYYY-MM-DD HH:mm:ss)</li>
+<li>Complete metadata preservation</li>
+</ul>
+<p>Example:</p>
+<pre><code class="language-json">{&quot;level&quot;:&quot;info&quot;,&quot;message&quot;:&quot;Avatar 'Mage' created successfully&quot;,&quot;timestamp&quot;:&quot;2023-05-20 14:27:35&quot;}
+</code></pre>
+<h2>Usage</h2>
+<p>The logger is exported as a singleton instance that can be imported and used throughout the application:</p>
+<pre><code class="language-javascript">import { logger } from './logger.mjs';
+
+// Different log levels
+logger.info('System initialized');
+logger.warn('Resource running low');
+logger.error('Failed to connect to database', { error: err.message });
+logger.debug('Processing step completed', { step: 'validation', result: 'success' });
+</code></pre>
+<h2>Log Levels</h2>
+<p>The logger supports the standard Winston log levels, in order of priority:</p>
+<ol>
+<li><strong>error</strong>: Critical errors requiring immediate attention</li>
+<li><strong>warn</strong>: Warnings that don’t prevent operation but require attention</li>
+<li><strong>info</strong>: General operational information (default level)</li>
+<li><strong>verbose</strong>: Detailed information for troubleshooting</li>
+<li><strong>debug</strong>: Low-level debugging information</li>
+<li><strong>silly</strong>: Extremely detailed debugging information</li>
+</ol>
+<h2>Best Practices</h2>
+<ul>
+<li>Use appropriate log levels for different types of messages</li>
+<li>Include relevant context in log messages</li>
+<li>Use structured logging for machine-parseable events</li>
+<li>Avoid logging sensitive information (tokens, passwords)</li>
+<li>Keep log messages concise and meaningful</li>
+<li>Use error objects for stack traces when logging errors</li>
+</ul>
+<h2>Customization</h2>
+<p>The logger can be customized by modifying its configuration:</p>
+<ul>
+<li><strong>Changing log levels</strong>: Adjust verbosity based on environment</li>
+<li><strong>Adding transports</strong>: Integrate with log aggregation services</li>
+<li><strong>Custom formats</strong>: Tailor output for specific needs</li>
+<li><strong>Rotation policies</strong>: Manage log file growth and archiving</li>
+</ul>
+<h2>Integration Points</h2>
+<p>The logger integrates with various parts of the system:</p>
+<ul>
+<li><strong>Service initialization</strong>: Track service startup and configuration</li>
+<li><strong>Request handling</strong>: Log incoming requests and responses</li>
+<li><strong>Error handling</strong>: Capture and log exceptions</li>
+<li><strong>Performance monitoring</strong>: Track timing and resource usage</li>
+<li><strong>Security events</strong>: Log authentication and authorization activities</li>
+</ul>
+</main>
+</body>
+</html>

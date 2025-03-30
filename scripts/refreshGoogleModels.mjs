@@ -45,7 +45,7 @@ async function refreshGoogleModels() {
   
   try {
     // Get the path to the models.config.mjs file
-    const outputPath = path.join(process.cwd(), 'src', 'models.google.config.mjs');
+    const outputPath = path.join(process.cwd(), '..', 'src', 'models.google.config.mjs');
     
     // Format the models array as a JavaScript module
     const configContent = `export default ${JSON.stringify(defaultModels, null, 2)};\n`;

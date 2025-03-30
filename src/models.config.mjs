@@ -920,6 +920,10 @@ export default [
     "rarity": "common"
   },
   {
+    "model": "deepseek/deepseek-v3-base:free",
+    "rarity": "common"
+  },
+  {
     "model": "allenai/molmo-7b-d:free",
     "rarity": "common"
   },
@@ -1001,10 +1005,6 @@ export default [
   },
   {
     "model": "cognitivecomputations/dolphin3.0-mistral-24b:free",
-    "rarity": "common"
-  },
-  {
-    "model": "google/gemini-2.0-flash-lite-preview-02-05:free",
     "rarity": "common"
   },
   {

@@ -210,14 +210,18 @@ elements.imageUrlInput.addEventListener("input", () => {
   // Avatar List Functions
   async function loadAvatars() {
     try {
+      // If there's an active search query, skip loading paginated avatars
+      if (state.currentSearch.trim().length >= 2) {
+        return;
+      }
+
       const params = new URLSearchParams({
         page: state.currentPage,
         limit: state.pageSize,
         status: state.currentStatusFilter,
         model: state.currentModelFilter,
-        search: state.currentSearch
       });
-      
+
       const response = await fetch(`/api/avatars?${params}`);
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
@@ -469,4 +473,38 @@ elements.imageUrlInput.addEventListener("input", () => {
       </tr>
     `;
   }
+
+  async function searchAvatars(query) {
+    try {
+      const response = await fetch(`/api/avatars/search?name=${encodeURIComponent(query)}`);
+      if (!response.ok) throw new Error(`HTTP error ${response.status}`);
+      const data = await response.json();
+      const avatars = data.avatars || [];
+
+      if (avatars.length === 0) {
+        elements.avatarsBody.innerHTML = '<tr><td colspan="7" class="px-6 py-4 text-center text-sm text-gray-500">No avatars found</td></tr>';
+      } else {
+        renderAvatars(avatars);
+      }
+    } catch (error) {
+      console.error("Error searching avatars:", error);
+      elements.avatarsBody.innerHTML = '<tr><td colspan="7" class="px-6 py-4 text-center text-sm text-red-500">Failed to search avatars</td></tr>';
+    }
+  }
+
+  // Update the avatarSearch event listener to trigger search
+  elements.avatarSearch.addEventListener(
+    "input",
+    debounce(() => {
+      const query = elements.avatarSearch.value.trim();
+      state.currentSearch = query; // Update the search state
+      if (query.length >= 2) {
+        searchAvatars(query);
+      } else {
+        state.currentPage = 1;
+        state.currentSearch = ""; // Clear the search state
+        loadAvatars();
+      }
+    }, 300),
+  );
 });

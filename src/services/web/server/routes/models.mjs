@@ -61,6 +61,16 @@ export default function (db) {
     }
   });
 
+
+  router.get('/config', async (req, res) => {
+    try {
+      res.json(modelsConfig);
+    } catch (error) {
+      console.error('Error fetching model config:', error);
+      res.status(500).json({ error: 'Failed to fetch model configurations' });
+    }
+  });
+
   // Route: Fetch a single model by name
   router.get('/:modelName', async (req, res) => {
     try {
@@ -78,15 +88,6 @@ export default function (db) {
         error: 'Failed to fetch model',
         details: process.env.NODE_ENV === 'development' ? error.message : undefined,
       });
-    }
-  });
-
-  router.get('/config', async (req, res) => {
-    try {
-      res.json(modelsConfig);
-    } catch (error) {
-      console.error('Error fetching model config:', error);
-      res.status(500).json({ error: 'Failed to fetch model configurations' });
     }
   });
 

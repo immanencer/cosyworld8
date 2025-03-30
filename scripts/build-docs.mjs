@@ -18,7 +18,7 @@ import { glob } from 'glob';
 // Setup
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const docsDir = path.join(__dirname, '..', 'docs');
-const buildDir = path.join(docsDir, 'build');
+const buildDir = path.join(__dirname, '..', 'dist', 'docs');
 const combinedMdPath = path.join(buildDir, 'cosyworld-docs-combined.md');
 
 // Initialize markdown-it with options

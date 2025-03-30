@@ -18,24 +18,67 @@ Welcome to the CosyWorld documentation! This comprehensive guide covers all aspe
 - [Services Overview](services/README.md) - Introduction to the service architecture
 - [Architecture Report](services/architecture-report.md) - Comprehensive analysis and recommendations
 
-#### Core Services
-- [Basic Service](services/core/basicService.md) - Foundation for all services
-- [Database Service](services/core/databaseService.md) - Data persistence layer
-- [AI Service](services/core/aiService.md) - AI model abstraction
-- [Avatar Service](services/core/avatarService.md) - Avatar management
-- [Memory Service](services/core/memoryService.md) - Long-term memory system
-- [Prompt Service](services/core/promptService.md) - AI prompt construction
+#### Foundation Services
+- [Basic Service](services/foundation/basicService.md) - Foundation for all services
+- [Database Service](services/foundation/databaseService.md) - Data persistence layer
+- [Config Service](services/foundation/configService.md) - Configuration management
+- [Logger Service](services/foundation/logger.md) - Logging system
 
-#### Domain Services
-- [Conversation Manager](services/chat/conversationManager.md) - Message handling
-- [Tool Service](services/tools/toolService.md) - Game mechanics
-- [Location Service](services/location/locationService.md) - Spatial management
-- [Item Service](services/item/itemService.md) - Item and inventory system
-- [Quest Generator](services/quest/questGeneratorService.md) - Quest management
+#### AI Services
+- [AI Service](services/ai/aiService.md) - AI model abstraction
+- [Google AI Service](services/ai/googleAIService.md) - Google AI integration
+- [OpenRouter AI Service](services/ai/openrouterAIService.md) - OpenRouter integration
+- [Ollama Service](services/ai/ollamaService.md) - Local AI models
+- [Replicate Service](services/ai/replicateService.md) - Replicate.com integration
+- [Prompt Service](services/ai/promptService.md) - AI prompt construction
+
+#### Entity Services
+- [Avatar Service](services/entity/avatarService.md) - Avatar management
+- [Memory Service](services/entity/memoryService.md) - Long-term memory system
+- [Creation Service](services/entity/creationService.md) - Entity creation
+
+#### Communication Services
+- [Conversation Manager](services/communication/conversationManager.md) - Message handling
+- [Channel Manager](services/communication/channelManager.md) - Channel management
+- [Message Handler](services/communication/messageHandler.md) - Message routing
+- [Decision Maker](services/communication/decisionMaker.md) - Response generation
+- [Periodic Task Manager](services/communication/periodicTaskManager.md) - Scheduled tasks
+- [Discord Service](services/communication/discordService.md) - Discord integration
+- [Command Handler](services/communication/commandHandler.md) - Command processing
+- [Spam Control Service](services/communication/spamControlService.md) - Rate limiting
+
+#### World Services
+- [Location Service](services/world/locationService.md) - Spatial management
+- [Map Service](services/world/mapService.md) - Navigation and mapping
+- [Item Service](services/world/itemService.md) - Item and inventory system
+- [Quest Generator Service](services/world/questGeneratorService.md) - Quest creation
+- [Quest Service](services/world/questService.md) - Quest management
+
+#### Tool System
+- [Tool Service](services/tools/toolService.md) - Tool framework
+- [Basic Tool](services/tools/basicTool.md) - Tool base class
+- [Action Log](services/tools/actionLog.md) - Action tracking
+- [Tool Implementations](services/tools/implementations.md) - Available tools
+
+#### Media Services
+- [Image Processing Service](services/media/imageProcessingService.md) - Image handling
+- [S3 Service](services/media/s3Service.md) - File storage
+
+#### Web Services
+- [Web Service](services/web/webService.md) - HTTP API
+- [Auth Service](services/web/authService.md) - Web authentication
+- [Thumbnail Service](services/web/thumbnailService.md) - Image thumbnails
 
 #### Integration Services
-- [S3 Service](services/s3/s3Service.md) - File storage
-- [Web Service](services/web/webService.md) - HTTP API
+- [X Authentication](services/integration/x-authentication.md) - Twitter integration
+- [X Service](services/integration/xService.md) - X platform utilities
+- [Rati Service](services/integration/ratiService.md) - Rati integration
+
+#### Blockchain Services
+- [Token Service](services/blockchain/tokenService.md) - Token management
+- [Token Burn Service](services/blockchain/tokenBurnService.md) - Token burning
+- [NFT Mint Service](services/blockchain/nftMintService.md) - NFT creation
+- [Crossmint Service](services/blockchain/crossmintService.md) - Crossmint integration
 
 ### Deployment
 - [Deployment Guide](deployment/07-deployment.md) - Deployment procedures

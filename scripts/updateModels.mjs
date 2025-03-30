@@ -16,7 +16,7 @@ const CONFIG = {
 };
 
 // Import existing models config to preserve rarities
-import existingModels from '../models.config.mjs';
+import existingModels from '../src/models.config.mjs';
 
 /**
  * Helper function to format cost values dynamically.
@@ -182,7 +182,7 @@ async function updateModelsConfig() {
     // Identify and report new models
     const newModels = configModels.filter(m => !existingModelRarities.has(m.model));
     console.info(`[INFO] Found ${newModels.length} new models:`);
-    newModels.forEach(m => console.info(`  - ${m.model}: ${m.rarity}`));
+    newModels.forEach(m => console.info(`  - ${m.model} - ${m.rarity}`));
 
     // Group by rarity for summary analysis
     const groups = configModels.reduce((acc, m) => {

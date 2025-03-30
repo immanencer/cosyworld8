@@ -70,83 +70,9 @@ const avatarSchema = {
  * Main export function that returns the configured router.
  */
 export default function avatarRoutes(db) {
-
-  // ------------------------------------
-  // GET /:avatarId
-  // Returns the avatar details along with its inventory
-  // ------------------------------------
-  router.get('/:avatarId', async (req, res) => {
-    try {
-      const { avatarId } = req.params;
-      let query;
-
-      // Allow lookup by ObjectId or name
-      try {
-        query = {
-          $or: [
-            { _id: new ObjectId(avatarId) },
-            { _id: avatarId },
-            { name: avatarId }
-          ]
-        };
-      } catch (err) {
-        query = {
-          $or: [
-            { _id: avatarId },
-            { name: avatarId }
-          ]
-        };
-      }
-
-      const avatar = await db.collection('avatars').findOne(query, { projection: avatarSchema });
-
-      if (!avatar) {
-        console.error(`Avatar not found for id/name: ${avatarId}`);
-        return res.status(404).json({ error: 'Avatar not found' });
-      }
-
-      // Generate thumbnail for the avatar image if needed
-      const thumbnailUrl = await thumbnailService.generateThumbnail(avatar.imageUrl);
-      avatar.thumbnailUrl = thumbnailUrl;
-
-      // Fetch inventory items for this avatar (items where "owner" matches the avatar's _id)
-      const items = await db.collection('items').find({
-        owner: new ObjectId(avatar._id)
-      }).toArray();
-
-      // Generate thumbnails for each inventory item if needed
-      const itemsWithThumbs = await Promise.all(
-        items.map(async (item) => {
-          if (!item.thumbnailUrl && item.imageUrl) {
-            item.thumbnailUrl = await thumbnailService.generateThumbnail(item.imageUrl);
-          }
-          return item;
-        })
-      );
-
-      // Attach the inventory to the avatar object
-      avatar.inventory = itemsWithThumbs;
-
-      // Check if this avatar has a Crossmint template
-      const crossmintData = await db.collection('crossmint_dev').findOne({ 
-        avatarId: avatar._id.toString(),
-        chain: 'base' // Only look for Base chain mints
-      });
-
-      if (crossmintData) {
-        avatar.templateId = crossmintData.templateId;
-        avatar.collectionId = crossmintData.collectionId;
-      }
-
-      res.json(avatar);
-    } catch (error) {
-      console.error('Error fetching avatar details:', error);
-      res.status(500).json({
-        error: 'Failed to fetch avatar details',
-        details: process.env.NODE_ENV === 'development' ? error.message : undefined
-      });
-    }
-  });
+  if (!db) {
+    throw new Error("Database instance is not initialized. Ensure 'db' is passed to avatarRoutes.");
+  }
 
   // -----------------------------
   // 1) GET / (paginated avatars)
@@ -283,18 +209,13 @@ export default function avatarRoutes(db) {
     try {
       const { name } = req.query;
 
-      if (!name || name.length < 2) {
-        return res.json({ avatars: [] });
+      if (!name || name.trim().length < 2) {
+        return res.status(400).json({ error: 'Search term must be at least 2 characters long' });
       }
 
-      const regex = new RegExp(escapeRegExp(name), 'i');
-      const found = await db
-        .collection('avatars')
-        .find({ name: regex })
-        .limit(5)
-        .toArray();
+      const regex = new RegExp(escapeRegExp(name.trim()), 'i');
+      const found = await db.collection('avatars').find({ name: regex }).limit(10).toArray();
 
-      // Generate thumbnails
       const avatars = await Promise.all(
         found.map(async (avatar) => {
           const thumbnailUrl = await thumbnailService.generateThumbnail(avatar.imageUrl);
@@ -305,7 +226,7 @@ export default function avatarRoutes(db) {
       res.json({ avatars });
     } catch (error) {
       console.error('Avatar search error:', error);
-      res.status(500).json({ error: error.message });
+      res.status(500).json({ error: 'Failed to search avatars' });
     }
   });
 
@@ -401,6 +322,89 @@ export default function avatarRoutes(db) {
     } catch (error) {
       console.error('Error claiming avatar (by ID):', error);
       res.status(500).json({ error: error.message });
+    }
+  });
+
+    // ------------------------------------
+  // GET /:avatarId
+  // Returns the avatar details along with its inventory
+  // ------------------------------------
+  router.get('/:avatarId', async (req, res) => {
+    try {
+      const { avatarId } = req.params;
+
+      // Ensure the database collection is accessible
+      if (!db || !db.collection) {
+        throw new Error("Database instance or collection is not initialized. Check the 'db' instance.");
+      }
+
+      let query;
+
+      // Allow lookup by ObjectId or name
+      try {
+        query = {
+          $or: [
+            { _id: new ObjectId(avatarId) },
+            { _id: avatarId },
+            { name: avatarId }
+          ]
+        };
+      } catch (err) {
+        query = {
+          $or: [
+            { _id: avatarId },
+            { name: avatarId }
+          ]
+        };
+      }
+
+      const avatar = await db.collection('avatars').findOne(query, { projection: avatarSchema });
+
+      if (!avatar) {
+        console.error(`Avatar not found for id/name: ${avatarId}`);
+        return res.status(404).json({ error: 'Avatar not found' });
+      }
+
+      // Generate thumbnail for the avatar image if needed
+      const thumbnailUrl = await thumbnailService.generateThumbnail(avatar.imageUrl);
+      avatar.thumbnailUrl = thumbnailUrl;
+
+      // Fetch inventory items for this avatar (items where "owner" matches the avatar's _id)
+      const items = await db.collection('items').find({
+        owner: new ObjectId(avatar._id)
+      }).toArray();
+
+      // Generate thumbnails for each inventory item if needed
+      const itemsWithThumbs = await Promise.all(
+        items.map(async (item) => {
+          if (!item.thumbnailUrl && item.imageUrl) {
+            item.thumbnailUrl = await thumbnailService.generateThumbnail(item.imageUrl);
+          }
+          return item;
+        })
+      );
+
+      // Attach the inventory to the avatar object
+      avatar.inventory = itemsWithThumbs;
+
+      // Check if this avatar has a Crossmint template
+      const crossmintData = await db.collection('crossmint_dev').findOne({ 
+        avatarId: avatar._id.toString(),
+        chain: 'base' // Only look for Base chain mints
+      });
+
+      if (crossmintData) {
+        avatar.templateId = crossmintData.templateId;
+        avatar.collectionId = crossmintData.collectionId;
+      }
+
+      res.json(avatar);
+    } catch (error) {
+      console.error('Error fetching avatar details:', error);
+      res.status(500).json({
+        error: 'Failed to fetch avatar details',
+        details: process.env.NODE_ENV === 'development' ? error.message : undefined
+      });
     }
   });
 

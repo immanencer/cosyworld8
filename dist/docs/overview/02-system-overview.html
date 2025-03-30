@@ -1,0 +1,177 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>System Overview - CosyWorld Documentation</title>
+  <!-- Mermaid script for diagram rendering -->
+  <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      mermaid.initialize({ 
+        startOnLoad: true,
+        theme: 'dark',
+        securityLevel: 'loose'
+      });
+    });
+  </script>
+  <style>
+    body { 
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; 
+      line-height: 1.6;
+      color: #333;
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 1rem;
+      display: flex;
+    }
+    nav {
+      width: 250px;
+      padding-right: 2rem;
+      flex-shrink: 0;
+    }
+    main {
+      flex-grow: 1;
+    }
+    code {
+      background: #f5f5f5;
+      padding: 0.2em 0.4em;
+      border-radius: 3px;
+      font-family: SFMono-Regular, Consolas, Liberation Mono, Menlo, monospace;
+      font-size: 85%;
+    }
+    pre {
+      background: #f5f5f5;
+      padding: 1rem;
+      border-radius: 5px;
+      overflow: auto;
+    }
+    pre code {
+      background: none;
+      padding: 0;
+    }
+    a { color: #0366d6; text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    h1, h2, h3, h4 { margin-top: 1.5em; margin-bottom: 0.5em; }
+    h1 { border-bottom: 1px solid #eaecef; padding-bottom: 0.3em; }
+    nav ul { list-style-type: none; padding-left: 1.2em; }
+    nav > ul { padding-left: 0; }
+    .section-title { 
+      font-weight: bold; 
+      margin-top: 1em;
+      color: #24292e;
+    }
+    /* Mermaid diagram styling */
+    .mermaid {
+      margin: 1rem 0;
+    }
+  </style>
+</head>
+<body>
+  <nav><ul><li><a href="../index.html">Home</a></li><li><span class="section-title">Overview</span><ul><li><a href="../overview/03-system-diagram.html">System Diagram</a></li><li><a href="../overview/02-system-overview.html">System Overview</a></li><li><a href="../overview/01-introduction.html">CosyWorld Introduction</a></li></ul></li><li><span class="section-title">Systems</span><ul><li><a href="../systems/06-dungeon-system.html">Dungeon System</a></li><li><a href="../systems/05-intelligence-system.html">Intelligence System</a></li><li><a href="../systems/04-action-system.html">Action System</a></li></ul></li><li><span class="section-title">Services</span><ul><li><a href="../services/x-authentication.html">X (Twitter) Authentication and Integration</a></li><li><a href="../services/architecture-report.html">CosyWorld Architecture Report</a></li><li><a href="../services/README.html">CosyWorld Services Documentation</a></li><li><span class="section-title">World</span><ul><li><a href="../services/world/questGeneratorService.html">Quest Generator Service</a></li><li><a href="../services/world/locationService.html">Location Service</a></li><li><a href="../services/world/itemService.html">Item Service</a></li></ul></li><li><span class="section-title">Web</span><ul><li><a href="../services/web/webService.html">Web Service</a></li></ul></li><li><span class="section-title">Tools</span><ul><li><a href="../services/tools/toolService.html">Tool Service</a></li></ul></li><li><span class="section-title">S3</span><ul><li><a href="../services/s3/s3Service.html">S3 Service</a></li></ul></li><li><span class="section-title">Quest</span><ul><li><a href="../services/quest/questGeneratorService.html">Quest Generator Service</a></li></ul></li><li><span class="section-title">Media</span><ul><li><a href="../services/media/s3Service.html">S3 Service</a></li><li><a href="../services/media/imageProcessingService.html">Image Processing Service</a></li></ul></li><li><span class="section-title">Location</span><ul><li><a href="../services/location/locationService.html">Location Service</a></li></ul></li><li><span class="section-title">Item</span><ul><li><a href="../services/item/itemService.html">Item Service</a></li></ul></li><li><span class="section-title">Integration</span><ul><li><a href="../services/integration/x-authentication.html">X (Twitter) Authentication and Integration</a></li></ul></li><li><span class="section-title">Foundation</span><ul><li><a href="../services/foundation/logger.html">Logger Service</a></li><li><a href="../services/foundation/databaseService.html">Database Service</a></li><li><a href="../services/foundation/configService.html">Config Service</a></li><li><a href="../services/foundation/basicService.html">Basic Service</a></li></ul></li><li><span class="section-title">Entity</span><ul><li><a href="../services/entity/memoryService.html">Memory Service</a></li><li><a href="../services/entity/avatarService.html">Avatar Service</a></li></ul></li><li><span class="section-title">Core</span><ul><li><a href="../services/core/promptService.html">Prompt Service</a></li><li><a href="../services/core/memoryService.html">Memory Service</a></li><li><a href="../services/core/databaseService.html">Database Service</a></li><li><a href="../services/core/basicService.html">Basic Service</a></li><li><a href="../services/core/avatarService.html">Avatar Service</a></li><li><a href="../services/core/aiService.html">AI Service</a></li></ul></li><li><span class="section-title">Communication</span><ul><li><a href="../services/communication/conversationManager.html">Conversation Manager</a></li></ul></li><li><span class="section-title">Chat</span><ul><li><a href="../services/chat/conversationManager.html">Conversation Manager</a></li></ul></li><li><span class="section-title">Blockchain</span><ul><li><a href="../services/blockchain/tokenService.html">Token Service</a></li></ul></li><li><span class="section-title">Ai</span><ul><li><a href="../services/ai/replicateService.html">Replicate Service</a></li><li><a href="../services/ai/promptService.html">Prompt Service</a></li><li><a href="../services/ai/openrouterAIService.html">OpenRouter AI Service</a></li><li><a href="../services/ai/ollamaService.html">Ollama Service</a></li><li><a href="../services/ai/googleAIService.html">Google AI Service</a></li><li><a href="../services/ai/aiService.html">AI Service</a></li></ul></li></ul></li><li><span class="section-title">Deployment</span><ul><li><a href="../deployment/08-future-work.html">Future Work Priorities</a></li><li><a href="../deployment/07-deployment.html">Deployment Guide</a></li></ul></li></ul></nav>
+  <main><h1>System Overview</h1>
+<p>CosyWorld is an <strong>ecosystem</strong> composed of interconnected services, each responsible for a facet of AI life and gameplay. These services integrate AI modeling, blockchain storage, distributed data, and real-time user interactions across multiple platforms.</p>
+<h3><strong>1. Chat Service</strong></h3>
+<ul>
+<li><strong>Function</strong>: Orchestrates immersive conversations between users and avatars.</li>
+<li><strong>AI Models</strong>: GPT-4, Claude, Llama, etc., accessed via OpenRouter and Google AI.</li>
+<li><strong>Features</strong>:
+<ul>
+<li><strong>ConversationManager</strong> for routing messages</li>
+<li><strong>DecisionMaker</strong> for avatar response logic</li>
+<li><strong>PeriodicTaskManager</strong> for scheduled operations</li>
+<li><strong>Rate Limiting</strong> to maintain believable pace</li>
+</ul>
+</li>
+</ul>
+<h3><strong>2. Tool Service</strong></h3>
+<ul>
+<li><strong>Purpose</strong>: Handles dynamic, AI-driven gameplay and interactions.</li>
+<li><strong>Key Components</strong>:
+<ul>
+<li><strong>ActionLog</strong>: Maintains world state and events</li>
+<li><strong>Specialized Tools</strong>: AttackTool, DefendTool, MoveTool, RememberTool, CreationTool, XPostTool, etc.</li>
+<li><strong>StatGenerationService</strong>: Creates and manages avatar statistics</li>
+</ul>
+</li>
+</ul>
+<h3><strong>3. Location Service</strong></h3>
+<ul>
+<li><strong>Role</strong>: Generates and persists <strong>AI-created environments</strong>.</li>
+<li><strong>Core Functions</strong>:
+<ul>
+<li><strong>Dynamic Environments</strong>: Always-evolving landscapes</li>
+<li><strong>Channel Management</strong>: Discord-based or web-based zones</li>
+<li><strong>Memory Integration</strong>: Ties memories to location contexts</li>
+<li><strong>Avatar Position Tracking</strong>: Maps avatars to locations</li>
+</ul>
+</li>
+</ul>
+<h3><strong>4. Creation Service</strong></h3>
+<ul>
+<li><strong>Role</strong>: Provides structured generation of content with schema validation</li>
+<li><strong>Core Functions</strong>:
+<ul>
+<li><strong>Image Generation</strong>: Creates visual representations using Replicate</li>
+<li><strong>Schema Validation</strong>: Ensures content meets defined specifications</li>
+<li><strong>Pipeline Execution</strong>: Manages multi-step generation processes</li>
+<li><strong>Rarity Determination</strong>: Assigns rarity levels to generated entities</li>
+</ul>
+</li>
+</ul>
+<h3><strong>5. Support Services</strong></h3>
+<ol>
+<li>
+<p><strong>AI Service</strong></p>
+<ul>
+<li>Mediates between the platform and external AI providers (OpenRouter, Google AI)</li>
+<li>Implements <strong>error handling</strong>, <strong>retries</strong>, and <strong>model selection</strong></li>
+<li>Supports multiple model tiers and fallback strategies</li>
+</ul>
+</li>
+<li>
+<p><strong>Memory Service</strong></p>
+<ul>
+<li><strong>Short-Term</strong>: Recent interaction caching (2048-token context)</li>
+<li><strong>Long-Term</strong>: MongoDB with vector embeddings &amp; hierarchical storage</li>
+<li><strong>Memory Retrieval</strong>: Context-aware information access</li>
+</ul>
+</li>
+<li>
+<p><strong>Avatar Service</strong></p>
+<ul>
+<li>Creates, updates, and verifies unique avatars</li>
+<li>Integrates with Creation Service for image generation</li>
+<li>Manages avatar lifecycle and relationships</li>
+<li>Handles breeding and evolution mechanisms</li>
+</ul>
+</li>
+<li>
+<p><strong>Item Service</strong></p>
+<ul>
+<li>Creates and manages interactive items</li>
+<li>Integrates with AI for item personality and behavior</li>
+<li>Implements inventory and item effects</li>
+<li>Handles item discovery and trading</li>
+</ul>
+</li>
+<li>
+<p><strong>Storage Services</strong></p>
+<ul>
+<li>S3 and Arweave for <strong>scalable</strong> and <strong>permanent</strong> storage</li>
+<li>Replicate for on-demand AI-driven image generation</li>
+<li>MongoDB for structured data persistence</li>
+</ul>
+</li>
+</ol>
+<h3><strong>Ecosystem Flow</strong></h3>
+<ol>
+<li><strong>User Input</strong> → <strong>Chat/Tool Services</strong> → <strong>AI Models</strong> → <strong>Avatar Decision</strong></li>
+<li><strong>Memory Logging</strong> → <strong>MongoDB</strong> → Summaries &amp; Relevancy Checking</li>
+<li><strong>Content Creation</strong> → <strong>Creation Service</strong> → Schema Validation</li>
+<li><strong>Blockchain Storage</strong> → <strong>Arweave</strong> for immutable avatar data &amp; media</li>
+</ol>
+</main>
+</body>
+</html>
