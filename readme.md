@@ -14,6 +14,8 @@ An advanced AI avatar ecosystem that creates persistent, intelligent entities wi
 - 💾 **Persistent Storage**: MongoDB for dynamic data, S3 for assets, Arweave for permanent records
 - 🖼️ **Image Generation**: AI-powered visual avatars via Replicate API
 - 🌐 **Cross-Platform**: Support for Discord, Telegram, and X (Twitter)
+- 🏭 **Creation Service**: Structured generation of content with schema validation
+- 🔄 **Model Flexibility**: Support for Google AI and OpenRouter models
 
 ## Prerequisites
 
@@ -23,6 +25,7 @@ An advanced AI avatar ecosystem that creates persistent, intelligent entities wi
 - Discord Bot Token (for Discord integration)
 - OpenRouter API key (for AI model access)
 - Replicate API key (for image generation)
+- Google AI API key (optional, for Google model integration)
 
 ## Environment Setup
 
@@ -41,6 +44,7 @@ MONGO_DB_NAME="moonstone"
 # AI Services
 OPENROUTER_API_TOKEN="your_openrouter_token"
 REPLICATE_API_TOKEN="your_replicate_token"
+GOOGLE_AI_API_KEY="your_google_ai_key"
 
 # Storage
 S3_API_ENDPOINT="your_s3_endpoint"
@@ -92,6 +96,7 @@ npm run build
 ### World Interaction
 - `!explore [location]` - Discover new areas and items
 - `!remember [topic]` - Access avatar memories on a topic
+- `!create [description]` - Generate new content in the world
 
 ## System Architecture
 
@@ -99,14 +104,15 @@ CosyWorld is composed of several interconnected services:
 
 ### Core Services
 - **Chat Service**: Manages conversations and AI interactions
-- **Dungeon Service**: Handles combat, exploration, and RPG mechanics
+- **Avatar Service**: Handles avatar creation, evolution, and management
 - **Memory Service**: Stores and retrieves hierarchical avatar memories
 - **Location Service**: Manages environmental contexts and zones
-- **Avatar Service**: Handles avatar creation, evolution, and management
+- **Tool Service**: Coordinates actions and specialized tools
 
 ### Support Services
-- **AI Service**: Interfaces with multiple AI providers through OpenRouter
+- **AI Service**: Interfaces with multiple AI providers through OpenRouter and Google AI
 - **Image Service**: Handles avatar image generation and storage
+- **Creation Service**: Provides structured generation with schema validation
 - **Database Service**: Manages persistent data storage and retrieval
 
 ## Development
@@ -115,7 +121,7 @@ The project uses:
 - Discord.js for bot functionality
 - Express for the web server
 - MongoDB for data persistence
-- OpenRouter for AI model access
+- OpenRouter and Google AI for model access
 - S3/Arweave for storage
 - Webpack and Babel for frontend build
 - TailwindCSS for styling
@@ -123,6 +129,7 @@ The project uses:
 ## Documentation
 
 For detailed documentation, see the `/docs` directory:
+- [Introduction](docs/01-introduction.md)
 - [System Overview](docs/02-system-overview.md)
 - [System Diagram](docs/03-system-diagram.md)
 - [Action System](docs/04-action-system.md)

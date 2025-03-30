@@ -3,7 +3,7 @@ import defaultModels from '../models.google.config.mjs';
 import { response } from 'express';
 
 export class GoogleAIService {
-  constructor(config = {}) {
+  constructor(config = {}, services) {
     this.modelConfig = [];
     this.model = config.defaultModel || 'gemini-1.5-flash';
     this.apiKey = process.env.GOOGLE_AI_API_KEY;
@@ -11,6 +11,7 @@ export class GoogleAIService {
       throw new Error('GOOGLE_AI_API_KEY environment variable is not set');
     }
     this.googleAI = new GoogleGenerativeAI(this.apiKey);
+    this.services = services; // Store services
     this.lastModelFetchTime = 0;
     this.modelRefreshInterval = 3600000; // 1 hour in milliseconds
     this.defaultChatOptions = {}; // Added missing property
@@ -230,5 +231,27 @@ export class GoogleAIService {
     } catch (error) {
       return `The ${item.name} remains silent.`;
     }
+  }
+
+  // Example usage for item creation
+  async createItem(itemName, description) {
+    const prompt = `Generate a JSON object for an item with the following details:
+Name: "${itemName}"
+Description: "${description}"
+Include fields: name, description, type, rarity, properties.`;
+
+    const schema = {
+      type: 'object',
+      properties: {
+        name: { type: 'string' },
+        description: { type: 'string' },
+        type: { type: 'string' },
+        rarity: { type: 'string' },
+        properties: { type: 'object' },
+      },
+      required: ['name', 'description', 'type', 'rarity', 'properties'],
+    };
+
+    return await this.generateStructuredOutput({ prompt, schema });
   }
 }

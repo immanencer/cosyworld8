@@ -18,6 +18,9 @@ import { ItemService } from "./item/itemService.mjs";
 import { PromptService } from "./promptService.mjs";
 import { MemoryService } from "./memoryService.mjs";
 import { WebService } from "./webService.mjs";
+import { CreationService } from './creationService.mjs';
+import { S3Service } from './s3/s3Service.mjs';
+import { LocationService } from './location/locationService.mjs';
 
 /**
  * Validates the environment variables and sets defaults or exits as needed.
@@ -66,6 +69,11 @@ export async function initializeServices(logger) {
     logger
   };
 
+  // S3ImageService
+  services.logger.info("Initializing S3Service...");
+  services.s3Service = new S3Service(services.configService, services.logger);
+  services.logger.info("S3Service initialized.");
+
   // DatabaseService
   services.logger.info("Initializing DatabaseService...");
   services.databaseService = new DatabaseService(services.logger);
@@ -82,6 +90,7 @@ export async function initializeServices(logger) {
   services.configService.validate();
   services.logger.info("ConfigService initialized.");
 
+  // Removed: PromptPipelineService initialization
 
   // DiscordService
   services.logger.info("Initializing DiscordService...");
@@ -115,6 +124,11 @@ export async function initializeServices(logger) {
   await services.mapService.initializeDatabase();
   services.logger.info("MapService initialized.");
   
+  // CreationService
+  services.logger.info("Initializing CreationService...");
+  services.creationService = new CreationService(services);
+  services.logger.info("CreationService initialized.");
+
   // AvatarService
   services.logger.info("Initializing AvatarService...");
   services.avatarService = new AvatarService(services);
@@ -123,34 +137,35 @@ export async function initializeServices(logger) {
   
   // ChannelManager
   services.logger.info("Initializing ChannelManager...");
-  services.channelManager = new ChannelManager(services.discordService.client, services.logger, db);
+  services.channelManager = new ChannelManager(services);
   services.logger.info("ChannelManager initialized.");
 
   // MemoryService
   services.logger.info("Initializing MemoryService...");
-  services.memoryService = new MemoryService(services.logger);
+  services.memoryService = new MemoryService(services);
   services.logger.info("MemoryService initialized.");
 
   // ItemService
   services.logger.info("Initializing ItemService...");
-  services.itemService = new ItemService(services.discordService.client, services.aiService, db);
+  services.itemService = new ItemService(services);
   services.logger.info("ItemService initialized.");
 
-  // ConversationManager
-  services.logger.info("Initializing ConversationManager...");
-  services.conversationManager = new ConversationManager(services);
-  services.logger.info("ConversationManager initialized.");
 
   // DecisionMaker
   services.logger.info("Initializing DecisionMaker...");
   services.decisionMaker = new DecisionMaker(services);
   services.logger.info("DecisionMaker initialized.");
 
-  // MessageHandler
-  services.logger.info("Initializing MessageHandler...");
-  services.messageHandler = new MessageHandler(services);
-  services.messageHandler.start();
-  services.logger.info("MessageHandler started.");
+  
+  // ConversationManager
+  services.logger.info("Initializing ConversationManager...");
+  services.conversationManager = new ConversationManager(services);
+  services.logger.info("ConversationManager initialized.");
+  
+  // LocationService
+  services.logger.info("Initializing LocationService...");
+  services.locationService = new LocationService(services);
+  services.logger.info("LocationService initialized.");
 
   // ToolService
   services.logger.info("Initializing ToolService...");
@@ -162,17 +177,22 @@ export async function initializeServices(logger) {
   services.promptService = new PromptService(services);
   services.logger.info("PromptService initialized.");
 
-  // PeriodicTaskManager
-  services.logger.info("Initializing PeriodicTaskManager...");
-  services.periodicTaskManager = new PeriodicTaskManager(services);
-  services.periodicTaskManager.start();
-  services.logger.info("PeriodicTaskManager started.");
 
   // WebService
   services.logger.info("Initializing WebService...");
   services.webService = new WebService(services);
   await services.webService.start();
   services.logger.info("WebService initialized.");
+
+  // PeriodicTaskManager
+  services.logger.info("Initializing PeriodicTaskManager...");
+  services.periodicTaskManager = new PeriodicTaskManager(services);
+  services.periodicTaskManager.start();
+  
+  // MessageHandler
+  services.logger.info("Initializing MessageHandler...");
+  services.messageHandler = new MessageHandler(services);
+  services.messageHandler.start();
 
   // Update Arweave prompts
   services.logger.info("Updating Arweave prompts...");
@@ -196,5 +216,6 @@ export async function initializeServices(logger) {
     toolService: services.toolService,
     logger: services.logger,
     webService: services.webService, // Added WebService to the returned object
+    s3Service: services.s3Service,
   };
 }

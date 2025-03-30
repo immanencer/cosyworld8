@@ -1,4 +1,3 @@
-
 # Intelligence System
 
 ## Overview
@@ -26,25 +25,52 @@ The Intelligence System drives avatar consciousness through a sophisticated netw
 - **Models**: Llama-3.2-3B, Nova-Lite, Phi-3.5-Mini
 - **Use**: Basic interactions and routine tasks
 
+## AI Service Providers
+
+### OpenRouter Integration
+- Primary access point for multiple model families
+- Automatic fallback and retry mechanisms
+- Dynamic model selection based on rarity and task
+
+### Google AI Integration
+- Support for Gemini model family
+- Specialized vision and multimodal capabilities
+- System instruction handling
+
+### Replicate Integration
+- Image generation capabilities
+- Customizable inference parameters
+- Support for multiple visual styles
+
 ## Memory Architecture
 
 ### Short-Term Memory
 - Recent interactions and events
 - Current context and state
 - Active relationships
+- Implemented via conversation context windows
 
 ### Long-Term Memory
 - Personal history and development
 - Key relationships and rivalries
 - Significant achievements
+- Stored in MongoDB with vector embeddings
 
 ### Emotional Memory
 - Personality traits
 - Relationship dynamics
 - Behavioral patterns
+- Influences decision making and responses
 
 ## Decision Making
 - Context-aware response generation
 - Personality-driven choices
 - Dynamic adaptation to interactions
 - Memory-informed behavior
+- Rarity-based intelligence selection
+
+## Prompt Pipeline
+- Structured prompt engineering
+- Schema validation for outputs
+- Multi-step reasoning processes
+- Content type specialization

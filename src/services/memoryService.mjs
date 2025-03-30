@@ -1,23 +1,24 @@
-import { MongoClient } from 'mongodb';
+import { BasicService } from './basicService.mjs';
 
-export class MemoryService {
-  constructor(logger) {
-    this.logger = logger;
+export class MemoryService extends BasicService {
+  constructor(services) {
+    super(services, [
+      'discordService',
+      'databaseService',
+      'configService',
+    ]);
+    this.logger = services.logger;
+    this.db = this.databaseService.getDatabase();
+    this.client = this.discordService.client;
   }
 
   async addMemory(avatarId, memory) {
     try {
-      const client = new MongoClient(process.env.MONGO_URI);
-      await client.connect();
-      const db = client.db(process.env.MONGO_DB_NAME);
-      
-      await db.collection('memories').insertOne({
+      await this.db.collection('memories').insertOne({
         avatarId,
         memory,
         timestamp: Date.now()
       });
-      
-      await client.close();
     } catch (error) {
       this.logger.error(`Error storing memory for avatar ${avatarId}: ${error.message}`);
       throw error;
@@ -25,18 +26,14 @@ export class MemoryService {
   }
 
   async getMemories(avatarId, limit = 10) {
-    try {
-      const client = new MongoClient(process.env.MONGO_URI);
-      await client.connect();
-      const db = client.db(process.env.MONGO_DB_NAME);
-      
-      const memories = await db.collection('memories')
+    try {      
+      const memories = await this.db.collection('memories')
         .find({ $or: [ { avatarId }, { avatarId: avatarId.toString() }, { avatarId: { $exists: false } } ] })
         .sort({ timestamp: -1 })
         .limit(limit)
         .toArray();
 
-      const narratives = await db.collection('narratives');
+      const narratives = await this.db.collection('narratives');
 
       // get the three most recent narratives
       const recentNarratives = await narratives.find({ avatarId }).sort({ timestamp: -1 }).limit(3).toArray();  
@@ -48,7 +45,6 @@ export class MemoryService {
 
       memories.sort((a, b) => b.timestamp - a.timestamp);
       
-      await client.close();
       return memories || [];
     } catch (error) {
       this.logger.error(`Error fetching memories for avatar ${avatarId}: ${error.message}`);

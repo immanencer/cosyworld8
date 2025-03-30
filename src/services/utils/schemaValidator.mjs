@@ -16,6 +16,15 @@ export class SchemaValidator {
     this.questValidator = this.ajv.compile(questSchema);
   }
 
+  validate(data, schema) {
+    const validator = this.ajv.compile(schema);
+    const isValid = validator(data);
+    return {
+      valid: isValid,
+      errors: validator.errors || []
+    };
+  }
+
   validateItem(item) {
     const isValid = this.itemValidator(item);
     return {

@@ -1,13 +1,16 @@
-import { MongoClient } from 'mongodb';
-import { MemoryService } from '../memoryService.mjs';
-import { PromptService } from '../promptService.mjs';
+import { BasicService } from '../basicService.mjs';
+import { handleCommands } from '../commands/commandHandler.mjs';
 
 const GUILD_NAME = process.env.GUILD_NAME || 'The Guild';
 
-export class ConversationManager {
+export class ConversationManager extends BasicService {
   constructor(services) {
-    this.services = services;
-    this.logger = services.logger;
+    super(services, [
+      'discordService',
+      'avatarService',
+      'aiService',
+    ]);
+
     this.GLOBAL_NARRATIVE_COOLDOWN = 60 * 60 * 1000; // 1 hour
     this.lastGlobalNarrativeTime = 0;
     this.channelLastMessage = new Map();
@@ -15,25 +18,8 @@ export class ConversationManager {
     this.MAX_RESPONSES_PER_MESSAGE = 2;
     this.channelResponders = new Map();
     this.requiredPermissions = ['ViewChannel', 'SendMessages', 'ReadMessageHistory', 'ManageWebhooks'];
-    this.dbClient = null;
-    this.db = null;
-    this._initializeDb().catch(err => this.logger.error(`Failed to initialize DB: ${err.message}`));
-  }
-
-  async _initializeDb() {
-    if (!process.env.MONGO_URI || !process.env.MONGO_DB_NAME) {
-      this.logger.error('MongoDB URI or Database Name not provided in environment variables.');
-      return;
-    }
-    try {
-      this.dbClient = new MongoClient(process.env.MONGO_URI);
-      await this.dbClient.connect();
-      this.db = this.dbClient.db(process.env.MONGO_DB_NAME);
-      this.logger.info('Successfully connected to MongoDB.');
-    } catch (error) {
-      this.logger.error(`Error connecting to MongoDB: ${error.message}`);
-      throw error;
-    }
+   
+    this.db = services.databaseService.getDatabase();
   }
 
   async checkChannelPermissions(channel) {
@@ -42,7 +28,7 @@ export class ConversationManager {
         this.logger.warn(`Channel ${channel.id} has no associated guild.`);
         return false;
       }
-      const member = channel.guild.members.cache.get(this.services.discordService.client.user.id);
+      const member = channel.guild.members.cache.get(this.discordService.client.user.id);
       if (!member) return false;
       const permissions = channel.permissionsFor(member);
       const missingPermissions = this.requiredPermissions.filter(perm => !permissions.has(perm));
@@ -68,11 +54,11 @@ export class ConversationManager {
         return null;
       }
       if (!avatar.model) {
-        avatar.model = await this.services.aiService.selectRandomModel();
-        await this.services.avatarService.updateAvatar(avatar);
+        avatar.model = await this.aiService.selectRandomModel();
+        await this.avatarService.updateAvatar(avatar);
       }
       const chatMessages = await this.services.promptService.getNarrativeChatMessages(avatar);
-      const narrative = await this.services.aiService.chat(chatMessages, { model: avatar.model, max_tokens: 2048 });
+      const narrative = await this.aiService.chat(chatMessages, { model: avatar.model, max_tokens: 2048 });
       if (!narrative) {
         this.logger.error(`No narrative generated for ${avatar.name}.`);
         return null;
@@ -81,7 +67,7 @@ export class ConversationManager {
       this.updateNarrativeHistory(avatar, narrative);
       avatar.prompt = await this.services.promptService.getFullSystemPrompt(avatar, this.db);
       avatar.dynamicPrompt = narrative;
-      await this.services.avatarService.updateAvatar(avatar);
+      await this.avatarService.updateAvatar(avatar);
       this.lastGlobalNarrativeTime = Date.now();
       return narrative;
     } catch (error) {
@@ -137,7 +123,7 @@ export class ConversationManager {
           this.logger.error(`Database error fetching messages: ${dbError.message}`);
         }
       }
-      const channel = await this.client.channels.fetch(channelId);
+      const channel = await this.discordService.client.channels.fetch(channelId);
       if (!channel) {
         this.logger.warn(`Channel ${channelId} not found`);
         return [];
@@ -198,7 +184,7 @@ export class ConversationManager {
       messagesToSummarize.reverse();
     }
     if (messagesToSummarize.length === 0) return summaryDoc ? summaryDoc.summary : '';
-    const avatar = await this.services.avatarService.getAvatarById(avatarId);
+    const avatar = await this.avatarService.getAvatarById(avatarId);
     if (!avatar) {
       this.logger.error(`Avatar ${avatarId} not found for summarization.`);
       return summaryDoc ? summaryDoc.summary : '';
@@ -224,7 +210,7 @@ export class ConversationManager {
   ${messagesText}
       `.trim();
     }
-    const summary = await this.services.aiService.chat([
+    const summary = await this.aiService.chat([
       { role: 'system', content: avatar.prompt || `You are ${avatar.name}. ${avatar.personality}` },
       { role: 'user', content: prompt }
     ], { model: avatar.model, max_tokens: 500 });
@@ -249,11 +235,15 @@ export class ConversationManager {
   async updateNarrativeHistory(avatar, content) {
     if (!content) return;
     if (avatar.innerMonologueChannel) {
-      await this.services.discordService.sendAsWebhook(avatar.innerMonologueChannel, `-# [Narrative Update ${Date.now().toLocaleString()}] \n\n ${content}`, avatar);
+      await this.discordService.sendAsWebhook(avatar.innerMonologueChannel, `-# [Narrative Update ${Date.now().toLocaleString()}] \n\n ${content}`, avatar);
     }
     const guildName = GUILD_NAME;
     const narrativeData = { timestamp: Date.now(), content, guildName };
     avatar.narrativeHistory = avatar.narrativeHistory || [];
+    if (!avatar.narrativeHistory.unshift) {
+      this.logger.error(`Narrative history is not an array for avatar ${avatar.name}`);
+      return;
+    }
     avatar.narrativeHistory.unshift(narrativeData);
     avatar.narrativeHistory = avatar.narrativeHistory.slice(0, 5);
     avatar.narrativesSummary = avatar.narrativeHistory
@@ -301,7 +291,7 @@ export class ConversationManager {
           break;
         }
       }
-      if (recentImageMessage && this.services.aiService.supportsMultimodal) {
+      if (recentImageMessage && this.aiService.supportsMultimodal) {
         const attachment = recentImageMessage.attachments.find(a => a.contentType?.startsWith('image/'));
         if (attachment) {
           imagePromptParts.push({ type: 'image_url', image_url: { url: attachment.url } });
@@ -312,41 +302,25 @@ export class ConversationManager {
       const channelSummary = await this.getChannelSummary(avatar._id, channel.id);
       let chatMessages = await this.services.promptService.getResponseChatMessages(avatar, channel, channelHistory, channelSummary, this.db);
       let userContent = chatMessages.find(msg => msg.role === 'user').content;
-      if (this.services.aiService.supportsMultimodal && imagePromptParts.length > 0) {
+      if (this.aiService.supportsMultimodal && imagePromptParts.length > 0) {
         userContent = [...imagePromptParts, { type: 'text', text: userContent }];
         chatMessages = chatMessages.map(msg => msg.role === 'user' ? { role: 'user', content: userContent } : msg);
       }
-      let response = await this.services.aiService.chat(chatMessages, { model: avatar.model, max_tokens: 1024 });
+      let response = await this.aiService.chat(chatMessages, { model: avatar.model, max_tokens: 1024 });
       if (!response) {
         this.logger.error(`Empty response generated for ${avatar.name}`);
         return null;
       }
       response = this.removeAvatarPrefix(response, avatar);
+      
+      handleCommands({ content: response, channel, author: {
+        id: avatar._id,
+        username: avatar.name,
+        avatarURL: avatar.imageUrl,
+        guild: channel.guild,
+      } }, this);
       const { commands, cleanText } = this.services.toolService.extractToolCommands(response);
-      let sentMessage = null;
-      let commandResults = [];
-      if (commands.length > 0) {
-        this.logger.info(`Processing ${commands.length} command(s) for ${avatar.name}`);
-        commandResults = await Promise.all(
-          commands.map(cmd =>
-            this.services.toolService.processAction(
-              { channel, author: { id: avatar._id, username: avatar.name }, content: response },
-              cmd.command,
-              cmd.params,
-              avatar,
-              this.services
-            )
-          )
-        );
-        if (commandResults.length) {
-          sentMessage = await this.services.discordService.sendAsWebhook(
-            avatar.channelId,
-            commandResults.map(t => `-# [${t}]`).join('\n'),
-            { name: `${avatar.name.split(',')[0]} used a command`, emoji: `🛠️`, imageUrl: avatar.imageUrl }
-          );
-        }
-        avatar = await this.services.avatarService.getAvatarById(avatar._id);
-      }
+
       const finalText = commands.length ? cleanText : response;
       if (finalText && finalText.trim()) {
         const thinkRegex = /<think>(.*?)<\/think>/gs;
@@ -368,10 +342,10 @@ export class ConversationManager {
           avatar.narrativesSummary = avatar.narrativeHistory
             .map(r => `[${new Date(r.timestamp).toLocaleDateString()}] ${r.guildName}: ${r.content}`)
             .join('\n\n');
-          await this.services.avatarService.updateAvatar(avatar);
+          await this.avatarService.updateAvatar(avatar);
         }
         if (cleanedText) {
-          sentMessage = await this.services.discordService.sendAsWebhook(avatar.channelId, cleanedText, avatar);
+          let sentMessage = await this.discordService.sendAsWebhook(avatar.channelId, cleanedText, avatar);
         }
       }
       this.channelLastMessage.set(channel.id, Date.now());

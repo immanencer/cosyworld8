@@ -3,18 +3,20 @@ CosyWorld is an **ecosystem** composed of interconnected services, each responsi
 
 ### **1. Chat Service**
 - **Function**: Orchestrates immersive conversations between users and avatars.  
-- **AI Models**: GPT-4, Claude, Llama, etc., accessed via OpenRouter.  
+- **AI Models**: GPT-4, Claude, Llama, etc., accessed via OpenRouter and Google AI.  
 - **Features**:  
   - **ConversationManager** for routing messages  
   - **DecisionMaker** for avatar response logic  
+  - **PeriodicTaskManager** for scheduled operations
   - **Rate Limiting** to maintain believable pace
 
 
-### **2. Dungeon Service**
-- **Purpose**: Handles dynamic, AI-driven gameplay and combat.  
+### **2. Tool Service**
+- **Purpose**: Handles dynamic, AI-driven gameplay and interactions.  
 - **Key Components**:  
-  - **ToolService**: Maintains world state and events  
-  - **Specialized Tools**: AttackTool, DefendTool, MoveTool, RememberTool, CreationTool, etc.
+  - **ActionLog**: Maintains world state and events  
+  - **Specialized Tools**: AttackTool, DefendTool, MoveTool, RememberTool, CreationTool, XPostTool, etc.
+  - **StatGenerationService**: Creates and manages avatar statistics
 
 
 ### **3. Location Service**
@@ -23,28 +25,50 @@ CosyWorld is an **ecosystem** composed of interconnected services, each responsi
   - **Dynamic Environments**: Always-evolving landscapes  
   - **Channel Management**: Discord-based or web-based zones  
   - **Memory Integration**: Ties memories to location contexts
+  - **Avatar Position Tracking**: Maps avatars to locations
 
 
-### **4. Support Services**
+### **4. Creation Service**
+- **Role**: Provides structured generation of content with schema validation
+- **Core Functions**:
+  - **Image Generation**: Creates visual representations using Replicate
+  - **Schema Validation**: Ensures content meets defined specifications
+  - **Pipeline Execution**: Manages multi-step generation processes
+  - **Rarity Determination**: Assigns rarity levels to generated entities
 
-1. **OpenRouter Service**  
-   - Mediates between the platform and external AI providers  
-   - Implements **error handling** and **retries**
+
+### **5. Support Services**
+
+1. **AI Service**  
+   - Mediates between the platform and external AI providers (OpenRouter, Google AI)
+   - Implements **error handling**, **retries**, and **model selection**
+   - Supports multiple model tiers and fallback strategies
 
 2. **Memory Service**  
-   - **Short-Term**: Redis-based rolling cache (2048-token context)  
+   - **Short-Term**: Recent interaction caching (2048-token context)  
    - **Long-Term**: MongoDB with vector embeddings & hierarchical storage
+   - **Memory Retrieval**: Context-aware information access
 
 3. **Avatar Service**  
    - Creates, updates, and verifies unique avatars  
-   - Integrates with zero-knowledge proofs for trait **uniqueness**
+   - Integrates with Creation Service for image generation
+   - Manages avatar lifecycle and relationships
+   - Handles breeding and evolution mechanisms
 
-4. **Image Services**  
+4. **Item Service**  
+   - Creates and manages interactive items
+   - Integrates with AI for item personality and behavior
+   - Implements inventory and item effects
+   - Handles item discovery and trading
+
+5. **Storage Services**  
    - S3 and Arweave for **scalable** and **permanent** storage  
    - Replicate for on-demand AI-driven image generation
+   - MongoDB for structured data persistence
 
 
 ### **Ecosystem Flow**
-1. **User Input** → **Chat/Dungeon Services** → **AI Models** → **Avatar Decision**  
-2. **Memory Logging** → **MongoDB/Redis** → Summaries & Relevancy Checking  
-3. **Blockchain Storage** → **Arweave** for immutable avatar data & media
+1. **User Input** → **Chat/Tool Services** → **AI Models** → **Avatar Decision**  
+2. **Memory Logging** → **MongoDB** → Summaries & Relevancy Checking  
+3. **Content Creation** → **Creation Service** → Schema Validation
+4. **Blockchain Storage** → **Arweave** for immutable avatar data & media

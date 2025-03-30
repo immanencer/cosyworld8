@@ -1,69 +1,108 @@
-import { ObjectId } from 'mongodb';
-
 export class StatGenerationService {
+  /**
+   * Generates stats based on the creation date using d20 rolls with advantage/disadvantage per zodiac sign.
+   * @param {Date|string} creationDate - The date the avatar was created.
+   * @returns {Object} - Stats object with strength, dexterity, constitution, intelligence, wisdom, charisma, and hp.
+   */
   generateStatsFromDate(creationDate) {
-    // Ensure creationDate is a proper Date object
+    // Convert creationDate to a Date object if it’s a string
     if (typeof creationDate === 'string') {
-        creationDate = new Date(creationDate);
+      creationDate = new Date(creationDate);
     }
 
-    // Handle invalid or missing dates
+    // Fallback to current date if invalid
     if (!creationDate || isNaN(creationDate.getTime())) {
-        console.warn("Invalid creation date provided, using current date as fallback");
-        creationDate = new Date();
+      console.warn("Invalid creation date, using current date as fallback");
+      creationDate = new Date();
     }
 
-    // Ensure each avatar gets consistent stats based on creation date
-    const seed = creationDate.getMonth() + (creationDate.getDate() * 100) + (creationDate.getFullYear() * 10000);
-    const rng = this.seededRandom(seed);
-
-
+    // Extract month (1-12) and day (1-31)
     const month = creationDate.getMonth() + 1;
     const day = creationDate.getDate();
 
-    // Deterministic base stats by zodiac sign and element
-    let baseStats;
-    if ((month === 3 && day >= 21) || (month === 4 && day <= 19)) { // Aries (Fire)
-      baseStats = { str: 16, dex: 14, con: 14, int: 10, wis: 8, cha: 12 };
-    } else if ((month === 4 && day >= 20) || (month === 5 && day <= 20)) { // Taurus (Earth)
-      baseStats = { str: 14, dex: 8, con: 16, int: 10, wis: 14, cha: 12 };
-    } else if ((month === 5 && day >= 21) || (month === 6 && day <= 20)) { // Gemini (Air)
-      baseStats = { str: 10, dex: 16, con: 12, int: 14, wis: 10, cha: 14 };
-    } else if ((month === 6 && day >= 21) || (month === 7 && day <= 22)) { // Cancer (Water)
-      baseStats = { str: 10, dex: 12, con: 14, int: 12, wis: 16, cha: 10 };
-    } else if ((month === 7 && day >= 23) || (month === 8 && day <= 22)) { // Leo (Fire)
-      baseStats = { str: 14, dex: 12, con: 12, int: 10, wis: 8, cha: 16 };
-    } else if ((month === 8 && day >= 23) || (month === 9 && day <= 22)) { // Virgo (Earth)
-      baseStats = { str: 10, dex: 14, con: 14, int: 16, wis: 12, cha: 8 };
-    } else if ((month === 9 && day >= 23) || (month === 10 && day <= 22)) { // Libra (Air)
-      baseStats = { str: 10, dex: 14, con: 12, int: 14, wis: 14, cha: 12 };
-    } else if ((month === 10 && day >= 23) || (month === 11 && day <= 21)) { // Scorpio (Water)
-      baseStats = { str: 14, dex: 14, con: 14, int: 12, wis: 12, cha: 10 };
-    } else if ((month === 11 && day >= 22) || (month === 12 && day <= 21)) { // Sagittarius (Fire)
-      baseStats = { str: 12, dex: 16, con: 12, int: 10, wis: 12, cha: 14 };
-    } else if ((month === 12 && day >= 22) || (month === 1 && day <= 19)) { // Capricorn (Earth)
-      baseStats = { str: 14, dex: 10, con: 16, int: 14, wis: 12, cha: 8 };
-    } else if ((month === 1 && day >= 20) || (month === 2 && day <= 18)) { // Aquarius (Air)
-      baseStats = { str: 10, dex: 14, con: 12, int: 16, wis: 14, cha: 10 };
-    } else { // Pisces (Water)
-      baseStats = { str: 8, dex: 14, con: 12, int: 12, wis: 16, cha: 12 };
+    // Get the zodiac sign
+    const zodiacSign = this.getZodiacSign(month, day);
+
+    // Retrieve advantage and disadvantage stats for this sign
+    const { advantage, disadvantage } = this.zodiacAdvantages[zodiacSign];
+
+    // Seed the RNG with the full timestamp (milliseconds since epoch)
+    const rng = this.seededRandom(creationDate.valueOf());
+
+    // Define the order of stats to ensure consistency
+    const statsOrder = ['strength', 'dexterity', 'constitution', 'intelligence', 'wisdom', 'charisma'];
+    const stats = {};
+
+    // Generate stats for each attribute
+    for (const stat of statsOrder) {
+      // Roll two d20s for every stat to keep RNG sequence consistent
+      const roll1 = Math.floor(rng() * 20) + 1; // 1 to 20
+      const roll2 = Math.floor(rng() * 20) + 1; // 1 to 20
+
+      let statValue;
+      if (advantage.includes(stat)) {
+        statValue = Math.max(roll1, roll2); // Advantage: take the higher roll
+      } else if (disadvantage.includes(stat)) {
+        statValue = Math.min(roll1, roll2); // Disadvantage: take the lower roll
+      } else {
+        statValue = roll1; // Normal: take the first roll
+      }
+
+      // Clamp the value to 8-16
+      stats[stat] = Math.max(8, Math.min(16, statValue));
     }
 
-    // Calculate HP based on constitution
-    const conMod = Math.floor((baseStats.con - 10) / 2);
-    const stats = {
-      strength: baseStats.str,
-      dexterity: baseStats.dex,
-      constitution: baseStats.con,
-      intelligence: baseStats.int,
-      wisdom: baseStats.wis,
-      charisma: baseStats.cha,
-      hp: 10 + conMod // Level 1 HP calculation
-    };
+    // Calculate HP based on Constitution
+    const conMod = Math.floor((stats.constitution - 10) / 2);
+    stats.hp = 10 + conMod; // HP ranges from 9 to 13 when con is 8-16
 
     return stats;
   }
 
+  /**
+   * Determines the zodiac sign based on month and day.
+   * @param {number} month - Month (1-12)
+   * @param {number} day - Day (1-31)
+   * @returns {string} - Zodiac sign
+   */
+  getZodiacSign(month, day) {
+    if ((month === 3 && day >= 21) || (month === 4 && day <= 19)) return 'Aries';
+    if ((month === 4 && day >= 20) || (month === 5 && day <= 20)) return 'Taurus';
+    if ((month === 5 && day >= 21) || (month === 6 && day <= 20)) return 'Gemini';
+    if ((month === 6 && day >= 21) || (month === 7 && day <= 22)) return 'Cancer';
+    if ((month === 7 && day >= 23) || (month === 8 && day <= 22)) return 'Leo';
+    if ((month === 8 && day >= 23) || (month === 9 && day <= 22)) return 'Virgo';
+    if ((month === 9 && day >= 23) || (month === 10 && day <= 22)) return 'Libra';
+    if ((month === 10 && day >= 23) || (month === 11 && day <= 21)) return 'Scorpio';
+    if ((month === 11 && day >= 22) || (month === 12 && day <= 21)) return 'Sagittarius';
+    if ((month === 12 && day >= 22) || (month === 1 && day <= 19)) return 'Capricorn';
+    if ((month === 1 && day >= 20) || (month === 2 && day <= 18)) return 'Aquarius';
+    return 'Pisces';
+  }
+
+  /**
+   * Defines which stats get advantage or disadvantage based on zodiac sign.
+   */
+  zodiacAdvantages = {
+    'Aries': { advantage: ['strength', 'constitution'], disadvantage: ['wisdom', 'intelligence'] },
+    'Taurus': { advantage: ['constitution', 'wisdom'], disadvantage: ['dexterity', 'charisma'] },
+    'Gemini': { advantage: ['dexterity', 'intelligence'], disadvantage: ['strength', 'constitution'] },
+    'Cancer': { advantage: ['wisdom', 'charisma'], disadvantage: ['strength', 'dexterity'] },
+    'Leo': { advantage: ['strength', 'charisma'], disadvantage: ['intelligence', 'wisdom'] },
+    'Virgo': { advantage: ['intelligence', 'wisdom'], disadvantage: ['strength', 'charisma'] },
+    'Libra': { advantage: ['charisma', 'dexterity'], disadvantage: ['constitution', 'intelligence'] },
+    'Scorpio': { advantage: ['constitution', 'intelligence'], disadvantage: ['wisdom', 'charisma'] },
+    'Sagittarius': { advantage: ['dexterity', 'charisma'], disadvantage: ['constitution', 'wisdom'] },
+    'Capricorn': { advantage: ['constitution', 'intelligence'], disadvantage: ['dexterity', 'charisma'] },
+    'Aquarius': { advantage: ['intelligence', 'wisdom'], disadvantage: ['strength', 'constitution'] },
+    'Pisces': { advantage: ['wisdom', 'charisma'], disadvantage: ['strength', 'dexterity'] }
+  };
+
+  /**
+   * Creates a seeded RNG function based on a numeric seed.
+   * @param {number} seed - The seed value (e.g., timestamp)
+   * @returns {Function} - A function that generates random numbers between 0 and 1
+   */
   seededRandom(seed) {
     return () => {
       seed = (seed * 9301 + 49297) % 233280;
@@ -71,6 +110,11 @@ export class StatGenerationService {
     };
   }
 
+  /**
+   * Validates that all stats are numbers between 8 and 16.
+   * @param {Object} stats - The stats object to validate
+   * @returns {boolean} - True if valid, false otherwise
+   */
   validateStats(stats) {
     if (!stats) return false;
 

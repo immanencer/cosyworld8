@@ -18,6 +18,7 @@ MONGO_DB_NAME="moonstone"
 # AI Services
 OPENROUTER_API_TOKEN="your_openrouter_token"
 REPLICATE_API_TOKEN="your_replicate_token"
+GOOGLE_AI_API_KEY="your_google_ai_key"
 
 # Storage
 S3_API_ENDPOINT="your_s3_endpoint"
@@ -53,6 +54,7 @@ Create the following indexes for optimal performance:
 db.avatars.createIndex({ "avatarId": 1 }, { unique: true })
 db.memories.createIndex({ "avatarId": 1, "timestamp": -1 })
 db.messages.createIndex({ "channelId": 1, "timestamp": -1 })
+db.messages.createIndex({ "messageId": 1 }, { unique: true })
 ```
 
 ## Server Configuration
@@ -99,6 +101,7 @@ Create a systemd service for reliable operation:
 
 ### External Service Limits
 - **OpenRouter**: Based on your subscription plan (typically 3-10 req/min)
+- **Google AI**: Based on your subscription plan
 - **Discord API**: Stay within Discord's published rate limits
 - **Replicate API**: Check your subscription quota
 - **S3 Storage**: No practical limit for normal operation

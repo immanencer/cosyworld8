@@ -1,28 +1,31 @@
 import Fuse from 'fuse.js';
-import { AIService } from "../aiService.mjs";
-// import { AIService } from "../aiService.mjs";
-import { uploadImage } from '../s3/s3imageService.mjs';
 
 import { ObjectId } from 'mongodb';
 import { SchemaValidator } from '../utils/schemaValidator.mjs';
-import Replicate from 'replicate';
-import fs from 'fs/promises';
+import { BasicService } from '../basicService.mjs';
 
 const OPENROUTER_MODEL = process.env.OPENROUTER_MODEL || 'openai/gpt-4o';
 
-export class LocationService {
+export class LocationService extends BasicService {
   /**
    * Constructs a new LocationService.
    * @param {Object} discordClient - The Discord client (required).
    * @param {Object} [aiService=null] - Optional AI service (defaults to OpenRouterService if not provided).
    */
-  constructor(discordClient, aiService = null, db) {
-    if (!discordClient) {
-      throw new Error('Discord client is required for LocationService');
-    }
+  constructor(services) {
+    super(services, [
+      'aiService',
+      'discordService',
+      'databaseService',
+      'creationService',
+      'itemService',
+      'avatarService',
+      'channelManager',
+      'conversationManager',
+    ]);
 
-    this.client = discordClient;
-    this.aiService = aiService || new AIService(); // Allow injection or create a new one
+    this.client = this.discordService.client;
+    this.db = this.databaseService.getDatabase(); 
 
     // Fuzzy-search config
     this.fuseOptions = {
@@ -30,19 +33,10 @@ export class LocationService {
       keys: ['name']
     };
 
-    // For image generation
-    this.replicate = new Replicate({
-      auth: process.env.REPLICATE_API_TOKEN
-    });
-
     // Location message tracking
     this.locationMessages = new Map(); // Map<locationId, {count: number, messages: Array}>
     this.SUMMARY_THRESHOLD = 100; // Summarize after 100 messages
     this.MAX_STORED_MESSAGES = 50; // Keep last 50 messages in memory
-
-    // DB Setup
-    /** @type {import('mongodb').Db|null} */
-    this.db = db;
   }
 
   /**
@@ -82,62 +76,7 @@ export class LocationService {
    * @returns {Promise<string>} - The uploaded image URL.
    */
   async generateLocationImage(locationName, description) {
-    this.ensureDbConnection();
-
-    const trigger = process.env.REPLICATE_LORA_TRIGGER || '';
-
-    try {
-      // 1. Use Replicate to generate an image
-      const [output] = await this.replicate.run(
-        process.env.REPLICATE_MODEL || 'immanencer/mirquo:dac6bb69d1a52b01a48302cb155aa9510866c734bfba94aa4c771c0afb49079f',
-        {
-          input: {
-            prompt: `${trigger} ${locationName} ${trigger} ${description} ${trigger}`,
-            model: 'dev',
-            lora_scale: 1,
-            num_outputs: 1,
-            aspect_ratio: '16:9',
-            output_format: 'png',
-            guidance_scale: 3.5,
-            output_quality: 90,
-            prompt_strength: 0.8,
-            extra_lora_scale: 1,
-            num_inference_steps: 28,
-            disable_safety_checker: true
-          }
-        }
-      );
-
-      // 2. Grab the URL from the replicate output
-      const imageUrl = output.url ? output.url() : [output];
-      const finalUrl = imageUrl.toString();
-
-      // 3. Download the image to local disk
-      const imageBuffer = await this.downloadImage(finalUrl);
-      const localFilename = `./images/location_${Date.now()}.png`;
-      await fs.mkdir('./images', { recursive: true });
-      await fs.writeFile(localFilename, imageBuffer);
-
-      // 4. Upload image to S3
-      const uploadedUrl = await uploadImage(localFilename);
-
-      // 5. Update the "locations" DB record if it exists
-      await this.db.collection('locations').updateOne(
-        { name: locationName },
-        {
-          $set: {
-            imageUrl: uploadedUrl,
-            updatedAt: new Date()
-          }
-        },
-        { upsert: true }
-      );
-
-      return uploadedUrl;
-    } catch (error) {
-      console.error('Error generating location image:', error);
-      throw error;
-    }
+    return await this.creationService.generateImage(`${locationName}: ${description}`, '16:9'); // Use CreationService
   }
 
   /**
@@ -203,20 +142,20 @@ export class LocationService {
         Keep it to 2-3 compelling sentences.
       `;
 
-      const responseSchema = {
-        type: "STRING",
-        description: "A short, vivid description of the location."
-      };
+      const schema = {
+      name: 'RATi LOCATION',
+      strict: true,
+      description: 'Location generation schema',
+      schema: {
+        type: 'object',
+        properties: {
+          description: { type: 'string' }
+        },
+        required: ['description']
+      }};
 
-      const response = await this.aiService.chat(
-        [
-          { role: 'system', content: 'You are a poetic location narrator skilled in atmospheric descriptions.' },
-          { role: 'user', content: prompt }
-        ],
-        { responseSchema }
-      );
-
-      return response || `A mysterious aura surrounds ${locationName}, but words fail to capture it.`;
+      const response = await this.creationService.executePipeline({ prompt, schema });
+      return response.description || `A mysterious aura surrounds ${locationName}, but words fail to capture it.`;
     } catch (error) {
       console.error('Error generating location description:', error);
       return `A mysterious aura surrounds ${locationName}, but words fail to capture it.`;
@@ -349,7 +288,7 @@ If already suitable, return as is. If it needs editing, revise it while preservi
       };
 
       // Post the evocative description as a webhook
-      await this.services.discordService.sendAsWebhook(thread.id, evocativeDescription, locationDocument);
+      await this.discordService.sendAsWebhook(thread.id, evocativeDescription, locationDocument);
 
       // Validate location schema
       const schemaValidator = new SchemaValidator();
@@ -438,7 +377,7 @@ If already suitable, return as is. If it needs editing, revise it while preservi
       await this.db.collection('locations').insertOne(location);
 
       // Optionally post the description and image to the channel
-      await this.services.discordService.sendAsWebhook(channelId, description, { files: [imageUrl] });
+      await this.discordService.sendAsWebhook(channelId, description, { files: [imageUrl] });
     }
     return location;
   }
@@ -526,52 +465,14 @@ If already suitable, return as is. If it needs editing, revise it while preservi
   }
 
   /**
-   * Tracks a single message in a location, incrementing the count and storing the content.
-   * If threshold is reached, it auto-generates a location summary.
-   * @param {string} locationId
-   * @param {Object} message
-   */
-  async trackLocationMessage(locationId, message) {
-    if (!locationId || !message) {
-      console.warn('Invalid parameters for trackLocationMessage');
-      return;
-    }
-
-    if (!this.locationMessages.has(locationId)) {
-      this.locationMessages.set(locationId, { count: 0, messages: [] });
-    }
-
-    const locationData = this.locationMessages.get(locationId);
-    locationData.count += 1;
-
-    // Store message data
-    locationData.messages.push({
-      author: message.author?.username || 'Unknown',
-      content: message.content,
-      timestamp: message.createdTimestamp
-    });
-
-    // Keep only recent messages
-    if (locationData.messages.length > this.MAX_STORED_MESSAGES) {
-      locationData.messages.shift();
-    }
-
-    // Check if we need to summarize
-    if (locationData.count >= this.SUMMARY_THRESHOLD) {
-      await this.generateLocationSummary(locationId);
-      locationData.count = 0; // Reset after summary
-    }
-  }
-
-  /**
    * Generates a summary of recent messages for a location, posts it with the location image via webhook as "the location,"
    * and includes a small chance to create an item based on recent activity.
    * @param {string} locationId - The channel or thread ID in Discord.
    */
   async generateLocationSummary(locationId) {
     try {
-      const locationData = this.locationMessages.get(locationId);
-      if (!locationData) {
+      const channelHistory = await this.services.conversationManager?.getChannelContext(locationId, 50);
+      if (!channelHistory) {
         console.warn('No message data found for location ID', locationId);
         return;
       }
@@ -582,85 +483,47 @@ If already suitable, return as is. If it needs editing, revise it while preservi
         return;
       }
 
-      // Compile recent messages into a text block
-      const messagesText = locationData.messages
-        .map((m) => `${m.author}: ${m.content}`)
-        .join('\n');
+      const items = await this.itemService.searchItems(locationId, '');
+      const avatars = await this.avatarService.getAvatarsInChannel(locationId);
 
-      // Generate the ambiance summary
-      const prompt = `As ${location.name}, observe the recent events and characters within your boundaries.
-Describe the current atmosphere, notable characters present, and significant events that have occurred.
-Focus on the mood, interactions, and any changes in the environment.
-Recent activity:
-${messagesText}`;
-
+      const prompt = `
+        As ${location.name}, describe the recent events, notable characters, and items present.
+        Focus on the atmosphere, interactions, and changes in the environment.
+        Recent activity:
+        ${locationData.messages.map(m => `${m.author}: ${m.content}`).join('\n')}
+      `;
       const summary = await this.aiService.chat([
-        {
-          role: 'system',
-          content: 'You are a mystical location describing the events and characters within your bounds.'
-        },
-        {
-          role: 'user',
-          content: prompt
-        }
+        { role: 'system', content: 'You are a mystical location describing events and characters.' },
+        { role: 'user', content: prompt }
       ]);
 
-      // Post the summary along with the location's current image
-      await this.services.discordService.sendAsWebhook(location.id, {
-        content: summary,
-        files: location.imageUrl ? [location.imageUrl] : []
-      }, location);
+      const embed = this.buildLocationEmbed(location, summary, items, avatars);
+      await this.discordService.sendAsWebhook(locationId, { embeds: [embed] });
 
-      // Small chance (5%) to create an item based on recent activity
-      const createItemChance = 0.05;
-      if (Math.random() < createItemChance) {
-        const itemPrompt = `Based on the recent events in ${location.name}, suggest a unique item that could be found here.
-Provide a name and a brief description in the format:
-Name: [item name]
-Description: [item description]`;
-
-        const itemResponse = await this.aiService.chat([
-          {
-            role: 'system',
-            content: 'You are a creative item generator for a fantasy setting.'
-          },
-          {
-            role: 'user',
-            content: itemPrompt
-          }
-        ]);
-
-        // Parse the item response
-        const lines = itemResponse.split('\n');
-        const nameLine = lines.find(line => line.startsWith('Name:'));
-        const descLine = lines.find(line => line.startsWith('Description:'));
-        const itemName = nameLine ? nameLine.replace('Name:', '').trim() : 'Mysterious Item';
-        const itemDesc = descLine ? descLine.replace('Description:', '').trim() : 'An item of unknown origin.';
-
-        // Create the item using ItemService
-        const newItem = await this.services.itemService.createItem({
-          name: itemName,
-          description: itemDesc,
-          locationId: location.id
-        });
-
-        // Announce the item's appearance
-        const announcement = `A new item has appeared: **${newItem.name}** - ${newItem.description}`;
-        await this.services.discordService.sendAsWebhook(location.id, announcement, location);
-      }
-      // Update lastSummaryUpdate in the database
       await this.db.collection('locations').updateOne(
-        { channelId },
+        { channelId: locationId },
         { $set: { lastSummaryUpdate: new Date().toISOString(), updatedAt: new Date().toISOString() } }
       );
 
-      // Reset message count if triggered by threshold
-      if (locationData.count >= this.SUMMARY_THRESHOLD) {
-        locationData.count = 0;
-      }
+      locationData.count = 0; // Reset message count
     } catch (error) {
       console.error('Error generating location summary:', error);
     }
+  }
+
+  buildLocationEmbed(location, summary, items, avatars) {
+    const embed = new EmbedBuilder()
+      .setTitle(location.name)
+      .setDescription(summary)
+      .setImage(location.imageUrl)
+      .addFields(
+        { name: 'Rarity', value: location.rarity || 'common', inline: true },
+        { name: 'Items', value: items.map(i => i.name).join(', ') || 'None', inline: true },
+        { name: 'Avatars', value: avatars.map(a => a.name).join(', ') || 'None', inline: true }
+      )
+      .setTimestamp(new Date())
+      .setFooter({ text: 'Location Update' });
+    return embed;
   }
 
   /**
@@ -677,8 +540,13 @@ Description: [item description]`;
         return null;
       }
 
-      const channel = await guild.channels.fetch(locationId);
-      if (!channel) return null;
+      try {
+        const channel = await guild.channels.fetch(locationId);
+        if (!channel) return null;
+      } catch (error) {
+        console.warn('Error fetching channel:', error);
+        return null;
+      }
 
       // Optionally, fetch DB info
       let dbLocation = null;

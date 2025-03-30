@@ -18,10 +18,10 @@ Avatars are the central entities in CosyWorld. Each avatar:
 ### Intelligence Tiers
 
 Avatars operate with different levels of AI intelligence:
-- **Legendary**: Advanced reasoning (GPT-4, Claude-3-Opus)
-- **Rare**: Specialized abilities (Eva-Qwen, Llama-3.1-LumiMaid)
-- **Uncommon**: Balanced performance (Mistral-Large, Qwen-32B)
-- **Common**: Fast, efficient responses (Llama-3.2-3B, Phi-3.5-Mini)
+- **Legendary**: Advanced reasoning (GPT-4, Claude-3-Opus, Llama-3.1-405B)
+- **Rare**: Specialized abilities (Eva-Qwen-2.5-72B, Llama-3.1-LumiMaid-70B)
+- **Uncommon**: Balanced performance (Mistral-Large, Qwen-32B, Mythalion-13B)
+- **Common**: Fast, efficient responses (Llama-3.2-3B, Nova-Lite, Phi-3.5-Mini)
 
 ### Memory Architecture
 
@@ -49,9 +49,10 @@ CosyWorld is designed to work across multiple platforms:
 
 - **Backend**: Node.js with Express
 - **Database**: MongoDB for data, vector store for memories
-- **AI**: Multiple models via OpenRouter
+- **AI**: Multiple models via OpenRouter and Google AI
 - **Storage**: S3 for images, Arweave for permanent records
 - **Frontend**: Modern JavaScript with Webpack, Babel, and TailwindCSS
+- **Creation**: Structured content generation with schema validation
 
 ## Getting Started
 

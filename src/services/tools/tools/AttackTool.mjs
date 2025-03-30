@@ -21,10 +21,9 @@ export class AttackTool extends BasicTool {
     const targetName = params.join(' ');
 
     try {
-      console.log(`Attacker: ${JSON.stringify(avatar.name)}`);
       return await this.attack(message, targetName, avatar._id, services);
     } catch (error) {
-      console.error(`Attack error: ${error.message}`);
+      this.logger.error(`Attack error: ${error.message}`);
       return `⚠️ Attack failed: ${error.message}`;
     }
   }
@@ -35,9 +34,12 @@ export class AttackTool extends BasicTool {
     if (!attackerLocation) return `🤔 You don't seem to be anywhere!`;
 
     // Get all avatars in the same location using AvatarService
-    const avatarsInLocation = await services.avatarService.getAvatarsInChannel(attackerLocation.id);
-    const targetAvatar = avatarsInLocation.find(a => a.name.toLowerCase() === targetName.toLowerCase());
-    if (!targetAvatar) return `🫠 Target [${targetName}] not found in this area.`;
+    const avatarsInLocation = await services.mapService.getLocationAndAvatars(
+      attackerLocation.id || attackerLocation.channel.id
+    );
+    const attackerAvatar = await services.avatarService.getAvatarById(attackerId);
+    const targetAvatar = avatarsInLocation.avatars.find(a => a.name.toLowerCase() === targetName.toLowerCase());
+    if (!targetAvatar) return `🫠 Target '${targetName}' not found in this area.`;
 
     // Check if the target is already dead
     if (targetAvatar.status === 'dead') {
@@ -61,15 +63,14 @@ export class AttackTool extends BasicTool {
       targetStats.isDefending = false; // Reset defense stance
 
       // Update target stats using MapService
-      await services.avatarService.updateAvatarStats(targetAvatar._id, targetStats);
+      await services.avatarService.updateAvatarStats(targetAvatar, targetStats);
 
       if (targetStats.hp <= 0) {
         return await this.handleKnockout(message, targetAvatar, damage, services);
       }
 
-      const result = `⚔️ ${message.author.username} hits ${targetAvatar.name} for ${damage} damage! (${attackRoll} vs AC ${armorClass})`;
+      const result = `⚔️ ${attackerAvatar.name} hits ${targetAvatar.name} for ${damage} damage! (${attackRoll} vs AC ${armorClass})`;
 
-      const attackerAvatar = await services.avatarService.getAvatarById(attackerId);
       // Send messages in sequence to simulate combat
       setTimeout(async () => {
         await services.conversationManager.sendResponse(message.channel, targetAvatar);
@@ -82,8 +83,8 @@ export class AttackTool extends BasicTool {
       return result;
      } else {
       targetStats.isDefending = false; // Reset defense stance on miss
-      await services.avatarService.updateAvatarStats(targetAvatar._id, targetStats);
-      return `🛡️ ${message.author.username}'s attack misses ${targetAvatar.name}! (${attackRoll} vs AC ${armorClass})`;
+      await services.avatarService.updateAvatarStats(targetAvatar, targetStats);
+      return `🛡️ ${attackerAvatar.name}'s attack misses ${targetAvatar.name}! (${attackRoll} vs AC ${armorClass})`;
     }
   }
 
@@ -94,16 +95,16 @@ export class AttackTool extends BasicTool {
       targetAvatar.status = 'dead';
       targetAvatar.deathTimestamp = Date.now();
       await services.avatarService.updateAvatar(targetAvatar);
-      return `💀 ${message.author.username} has dealt the final blow! ${targetAvatar.name} has fallen permanently! ☠️`;
+      return `💀 ${attackerAvatar.name} has dealt the final blow! ${targetAvatar.name} has fallen permanently! ☠️`;
     }
 
     // Reset stats upon knockout
     const newStats = services.statGenerationService.generateStatsFromDate(targetAvatar.createdAt);
     newStats.avatarId = targetAvatar._id;
-    await services.avatarService.updateAvatarStats(targetAvatar._id, newStats);
+    await services.avatarService.updateAvatarStats(targetAvatar, newStats);
 
     await services.avatarService.updateAvatar(targetAvatar);
-    return `💥 ${message.author.username} knocked out ${targetAvatar.name} for ${damage} damage! ${targetAvatar.lives} lives remaining! 💫`;
+    return `💥 $${attackerAvatar.name} knocked out ${targetAvatar.name} for ${damage} damage! ${targetAvatar.lives} lives remaining! 💫`;
   }
 
   getDescription() {

@@ -26,10 +26,7 @@ export class ConfigService extends BasicService {
           loraTriggerWord: process.env.REPLICATE_LORA_TRIGGER,
           style: "Cyberpunk, Manga, Anime, Watercolor, Experimental."
         },
-        aiProvider: {
-          apiKey: process.env.GOOGLE_API_KEY,
-          metaModel: process.env.META_PROMPT_MODEL,
-        },
+        metaModel: process.env.META_PROMPT_MODEL,
       },
       mongo: {
         uri: process.env.MONGO_URI,

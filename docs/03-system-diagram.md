@@ -23,7 +23,9 @@ flowchart TD
         MS[Memory Service]:::green
         AS[Avatar Service]:::green
         AIS[AI Service]:::green
-        DUN[Dungeon Master]:::green
+        TS[Tool Service]:::green
+        LS[Location Service]:::green
+        CS[Creation Service]:::green
     end
     subgraph SL["Storage Layer"]
         MONGO[MongoDB]:::brown
@@ -32,6 +34,7 @@ flowchart TD
     end
     subgraph AI["AI Services"]
         OR[OpenRouter]:::gold
+        GAI[Google AI]:::gold
         REP[Replicate]:::gold
     end
     DS --> DISCORD
@@ -43,13 +46,18 @@ flowchart TD
     CHAT --> MS
     CHAT --> AS
     CHAT --> AIS
-    CHAT --> DUN
+    CHAT --> TS
+    TS --> LS
+    AS --> CS
+    AIS --> OR
+    AIS --> GAI
+    CS --> REP
     MS --> MONGO
-    DUN --> MONGO
+    TS --> MONGO
+    LS --> MONGO
     AS --> S3
     AS --> ARW
-    AIS --> OR
-    AIS --> REP
+    CS --> S3
     classDef blue fill:#1a5f7a,stroke:#666,color:#fff
     classDef green fill:#145a32,stroke:#666,color:#fff
     classDef brown fill:#5d4037,stroke:#666,color:#fff
@@ -84,6 +92,7 @@ sequenceDiagram
     participant M as Memory Service
     participant A as Avatar Service
     participant AI as AI Service
+    participant CR as Creation Service
     participant S as Storage
     U->>B: Send Message
     B->>C: Route Message
@@ -97,11 +106,13 @@ sequenceDiagram
     rect rgb(40, 40, 40)
         note right of C: Response Generation
         C->>AI: Generate Response
-        alt Image Requested
-            AI->>A: Generate Image
-            A->>S: Store Image
-            S-->>A: Return URL
-            A-->>AI: Image Details
+        alt Content Generation
+            AI->>CR: Generate Content
+            CR->>A: Create Entity
+            A->>S: Store Entity
+            S-->>A: Return Reference
+            A-->>CR: Entity Details
+            CR-->>AI: Generated Content
         end
         AI-->>C: Complete Response
     end

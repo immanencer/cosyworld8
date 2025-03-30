@@ -82,13 +82,9 @@ export class MapService extends BasicService {
       imageUrl: null,
     };
 
-    const guild = this.client.guilds.cache.first();
-    const channel = await guild.channels.fetch(location.id);
-
     return {
-      id: location.id,
+      id: location.channelId,
       name: location.name,
-      channel,
       description: location.description,
       imageUrl: location.imageUrl,
     };
@@ -171,5 +167,30 @@ export class MapService extends BasicService {
     } finally {
       await session.endSession();
     }
+  }
+
+  /**
+   * Retrieves the location information and avatars present in the location.
+   * @param {string} locationId - The ID of the location.
+   * @returns {Promise<Object>} - An object containing location details and avatars.
+   */
+  async getLocationAndAvatars(locationId) {
+    const db = this.ensureDb();
+
+    // Fetch location details
+    const location = await db.collection(this.LOCATIONS_COLLECTION).findOne({ channelId: locationId });
+    if (!location) {
+      throw new Error(`Location with ID ${locationId} not found.`);
+    }
+
+    // Fetch avatars in the location
+    const avatarPositions = await db.collection(this.DUNGEON_POSITIONS_COLLECTION).find({ locationId }).toArray();
+    const avatarIds = avatarPositions.map(pos => pos.avatarId);
+    const avatars = await db.collection(this.AVATARS_COLLECTION).find({ _id: { $in: avatarIds } }).toArray();
+
+    return {
+      location,
+      avatars,
+    };
   }
 }

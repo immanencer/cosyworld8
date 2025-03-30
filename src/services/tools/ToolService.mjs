@@ -24,6 +24,7 @@ export class ToolService extends BasicService {
    */
   constructor(services) {
     super(services, [
+      'locationService',
       'avatarService',
       'itemService',
       'discordService',
@@ -67,10 +68,6 @@ export class ToolService extends BasicService {
 
     this.creationTool = new CreationTool(this.services);
 
-    // Service dependencies
-    this.aiService = new AIService();
-    this.locationService = new LocationService(this.client, this.aiService, this.db);
-
     // Event listener for avatar movements
     this.client.on('avatarMoved', ({ avatarId, newChannelId, temporary }) => {
       this.logger.debug(`Avatar ${avatarId} moved to ${newChannelId}${temporary ? ' (temporary)' : ''}`);
@@ -99,7 +96,7 @@ export class ToolService extends BasicService {
         if (trimmedLine.startsWith(emoji)) {
           const rest = trimmedLine.slice(emoji.length).trim();
           const params = rest ? rest.split(/\s+/) : [];
-          commands.push({ command: toolName, params });
+          commands.push({ command: toolName, emoji, params });
           commandLines.push(line);
           isCommand = true;
           break;

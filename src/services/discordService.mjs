@@ -185,8 +185,11 @@ export class DiscordService extends BasicService {
       const trimmed = content.startsWith(prefix) ? content.slice(prefix.length) : content;
       const preparedContent = processMessageLinks(trimmed, this.client);
       const chunks = chunkMessage(preparedContent);
+
+      let sentMessage = null;
+
       for (const chunk of chunks) {
-        await webhook.send({
+        sentMessage = await webhook.send({
           content: chunk,
           username,
           avatarURL: avatar.imageUrl,
@@ -194,6 +197,7 @@ export class DiscordService extends BasicService {
         });
       }
       this.logger.info(`Sent message to channel ${channelId} as ${username}`);
+      return sentMessage;  
     } catch (error) {
       this.logger.error(`Failed to send webhook message to ${channelId}: ${error.message}`);
     }

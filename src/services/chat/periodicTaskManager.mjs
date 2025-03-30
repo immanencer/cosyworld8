@@ -14,10 +14,11 @@ export class PeriodicTaskManager {
 
   /** Starts all periodic tasks. */
   start() {
+    this.triggerAmbientResponses();
+    this.generateReflections();
     this.intervals.push(
       setInterval(() => this.triggerAmbientResponses(), this.AMBIENT_CHECK_INTERVAL),
       setInterval(() => this.generateReflections(), this.REFLECTION_INTERVAL),
-      setInterval(() => this.updateLocationAmbiance(), this.AMBIANCE_UPDATE_INTERVAL)
     );
   }
 
@@ -33,7 +34,7 @@ export class PeriodicTaskManager {
     // Ensure locationService is available
     this.locationService = this.services.locationService;
 
-    const activeChannels = await this.channelManager.getActiveChannels();
+    const activeChannels = await this.channelManager.getMostRecentActiveChannels(3);
     for (const channel of activeChannels) {
       // Ensure location exists
       await this.locationService.getLocationByChannelId(channel.id);

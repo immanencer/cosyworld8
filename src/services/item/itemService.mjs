@@ -1,39 +1,35 @@
-// itemService.mjs
-
-import fs from 'fs/promises';
-import Replicate from 'replicate';
-import { uploadImage } from '../s3/s3imageService.mjs';
 import { SchemaValidator } from '../utils/schemaValidator.mjs';
+import { BasicService } from '../basicService.mjs'; // Assuming BasicService is imported
 
-export class ItemService {
-  constructor(client, aiService, db, options = {}) {
-    if (!db) {
-      throw new Error('MongoDB database instance is required for ItemService');
-    }
-    this.client = client;
-    this.aiService = aiService;
-    this.db = db;
-    // Set the item creation limit (default is 8 per day globally)
-    this.itemCreationLimit = options.itemCreationLimit ?? 8;
-    // Instantiate Replicate for image generation
-    this.replicate = new Replicate({
-      auth: process.env.REPLICATE_API_TOKEN
-    });
+export class ItemService extends BasicService {
+  constructor(services) {
+    super(services, [
+      'aiService',
+      'databaseService',
+      'configService',
+      's3Service',
+      'creationService',
+      'discordService'
+    ]);
+    this.client = this.discordService.client;
+    this.db = this.databaseService.getDatabase();
+    this.itemCreationLimit = 8; // Hardcoded as 'options' was undefined
     this.schemaValidator = new SchemaValidator();
     this.CURRENT_SCHEMA_VERSION = '1.0.0';
   }
 
+  /** Ensures the database connection is active. */
   ensureDbConnection() {
-    if (!this.db) {
-      throw new Error('Database not connected');
-    }
+    if (!this.db) throw new Error('Database not connected');
     return this.db;
   }
 
+  /** Removes single and double quotes from an item name. */
   cleanItemName(name) {
     return name.replace(/['"]/g, '');
   }
 
+  /** Downloads an image from a URL and returns it as a Buffer. */
   async downloadImage(url) {
     try {
       const response = await fetch(url);
@@ -48,257 +44,108 @@ export class ItemService {
     }
   }
 
+  /** Generates an item image using CreationService. */
   async generateItemImage(itemName, description) {
-    this.ensureDbConnection();
-    const trigger = process.env.REPLICATE_LORA_TRIGGER || '';
-
-    try {
-      const [output] = await this.replicate.run(
-        process.env.REPLICATE_ITEM_MODEL ||
-        'immanencer/mirquo:dac6bb69d1a52b01a48302cb155aa9510866c734bfba94aa4c771c0afb49079f',
-        {
-          input: {
-            prompt: `${trigger} ${itemName} ${trigger} ${description} ${trigger}`,
-            model: 'dev',
-            lora_scale: 1,
-            num_outputs: 1,
-            aspect_ratio: '1:1', // Square image for items
-            output_format: 'png',
-            guidance_scale: 3.5,
-            output_quality: 90,
-            prompt_strength: 0.8,
-            extra_lora_scale: 1,
-            num_inference_steps: 28,
-            disable_safety_checker: true
-          }
-        }
-      );
-
-      // Extract the image URL from the replicate output.
-      const imageUrl = output.url ? output.url() : [output];
-      const finalUrl = imageUrl.toString();
-
-      // Download the image locally.
-      const imageBuffer = await this.downloadImage(finalUrl);
-      const localFilename = `./images/item_${Date.now()}.png`;
-      await fs.mkdir('./images', { recursive: true });
-      await fs.writeFile(localFilename, imageBuffer);
-
-      // Upload the image to S3 and return the URL.
-      const uploadedUrl = await uploadImage(localFilename);
-      return uploadedUrl;
-    } catch (error) {
-      console.error('Error generating item image:', error);
-      throw error;
-    }
+    return await this.creationService.generateImage(`${itemName}: ${description}`, '1:1');
   }
 
-  async determineItemType(itemName, description) {
-    const typePrompt = `Determine the type of item based on its name and description: Name: "${itemName}", Description: "${description}". Return only the item type (e.g., "weapon", "armor", "consumable", "quest", "key", "artifact").`;
-    let type = await this.aiService.chat([
-      { role: 'system', content: 'You are an expert in classifying fantasy items.' },
-      { role: 'user', content: typePrompt }
-    ]);
-    type = type.trim();
-    return this.normalizeItemType(type);
-  }
-
-  async determineItemRarity(itemName, description) {
-    const rarityPrompt = `Determine the rarity of an item based on its name and description: Name: "${itemName}", Description: "${description}". Return only the item rarity (e.g., "common", "uncommon", "rare", "legendary", "mythic").`;
-    let rarity = await this.aiService.chat([
-      { role: 'system', content: 'You are an expert in evaluating the rarity of fantasy items.' },
-      { role: 'user', content: rarityPrompt }
-    ]);
-    rarity = rarity.trim();
-    return this.normalizeItemRarity(rarity);
-  }
-
-  /**
-   * Attempts to extract a valid JSON object from the given string.
-   * @param {string} text - The text containing a JSON object.
-   * @returns {Object|null} The parsed JSON object or null if extraction fails.
-   */
-  extractJson(text) {
-    // Look for a substring starting at the first '{' and ending at the last '}'
-    const firstBrace = text.indexOf('{');
-    const lastBrace = text.lastIndexOf('}');
-    if (firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace) {
-      const jsonString = text.substring(firstBrace, lastBrace + 1);
-      try {
-        return JSON.parse(jsonString);
-      } catch (err) {
-        console.error('Error parsing extracted JSON:', err);
-        return null;
-      }
-    }
-    return null;
-  }
-
-  async generateItemProperties(itemName, description) {
-    try {
-      const propertiesPrompt = `Generate properties for an item based on its name and description: Name: "${itemName}", Description: "${description}". Return ONLY a valid JSON object like this example: {"attack": 10, "defense": 5, "effect": "healing"}. Do not include any explanatory text.`;
-
-      const responseSchema = {
-        type: "OBJECT",
+  /** Generates detailed item data using CreationService's pipeline. */
+  async generateItemDetails(itemName, description) {
+    const prompt = `Generate a JSON object for an item with the following details:
+Name: "${itemName}"
+Description: "${description}"
+Include fields: name, description, type, rarity, properties.`;
+    const schema = {
+      name: 'com.rati.item.create',
+      strict: true, 
+      schema: {
+        type: 'object',
         properties: {
-          attack: { type: "NUMBER", description: "Attack value of the item" },
-          defense: { type: "NUMBER", description: "Defense value of the item" },
-          effect: { type: "STRING", description: "Special effect of the item" }
+          name: { type: 'string' },
+          description: { type: 'string' },
+          type: { type: 'string' },
+          rarity: { type: 'string' },
+          properties: { type: 'object' }
         },
-        required: ["attack", "defense"]
-      };
-
-      const propertiesResponse = await this.aiService.chat(
-        [
-          { role: 'system', content: 'You are a master craftsman. Only respond with valid JSON objects containing item properties.' },
-          { role: 'user', content: propertiesPrompt }
-        ],
-        { responseSchema }
-      );
-
-      if (propertiesResponse && typeof propertiesResponse === 'object') {
-        return propertiesResponse;
-      } else {
-        console.warn(`Invalid response for ${itemName}:`, propertiesResponse);
-        return { attack: 5, defense: 5 }; // Fallback default properties
+        required: ['name', 'description', 'type', 'rarity', 'properties']
       }
-    } catch (error) {
-      console.error(`Failed to generate properties for ${itemName}:`, error);
-      return { attack: 5, defense: 5 }; // Fallback default properties
-    }
+    };
+    return await this.creationService.executePipeline({ prompt, schema });
   }
 
-  /**
-   * Normalizes the item type to one of the allowed values.
-   * @param {string} type - The type returned by the AI.
-   * @returns {string} One of: "weapon", "armor", "consumable", "quest", "key", "artifact".
-   */
+  /** Determines item rarity using CreationService. */
+  async determineItemRarity() {
+    return this.creationService.determineRarity();
+  }
+
+  /** Normalizes item type to an allowed value. */
   normalizeItemType(type) {
-    const allowedTypes = ["weapon", "armor", "consumable", "quest", "key", "artifact"];
+    const allowedTypes = ['weapon', 'armor', 'consumable', 'quest', 'key', 'artifact'];
     let normalized = type.toLowerCase().trim().replace(/[^a-z]/g, '');
-    if (allowedTypes.includes(normalized)) return normalized;
-    // If not exact, check if any allowed type is contained within the string.
-    for (const allowed of allowedTypes) {
-      if (normalized.includes(allowed)) return allowed;
-    }
-    return 'artifact';
+    return allowedTypes.includes(normalized) ? normalized : 'artifact';
   }
 
-  /**
-   * Normalizes the item rarity to one of the allowed values.
-   * @param {string} rarity - The rarity returned by the AI.
-   * @returns {string} One of: "common", "uncommon", "rare", "legendary", "mythic".
-   */
-  normalizeItemRarity(rarity) {
-    const allowedRarities = ["common", "uncommon", "rare", "legendary", "mythic"];
-    let normalized = rarity.toLowerCase().trim().replace(/[^a-z]/g, '');
-    if (allowedRarities.includes(normalized)) return normalized;
-    // Map common synonyms if needed (e.g., "epic" -> "legendary")
-    if (normalized === 'epic') return 'legendary';
-    for (const allowed of allowedRarities) {
-      if (normalized.includes(allowed)) return allowed;
-    }
-    return 'common';
-  }
-
+  /** Finds an existing item or creates a new one. */
   async findOrCreateItem(itemName, locationId) {
+    const itemsCollection = this.ensureDbConnection().collection('items');
     const key = itemName.toLowerCase();
-    const itemsCollection = this.db.collection('items');
-
     let item = await itemsCollection.findOne({ key });
-    if (item) {
-      return item;
-    }
+    if (item) return item;
 
     const now = new Date();
     const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
     const itemsCreatedToday = await itemsCollection.countDocuments({
       createdAt: { $gte: startOfToday }
     });
-    if (itemsCreatedToday >= this.itemCreationLimit) {
+    if (itemsCreatedToday >= this.itemCreationLimit) return null;
+
+    const prompt = `Generate a complete item for a fantasy game based on the name "${itemName}". Include:
+- A refined name that is evocative and fitting for a mystical fantasy dungeon.
+- A captivating and mysterious description (2-3 sentences) describing its magical properties and ancient origins.
+- The item type, choosing from: weapon, armor, consumable, quest, key, artifact.
+- The rarity, choosing from: common, uncommon, rare, epic, legendary.
+- Special properties or effects the item might have.
+Return a JSON object with keys: name, description, type, rarity, properties.`;
+
+    const itemSchema = {
+      type: 'object',
+      properties: {
+        name: { type: 'string' },
+        description: { type: 'string' },
+        type: { type: 'string', enum: ['weapon', 'armor', 'consumable', 'quest', 'key', 'artifact'] },
+        rarity: { type: 'string', enum: ['common', 'uncommon', 'rare', 'epic', 'legendary'] },
+        properties: { type: 'object' }
+      },
+      required: ['name', 'description', 'type', 'rarity', 'properties']
+    };
+
+    let itemData;
+    try {
+      itemData = await this.creationService.executePipeline({ prompt, schema: itemSchema });
+    } catch (error) {
+      console.error('Error generating item data:', error);
       return null;
     }
 
-    // --- Refine the item name ---
-    let refinedItemName;
-    try {
-      const namePrompt = `Refine the following item name to be more evocative and fitting for a mystical fantasy dungeon: "${itemName}". Return ONLY the refined name, with a maximum of 50 characters.`;
-      refinedItemName = await this.aiService.chat([
-        { role: 'system', content: 'You are a creative fantasy item naming expert.' },
-        { role: 'user', content: namePrompt }
-      ]);
-      refinedItemName = refinedItemName.trim().slice(0, 50);
-      if (!refinedItemName) {
-        refinedItemName = itemName;
-      }
-    } catch (error) {
-      console.error('Error refining item name:', error);
-      refinedItemName = itemName;
-    }
-    refinedItemName = this.cleanItemName(refinedItemName);
-
-    // --- Generate item description ---
-    let description;
-    try {
-      const descriptionPrompt = `Provide a captivating and mysterious description for an item named "${refinedItemName}". Describe its magical properties and ancient origins in 2-3 sentences.`;
-      description = await this.aiService.chat([
-        { role: 'system', content: 'You are an imaginative storyteller in a fantasy setting.' },
-        { role: 'user', content: descriptionPrompt }
-      ]);
-      description = description.trim();
-      if (!description) {
-        description = `A mysterious ${refinedItemName} imbued with ancient magic.`;
-      }
-    } catch (error) {
-      console.error('Error generating item description:', error);
-      description = `A mysterious ${refinedItemName} imbued with ancient magic.`;
-    }
-
-    // Generate the item image.
+    const refinedItemName = this.cleanItemName(itemData.name.trim().slice(0, 50));
+    const description = itemData.description.trim();
     const imageUrl = await this.generateItemImage(refinedItemName, description);
 
-    // Create the new item document.
     const newItem = {
       key: refinedItemName.toLowerCase(),
       name: refinedItemName,
       description,
-      type: await this.determineItemType(refinedItemName, description),
-      rarity: await this.determineItemRarity(refinedItemName, description),
-      properties: await this.generateItemProperties(refinedItemName, description),
+      type: itemData.type,
+      rarity: itemData.rarity,
+      properties: itemData.properties,
       imageUrl,
-      creator: '', // Set to empty string to meet schema requirement.
+      creator: '',
       owner: null,
       locationId,
       createdAt: now.toISOString(),
       updatedAt: now.toISOString(),
       version: this.CURRENT_SCHEMA_VERSION
     };
-
-    // Validate the item.
-    const validation = this.validateItem(newItem);
-    if (!validation.valid) {
-      console.error('Item validation failed:', {
-        itemName: refinedItemName,
-        errors: validation.errors
-      });
-      // Fix common issues:
-      if (!newItem.type || !['weapon', 'armor', 'consumable', 'quest', 'key', 'artifact'].includes(newItem.type)) {
-        newItem.type = 'artifact';
-      }
-      if (!newItem.rarity || !['common', 'uncommon', 'rare', 'legendary', 'mythic'].includes(newItem.rarity)) {
-        newItem.rarity = 'common';
-      }
-      // Ensure dates and creator are strings.
-      newItem.createdAt = newItem.createdAt.toString();
-      newItem.updatedAt = newItem.updatedAt.toString();
-      newItem.creator = newItem.creator || '';
-
-      // Revalidate after fixes.
-      const revalidation = this.validateItem(newItem);
-      if (!revalidation.valid) {
-        throw new Error('Failed to create item: Invalid properties');
-      }
-    }
 
     const result = await itemsCollection.insertOne(newItem);
     if (result.insertedId) {
@@ -308,9 +155,9 @@ export class ItemService {
     return null;
   }
 
+  /** Assigns an item to an avatar. */
   async assignItemToAvatar(avatarId, item) {
-    const itemsCollection = this.db.collection('items');
-    const now = new Date();
+    const itemsCollection = this.ensureDbConnection().collection('items');
     const result = await itemsCollection.updateOne(
       { _id: item._id },
       { $set: { owner: avatarId, locationId: null, updatedAt: new Date().toISOString() } }
@@ -318,9 +165,9 @@ export class ItemService {
     return result.modifiedCount > 0;
   }
 
+  /** Drops an item at a location. */
   async dropItem(avatar, item, locationId) {
-    const itemsCollection = this.db.collection('items');
-    const now = new Date();
+    const itemsCollection = this.ensureDbConnection().collection('items');
     const result = await itemsCollection.updateOne(
       { _id: item._id },
       { $set: { owner: null, locationId, updatedAt: new Date().toISOString() } }
@@ -328,52 +175,58 @@ export class ItemService {
     return result.modifiedCount > 0;
   }
 
+  /** Allows an avatar to take an item. */
   async takeItem(avatar, itemName, locationId) {
-    const itemsCollection = this.db.collection('items');
+    const itemsCollection = this.ensureDbConnection().collection('items');
     const key = itemName.toLowerCase();
-
     const item = await itemsCollection.findOne({ key, locationId, owner: null });
-    if (!item) {
-      return null;
-    }
+    if (!item) return null;
     const success = await this.assignItemToAvatar(avatar._id, item);
-    if (success) {
-      return await itemsCollection.findOne({ _id: item._id });
-    }
-    return null;
+    return success ? await itemsCollection.findOne({ _id: item._id }) : null;
   }
 
+  /** Uses an item, leveraging aiService if available. */
   async useItem(avatar, item, channelId) {
     if (!this.aiService || typeof this.aiService.speakAsItem !== 'function') {
       return `The ${item.name} remains inert, its power dormant.`;
     }
-    const response = await this.aiService.speakAsItem(item, channelId);
-    return response;
+    return await this.aiService.speakAsItem(item, channelId);
   }
 
+  /** Searches for items in a location matching a query. */
   async searchItems(locationId, query) {
-    const itemsCollection = this.db.collection('items');
+    const itemsCollection = this.ensureDbConnection().collection('items');
     const regex = new RegExp(query, 'i');
-    const items = await itemsCollection
+    return await itemsCollection
       .find({
         locationId,
         owner: null,
         $or: [{ name: regex }, { description: regex }]
       })
       .toArray();
-    return items;
   }
 
+  /** Validates an item against its schema using CreationService. */
   validateItem(item) {
-    return this.schemaValidator.validateItem(item);
+    return this.creationService.validateEntity(item, this.getItemSchema());
   }
 
-  /**
-   * Generates RATi-compatible metadata for an item.
-   * @param {Object} item - The item object.
-   * @param {Object} storageUris - URIs for metadata storage (e.g., { primary: 'ar://...', backup: 'ipfs://...' }).
-   * @returns {Object} - The RATi-compatible metadata.
-   */
+  /** Returns the item schema for validation. */
+  getItemSchema() {
+    return {
+      type: 'object',
+      properties: {
+        name: { type: 'string' },
+        description: { type: 'string' },
+        type: { type: 'string' },
+        rarity: { type: 'string' },
+        imageUrl: { type: 'string' }
+      },
+      required: ['name', 'description', 'type', 'rarity', 'imageUrl']
+    };
+  }
+
+  /** Generates RATi-compatible metadata for an item. */
   generateRatiMetadata(item, storageUris) {
     return {
       tokenId: item._id.toString(),
@@ -384,11 +237,11 @@ export class ItemService {
         video: item.videoUrl || null
       },
       attributes: [
-        { trait_type: "Type", value: item.type },
-        { trait_type: "Rarity", value: item.rarity },
-        { trait_type: "Effect", value: item.properties.effect || "None" }
+        { trait_type: 'Type', value: item.type },
+        { trait_type: 'Rarity', value: item.rarity },
+        { trait_type: 'Effect', value: item.properties.effect || 'None' }
       ],
-      signature: null, // To be signed by the RATi node.
+      signature: null,
       storage: storageUris,
       evolution: {
         level: item.evolutionLevel || 1,
@@ -402,62 +255,56 @@ export class ItemService {
     };
   }
 
-  // itemService.mjs (add this method to the existing class)
-
+  /** Creates a crafted item by combining input items. */
   async createCraftedItem(inputItems, creatorId) {
+    const itemsCollection = this.ensureDbConnection().collection('items');
     const now = new Date();
     const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    const itemsCreatedToday = await this.db.collection('items').countDocuments({
+    const itemsCreatedToday = await itemsCollection.countDocuments({
       createdAt: { $gte: startOfToday.toISOString() }
     });
-    if (itemsCreatedToday >= this.itemCreationLimit) {
-      return null;
-    }
+    if (itemsCreatedToday >= this.itemCreationLimit) return null;
 
-    // Generate prompt with input item names
     const inputNames = inputItems.map(i => i.name).join(', ');
-    const craftPrompt = `Combine the following items into a new unique item: ${inputNames}. Provide a JSON object with 'name' and 'description' for the new item.`;
-    const responseSchema = {
-      type: "OBJECT",
+    const prompt = `Combine the following items into a new unique item: ${inputNames}. Generate a complete item with:
+- A name that reflects the combination.
+- A description that incorporates elements from the input items.
+- The item type, choosing from: weapon, armor, consumable, quest, key, artifact.
+- The rarity, choosing from: common, uncommon, rare, epic, legendary.
+- Special properties or effects based on the input items.
+Return a JSON object with keys: name, description, type, rarity, properties.`;
+
+    const itemSchema = {
+      type: 'object',
       properties: {
-        name: { type: "STRING", description: "The name of the new item" },
-        description: { type: "STRING", description: "The description of the new item" }
+        name: { type: 'string' },
+        description: { type: 'string' },
+        type: { type: 'string', enum: ['weapon', 'armor', 'consumable', 'quest', 'key', 'artifact'] },
+        rarity: { type: 'string', enum: ['common', 'uncommon', 'rare', 'epic', 'legendary'] },
+        properties: { type: 'object' }
       },
-      required: ["name", "description"]
+      required: ['name', 'description', 'type', 'rarity', 'properties']
     };
 
-    let newItemData;
+    let itemData;
     try {
-      newItemData = await this.aiService.chat(
-        [
-          { role: 'system', content: 'You are a master craftsman creating a new item.' },
-          { role: 'user', content: craftPrompt }
-        ],
-        { responseSchema }
-      );
+      itemData = await this.creationService.executePipeline({ prompt, schema: itemSchema });
     } catch (error) {
       console.error('Error generating crafted item data:', error);
       return null;
     }
 
-    if (!newItemData || !newItemData.name || !newItemData.description) {
-      return null;
-    }
-
-    const refinedItemName = this.cleanItemName(newItemData.name.trim().slice(0, 50));
-    const description = newItemData.description.trim();
+    const refinedItemName = this.cleanItemName(itemData.name.trim().slice(0, 50));
+    const description = itemData.description.trim();
     const imageUrl = await this.generateItemImage(refinedItemName, description);
-    const type = await this.determineItemType(refinedItemName, description);
-    const rarity = await this.determineItemRarity(refinedItemName, description);
-    const properties = await this.generateItemProperties(refinedItemName, description);
 
     const newItem = {
       key: refinedItemName.toLowerCase(),
       name: refinedItemName,
       description,
-      type,
-      rarity,
-      properties,
+      type: itemData.type,
+      rarity: itemData.rarity,
+      properties: itemData.properties,
       imageUrl,
       creator: creatorId,
       owner: creatorId,
@@ -467,13 +314,7 @@ export class ItemService {
       version: this.CURRENT_SCHEMA_VERSION
     };
 
-    const validation = this.validateItem(newItem);
-    if (!validation.valid) {
-      console.error('Crafted item validation failed:', validation.errors);
-      return null;
-    }
-
-    const result = await this.db.collection('items').insertOne(newItem);
+    const result = await itemsCollection.insertOne(newItem);
     if (result.insertedId) {
       newItem._id = result.insertedId;
       return newItem;
@@ -481,7 +322,8 @@ export class ItemService {
     return null;
   }
 
+  /** Returns a string of item names owned by an avatar. */
   getItemsDescription(avatar) {
-    return (avatar.items || []).map((item) => item.name).join(', ');
+    return (avatar.items || []).map(item => item.name).join(', ');
   }
 }

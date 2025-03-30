@@ -12,7 +12,7 @@ This module provides utilities for uploading images to Amazon S3 and downloading
 
 ## Infrastructure Setup
 
-These instructions are from Claude - when setting this up I recommend sharing ../src/services/s3ImageService.mjs with your Ai assistant. There are various ways to do this, this is meant as a general guide.
+These instructions are from Claude - when setting this up I recommend sharing ../src/services/s3Service.mjs with your Ai assistant. There are various ways to do this, this is meant as a general guide.
 
 ### 1. Create S3 Bucket
 

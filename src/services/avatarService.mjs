@@ -1,12 +1,8 @@
 // services/avatar_generation_service.mjs
-import { SchemaValidator } from './utils/schemaValidator.mjs';
 import Replicate from 'replicate';
 import process from 'process';
-import winston from 'winston';
 import Fuse from 'fuse.js';
-import { uploadImage } from './s3/s3imageService.mjs';
 import { toObjectId } from './utils/toObjectId.mjs';
-import fs from 'fs/promises';
 
 import { BasicService } from './basicService.mjs';
 
@@ -18,24 +14,17 @@ export class AvatarService extends BasicService {
       'aiService',
       'configService',
       'mapService',
+      'creationService',
     ]);
     this.db = this.databaseService.getDatabase();
+    this.creationService = services.creationService; // Use CreationService
     this.channelAvatars = new Map(); // channelId -> Set of avatarIds
     this.avatarActivityCount = new Map(); // avatarId -> activity count
 
-    try {
-      const aiConfig = this.configService.config.ai;
-      this.replicate = this.initializeReplicate(aiConfig);
+    const mongoConfig = this.configService.config.mongo;
+    this.IMAGE_URL_COLLECTION = mongoConfig?.collections?.imageUrls || 'image_urls';
+    this.AVATARS_COLLECTION = mongoConfig?.collections?.avatars || 'avatars';
 
-      const mongoConfig = this.configService.config.mongo;
-      this.IMAGE_URL_COLLECTION = mongoConfig?.collections?.imageUrls || 'image_urls';
-      this.AVATARS_COLLECTION = mongoConfig?.collections?.avatars || 'avatars';
-    } catch (error) {
-      this.logger.error(`Error initializing services: ${error.message}`);
-      this.replicate = null;
-      this.IMAGE_URL_COLLECTION = 'image_urls';
-      this.AVATARS_COLLECTION = 'avatars';
-    }
 
     this.prompts = null;
     this.avatarCache = [];
@@ -74,33 +63,30 @@ export class AvatarService extends BasicService {
     return stats || { hp: 100, attack: 10, defense: 5, avatarId: objectId };
   }
 
-  async updateAvatarStats(avatarId, stats) {
-    const objectId = toObjectId(avatarId);
-    delete stats._id;
+  async updateAvatarStats(avatar, stats) {
+    stats.avatarId = avatar._id;
     await this.db.collection('dungeon_stats').updateOne(
-      { avatarId: objectId },
+      { avatarId: avatar._id },
       { $set: stats },
       { upsert: true }
     );
-    this.logger.debug(`Updated stats for avatar ${avatarId}`);
+    this.logger.debug(`Updated stats for avatar ${avatar._id} - ${avatar.name}: ${JSON.stringify(stats)}`);
   }
 
-  async initializeAvatar(avatarId, locationId) {
-    const objectId = toObjectId(avatarId);
-    const defaultStats = await this.getOrCreateStats(avatarId);
-    await this.updateAvatarStats(objectId, defaultStats);
-    if (locationId) await this.mapService.updateAvatarPosition(objectId, locationId);
-    this.logger.info(`Initialized avatar ${avatarId}${locationId ? ` at ${locationId}` : ''}`);
-    return { ...defaultStats, avatarId: objectId };
+  async initializeAvatar(avatar, locationId) {
+    const defaultStats = await this.getOrCreateStats(avatar);
+    await this.updateAvatarStats(avatar, avatar.stats || defaultStats);
+    if (locationId) await this.mapService.updateAvatarPosition(avatar._id, locationId);
+    this.logger.info(`Initialized avatar ${avatar._id}${locationId ? ` at ${locationId}` : ''}`);
+    this.updateAvatar(avatar);
+    return avatar;
   }
 
-  async getOrCreateStats(avatarId) {
-    let stats = await this.getAvatarStats(avatarId);
+  async getOrCreateStats(avatar) {
+    let stats = avatar.stats || (await this.getAvatarStats(avatar._id));  
     if (!stats || !this.statGenerationService.validateStats(stats)) {
-      const avatar = await this.getAvatarById(avatarId);
       stats = this.statGenerationService.generateStatsFromDate(avatar?.createdAt || new Date());
-      stats.avatarId = avatarId;
-      await this.updateAvatarStats(avatarId, stats);
+      await this.updateAvatarStats(avatar, stats);
     }
     return stats;
   }
@@ -118,17 +104,7 @@ export class AvatarService extends BasicService {
   }
 
   async getAvatarsInChannel(channelId) {
-    try {
-      const collection = this.db.collection(this.AVATARS_COLLECTION);
-      const avatars = await collection
-        .find({ channelId })
-        .sort({ createdAt: -1 })
-        .toArray();
-      return avatars.map(avatar => ({ ...avatar }));
-    } catch (error) {
-      this.logger.error(`Error fetching avatars in channel: ${error.message}`);
-      return [];
-    }
+    return (await this.mapService.getLocationAndAvatars(channelId)).avatars;
   }
 
   async manageChannelAvatars(channelId, newAvatarId) {
@@ -175,7 +151,7 @@ export class AvatarService extends BasicService {
       });
       return mentionedAvatars;
     }
-  
+
     // Exact match and emoji check
     for (const avatar of avatars) {
       try {
@@ -193,7 +169,7 @@ export class AvatarService extends BasicService {
         }
         const nameMatch = avatar.name && content.toLowerCase().includes(avatar.name.toLowerCase());
         const emojiMatch = avatar.emoji && content.includes(avatar.emoji);
-  
+
         if (nameMatch || emojiMatch) {
           this.logger.debug(`Found mention of avatar (exact): ${avatar.name} (${avatar._id})`);
           mentionedAvatars.add(avatar);
@@ -204,7 +180,7 @@ export class AvatarService extends BasicService {
         });
       }
     }
-  
+
     // Fuzzy matching for avatars not already matched
     const avatarsToSearch = avatars.filter(avatar => !mentionedAvatars.has(avatar));
     if (avatarsToSearch.length > 0) {
@@ -223,7 +199,7 @@ export class AvatarService extends BasicService {
         }
       });
     }
-  
+
     return mentionedAvatars;
   }
 
@@ -408,144 +384,25 @@ export class AvatarService extends BasicService {
    * @param {string} userPrompt - The user-provided prompt.
    * @returns {Object} - The generated avatar details.
    */
-  async generateAvatarDetails(userPrompt, guildId = null, retries = 3) {
-    try {
-      if (!userPrompt || typeof userPrompt !== 'string' || userPrompt.trim().length === 0) {
-        throw new Error('Invalid or empty prompt provided');
+  async generateAvatarDetails(userPrompt, guildId = null) {
+    const prompt = `Generate a unique and creative character for a role-playing game based on this description: "${userPrompt}". Include fields: name, description, personality, and emoji.`;
+    const schema = {
+      name: 'rati-avatar',
+      strict: true,
+      schema: {
+        type: 'object',
+        properties: {
+          name: { type: 'string' },
+          description: { type: 'string' },
+          personality: { type: 'string' },
+          emoji: { type: 'string' },
+        },
+        required: ['name', 'description', 'personality', 'emoji'],
+        additionalProperties: false,
       }
+    };
 
-      // Enhanced prompt for diversity
-      const prompt = `Generate a unique and creative character for a role-playing game based directly on this description: "${userPrompt}". 
-      Think of something unexpected and distinct from typical archetypes. 
-      Create an avatar with a detailed personality, appearance, special ability, and an appropriate emoji.
-      Respond with a JSON object containing name, description, personality, and emoji fields.
-      Example format:
-      {
-        "name": "Character Name",
-        "description": "Detailed physical description of the character",
-        "personality": "Description of the character's personality traits and background",
-        "emoji": "${this.configService.getGuildConfig(guildId).summonEmoji}",
-        "model": "optional model name (if specifically provided)"
-      }`;
-
-      // Fetch guild-specific system prompt if guildId is provided
-      let systemPrompt = null;
-      if (guildId) {
-        try {
-          const guildPrompts = await this.configService.getGuildPrompts(this.db, guildId);
-          systemPrompt = guildPrompts.summon;
-        } catch (error) {
-          this.logger.error(`Failed to fetch guild prompts for guild ${guildId}: ${error.message}`);
-        }
-      }
-
-      const response_format = {
-        type: "json_schema",
-        json_schema: {
-          name: "avatar",
-          strict: true,
-          schema: {
-            type: "object",
-            properties: {
-              name: {
-                type: "string",
-                description: "The character's name"
-              },
-              description: {
-                type: "string",
-                description: "A detailed physical description of the character"
-              },
-              personality: {
-                type: "string",
-                description: "A description of the character's personality, traits, and background"
-              },
-              emoji: {
-                type: "string",
-                description: "A single emoji that represents the character"
-              },
-              model: {
-                type: ["string", "null"],
-                description: "The model to be used for this avatar, if provided by the user."
-              }
-            },
-            required: ["name", "description", "personality", "emoji", "model"],
-            additionalProperties: false
-          }
-        }
-      };
-      
-
-      const aiResponse = await this.aiService.chat(
-        [{ role: 'system', content: systemPrompt },
-         { role: 'user', content: prompt }],
-        {
-          model: process.env.META_PROMPT_MODEL,
-          temperature: 1.0,
-          topP: 0.95,
-          topK: 40,
-          response_format
-        }
-      );
-
-      console.log(aiResponse);
-
-      try {
-        let responseJson;
-        if (typeof aiResponse === 'object' && aiResponse !== null) {
-          if (aiResponse.name && aiResponse.description && aiResponse.personality) {
-            responseJson = aiResponse;
-            this.logger.info(`Successfully received structured JSON response`);
-          } else if (aiResponse.text || aiResponse.response) {
-            const responseText = aiResponse.text || aiResponse.response;
-            try {
-              responseJson = JSON.parse(responseText);
-              this.logger.info(`Successfully parsed JSON from response text`);
-            } catch (e) {
-              const jsonMatch = responseText.match(/\{[\s\S]*\}/);
-              if (jsonMatch) {
-                responseJson = JSON.parse(jsonMatch[0]);
-                this.logger.info(`Successfully extracted JSON from response text`);
-              } else {
-                throw new Error('Extracted string is not valid JSON.');
-              }
-            }
-          } else {
-            throw new Error('Structured response missing expected fields');
-          }
-        } else if (typeof aiResponse === 'string') {
-          this.logger.info(`Received string response, attempting to extract JSON`);
-          const jsonMatch = aiResponse.match(/\{[\s\S]*\}/);
-          if (jsonMatch) {
-            responseJson = JSON.parse(jsonMatch[0]);
-            this.logger.info(`Successfully extracted JSON from string response`);
-          } else {
-            throw new Error('Extracted string is not valid JSON.');
-          }
-        } else {
-          throw new Error('Unexpected response type from AI service');
-        }
-
-        if (!responseJson.name || !responseJson.description || !responseJson.personality) {
-          throw new Error('Required avatar fields are missing from AI response.');
-        }
-
-        if (!responseJson.emoji) {
-          responseJson.emoji = "🧙";
-        }
-
-        return responseJson;
-      } catch (error) {
-        this.logger.warn(`Avatar generation attempt ${4 - retries}/3 failed: ${error.message}`);
-        if (retries > 1) {
-          this.logger.info(`Retrying avatar generation, ${retries - 1} attempts remaining`);
-          return this.generateAvatarDetails(userPrompt, guildId, retries - 1);
-        }
-        throw new Error('Failed to generate avatar after 3 attempts: ' + error.message);
-      }
-    } catch (error) {
-      this.logger.error(`Error while generating avatar details: ${error.message}`);
-      throw error;
-    }
+    return await this.creationService.executePipeline({ prompt, schema });
   }
 
   /**
@@ -554,66 +411,7 @@ export class AvatarService extends BasicService {
    * @returns {string|null} - The local filename of the generated image.
    */
   async generateAvatarImage(prompt) {
-    if (!this.replicate) {
-      this.logger.error('Replicate service not available. Cannot generate avatar image.');
-      return null;
-    }
-
-    try {
-      const aiConfig = this.configService.config.ai || {};
-      const replicateConfig = aiConfig.replicate || {};
-      const trigger = replicateConfig.loraTriggerWord || '';
-      const model = replicateConfig.model;
-      const style = replicateConfig.style;
-
-      if (!model) {
-        this.logger.error('Replicate model not configured');
-        return null;
-      }
-
-      const [output] = await this.replicate.run(
-        model,
-        {
-          input: {
-            prompt: `${trigger} ${prompt} ${trigger}\n\n${style}`,
-            "go_fast": true,
-            "guidance": 3,
-            "lora_scale": 1,
-            "megapixels": "1",
-            "num_outputs": 1,
-            "aspect_ratio": "1:1",
-            "lora_weights": replicateConfig.lora_weights,
-            "output_format": "webp",
-            "output_quality": 80,
-            "prompt_strength": 0.8,
-            "num_inference_steps": 28
-          }
-        }
-      );
-
-      let imageUrl;
-      if (output && typeof output === 'object' && output.url) {
-        imageUrl = output.url();
-      } else if (typeof output === 'string') {
-        imageUrl = output;
-      } else if (Array.isArray(output) && output.length > 0) {
-        imageUrl = output[0];
-      } else {
-        this.logger.error('No valid output generated from Replicate');
-        return null;
-      }
-
-      this.logger.info('Generated image URL: ' + imageUrl.toString());
-      const imageBuffer = await this.downloadImage(imageUrl.toString());
-      const uuid = `avatar_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
-      const filename = `./images/${uuid}.png`;
-      await fs.mkdir('./images', { recursive: true });
-      await fs.writeFile(filename, imageBuffer);
-      return filename;
-    } catch (error) {
-      this.logger.error(`Error generating avatar image: ${error.message}`);
-      return null;
-    }
+    return await this.creationService.generateImage(prompt, '1:1'); // Use CreationService for image generation
   }
 
   /**
@@ -691,230 +489,34 @@ export class AvatarService extends BasicService {
    * @returns {Object|null} - The created avatar document.
    */
   async createAvatar(data) {
-    let prompt = data.prompt;
-    let guildId = null;
+    const avatarDetails = await this.generateAvatarDetails(data.prompt, data.guildId);
+    const imageUrl = await this.generateAvatarImage(avatarDetails.description);
 
-    // Fetch guild ID from channel ID if available
-    if (data.channelId && this.configService.client) {
-      try {
-        const channel = await this.configService.client.channels.fetch(data.channelId);
-        guildId = channel.guild.id;
-      } catch (error) {
-        this.logger.error(`Failed to fetch guild ID for channel ${data.channelId}: ${error.message}`);
-      }
-    }
+    const avatarDocument = {
+      ...avatarDetails,
+      imageUrl,
+      channelId: data.channelId,
+      summoner: data.summoner,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      lives: 3,
+      status: 'alive',
+    };
 
-    try {
-      this.logger.info(`Creating avatar with prompt: ${prompt && prompt.substring(0, 100)}...`);
-      
-      if (this.isArweaveUrl(prompt)) {
-        try {
-          const arweaveData = await this.fetchPrompt(prompt);
-          prompt = arweaveData.prompt || prompt;
-          this.logger.info(`Fetched Arweave prompt: ${prompt && prompt.substring(0, 100)}...`);
-        } catch (arweaveError) {
-          this.logger.error(`Failed to fetch Arweave prompt: ${arweaveError.message}`);
-          // Continue with original prompt if Arweave fetch fails
-        }
-      }
-      
-      const avatar = await this._createAvatarWithPrompt(prompt, data, guildId);
-      if (!avatar) {
-        this.logger.error(`_createAvatarWithPrompt returned null for prompt: ${prompt && prompt.substring(0, 100)}...`);
-      }
-      return avatar;
-    } catch (error) {
-      this.logger.error(`Avatar creation failed: ${error.message}`);
-      this.logger.error(`Avatar creation stack trace: ${error.stack}`);
-      throw new Error(`Avatar creation failed: ${error.message}`);
-    }
-  }
+    this.creationService.validateEntity(avatarDocument, {
+      type: 'object',
+      properties: {
+        name: { type: 'string' },
+        description: { type: 'string' },
+        personality: { type: 'string' },
+        emoji: { type: 'string' },
+        imageUrl: { type: 'string' },
+      },
+      required: ['name', 'description', 'personality', 'emoji', 'imageUrl'],
+    });
 
-  async _createAvatarWithPrompt(prompt, data, guildId) {
-    if (!this.db) {
-      this.logger.error('Database is not connected. Cannot create avatar.');
-      return null;
-    }
-    try {
-      const underLimit = await this.checkDailyLimit(data.channelId);
-      if (!underLimit) {
-        this.logger.warn('Daily limit reached. Cannot create more avatars today.');
-        return null;
-      }
-
-      // Generate avatar details with improved error handling
-      let avatar;
-      try {
-        avatar = await this.generateAvatarDetails(prompt, guildId);
-        if (!avatar) {
-          this.logger.error('Avatar generation failed to return a valid response');
-          return null;
-        }
-      } catch (genError) {
-        this.logger.error(`Error generating avatar details: ${genError.message}`);
-        this.logger.error(`Generation error stack: ${genError.stack}`);
-        return null;
-      }
-
-      if (!avatar.name) {
-        this.logger.error('Avatar creation aborted: avatar name is missing.');
-        this.logger.debug(`Avatar data received: ${JSON.stringify(avatar)}`);
-        return null;
-      }
-
-      this.logger.info(`Generated avatar: ${JSON.stringify(avatar, null, 2)}`);
-
-      if (avatar.name.indexOf(',') !== -1) {
-        avatar.personality = avatar.name + '\n\n' + avatar.personality;
-      }
-      avatar.name = avatar.name.split(',')[0].trim();
-      
-      // Check if the name matches an existing avatar
-      const existingAvatar = await this.db.collection(this.AVATARS_COLLECTION).findOne({ name: avatar.name });
-      if (existingAvatar) {
-        this.logger.warn(`Avatar creation aborted: name '${avatar.name}' already exists.`);
-        return existingAvatar;
-      }
-
-      // Generate avatar image with improved error handling
-      let imageFile;
-      let s3url;
-      try {
-        imageFile = await this.generateAvatarImage(avatar.description);
-        if (!imageFile) {
-          this.logger.error('Avatar image generation failed');
-          return null;
-        }
-        
-        s3url = await uploadImage(imageFile);
-        if (!s3url) {
-          this.logger.error('Failed to upload avatar image to S3');
-          return null;
-        }
-        
-        this.logger.info('S3 URL: ' + s3url);
-      } catch (imageError) {
-        this.logger.error(`Error generating/uploading avatar image: ${imageError.message}`);
-        this.logger.error(`Image error stack: ${imageError.stack}`);
-        return null;
-      }
-
-      try {
-        await this.insertRequestIntoMongo(avatar.description, s3url, data.channelId);
-      } catch (mongoError) {
-        this.logger.error(`Failed to record image request in MongoDB: ${mongoError.message}`);
-        // Continue even if request tracking fails
-      }
-
-
-      const avatarDocument = {
-        name: avatar.name,
-        model: avatar.model || (await this.aiService.selectRandomModel()),
-        emoji: avatar.emoji || "👤", // Default emoji if none provided
-        personality: avatar.personality,
-        description: avatar.description,
-        imageUrl: s3url,
-        channelId: data.channelId,
-        summoner: data.summoner,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-        lives: 3,
-        status: 'alive',
-        version: '1.0'
-      };
-
-      // Validate avatar schema with try-catch and fallback
-      try {
-        let schemaValidator;
-        try {
-          schemaValidator = new SchemaValidator();
-        } catch (schemaError) {
-          this.logger.warn(`SchemaValidator not available: ${schemaError.message}. Using fallback validator.`);
-          schemaValidator = new FallbackValidator();
-        }
-        
-        const validation = schemaValidator.validateAvatar(avatarDocument);
-        if (!validation.valid) {
-          this.logger.error('Avatar schema validation failed:', {
-            errors: validation.errors,
-            document: avatarDocument
-          });
-          throw new Error(`Avatar schema validation failed: ${JSON.stringify(validation.errors)}`);
-        }
-      } catch (validationError) {
-        this.logger.error(`Validation error: ${validationError.message}`);
-        
-        // Perform basic validation instead of failing
-        const requiredFields = ['name', 'description', 'personality', 'imageUrl'];
-        const missingFields = requiredFields.filter(field => 
-          !avatarDocument[field] || typeof avatarDocument[field] !== 'string'
-        );
-        
-        if (missingFields.length > 0) {
-          this.logger.error(`Missing required fields: ${missingFields.join(', ')}`);
-          return null;
-        }
-        
-        // Continue if basic validation passes
-        this.logger.info('Basic validation passed, continuing with avatar creation');
-      }
-
-      // Check required fields
-      const requiredFields = ['name', 'description', 'personality', 'imageUrl'];
-      for (const field of requiredFields) {
-        if (!avatarDocument[field] || typeof avatarDocument[field] !== 'string') {
-          this.logger.error(`Missing or invalid required field: ${field}`, {
-            field,
-            value: avatarDocument[field]
-          });
-          return null;
-        }
-      }
-
-      // Handle Arweave prompts
-      if (data.arweave_prompt) {
-        avatarDocument.arweave_prompt = data.arweave_prompt;
-        try {
-          const syncedPrompt = await this.syncArweavePrompt(avatarDocument);
-          if (syncedPrompt) {
-            avatarDocument.prompt = syncedPrompt;
-          }
-        } catch (arweaveError) {
-          this.logger.error(`Failed to sync Arweave prompt: ${arweaveError.message}`);
-          // Continue even if Arweave sync fails
-        }
-      }
-
-      // Insert avatar document into MongoDB
-      try {
-        const result = await this.db.collection(this.AVATARS_COLLECTION).insertOne(avatarDocument);
-        if (result.acknowledged === true) {
-          this.logger.info(`Avatar "${avatar.name} ${avatar.emoji}" created successfully with ID: ${result.insertedId}`);
-          
-          // Create a complete avatar object with the new ID
-          const newAvatar = { 
-            _id: result.insertedId, 
-            ...avatarDocument 
-          };
-
-          newAvatar.stats = await this.getOrCreateStats(newAvatar._id);
-          
-          
-          return newAvatar;
-        } else {
-          this.logger.error('Failed to insert avatar into the database.');
-          return null;
-        }
-      } catch (dbError) {
-        this.logger.error(`Database error during avatar creation: ${dbError.message}`);
-        this.logger.error(`Database error stack: ${dbError.stack}`);
-        return null;
-      }
-    } catch (error) {
-      this.logger.error(`Error during avatar creation: ${error.message}`);
-      this.logger.error(`Error stack: ${error.stack}`);
-      return null;
-    }
+    const result = await this.db.collection('avatars').insertOne(avatarDocument);
+    return { ...avatarDocument, _id: result.insertedId };
   }
 
   /**
@@ -1120,8 +722,18 @@ export class AvatarService extends BasicService {
         return { avatar: existingAvatar, new: false };
       }
       this.logger.info(`No unique avatar found for summoner ${summonerId}, creating new one.`);
-      const avatarData = { prompt, summoner: summonerId, channelId };
-      const newAvatar = await this.createAvatar(avatarData);
+      
+      // Generate stats for the avatar
+      const creationDate = new Date();
+      const stats = this.statGenerationService.generateStatsFromDate(creationDate);
+
+      // Prepare avatar creation data
+      const prompt = summonPrompt 
+        ? `${summonPrompt}\n\n${content}\n\nStats: ${JSON.stringify(stats)}`
+        : `${content}\n\nStats: ${JSON.stringify(stats)}`;
+        const avatarData = { prompt, summoner: summonerId, channelId };
+      // Create new avatar
+      const newAvatar = await this.avatarService.createAvatar(avatarData);
       return { avatar: newAvatar, new: true };
     } catch (error) {
       this.logger.error(`Error in getOrCreateUniqueAvatarForUser: ${error.message}`);
@@ -1145,43 +757,43 @@ export class AvatarService extends BasicService {
         this.logger.error('Invalid message object provided to summonUserAvatar');
         return null;
       }
-      
+
       const userId = message.author.id;
       const userName = message.author.username;
       const channelId = message.channel.id;
-      
+
       this.logger.info(`Summoning avatar for user ${userName}(${userId}) in channel ${channelId}`);
-      
+
       // Use the existing method to get or create the avatar
-      const result = await this.getOrCreateUniqueAvatarForUser(userId, 
-        customPrompt || `Create an avatar that represents ${userName}. Make it creative, unique, and memorable.`, 
+      const result = await this.getOrCreateUniqueAvatarForUser(userId,
+        customPrompt || `Create an avatar that represents ${userName}. Make it creative, unique, and memorable.`,
         channelId);
-      
+
       if (!result) {
         this.logger.error(`getOrCreateUniqueAvatarForUser returned null for user ${userName}`);
         throw new Error(`Failed to get or create avatar for user ${userName}`);
       }
-      
+
       if (!result.avatar) {
         this.logger.error(`No avatar found in result for user ${userName}: ${JSON.stringify(result)}`);
         throw new Error(`Failed to get or create avatar for user ${userName}`);
       }
-      
+
       // Verify the avatar has all required properties
       if (!result.avatar._id || !result.avatar.name) {
         this.logger.error(`Incomplete avatar data for user ${userName}: ${JSON.stringify(result.avatar)}`);
         throw new Error(`Incomplete avatar data for user ${userName}`);
       }
-      
+
       let userAvatar = result.avatar;
-      
+
       // If avatar is not in this channel, move it
       if (userAvatar.channelId !== channelId) {
         this.logger.info(`Moving avatar ${userAvatar.name} to channel ${channelId}`);
         await services.mapService.updateAvatarPosition(userAvatar._id, channelId, userAvatar.channelId);
         userAvatar = await this.getAvatarById(userAvatar._id);
       }
-      
+
       return {
         avatar: userAvatar,
         isNewAvatar: result.new

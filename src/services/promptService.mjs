@@ -27,16 +27,20 @@ export class PromptService extends BasicService {
   }
 
   /**
-   * Builds the full system prompt including the last narrative.
+   * Builds the full system prompt including the last narrative and location details.
    * @param {Object} avatar - The avatar object.
    * @param {Object} db - The MongoDB database instance.
    * @returns {Promise<string>} The full system prompt.
    */
   async getFullSystemPrompt(avatar, db) {
     const lastNarrative = await this.getLastNarrative(avatar, db);
+    const { location } = await this.mapService.getLocationAndAvatars(avatar.channelId);
+
     return `
 You are ${avatar.name}.
 ${avatar.personality}
+Location: ${location.name || 'Unknown'} - ${location.description || 'No description available'}
+Last updated: ${new Date(location.updatedAt).toLocaleString() || 'Unknown'}
 ${lastNarrative ? lastNarrative.content : ''}
   `.trim();
   }
@@ -130,25 +134,48 @@ ${items}
    * @returns {Promise<string>} The response user content.
    */
   async getResponseUserContent(avatar, channel, messages, channelSummary) {
-    const channelContextText = messages.map(msg =>
-      `${msg.authorUsername || 'User'}: ${msg.content || '[No content]'}${msg.imageDescription ? ` [Image: ${msg.imageDescription}]` : ''}`
-    ).join('\n');
-    const imageDescriptions = messages
-      .filter(msg => msg.imageDescription)
-      .map(msg => `[Image: ${msg.imageDescription}]`);
+    // Construct conversation history with naturally interleaved image descriptions
+    const channelContextText = messages
+      .map(msg => {
+        const username = msg.authorUsername || 'User';
+        // Case 1: Message has both text and an image
+        if (msg.content && msg.imageDescription) {
+          return `${username}: ${msg.content} [Image: ${msg.imageDescription}]`;
+        }
+        // Case 2: Message has only text
+        else if (msg.content) {
+          return `${username}: ${msg.content}`;
+        }
+        // Case 3: Message has only an image
+        else if (msg.imageDescription) {
+          return `${username}: [Image: ${msg.imageDescription}]`;
+        }
+        // Case 4: Message has neither (rare, but included for completeness)
+        else {
+          return `${username}: [No content]`;
+        }
+      })
+      .join('\n');
+  
     const context = { channelName: channel.name, guildName: channel.guild?.name || 'Unknown Guild' };
     const dungeonPrompt = await this.buildDungeonPrompt(avatar, channel.guild.id);
+  
+    // Return the formatted prompt without a separate image descriptions list
     return `
-Channel: #${context.channelName} in ${context.guildName}
-Channel summary:
-${channelSummary}
-Actions Available:
-${dungeonPrompt}
-Recent conversation history (including image descriptions):
-${channelContextText}
-Reply in character as ${avatar.name} with a single short message that responds to the context.
-${imageDescriptions.length > 0 ? 'Incorporate the described images into your response naturally.' : ''}
-  `.trim();
+  Channel: #${context.channelName} in ${context.guildName}
+  
+  Channel summary:
+  ${channelSummary}
+  
+  Actions Available:
+  ${dungeonPrompt}
+  
+  Recent conversation history:
+  ${channelContextText}
+  
+  Respond as ${avatar.name} ${avatar.emoji} with no more than 3 sentences.
+  Advance your own secret agenda, but do not reveal it.
+  Respond as ${avatar.name} ${avatar.emoji}:`.trim();
   }
 
   /**

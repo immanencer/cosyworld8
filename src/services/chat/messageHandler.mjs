@@ -1,21 +1,28 @@
-import { saveMessageToDatabase } from "../../utils/databaseUtils.mjs";
+import { BasicService } from "../basicService.mjs";
 import { handleCommands } from "../commands/commandHandler.mjs";
 /**
  * Handles Discord messages by processing commands, managing avatars, and generating responses.
  */
-export class MessageHandler {
+export class MessageHandler extends BasicService {
   /**
    * Constructs the MessageHandler with required services.
    * @param {Object} services - An object containing all necessary service dependencies.
    */
   constructor(services) {
-    this.services = services;
-    this.logger = services.logger;
-    this.databaseService = services.databaseService;
+    super(services, [
+      'discordService',
+      'aiService',
+      'avatarService',
+      'toolService',
+      'spamControlService',
+      'configService',
+      'channelManager',
+      'periodicTaskManager',
+      'databaseService',
+      'decisionMaker',
+      'conversationManager'
+    ]);
     this.client = services.discordService.client;
-    this.periodicTaskManager = services.periodicTaskManager;
-    this.decisionMaker = services.decisionMaker;
-    this.conversationManager = services.conversationManager;
     this.started = false;
   }
 
@@ -175,10 +182,51 @@ export class MessageHandler {
    */
   async saveMessage(message) {
     try {
-      await saveMessageToDatabase(message, {
-        databaseService: this.databaseService,
-        logger: this.logger,
-      });
+      const db = this.databaseService.getDatabase();
+      const messagesCollection = db.collection("messages");
+    
+      const attachments = Array.from(message.attachments.values()).map(a => ({
+        id: a.id,
+        url: a.url,
+        proxyURL: a.proxyURL,
+        filename: a.name,
+        contentType: a.contentType,
+        size: a.size,
+        height: a.height,
+        width: a.width,
+      }));
+    
+      const embeds = message.embeds.map(e => ({
+        type: e.type,
+        title: e.title,
+        description: e.description,
+        url: e.url,
+        image: e.image ? { url: e.image.url, proxyURL: e.image.proxyURL, height: e.image.height, width: e.image.width } : null,
+        thumbnail: e.thumbnail ? { url: e.thumbnail.url, proxyURL: e.thumbnail.proxyURL, height: e.thumbnail.height, width: e.thumbnail.width } : null,
+      }));
+    
+      const messageData = {
+        guildId: message.guild.id,
+        messageId: message.id,
+        channelId: message.channel.id,
+        authorId: message.author.id,
+        authorUsername: message.author.username,
+        author: { id: message.author.id, bot: message.author.bot, username: message.author.username, discriminator: message.author.discriminator, avatar: message.author.avatar },
+        content: message.content,
+        attachments,
+        embeds,
+        hasImages: attachments.some(a => a.contentType?.startsWith("image/")) || embeds.some(e => e.image || e.thumbnail),
+        timestamp: message.createdTimestamp,
+      };
+    
+      if (!messageData.messageId || !messageData.channelId) {
+        this.logger.error("Missing required message data:", messageData);
+        return;
+      }
+    
+      await messagesCollection.insertOne(messageData);
+      await this.channelManager.markChannelActive(message.channel.id, message.guild.id);
+      this.logger.debug("💾 Message saved to database");
     } catch (error) {
       this.logger.error(`Error saving message to database: ${error.message}`);
       console.error(error.stack);
@@ -199,11 +247,10 @@ export class MessageHandler {
       );
       if (result.new) {
         result.avatar.model = result.avatar.model || (await this.aiService.selectRandomModel());
-        result.avatar.stats = await this.toolService.getAvatarStats(result.avatar._id);
         await this.services.avatarService.updateAvatar(result.avatar);
-        await this.services.discordService.sendAvatarProfileEmbedFromObject(result.avatar);
 
         await this.services.conversationManager.sendResponse(channel, avatar);
+        await this.services.discordService.sendAvatarProfileEmbedFromObject(result.avatar);
       }
     } catch (error) {
       this.logger.error(`Error handling avatar creation: ${error.message}`);
@@ -222,7 +269,7 @@ export class MessageHandler {
         this.logger.error(`Channel ${channelId} not found in cache.`);
         return;
       }
-      const allAvatars = await this.services.avatarService.getAvatarsInChannel(channelId);
+      const allAvatars = await this.avatarService.getAvatarsInChannel(channelId);
       const avatarsToConsider = this.decisionMaker.selectAvatarsToConsider(
         allAvatars,
         message

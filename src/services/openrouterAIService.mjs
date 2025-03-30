@@ -3,7 +3,7 @@ import models from '../models.config.mjs';
 import stringSimilarity from 'string-similarity';
 
 export class OpenRouterAIService {
-  constructor(apiKey) {
+  constructor(apiKey, services) {
     this.model = process.env.OPENROUTER_MODEL || 'meta-llama/llama-3.2-3b-instruct';
     this.openai = new OpenAI({
       apiKey: apiKey || process.env.OPENROUTER_API_TOKEN,
@@ -96,18 +96,16 @@ export class OpenRouterAIService {
   async chat(messages, options = {}, retries = 3) {
     // Merge our default chat options with any caller options, preserving structure
     const mergedOptions = {
-      ...this.defaultChatOptions,
-      ...options,
-      // Preserve any special response format instructions
-      response_format: options.responseSchema || options.response_format || this.defaultChatOptions.response_format,
-      functions: options.functions,
-      function_call: options.function_call,
-      tools: options.tools,
-      tool_choice: options.tool_choice,
+      model: options.model || this.model,
+      messages: messages.filter(m => m.content),
     };
 
-    // Ensure that only messages with content are passed.
-    mergedOptions.messages = messages.filter(m => m.content);
+    if (options.schema) {
+      mergedOptions.response_format = {
+        type: 'json_schema',
+        json_schema: options.schema,
+      };
+    }
 
     // Verify that the chosen model is available. If not, fall back.
     let fallback = false;
@@ -204,24 +202,20 @@ export class OpenRouterAIService {
   }
 
   /**
-   * Analyzes an image and returns a description using Gemini Flash 2.0.
+   * Analyzes an image and returns a description using OpenRouter's API.
    * @param {string} imageUrl - The URL of the image to analyze.
+   * @param {string} prompt - The prompt to use for image analysis.
+   * @param {Object} options - Additional options for the API request.
    * @returns {Promise<string|null>} - The description of the image or null if analysis fails.
    */
-  async analyzeImage(imageUrl) {
+  async analyzeImage(imageUrl, prompt = "Describe this image in detail.", options = {}) {
     try {
       const messages = [
         {
           role: 'user',
           content: [
-            {
-              type: 'text',
-              text: 'Describe this image in detail.',
-            },
-            {
-              type: 'image_url',
-              image_url: imageUrl,
-            },
+            { type: 'text', text: prompt },
+            { type: 'image_url', image_url: { url: imageUrl } },
           ],
         },
       ];
@@ -229,6 +223,7 @@ export class OpenRouterAIService {
       const response = await this.openai.chat.completions.create({
         ...this.defaultVisionOptions,
         messages,
+        ...options,
       });
 
       if (!response || !response.choices || response.choices.length === 0) {
@@ -236,12 +231,15 @@ export class OpenRouterAIService {
         return null;
       }
 
-      console.log(response.choices[0].message.content);
-
       return response.choices[0].message.content.trim();
     } catch (error) {
       console.error('Error analyzing image with OpenRouter:', error);
       return null;
     }
+  }
+
+  async analyzeImage(imageBase64, mimeType, prompt, options = {}) {
+    console.warn('Image analysis is not supported in OpenRouterAIService.');
+    return null;
   }
 }
