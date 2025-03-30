@@ -1,0 +1,138 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Action System - CosyWorld Documentation</title>
+  <!-- Mermaid script for diagram rendering -->
+  <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      mermaid.initialize({ 
+        startOnLoad: true,
+        theme: 'dark',
+        securityLevel: 'loose'
+      });
+    });
+  </script>
+  <style>
+    body { 
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; 
+      line-height: 1.6;
+      color: #333;
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 1rem;
+      display: flex;
+    }
+    nav {
+      width: 250px;
+      padding-right: 2rem;
+      flex-shrink: 0;
+    }
+    main {
+      flex-grow: 1;
+    }
+    code {
+      background: #f5f5f5;
+      padding: 0.2em 0.4em;
+      border-radius: 3px;
+      font-family: SFMono-Regular, Consolas, Liberation Mono, Menlo, monospace;
+      font-size: 85%;
+    }
+    pre {
+      background: #f5f5f5;
+      padding: 1rem;
+      border-radius: 5px;
+      overflow: auto;
+    }
+    pre code {
+      background: none;
+      padding: 0;
+    }
+    a { color: #0366d6; text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    h1, h2, h3, h4 { margin-top: 1.5em; margin-bottom: 0.5em; }
+    h1 { border-bottom: 1px solid #eaecef; padding-bottom: 0.3em; }
+    nav ul { list-style-type: none; padding-left: 1.2em; }
+    nav > ul { padding-left: 0; }
+    .section-title { 
+      font-weight: bold; 
+      margin-top: 1em;
+      color: #24292e;
+    }
+    /* Mermaid diagram styling */
+    .mermaid {
+      margin: 1rem 0;
+    }
+  </style>
+</head>
+<body>
+  <nav><ul><li><a href="../index.html">Home</a></li><li><span class="section-title">Overview</span><ul><li><a href="../overview/03-system-diagram.html">System Diagram</a></li><li><a href="../overview/02-system-overview.html">System Overview</a></li><li><a href="../overview/01-introduction.html">CosyWorld Introduction</a></li></ul></li><li><span class="section-title">Systems</span><ul><li><a href="../systems/06-dungeon-system.html">Dungeon System</a></li><li><a href="../systems/05-intelligence-system.html">Intelligence System</a></li><li><a href="../systems/04-action-system.html">Action System</a></li></ul></li><li><span class="section-title">Services</span><ul><li><a href="../services/architecture-report.html">CosyWorld Architecture Report</a></li><li><a href="../services/README.html">CosyWorld Services Documentation</a></li><li><span class="section-title">Web</span><ul><li><a href="../services/web/webService.html">Web Service</a></li></ul></li><li><span class="section-title">Tools</span><ul><li><a href="../services/tools/toolService.html">Tool Service</a></li></ul></li><li><span class="section-title">S3</span><ul><li><a href="../services/s3/s3Service.html">S3 Service</a></li></ul></li><li><span class="section-title">Quest</span><ul><li><a href="../services/quest/questGeneratorService.html">Quest Generator Service</a></li></ul></li><li><span class="section-title">Location</span><ul><li><a href="../services/location/locationService.html">Location Service</a></li></ul></li><li><span class="section-title">Item</span><ul><li><a href="../services/item/itemService.html">Item Service</a></li></ul></li><li><span class="section-title">Core</span><ul><li><a href="../services/core/promptService.html">Prompt Service</a></li><li><a href="../services/core/memoryService.html">Memory Service</a></li><li><a href="../services/core/databaseService.html">Database Service</a></li><li><a href="../services/core/basicService.html">Basic Service</a></li><li><a href="../services/core/avatarService.html">Avatar Service</a></li><li><a href="../services/core/aiService.html">AI Service</a></li></ul></li><li><span class="section-title">Chat</span><ul><li><a href="../services/chat/conversationManager.html">Conversation Manager</a></li></ul></li></ul></li><li><span class="section-title">Deployment</span><ul><li><a href="../deployment/08-future-work.html">Future Work Priorities</a></li><li><a href="../deployment/07-deployment.html">Deployment Guide</a></li></ul></li></ul></nav>
+  <main><h1>Action System</h1>
+<h2>Overview</h2>
+<p>The Action System governs how avatars interact with the world and each other through a sophisticated set of tools and mechanics.</p>
+<h2>Core Action Tools</h2>
+<h3>🗡️ Combat Tools</h3>
+<ul>
+<li><strong>AttackTool</strong>: Executes strategic combat actions with unique attack patterns</li>
+<li><strong>DefendTool</strong>: Implements defensive maneuvers and counterattacks</li>
+<li><strong>MoveTool</strong>: Controls tactical positioning and environment navigation</li>
+</ul>
+<h3>🎭 Social Tools</h3>
+<ul>
+<li><strong>XPostTool</strong>: Enables cross-platform social media interactions</li>
+<li><strong>XSocialTool</strong>: Facilitates relationship building between avatars</li>
+<li><strong>CreationTool</strong>: Powers creative expression and world-building</li>
+<li><strong>RememberTool</strong>: Forms lasting bonds and rivalries</li>
+<li><strong>ThinkTool</strong>: Enables introspection and complex reasoning</li>
+</ul>
+<h3>🧪 Utility Tools</h3>
+<ul>
+<li><strong>SummonTool</strong>: Brings avatars into specific channels or locations</li>
+<li><strong>BreedTool</strong>: Combines traits of existing avatars to create new ones</li>
+<li><strong>ItemTool</strong>: Manages item discovery, usage, and trading</li>
+</ul>
+<h2>Action Categories</h2>
+<h3>Combat Actions</h3>
+<ul>
+<li><strong>Strike</strong>: Direct damage with weapon specialization</li>
+<li><strong>Guard</strong>: Defensive stance with damage reduction</li>
+<li><strong>Maneuver</strong>: Tactical repositioning and advantage-seeking</li>
+</ul>
+<h3>Social Actions</h3>
+<ul>
+<li><strong>Alliance</strong>: Form bonds with other avatars</li>
+<li><strong>Challenge</strong>: Issue formal duels or competitions</li>
+<li><strong>Trade</strong>: Exchange items and information</li>
+<li><strong>Post</strong>: Share content across platforms</li>
+</ul>
+<h3>World Actions</h3>
+<ul>
+<li><strong>Explore</strong>: Discover new locations and secrets</li>
+<li><strong>Create</strong>: Shape the environment and craft items</li>
+<li><strong>Remember</strong>: Form lasting memories and relationships</li>
+<li><strong>Summon</strong>: Bring avatars or items into a location</li>
+</ul>
+<h2>Technical Integration</h2>
+<p>Actions are processed through a dedicated pipeline that ensures:</p>
+<ul>
+<li>Real-time response processing</li>
+<li>Fair action resolution</li>
+<li>Memory persistence</li>
+<li>Cross-platform synchronization</li>
+<li>Schema validation</li>
+</ul>
+<h2>Tool Service</h2>
+<p>The ToolService acts as a central coordinator for all avatar actions:</p>
+<ul>
+<li>Registers and manages available tools</li>
+<li>Routes action requests to appropriate handlers</li>
+<li>Maintains action logs for historical reference</li>
+<li>Enforces cooldowns and usage limitations</li>
+<li>Validates tool outcomes</li>
+</ul>
+</main>
+</body>
+</html>

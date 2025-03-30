@@ -1,0 +1,146 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Location Service - CosyWorld Documentation</title>
+  <!-- Mermaid script for diagram rendering -->
+  <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      mermaid.initialize({ 
+        startOnLoad: true,
+        theme: 'dark',
+        securityLevel: 'loose'
+      });
+    });
+  </script>
+  <style>
+    body { 
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; 
+      line-height: 1.6;
+      color: #333;
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 1rem;
+      display: flex;
+    }
+    nav {
+      width: 250px;
+      padding-right: 2rem;
+      flex-shrink: 0;
+    }
+    main {
+      flex-grow: 1;
+    }
+    code {
+      background: #f5f5f5;
+      padding: 0.2em 0.4em;
+      border-radius: 3px;
+      font-family: SFMono-Regular, Consolas, Liberation Mono, Menlo, monospace;
+      font-size: 85%;
+    }
+    pre {
+      background: #f5f5f5;
+      padding: 1rem;
+      border-radius: 5px;
+      overflow: auto;
+    }
+    pre code {
+      background: none;
+      padding: 0;
+    }
+    a { color: #0366d6; text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    h1, h2, h3, h4 { margin-top: 1.5em; margin-bottom: 0.5em; }
+    h1 { border-bottom: 1px solid #eaecef; padding-bottom: 0.3em; }
+    nav ul { list-style-type: none; padding-left: 1.2em; }
+    nav > ul { padding-left: 0; }
+    .section-title { 
+      font-weight: bold; 
+      margin-top: 1em;
+      color: #24292e;
+    }
+    /* Mermaid diagram styling */
+    .mermaid {
+      margin: 1rem 0;
+    }
+  </style>
+</head>
+<body>
+  <nav><ul><li><a href="../../index.html">Home</a></li><li><span class="section-title">Overview</span><ul><li><a href="../../overview/03-system-diagram.html">System Diagram</a></li><li><a href="../../overview/02-system-overview.html">System Overview</a></li><li><a href="../../overview/01-introduction.html">CosyWorld Introduction</a></li></ul></li><li><span class="section-title">Systems</span><ul><li><a href="../../systems/06-dungeon-system.html">Dungeon System</a></li><li><a href="../../systems/05-intelligence-system.html">Intelligence System</a></li><li><a href="../../systems/04-action-system.html">Action System</a></li></ul></li><li><span class="section-title">Services</span><ul><li><a href="../../services/architecture-report.html">CosyWorld Architecture Report</a></li><li><a href="../../services/README.html">CosyWorld Services Documentation</a></li><li><span class="section-title">Web</span><ul><li><a href="../../services/web/webService.html">Web Service</a></li></ul></li><li><span class="section-title">Tools</span><ul><li><a href="../../services/tools/toolService.html">Tool Service</a></li></ul></li><li><span class="section-title">S3</span><ul><li><a href="../../services/s3/s3Service.html">S3 Service</a></li></ul></li><li><span class="section-title">Quest</span><ul><li><a href="../../services/quest/questGeneratorService.html">Quest Generator Service</a></li></ul></li><li><span class="section-title">Location</span><ul><li><a href="../../services/location/locationService.html">Location Service</a></li></ul></li><li><span class="section-title">Item</span><ul><li><a href="../../services/item/itemService.html">Item Service</a></li></ul></li><li><span class="section-title">Core</span><ul><li><a href="../../services/core/promptService.html">Prompt Service</a></li><li><a href="../../services/core/memoryService.html">Memory Service</a></li><li><a href="../../services/core/databaseService.html">Database Service</a></li><li><a href="../../services/core/basicService.html">Basic Service</a></li><li><a href="../../services/core/avatarService.html">Avatar Service</a></li><li><a href="../../services/core/aiService.html">AI Service</a></li></ul></li><li><span class="section-title">Chat</span><ul><li><a href="../../services/chat/conversationManager.html">Conversation Manager</a></li></ul></li></ul></li><li><span class="section-title">Deployment</span><ul><li><a href="../../deployment/08-future-work.html">Future Work Priorities</a></li><li><a href="../../deployment/07-deployment.html">Deployment Guide</a></li></ul></li></ul></nav>
+  <main><h1>Location Service</h1>
+<h2>Overview</h2>
+<p>The LocationService manages the spatial aspects of the system, including physical locations (channels/threads), their descriptions, and avatar positioning. It provides a geographical context for all interactions within the system.</p>
+<h2>Functionality</h2>
+<ul>
+<li><strong>Location Management</strong>: Creates, updates, and tracks locations in the virtual world</li>
+<li><strong>Avatar Positioning</strong>: Tracks which avatars are in which locations</li>
+<li><strong>Location Description</strong>: Maintains rich descriptions of each location</li>
+<li><strong>Location Discovery</strong>: Allows finding locations by various criteria</li>
+<li><strong>Location Relationships</strong>: Manages parent/child relationships between locations</li>
+</ul>
+<h2>Implementation</h2>
+<p>The LocationService extends BasicService and uses the database to persist location information. It maps Discord channels and threads to in-game locations with descriptions, images, and other metadata.</p>
+<pre><code class="language-javascript">export class LocationService extends BasicService {
+  constructor(services) {
+    super(services, [
+      'databaseService',
+      'discordService',
+      'aiService',
+      'configService',
+    ]);
+    
+    this.db = this.databaseService.getDatabase();
+    this.client = this.discordService.client;
+    
+    // Additional initialization...
+  }
+  
+  // Methods...
+}
+</code></pre>
+<h3>Key Methods</h3>
+<h4><code>createLocation(channelId, name, description, imageUrl)</code></h4>
+<p>Creates a new location record associated with a Discord channel or thread.</p>
+<h4><code>updateLocation(locationId, updateData)</code></h4>
+<p>Updates an existing location with new information such as name, description, or image.</p>
+<h4><code>getLocationById(locationId)</code></h4>
+<p>Retrieves location information by its database ID.</p>
+<h4><code>getLocationByChannelId(channelId)</code></h4>
+<p>Finds a location based on its associated Discord channel ID.</p>
+<h4><code>getLocationDescription(channelId, channelName)</code></h4>
+<p>Generates a formatted description of a location for use in prompts.</p>
+<h4><code>getLocationAndAvatars(channelId)</code></h4>
+<p>Retrieves both the location details and a list of avatars currently in that location.</p>
+<h4><code>moveAvatarToLocation(avatarId, locationId, temporary = false)</code></h4>
+<p>Moves an avatar to a new location, updating relevant tracking information.</p>
+<h2>Location Schema</h2>
+<p>Locations follow a standardized schema:</p>
+<ul>
+<li><code>name</code>: Human-readable location name</li>
+<li><code>description</code>: Detailed atmospheric description</li>
+<li><code>imageUrl</code>: Visual representation URL</li>
+<li><code>channelId</code>: Associated Discord channel/thread ID</li>
+<li><code>type</code>: “channel” or “thread”</li>
+<li><code>parentId</code>: Parent location (for threads or nested locations)</li>
+<li><code>createdAt</code> and <code>updatedAt</code>: Timestamps</li>
+<li><code>version</code>: Schema version for compatibility</li>
+</ul>
+<h2>Integration with Discord</h2>
+<p>The service maintains a bidirectional mapping between in-game locations and Discord channels/threads:</p>
+<ul>
+<li>Discord channels provide the communication infrastructure</li>
+<li>LocationService adds game context, descriptions, and management</li>
+</ul>
+<h2>Dependencies</h2>
+<ul>
+<li>DatabaseService: For persistence of location data</li>
+<li>DiscordService: For channel interaction and management</li>
+<li>AIService: For generating location descriptions</li>
+<li>ConfigService: For location-related configuration settings</li>
+</ul>
+</main>
+</body>
+</html>
