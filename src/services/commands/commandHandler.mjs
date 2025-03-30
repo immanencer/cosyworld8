@@ -44,7 +44,7 @@ export async function handleCommands(message, services) {
         return;
       }
 
-      await services.mapService.updateAvatarPosition(avatar._id, message.channel.id);
+      await services.mapService.updateAvatarPosition(avatar, message.channel.id);
 
       const { commands, cleanText } = services.toolService.extractToolCommands(content);
       if (commands.length > 0) {

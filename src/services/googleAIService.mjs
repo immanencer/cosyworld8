@@ -5,7 +5,8 @@ import { response } from 'express';
 export class GoogleAIService {
   constructor(config = {}, services) {
     this.modelConfig = [];
-    this.model = config.defaultModel || 'gemini-1.5-flash';
+    this.model = config.defaultModel || 'gemini-2.0-flash';
+    this.structured_model = this.configService.config.ai.openrouter.structured_model || 'gemini-2.0-flash';
     this.apiKey = process.env.GOOGLE_AI_API_KEY;
     if (!this.apiKey) {
       throw new Error('GOOGLE_AI_API_KEY environment variable is not set');

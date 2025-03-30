@@ -1,4 +1,5 @@
 // initializeServices.mjs
+import { BasicService } from "./basicService.mjs";
 import { DatabaseService } from "./databaseService.mjs";
 import { ConfigService } from "./configService.mjs";
 import { SpamControlService } from "./spamControlService.mjs";
@@ -21,7 +22,6 @@ import { WebService } from "./webService.mjs";
 import { CreationService } from './creationService.mjs';
 import { S3Service } from './s3/s3Service.mjs';
 import { LocationService } from './location/locationService.mjs';
-
 /**
  * Validates the environment variables and sets defaults or exits as needed.
  * @param {Object} logger - The logger instance for logging warnings and errors.
@@ -100,7 +100,7 @@ export async function initializeServices(logger) {
 
   // AIService
   services.logger.info("Initializing AIService...");
-  services.aiService = new AIService();
+  services.aiService = new AIService(services);
   services.logger.info("AIService initialized.");
 
   // ImageProcessingService
@@ -193,6 +193,11 @@ export async function initializeServices(logger) {
   services.logger.info("Initializing MessageHandler...");
   services.messageHandler = new MessageHandler(services);
   services.messageHandler.start();
+
+  //Finally create a new BasicService to initialize the rest of the services
+  services.logger.info("Initializing BasicService...");
+  services.basicService = new BasicService(services);
+  await services.basicService.initializeServices();
 
   // Update Arweave prompts
   services.logger.info("Updating Arweave prompts...");

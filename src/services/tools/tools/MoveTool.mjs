@@ -158,11 +158,10 @@ export class MoveTool extends BasicTool {
       // 5. Update the avatar's position in the database
       // Don't send profile yet - we'll do it separately below
       const updatedAvatar = await this.avatarService.updateAvatarPosition(
-        avatar._id,
+        avatar,
         newLocation.channel.id,
         currentLocationId,
-        false // Don't send profile in updateAvatarPosition, we'll do it here
-      );
+     );
 
       if (!updatedAvatar) {
         return `Failed to move: Avatar location update failed.`
@@ -190,13 +189,10 @@ export class MoveTool extends BasicTool {
 
       // 8. Generate an arrival message
       try {
-        const arrivalMessage = await this.locationService.generateAvatarResponse(updatedAvatar, newLocation);
-        // Post to the new location channel via webhook
-        await this.services.discordService.sendAsWebhook(
-          newLocation.channel.id,
-          arrivalMessage,
-          updatedAvatar
-        );
+        setTimeout(async () => {
+          await this.discordService.sendAvatarEmbed(updatedAvatar, newLocation.channel.id);
+          await this.conversationManager.sendResponse(newLocation.channel.id, updatedAvatar);
+        }, 1000);
       } catch (error) {
         console.error('Error sending arrival message:', error);
         // We still consider the move successful, even if arrival message fails

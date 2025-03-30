@@ -1,12 +1,18 @@
+import { BasicService } from './basicService.mjs';
+
 import OpenAI from 'openai';
 import models from '../models.config.mjs';
 import stringSimilarity from 'string-similarity';
 
-export class OpenRouterAIService {
-  constructor(apiKey, services) {
-    this.model = process.env.OPENROUTER_MODEL || 'meta-llama/llama-3.2-3b-instruct';
+export class OpenRouterAIService extends BasicService {
+  constructor(services) {
+    super(services, [
+      'configService',
+    ]);
+    this.model = this.configService.config.ai.openrouter.defaultModel || 'openai/gpt-4o-mini';
+    this.structured_model = this.configService.config.ai.openrouter.structured_model || 'openai/gpt-4o';
     this.openai = new OpenAI({
-      apiKey: apiKey || process.env.OPENROUTER_API_TOKEN,
+      apiKey: this.configService.config.ai.openrouter.apiKey,
       baseURL: 'https://openrouter.ai/api/v1',
       defaultHeaders: {
         'HTTP-Referer': 'https://ratimics.com', // Optional, for including your app on openrouter.ai rankings.
@@ -75,6 +81,7 @@ export class OpenRouterAIService {
     // Merge our defaults with caller-supplied options.
     const mergedOptions = {
       model: this.model,
+      transforms: ["middle-out"],
       prompt,
       ...this.defaultCompletionOptions,
       ...options,
@@ -83,12 +90,12 @@ export class OpenRouterAIService {
     try {
       const response = await this.openai.completions.create(mergedOptions);
       if (!response || !response.choices || response.choices.length === 0) {
-        console.error('Invalid response from OpenRouter during completion generation.');
+        this.logger.error('Invalid response from OpenRouter during completion generation.');
         return null;
       }
       return response.choices[0].text.trim();
     } catch (error) {
-      console.error('Error while generating completion from OpenRouter:', error);
+      this.logger.error('Error while generating completion from OpenRouter:', error);
       return null;
     }
   }
@@ -97,6 +104,7 @@ export class OpenRouterAIService {
     // Merge our default chat options with any caller options, preserving structure
     const mergedOptions = {
       model: options.model || this.model,
+      transforms: ["middle-out"],
       messages: messages.filter(m => m.content),
     };
 
@@ -110,17 +118,29 @@ export class OpenRouterAIService {
     // Verify that the chosen model is available. If not, fall back.
     let fallback = false;
     if (!this.modelIsAvailable(mergedOptions.model)) {
-      console.error('Invalid model provided to chat:', mergedOptions.model);
-      mergedOptions.model = 'deepseek/deepseek-chat-v3-0324:free';
+      this.logger.error('Invalid model provided to chat:', mergedOptions.model);
+      mergedOptions.model = await this.selectRandomModel();
+      this.logger.info('Falling back to random model:', mergedOptions.model);
       fallback = true;
     }
 
-    console.log(`Generating chat completion with model ${mergedOptions.model}...`);
+    this.logger.info(`Generating chat completion with model ${mergedOptions.model}...`);
 
     try {
       const response = await this.openai.chat.completions.create(mergedOptions);
-      if (!response || !response.choices || response.choices.length === 0) {
-        console.error('Invalid response from OpenRouter during chat.');
+      if (!response) {
+        this.logger.error('Null response from OpenRouter during chat.');
+        return null;
+      }
+
+      if (response.error) {
+        this.logger.error('Error in OpenRouter response:', response.error);
+        return null;
+      }
+      
+      if(!response.choices || response.choices.length === 0) {
+        this.logger.error('Unexpected response format from OpenRouter:', response);
+        this.logger.info('Response:', JSON.stringify(response, null, 2));
         return null;
       }
       const result = response.choices[0].message;
@@ -131,22 +151,22 @@ export class OpenRouterAIService {
       }
 
       // Handle function/tool calls if present
-      if (result.function_call || result.tool_calls) {
+      if (result.tool_calls) {
         return result;
       }
 
       if (!result.content) {
-        console.error('Invalid response from OpenRouter during chat.');
-        console.log(JSON.stringify(result, null, 2));
+        this.logger.error('Invalid response from OpenRouter during chat.');
+        this.logger.info(JSON.stringify(result, null, 2));
         return '\n-# [⚠️ No response from OpenRouter]';
       }
 
       return (result.content.trim() || '...') + (fallback ? `\n-# [⚠️ Fallback model (${mergedOptions.model}) used.]` : '');
     } catch (error) {
-      console.error('Error while chatting with OpenRouter:', error);
+      this.logger.error('Error while chatting with OpenRouter:', error);
       // Retry if the error is a rate limit error
       if (error.response && error.response.status === 429 && retries > 0) {
-        console.error('Retrying chat with OpenRouter in 5 seconds...');
+        this.logger.error('Retrying chat with OpenRouter in 5 seconds...');
         await new Promise(resolve => setTimeout(resolve, 5000));
         return this.chat(messages, options, retries - 1);
       }
@@ -173,7 +193,7 @@ export class OpenRouterAIService {
   
       // Return the closest match if the similarity score is above a threshold (e.g., 0.5)
       if (bestMatch.rating > 0.5) {
-        console.log(`Fuzzy match found: "${modelName}" -> "${bestMatch.target}" (score: ${bestMatch.rating})`);
+        this.logger.info(`Fuzzy match found: "${modelName}" -> "${bestMatch.target}" (score: ${bestMatch.rating})`);
         return bestMatch.target;
       }
   
@@ -227,13 +247,13 @@ export class OpenRouterAIService {
       });
 
       if (!response || !response.choices || response.choices.length === 0) {
-        console.error('Invalid response from OpenRouter during image analysis.');
+        this.logger.error('Invalid response from OpenRouter during image analysis.');
         return null;
       }
 
       return response.choices[0].message.content.trim();
     } catch (error) {
-      console.error('Error analyzing image with OpenRouter:', error);
+      this.logger.error('Error analyzing image with OpenRouter:', error);
       return null;
     }
   }

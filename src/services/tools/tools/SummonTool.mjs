@@ -108,7 +108,7 @@ export class SummonTool extends BasicTool {
         await this.discordService.reactToMessage(message, existingAvatar.emoji || '🔮');
         setTimeout(async () => {
           await this.discordService.sendAvatarEmbed(existingAvatar, message.channel.id);
-          await this.conversationManager.sendResponse(message.channel, existingAvatar)
+          await this.conversationManager.sendResponse(message.channel, existingAvatar);
         }, 1000);
         return `${existingAvatar.name} has been summoned to this location.`;
       }
@@ -176,8 +176,6 @@ export class SummonTool extends BasicTool {
 
       // Initialize avatar and react
       await this.avatarService.initializeAvatar(createdAvatar, message.channel.id);
-
-      await this.mapService.updateAvatarPosition(existingAvatar._id, message.channel.id);
 
       // Track summon if not breeding
       if (!breed) await this.trackSummon(message.author.id);

@@ -112,7 +112,9 @@ export class XSocialTool extends BasicTool {
 
         const client = await this.getMongoClient();
         const db = client.db(process.env.MONGO_DB_NAME);
-        const twitterClient = new TwitterApi(decrypt((await db.collection('x_auth').findOne({ avatarId: avatar._id.toString() }))?.accessToken));
+        const encryptedToken = (await db.collection('x_auth').findOne({ avatarId: avatar._id.toString() }))?.accessToken
+        if (!encryptedToken) return '❌ X authorization required. Please connect your account.';
+        const twitterClient = new TwitterApi(decrypt(encryptedToken));
         const v2Client = twitterClient.v2;
         const command = params[0].toLowerCase();
 

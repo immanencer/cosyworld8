@@ -1,16 +1,17 @@
 
-import { MemoryService } from '../../memoryService.mjs';
-import { AIService } from "../../aiService.mjs";
 import { BasicTool } from '../BasicTool.mjs';
 
 export class RememberTool extends BasicTool {
   constructor(services) {
-    super(services);
-    this.aiService = new AIService();
+    super(services, [
+      'aiService',
+      'avatarService',
+      'memoryService',
+      'discordService',
+    ]);
     this.name = 'remember';
     this.description = 'Generates a memory from the current context.';
     this.emoji = '🧠';
-    this.aiService = new AIService();
   }
 
   async getChannelContext(channel) {
@@ -35,8 +36,7 @@ export class RememberTool extends BasicTool {
     const memory = await this.generateMemory(context, prompt);
     const formattedMemory = memory.trim();
 
-    const memoryService = new MemoryService(this.logger);
-    await memoryService.addMemory(avatar._id, formattedMemory);
+    await this.memoryService.addMemory(avatar._id, formattedMemory);
 
     // Post the memory to the avatar narrative channel
     if (avatar.innerMonologueChannel) {

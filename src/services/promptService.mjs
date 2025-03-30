@@ -39,9 +39,10 @@ export class PromptService extends BasicService {
     return `
 You are ${avatar.name}.
 ${avatar.personality}
+${avatar.dynamicPersonality}
+${lastNarrative ? lastNarrative.content : ''}
 Location: ${location.name || 'Unknown'} - ${location.description || 'No description available'}
 Last updated: ${new Date(location.updatedAt).toLocaleString() || 'Unknown'}
-${lastNarrative ? lastNarrative.content : ''}
   `.trim();
   }
 
@@ -173,9 +174,7 @@ ${items}
   Recent conversation history:
   ${channelContextText}
   
-  Respond as ${avatar.name} ${avatar.emoji} with no more than 3 sentences.
-  Advance your own secret agenda, but do not reveal it.
-  Respond as ${avatar.name} ${avatar.emoji}:`.trim();
+  Respond briefly as ${avatar.name} ${avatar.emoji}:`.trim();
   }
 
   /**
@@ -245,12 +244,12 @@ ${items}
 
   async getLastNarrative(avatar, db) {
     if (!db) return null;
-    return await db
+    return avatar.dynamicPersonality + '\n\n' + (await db
       .collection('narratives')
       .findOne(
         { $or: [{ avatarId: avatar._id }, { avatarId: avatar._id.toString() }] },
         { sort: { timestamp: -1 } }
-      );
+      ));
   }
 
   async getImageDescriptions(messages) {

@@ -1,14 +1,14 @@
 import { BasicTool } from '../BasicTool.mjs';
-import { AIService } from "../../aiService.mjs";
-import { MemoryService } from '../../memoryService.mjs';
 
 export class ThinkTool extends BasicTool {
   constructor(services) {
-    super(services);
+    super(services, [
+      'aiService',
+      'memoryService',
+    ]);
     this.name = 'think';
     this.description = 'Take a moment to reflect on a message or conversation, updating your thoughts and memories.';
     this.emoji = '💭';
-    this.aiService = new AIService();
   }
 
   getDescription() {
@@ -65,8 +65,7 @@ export class ThinkTool extends BasicTool {
       });
 
       // Step 4: Store the reflection as a memory
-      const memoryService = new MemoryService(this.logger);
-      await memoryService.addMemory(avatar._id, reflection);
+      await this.memoryService.addMemory(avatar._id, reflection);
       if (avatar.innerMonologueChannel) {
         await this.services.discordService.sendAsWebhook(
           avatar.innerMonologueChannel, reflection, avatar

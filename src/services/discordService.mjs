@@ -18,7 +18,7 @@ export class DiscordService extends BasicService {
     super(services, [
       'logger',
       'configService',
-      'databaseService'
+      'databaseService',
     ]);
     this.webhookCache = new Map();
     this.client = new Client({

@@ -50,7 +50,6 @@ export class ConversationManager extends BasicService {
         return null;
       }
       if (Date.now() - this.lastGlobalNarrativeTime < this.GLOBAL_NARRATIVE_COOLDOWN) {
-        this.logger.info('Global narrative cooldown active. Skipping narrative generation.');
         return null;
       }
       if (!avatar.model) {
@@ -233,22 +232,16 @@ export class ConversationManager extends BasicService {
   }
 
   async updateNarrativeHistory(avatar, content) {
-    if (!content) return;
-    if (avatar.innerMonologueChannel) {
-      await this.discordService.sendAsWebhook(avatar.innerMonologueChannel, `-# [Narrative Update ${Date.now().toLocaleString()}] \n\n ${content}`, avatar);
+    if (!this.db) {
+      this.logger.error('DB not initialized. Cannot update narrative history.');
+      return;
     }
     const guildName = GUILD_NAME;
     const narrativeData = { timestamp: Date.now(), content, guildName };
     avatar.narrativeHistory = avatar.narrativeHistory || [];
-    if (!avatar.narrativeHistory.unshift) {
-      this.logger.error(`Narrative history is not an array for avatar ${avatar.name}`);
-      return;
-    }
     avatar.narrativeHistory.unshift(narrativeData);
     avatar.narrativeHistory = avatar.narrativeHistory.slice(0, 5);
-    avatar.narrativesSummary = avatar.narrativeHistory
-      .map(r => `[${new Date(r.timestamp).toLocaleDateString()}] ${r.guildName}: ${r.content}`)
-      .join('\n\n');
+    await this.avatarService.updateAvatar(avatar);
   }
 
   removeAvatarPrefix(response, avatar) {

@@ -19,6 +19,18 @@ export class ConfigService extends BasicService {
         introduction: process.env.INTRODUCTION_PROMPT || "You've just arrived. Introduce yourself."
       },
       ai: {
+        openrouter: {
+          apiKey: process.env.OPENROUTER_API_KEY || process.env.OPENROUTER_API_TOKEN,
+          model: process.env.OPENROUTER_MODEL || 'meta-llama/llama-3.2-3b-instruct',
+          structuredModel: process.env.OPENROUTER_STRUCTURED_MODEL || 'openai/gpt-4o',
+          chatModel: process.env.OPENROUTER_CHAT_MODEL || 'meta-llama/llama-3.2-1b-instruct',
+          visionModel: process.env.OPENROUTER_VISION_MODEL || '"x-ai/grok-2-vision-1212"',
+          temperature: 0.7,
+          maxTokens: 1000,
+          topP: 1.0,
+          frequencyPenalty: 0,
+          presencePenalty: 0
+        },
         replicate: {
           apiToken: process.env.REPLICATE_API_TOKEN,
           model: process.env.REPLICATE_MODEL,

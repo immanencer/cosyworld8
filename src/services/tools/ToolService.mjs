@@ -11,7 +11,6 @@ import { ItemTool } from './tools/ItemTool.mjs';
 import { ThinkTool } from './tools/ThinkTool.mjs';
 import { SummonTool } from './tools/SummonTool.mjs';
 import { BreedTool } from './tools/BreedTool.mjs';
-import { LocationService } from '../location/locationService.mjs';
 
 export class ToolService extends BasicService {
   /**
@@ -146,7 +145,7 @@ export class ToolService extends BasicService {
     }
 
     try {
-      const result = await tool.execute(message, params, avatar, this.services);
+      const result = await tool. execute(message, params, avatar, this.services);
       await this.ActionLog.logAction({
         channelId: message.channel.id,
         action: command,

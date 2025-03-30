@@ -437,35 +437,6 @@ If already suitable, return as is. If it needs editing, revise it while preservi
     return locations;
   }
 
-  /**
-   * Generates a brief in-character message from an avatar upon arriving at a new location.
-   * @param {Object} avatar - The avatar object { name, personality, memory, ... }.
-   * @param {Object} location - The location object { name, ... }.
-   * @returns {Promise<string>}
-   */
-  async generateAvatarResponse(avatar, location) {
-    try {
-      const prompt = `You have just arrived at ${location.name}. Write a short in-character message about your arrival or your reaction to this place.`;
-      const response = await this.aiService.chat([
-        {
-          role: 'system',
-          content: `You are ${avatar.name}, a ${avatar.personality}. Keep responses brief and in-character.`
-        },
-        {
-          role: 'assistant',
-          content: `${avatar.dynamicPersonality}\n\n${avatar.memory || ''}`
-        },
-        {
-          role: 'user',
-          content: prompt
-        }
-      ]);
-      return response;
-    } catch (error) {
-      console.error('Error generating avatar response:', error);
-      return `${avatar.name} seems speechless...`;
-    }
-  }
 
   /**
    * Generates a summary of recent messages for a location, posts it with the location image via webhook as "the location,"
@@ -481,6 +452,7 @@ If already suitable, return as is. If it needs editing, revise it while preservi
       }
 
       const { location, avatars } = await this.mapService.getLocationAndAvatars(locationId);
+
 
       if (!location) {
         console.warn('No location found with ID', locationId);

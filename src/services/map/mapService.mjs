@@ -111,35 +111,31 @@ export class MapService extends BasicService {
     }
   }
 
-  async updateAvatarPosition(avatarId, newLocationId, previousLocationId = null, sendProfile = false) {
+  async updateAvatarPosition(currentAvatar, newLocationId, previousLocationId = null, sendProfile = false) {
     const db = this.ensureDb();
     const session = await this.db.client.startSession();
 
     try {
-      const currentAvatar = await this.getAvatarById(avatarId);
-      const objectId = toObjectId(avatarId);
-      if (!currentAvatar) throw new Error(`Avatar not found: ${avatarId}`);
       const actualPreviousLocationId = previousLocationId || currentAvatar?.channelId;
 
       if (actualPreviousLocationId === newLocationId) return currentAvatar;
 
-      this.logger.info(`Moving avatar ${avatarId} from ${actualPreviousLocationId || 'unknown'} to ${newLocationId}`);
+      this.logger.info(`Moving avatar ${currentAvatar._id} from ${actualPreviousLocationId || 'unknown'} to ${newLocationId}`);
       await session.withTransaction(async () => {
         await db.collection('dungeon_positions').updateOne(
-          { avatarId: objectId },
+          { avatarId: currentAvatar._id },
           { $set: { locationId: newLocationId, lastMoved: new Date() } },
           { upsert: true, session }
         );
         await db.collection('avatars').updateOne(
-          { _id: objectId },
+          { _id: currentAvatar._id },
           { $set: { channelId: newLocationId } },
           { session }
         );
       });
 
-      // Allow string IDs by converting to ObjectId if necessary
-      const updatedAvatar = await this.getAvatarById(avatarId);
-      if (!updatedAvatar) throw new Error(`Failed to retrieve updated avatar ${avatarId}`);
+      const updatedAvatar = await this.getAvatarById(currentAvatar._id);
+      if (!updatedAvatar) throw new Error(`Updated avatar not found: ${currentAvatar._id}`);
 
       if (actualPreviousLocationId && actualPreviousLocationId !== newLocationId) {
         await this.discordService.sendAsWebhook(
@@ -154,7 +150,7 @@ export class MapService extends BasicService {
       }
 
       this.client.emit('avatarMoved', {
-        avatarId: objectId,
+        avatarId: updatedAvatar._id,
         previousChannelId: actualPreviousLocationId,
         newChannelId: newLocationId,
         temporary: false,

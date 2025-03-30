@@ -6,9 +6,18 @@
             "request": "launch",
             "name": "Launch Services",
             "runtimeExecutable": "npm",
-            "runtimeArgs": ["run", "dev"],
+            "runtimeArgs": [
+                "run",
+                "dev"
+            ],
             "envFile": "${workspaceFolder}/.env",
             "console": "integratedTerminal"
+        },
+        {
+            "type": "chrome",
+            "name": "http://127.0.0.1:3000/docs/build/index.html",
+            "request": "launch",
+            "url": "http://127.0.0.1:3000/docs/build/index.html"
         }
     ]
 }

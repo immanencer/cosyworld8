@@ -17,7 +17,6 @@ export class AvatarService extends BasicService {
       'creationService',
     ]);
     this.db = this.databaseService.getDatabase();
-    this.creationService = services.creationService; // Use CreationService
     this.channelAvatars = new Map(); // channelId -> Set of avatarIds
     this.avatarActivityCount = new Map(); // avatarId -> activity count
 
@@ -76,7 +75,7 @@ export class AvatarService extends BasicService {
   async initializeAvatar(avatar, locationId) {
     const defaultStats = await this.getOrCreateStats(avatar);
     await this.updateAvatarStats(avatar, avatar.stats || defaultStats);
-    if (locationId) await this.mapService.updateAvatarPosition(avatar._id, locationId);
+    if (locationId) await this.mapService.updateAvatarPosition(avatar, locationId);
     this.logger.info(`Initialized avatar ${avatar._id}${locationId ? ` at ${locationId}` : ''}`);
     this.updateAvatar(avatar);
     return avatar;
@@ -87,6 +86,8 @@ export class AvatarService extends BasicService {
     if (!stats || !this.statGenerationService.validateStats(stats)) {
       stats = this.statGenerationService.generateStatsFromDate(avatar?.createdAt || new Date());
       await this.updateAvatarStats(avatar, stats);
+      avatar.stats = stats;
+      await this.updateAvatar(avatar);
     }
     return stats;
   }
@@ -278,7 +279,15 @@ export class AvatarService extends BasicService {
       if (includeStatus === 'alive') {
         query.status = { $ne: 'dead' };
       }
-      return await collection.findOne(query);
+      const avatar = await collection.findOne(query);
+      if (!avatar) {
+        this.logger.warn(`Avatar with name "${name}" not found.`);
+        return null;
+      }
+      this.logger.info(`Avatar found: ${avatar.name} (${avatar._id})`);
+      // Ensure stats are valid
+      avatar.stats = await this.getOrCreateStats(avatar);
+      return avatar;
     } catch (error) {
       this.logger.error(`Error fetching avatar by name: ${error.message}`);
       return null;
@@ -790,8 +799,7 @@ export class AvatarService extends BasicService {
       // If avatar is not in this channel, move it
       if (userAvatar.channelId !== channelId) {
         this.logger.info(`Moving avatar ${userAvatar.name} to channel ${channelId}`);
-        await services.mapService.updateAvatarPosition(userAvatar._id, channelId, userAvatar.channelId);
-        userAvatar = await this.getAvatarById(userAvatar._id);
+        await services.mapService.updateAvatarPosition(userAvatar, channelId, userAvatar.channelId);
       }
 
       return {
