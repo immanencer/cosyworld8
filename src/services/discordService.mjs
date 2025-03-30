@@ -174,9 +174,10 @@ export class DiscordService extends BasicService {
   buildLocationEmbed(location, summary, items, avatars) {
       const embed = new EmbedBuilder()
         .setTitle(location.name)
-        .setDescription(summary)
+        .setDescription((location.description || 'No description available').split('. ')[0] + '.')
         .setImage(location.imageUrl)
         .addFields(
+          { name: 'Update', value: summary || 'No updates available', inline: true },
           { name: 'Rarity', value: location.rarity || 'common', inline: true },
           { name: 'Items', value: items.length || 'None', inline: true },
           { name: 'Avatars', value: avatars.length || 'None', inline: true }
