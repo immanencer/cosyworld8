@@ -10,7 +10,7 @@ async function initializeApp(services) {
     const __dirname = path.dirname(__filename);
 
     const staticDir = process.env.NODE_ENV === 'production'
-      ? path.join(__dirname, '..', 'dist')
+      ? path.join(__dirname,'../../../..', 'dist')
       : path.join(__dirname, '..', 'public');
 
     const app = express();

@@ -56,7 +56,7 @@ export class MessageHandler extends BasicService {
     });
 
     if (existingMessage) {
-      this.logger.debug(`Message ${messageData.messageId} already exists in the database.`);
+      this.logger.debug(`Message ${message.id} already exists in the database.`);
       return;
     }
 
@@ -108,8 +108,8 @@ export class MessageHandler extends BasicService {
     }
 
     // Check if the message is a command
-    const avatar = (await this.services.avatarService.getAvatarFromMessage(message)) || 
-    (await this.services.avatarService.summonUserAvatar(message));
+    const avatar = (await this.services.avatarService.getAvatarFromMessage(message)) ||
+      (await this.services.avatarService.summonUserAvatar(message));
     if (avatar) {
       await handleCommands(message, this.services, avatar);
     }
@@ -197,7 +197,7 @@ export class MessageHandler extends BasicService {
     try {
       const db = this.databaseService.getDatabase();
       const messagesCollection = db.collection("messages");
-    
+
       const attachments = Array.from(message.attachments.values()).map(a => ({
         id: a.id,
         url: a.url,
@@ -208,7 +208,7 @@ export class MessageHandler extends BasicService {
         height: a.height,
         width: a.width,
       }));
-    
+
       const embeds = message.embeds.map(e => ({
         type: e.type,
         title: e.title,
@@ -217,7 +217,7 @@ export class MessageHandler extends BasicService {
         image: e.image ? { url: e.image.url, proxyURL: e.image.proxyURL, height: e.image.height, width: e.image.width } : null,
         thumbnail: e.thumbnail ? { url: e.thumbnail.url, proxyURL: e.thumbnail.proxyURL, height: e.thumbnail.height, width: e.thumbnail.width } : null,
       }));
-    
+
       const messageData = {
         guildId: message.guild.id,
         messageId: message.id,
@@ -231,14 +231,14 @@ export class MessageHandler extends BasicService {
         hasImages: attachments.some(a => a.contentType?.startsWith("image/")) || embeds.some(e => e.image || e.thumbnail),
         timestamp: message.createdTimestamp,
       };
-    
+
       if (!messageData.messageId || !messageData.channelId) {
         this.logger.error("Missing required message data:", messageData);
         return;
       }
 
       // Insert the message into the database
-      await messagesCollection.insertOne(messageData, { });
+      await messagesCollection.insertOne(messageData, {});
       await this.channelManager.markChannelActive(message.channel.id, message.guild.id);
       this.logger.debug("💾 Message saved to database");
     } catch (error) {
