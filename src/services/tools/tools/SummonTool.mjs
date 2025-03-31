@@ -115,7 +115,6 @@ export class SummonTool extends BasicTool {
 
       // Check summon limit (bypass for specific user ID, e.g., admin)
       const breed = Boolean(params.breed);
-      const attributes = params.attributes || {};
       const canSummon = message.author.id === '1175877613017895032' || (await this.checkDailySummonLimit(message.author.id));
       if (!canSummon) {
         await this.discordService.replyToMessage(message, `Daily summon limit of ${this.DAILY_SUMMON_LIMIT} reached. Try again tomorrow!`);
@@ -152,13 +151,6 @@ export class SummonTool extends BasicTool {
         await this.discordService.replyToMessage(message, 'Failed to create avatar. Try a more detailed description.');
         return 'Failed to create avatar. The description may be too vague.';
       }
-
-      // Set avatar properties
-      createdAvatar.model = createdAvatar.model
-        ? await this.aiService.getModel(createdAvatar.model)
-        : await this.aiService.selectRandomModel();
-      createdAvatar.summoner = avatar ? `AVATAR:${avatar._id}` : `${message.author.username}@${message.author.id}`;
-      createdAvatar.attributes = attributes;
 
       // Generate introduction
       const introPrompt = guildConfig?.prompts?.introduction || 'You\'ve just arrived. Introduce yourself.';

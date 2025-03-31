@@ -501,9 +501,16 @@ export class AvatarService extends BasicService {
     const avatarDetails = await this.generateAvatarDetails(data.prompt, data.guildId);
     const imageUrl = await this.generateAvatarImage(avatarDetails.description);
 
+
+      // Set avatar properties
+    const model = avatarDetails.model
+        ? await this.aiService.getModel(avatarDetails.model)
+        : await this.aiService.selectRandomModel();
+
     const avatarDocument = {
       ...avatarDetails,
       imageUrl,
+      model,
       channelId: data.channelId,
       summoner: data.summoner,
       createdAt: new Date().toISOString(),
@@ -523,7 +530,7 @@ export class AvatarService extends BasicService {
       },
       required: ['name', 'description', 'personality', 'emoji', 'imageUrl'],
     });
-
+      
     const result = await this.db.collection('avatars').insertOne(avatarDocument);
     return { ...avatarDocument, _id: result.insertedId };
   }
@@ -548,6 +555,20 @@ export class AvatarService extends BasicService {
       this.logger.error(`Error checking daily limit: ${error.message}`);
       return false;
     }
+  }
+
+  async getAvatarFromMessage(message) {
+    if (!message || !message.author) {
+      this.logger.error('Invalid message or author data');
+      return null;
+    }
+    const { author } = message;
+    const avatar = await this.getAvatarByName(author.username);
+    if (!avatar) {
+      this.logger.warn(`No avatar found for user ${author.username}`);
+      return null;
+    }
+    return avatar;
   }
 
   /**
@@ -718,11 +739,11 @@ export class AvatarService extends BasicService {
    * Otherwise, it creates a new avatar with the provided prompt and channel ID.
    *
    * @param {string} summonerId - The Discord user ID of the summoner.
-   * @param {string} prompt - The prompt to generate avatar details.
+   * @param {string} summonPrompt - The prompt to generate avatar details.
    * @param {string} channelId - The Discord channel ID.
    * @returns {Object|null} - The unique avatar document or null if creation failed.
    */
-  async getOrCreateUniqueAvatarForUser(summonerId, prompt, channelId) {
+  async getOrCreateUniqueAvatarForUser(summonerId, summonPrompt, channelId) {
     try {
       const collection = this.db.collection(this.AVATARS_COLLECTION);
       const existingAvatar = await collection.findOne({ summoner: summonerId, status: 'alive' });
@@ -737,12 +758,12 @@ export class AvatarService extends BasicService {
       const stats = this.statGenerationService.generateStatsFromDate(creationDate);
 
       // Prepare avatar creation data
-      const prompt = summonPrompt 
-        ? `${summonPrompt}\n\n${content}\n\nStats: ${JSON.stringify(stats)}`
-        : `${content}\n\nStats: ${JSON.stringify(stats)}`;
-        const avatarData = { prompt, summoner: summonerId, channelId };
+      const prompt = `Stats: ${JSON.stringify(stats)}\n\n${summonPrompt}`;
+      const avatarData = { prompt, summoner: summonerId, channelId };
       // Create new avatar
-      const newAvatar = await this.avatarService.createAvatar(avatarData);
+      const newAvatar = await this.createAvatar(avatarData);
+      newAvatar.stats = stats;
+      newAvatar.createdAt = creationDate.toISOString();
       return { avatar: newAvatar, new: true };
     } catch (error) {
       this.logger.error(`Error in getOrCreateUniqueAvatarForUser: ${error.message}`);
@@ -756,11 +777,10 @@ export class AvatarService extends BasicService {
    * If the avatar is not in the current channel, it will move it there.
    * 
    * @param {Object} message - Discord message object
-   * @param {Object} services - Services object containing required services
    * @param {string} [customPrompt] - Optional custom prompt to use for avatar creation
    * @returns {Promise<Object>} The avatar object
    */
-  async summonUserAvatar(message, services, customPrompt = null) {
+  async summonUserAvatar(message, customPrompt = null) {
     try {
       if (!message || !message.author) {
         this.logger.error('Invalid message object provided to summonUserAvatar');
@@ -799,7 +819,7 @@ export class AvatarService extends BasicService {
       // If avatar is not in this channel, move it
       if (userAvatar.channelId !== channelId) {
         this.logger.info(`Moving avatar ${userAvatar.name} to channel ${channelId}`);
-        await services.mapService.updateAvatarPosition(userAvatar, channelId, userAvatar.channelId);
+        await this.mapService.updateAvatarPosition(userAvatar, channelId, userAvatar.channelId);
       }
 
       return {

@@ -141,7 +141,6 @@ export class DiscordService extends BasicService {
   validateAvatar(avatar) {
     if (!avatar || typeof avatar !== 'object') throw new Error('Avatar must be a valid object');
     if (!avatar.name || typeof avatar.name !== 'string') throw new Error('Avatar name is required and must be a string');
-    if (!avatar.imageUrl || typeof avatar.imageUrl !== 'string') throw new Error('Avatar imageUrl is required and must be a string');
   }
 
   async getOrCreateWebhook(channel) {
@@ -193,12 +192,12 @@ export class DiscordService extends BasicService {
         sentMessage = await webhook.send({
           content: chunk,
           username,
-          avatarURL: avatar.imageUrl,
+          avatarURL: avatar.imageUrl || this.client.user.displayAvatarURL(),
           threadId: channel.isThread() ? channelId : undefined,
         });
       }
       this.logger.info(`Sent message to channel ${channelId} as ${username}`);
-      return sentMessage;  
+      return sentMessage;
     } catch (error) {
       this.logger.error(`Failed to send webhook message to ${channelId}: ${error.message}`);
     }
@@ -219,6 +218,7 @@ export class DiscordService extends BasicService {
         updatedAt,
         traits,
         stats,
+        summoner,
         inventory = [],
       } = avatar;
 
@@ -233,8 +233,9 @@ export class DiscordService extends BasicService {
         .setThumbnail(imageUrl)
         .addFields(
           { name: '🎂 Summonsday', value: `<t:${Math.floor(new Date(createdAt || Date.now()).getTime() / 1000)}:F>`, inline: true },
-          { name: `🧠 Tier ${tier}`, value: model || 'N/A', inline: true }
+          { name: `🧠 Tier ${tier}`, value: model || 'N/A', inline: true },
         )
+        .setImage(imageUrl)
         .setTimestamp(new Date(updatedAt || Date.now()))
         .setFooter({ text: `Profile of ${name}`, iconURL: imageUrl });
 
@@ -323,6 +324,20 @@ export class DiscordService extends BasicService {
     }
   }
 
+  async getGuildByChannelId(channelId) {
+    this.logger.info(`Fetching guild for channel ID: ${channelId}`);
+    try {
+      const channel = await this.client.channels.fetch(channelId);
+      if (!channel || !channel.isTextBased()) throw new Error('Channel not accessible or not text-based');
+      const guild = await this.client.guilds.fetch(channel.guild.id);
+      return guild;
+    }
+    catch (error) {
+      this.logger.error(`Failed to fetch guild for channel ID ${channelId}: ${error.message}`);
+      throw error;
+    }
+  }
+
   async sendAvatarEmbed(avatar, targetChannelId) {
     this.validateAvatar(avatar);
     const channelId = targetChannelId || avatar.channelId;
@@ -347,7 +362,7 @@ export class DiscordService extends BasicService {
       this.logger.error(`Failed to send location embed to ${channelId}: ${error.message}`);
     }
   }
-  
+
 
   async buildAvatarComponents(avatar) {
     const components = [];
@@ -371,11 +386,16 @@ export class DiscordService extends BasicService {
   }
 
   async reactToMessage(message, emoji) {
-    if (!message || !emoji || typeof emoji !== 'string') {
-      this.logger.error('Invalid message or emoji for reaction');
-      return;
-    }
     try {
+      if (!message.react) {
+        // Try to fetch the message if it's a partial
+        message = this.client.channels.cache.get(message.channel.id).messages.cache.get(message.id);
+        if (!message) throw new Error('Message not found');
+      }
+      if (!message || !emoji || typeof emoji !== 'string') {
+        this.logger.error('Invalid message or emoji for reaction');
+        return;
+      }
       await message.react(emoji);
       this.logger.info(`Reacted to message ${message.id} with ${emoji}`);
     } catch (error) {
@@ -384,11 +404,16 @@ export class DiscordService extends BasicService {
   }
 
   async replyToMessage(message, replyContent) {
-    if (!message || !replyContent || typeof replyContent !== 'string') {
-      this.logger.error('Invalid message or reply content');
-      return;
-    }
     try {
+      if (!message.reply) {
+        // Try to fetch the message if it's a partial
+        message = this.client.channels.cache.get(message.channel.id).messages.cache.get(message.id);
+        if (!message) throw new Error('Message not found');
+      }
+      if (!message || !replyContent || typeof replyContent !== 'string') {
+        this.logger.error('Invalid message or reply content');
+        return;
+      }
       await message.reply(replyContent);
       this.logger.info(`Replied to message ${message.id}`);
     } catch (error) {

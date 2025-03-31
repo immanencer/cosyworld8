@@ -171,10 +171,13 @@ ${items}
   Actions Available:
   ${dungeonPrompt}
   
+  Keep your response SHORT, respond with either a message  to contribute to the conversation or one of the available actions.
+  Since this is discord, you do not need to use capitalization, and feel free to use emojis.
+
   Recent conversation history:
   ${channelContextText}
-  
-  Respond briefly as ${avatar.name} ${avatar.emoji}:`.trim();
+
+  ${avatar.name} ${avatar.emoji}:`.trim();
   }
 
   /**

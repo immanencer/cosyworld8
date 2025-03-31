@@ -104,7 +104,7 @@ export class ToolService extends BasicService {
       if (!isCommand) narrativeLines.push(line);
     }
 
-    return { commands, text, commandLines };
+    return commands;
   }
 
   // --- Command Processing ---

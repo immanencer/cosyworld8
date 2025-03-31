@@ -36,6 +36,7 @@
     "@wen-moon-ser/moonshot-sdk": "^4.1.2",
     "ajv": "^8.17.1",
     "ajv-formats": "^3.0.1",
+    "arweave": "^1.15.5",
     "autoprefixer": "^10.4.20",
     "bs58": "^6.0.0",
     "cloudinary": "^2.5.1",

@@ -1,3 +1,4 @@
+import { response } from 'express';
 import { BasicService } from '../basicService.mjs';
 import { handleCommands } from '../commands/commandHandler.mjs';
 
@@ -6,6 +7,7 @@ const GUILD_NAME = process.env.GUILD_NAME || 'The Guild';
 export class ConversationManager extends BasicService {
   constructor(services) {
     super(services, [
+      'configService',
       'discordService',
       'avatarService',
       'aiService',
@@ -252,7 +254,7 @@ export class ConversationManager extends BasicService {
     return response;
   }
 
-  async sendResponse(channel, avatar) {
+  async sendResponse(channel, avatar, presetResponse = null) {
     if (!await this.checkChannelPermissions(channel)) {
       this.logger.error(`Cannot send response - missing permissions in channel ${channel.id}`);
       return null;
@@ -273,6 +275,8 @@ export class ConversationManager extends BasicService {
       return null;
     }
     try {
+      let response = presetResponse;
+      if (!response) {
       const messages = await channel.messages.fetch({ limit: 50 });
       const imagePromptParts = [];
       let recentImageMessage = null;
@@ -299,22 +303,15 @@ export class ConversationManager extends BasicService {
         userContent = [...imagePromptParts, { type: 'text', text: userContent }];
         chatMessages = chatMessages.map(msg => msg.role === 'user' ? { role: 'user', content: userContent } : msg);
       }
-      let response = await this.aiService.chat(chatMessages, { model: avatar.model, max_tokens: 1024 });
+      response = await this.aiService.chat(chatMessages, { model: avatar.model, max_tokens: 1024 });
       if (!response) {
         this.logger.error(`Empty response generated for ${avatar.name}`);
         return null;
       }
       response = this.removeAvatarPrefix(response, avatar);
-      
-      handleCommands({ content: response, channel, author: {
-        id: avatar._id,
-        username: avatar.name,
-        avatarURL: avatar.imageUrl,
-        guild: channel.guild,
-      } }, this);
-      const { commands, cleanText } = this.services.toolService.extractToolCommands(response);
+    }
 
-      const finalText = commands.length ? cleanText : response;
+      const finalText = response;
       if (finalText && finalText.trim()) {
         const thinkRegex = /<think>(.*?)<\/think>/gs;
         const thoughts = [];
@@ -338,7 +335,20 @@ export class ConversationManager extends BasicService {
           await this.avatarService.updateAvatar(avatar);
         }
         if (cleanedText) {
-          let sentMessage = await this.discordService.sendAsWebhook(avatar.channelId, cleanedText, avatar);
+          let sentMessage = await this.discordService.sendAsWebhook(channel.id, cleanedText, avatar);
+          if (!sentMessage) {
+            this.logger.error(`Failed to send message in channel ${channel.id}`);
+            return null;
+          }
+          let guild = await this.discordService.getGuildByChannelId(channel.id);
+          if (!guild) {
+            this.logger.error(`Guild not found for channel ${avatar.channelId}`);
+            return null;
+          }
+
+          sentMessage.guildId = guild.id;
+          sentMessage.channel = channel;
+          handleCommands(sentMessage, this.services, avatar);
         }
       }
       this.channelLastMessage.set(channel.id, Date.now());

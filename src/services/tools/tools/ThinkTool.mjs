@@ -5,6 +5,7 @@ export class ThinkTool extends BasicTool {
     super(services, [
       'aiService',
       'memoryService',
+      'discordService',
     ]);
     this.name = 'think';
     this.description = 'Take a moment to reflect on a message or conversation, updating your thoughts and memories.';
@@ -67,7 +68,7 @@ export class ThinkTool extends BasicTool {
       // Step 4: Store the reflection as a memory
       await this.memoryService.addMemory(avatar._id, reflection);
       if (avatar.innerMonologueChannel) {
-        await this.services.discordService.sendAsWebhook(
+        await this.discordService.sendAsWebhook(
           avatar.innerMonologueChannel, reflection, avatar
         );
       }

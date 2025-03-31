@@ -14,7 +14,7 @@ async function initializeApp(services) {
       : path.join(__dirname, '..', 'public');
 
     const app = express();
-    const PORT = process.env.WEB_PORT || 3001;
+    const PORT = process.env.WEB_PORT || 3000;
     const logger = services.logger;
 
     // Middleware setup

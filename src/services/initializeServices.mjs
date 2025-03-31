@@ -22,6 +22,7 @@ import { WebService } from "./webService.mjs";
 import { CreationService } from './creationService.mjs';
 import { S3Service } from './s3/s3Service.mjs';
 import { LocationService } from './location/locationService.mjs';
+import { ArweaveService } from './arweave/arweaveService.mjs';
 /**
  * Validates the environment variables and sets defaults or exits as needed.
  * @param {Object} logger - The logger instance for logging warnings and errors.
@@ -74,6 +75,11 @@ export async function initializeServices(logger) {
   services.s3Service = new S3Service(services.configService, services.logger);
   services.logger.info("S3Service initialized.");
 
+  // ArweaveService
+  services.logger.info("Initializing ArweaveService...");
+  services.arweaveService = new ArweaveService(services);
+  services.logger.info("ArweaveService initialized.");
+
   // DatabaseService
   services.logger.info("Initializing DatabaseService...");
   services.databaseService = new DatabaseService(services.logger);
@@ -89,8 +95,6 @@ export async function initializeServices(logger) {
   services.configService = new ConfigService(services);
   services.configService.validate();
   services.logger.info("ConfigService initialized.");
-
-  // Removed: PromptPipelineService initialization
 
   // DiscordService
   services.logger.info("Initializing DiscordService...");

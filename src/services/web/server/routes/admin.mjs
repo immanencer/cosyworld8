@@ -596,47 +596,37 @@ function createRouter(db) {
     }
 
     try {
-      // Build a sample contextual prompt
       const conversationManager = req.app.locals.services?.conversationManager;
-      
-      // If we have a conversation handler, use it to build an accurate prompt
+
       if (conversationManager) {
-        // Get the system prompt and dungeon prompt for this avatar
-        const systemPrompt = await conversationManager.buildSystemPrompt(avatar);
+        const systemPrompt = await conversationManager.buildSystemPrompt(avatar).catch(() => "System prompt unavailable.");
         let dungeonPrompt = '';
-        
+        let channelSummary = '';
+
         if (avatar.channelId) {
           try {
-            // Get guild ID from channel
             const channel = req.app.locals.client?.channels.cache.get(avatar.channelId);
             if (channel?.guild) {
-              dungeonPrompt = await conversationManager.buildDungeonPrompt(avatar, channel.guild.id);
+              dungeonPrompt = await conversationManager.buildDungeonPrompt(avatar, channel.guild.id).catch(() => "Dungeon prompt unavailable.");
             }
           } catch (error) {
             console.error('Error getting guild context:', error);
           }
-        }
 
-        // Fetch summary if available
-        let channelSummary = '';
-        if (avatar.channelId && conversationManager.getChannelSummary) {
-          try {
-            channelSummary = await conversationManager.getChannelSummary(avatar._id, avatar.channelId);
-          } catch (error) {
-            console.error('Error getting channel summary:', error);
+          if (conversationManager.getChannelSummary) {
+            channelSummary = await conversationManager.getChannelSummary(avatar._id, avatar.channelId).catch(() => "Channel summary unavailable.");
           }
         }
 
-        // Build the final preview prompt
         const previewPrompt = `
 // System Prompt:
 ${systemPrompt}
 
 // Channel Summary:
-${channelSummary || 'No channel summary available'}
+${channelSummary}
 
 // Available Commands:
-${dungeonPrompt || 'No command information available'}
+${dungeonPrompt}
 
 // Example User Message:
 Hello ${avatar.name}, what's on your mind today?
@@ -644,7 +634,6 @@ Hello ${avatar.name}, what's on your mind today?
 
         return res.json({ prompt: previewPrompt });
       } else {
-        // Fallback to a simple example prompt
         const examplePrompt = `
 // System Prompt:
 You are ${avatar.name}.
@@ -660,7 +649,7 @@ ${avatar.description || 'No description defined'}
 // Example User Message:
 Hello ${avatar.name}, what's on your mind today?
 `;
-        
+
         return res.json({ prompt: examplePrompt });
       }
     } catch (error) {

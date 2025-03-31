@@ -12,7 +12,7 @@ Welcome to the CosyWorld documentation! This comprehensive guide covers all aspe
 ### Systems
 - [Action System](systems/04-action-system.md) - Commands and interactions
 - [Intelligence System](systems/05-intelligence-system.md) - AI and cognitive processes
-- [Dungeon System](systems/06-dungeon-system.md) - Game mechanics and environments
+- [RATi Avatar System](systems/06-rati-avatar-system.md) - On-chain NFT-based avatars, items, and locations
 
 ### Services
 - [Services Overview](services/README.md) - Introduction to the service architecture

@@ -89,13 +89,17 @@ export class MessageHandler extends BasicService {
     // Persist the message to the database
     await this.saveMessage(message);
 
-    // Process any commands in the message
-    await handleCommands(message, this.services);
-
-    // Skip further processing if the author is a bot
-    if (message.author.bot) {
-      this.logger.debug("Message from bot, skipping further processing.");
+    // Check if the message is from the bot itself
+    if (message.author.id === this.client.user.id) {
+      this.logger.debug("Message is from the bot itself, skipping.");
       return;
+    }
+
+    // Check if the message is a command
+    const avatar = (await this.services.avatarService.getAvatarFromMessage(message)) || 
+    (await this.services.avatarService.summonUserAvatar(message));
+    if (avatar) {
+      await handleCommands(message, this.services, avatar);
     }
 
     const channelId = message.channel.id;
@@ -106,9 +110,6 @@ export class MessageHandler extends BasicService {
 
     // Process the channel (initial pass, e.g., for immediate responses)
     await this.processChannel(channelId, message);
-
-    // Manage avatar creation or updates for the user
-    await this.handleAvatarCreation(message, channelId);
 
     // Process the channel again (e.g., post-avatar creation responses)
     await this.processChannel(channelId, message);
@@ -230,30 +231,6 @@ export class MessageHandler extends BasicService {
     } catch (error) {
       this.logger.error(`Error saving message to database: ${error.message}`);
       console.error(error.stack);
-    }
-  }
-
-  /**
-   * Handles avatar creation or retrieval for the message author.
-   * @param {Object} message - The Discord message object.
-   * @param {string} channelId - The ID of the channel.
-   */
-  async handleAvatarCreation(message, channelId) {
-    try {
-      const result = await this.services.avatarService.getOrCreateUniqueAvatarForUser(
-        message.author.id,
-        `A unique avatar for ${message.author.username} (${message.author.displayName})`,
-        channelId
-      );
-      if (result.new) {
-        result.avatar.model = result.avatar.model || (await this.aiService.selectRandomModel());
-        await this.services.avatarService.updateAvatar(result.avatar);
-
-        await this.services.conversationManager.sendResponse(channel, avatar);
-        await this.services.discordService.sendAvatarEmbed(result.avatar, channel.id);
-      }
-    } catch (error) {
-      this.logger.error(`Error handling avatar creation: ${error.message}`);
     }
   }
 

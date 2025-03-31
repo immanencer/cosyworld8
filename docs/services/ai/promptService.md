@@ -141,7 +141,7 @@ ${dungeonPrompt}
 Recent conversation history:
 ${channelContextText}
 
-Respond briefly as ${avatar.name} ${avatar.emoji}:`.trim();
+${avatar.name} ${avatar.emoji}:`.trim();
 }
 ```
 
