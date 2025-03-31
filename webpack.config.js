@@ -18,6 +18,12 @@ export default (env, argv) => {
     output: {
       filename: '[name].bundle.js',
       path: path.resolve(__dirname, 'dist/js'),
+      library: {
+        type: isProduction ? 'module' : undefined // Use 'module' for production builds
+      }
+    },
+    experiments: {
+      outputModule: isProduction // Enable outputModule for production builds
     },
     module: {
       rules: [

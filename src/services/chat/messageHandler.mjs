@@ -48,15 +48,9 @@ export class MessageHandler extends BasicService {
    */
   async handleMessage(message) {
 
-    // Check if the message already exists in the database
-    const db = this.databaseService.getDatabase();
-    const messagesCollection = db.collection("messages");
-    const existingMessage = await messagesCollection.findOne({
-      messageId: message.id
-    });
-
-    if (existingMessage) {
-      this.logger.debug(`Message ${message.id} already exists in the database.`);
+    // Persist the message to the database
+    if (!await this.saveMessage(message)) {
+      this.logger.warn("Duplicate message detected, skipping save.");
       return;
     }
 
@@ -97,9 +91,6 @@ export class MessageHandler extends BasicService {
 
     // Analyze images and enhance message object
     await this.handleImageAnalysis(message);
-
-    // Persist the message to the database
-    await this.saveMessage(message);
 
     // Check if the message is from the bot itself
     if (message.author.id === this.client.user.id) {
@@ -172,6 +163,7 @@ export class MessageHandler extends BasicService {
       if (attachment) {
         try {
           imageDescription = await this.aiService.analyzeImage(attachment.url);
+      
           this.logger.info(
             `Generated image description for message ${message.id}: ${imageDescription}`
           );
@@ -197,7 +189,15 @@ export class MessageHandler extends BasicService {
     try {
       const db = this.databaseService.getDatabase();
       const messagesCollection = db.collection("messages");
-
+    // Check if the message already exists in the database
+    const existingMessage = await messagesCollection.findOne({
+      messageId: message.id
+    });
+    if (existingMessage) {
+      this.logger.debug(`Message ${message.id} already exists in the database.`);
+      return false;
+    }
+      // Prepare the message data for insertion
       const attachments = Array.from(message.attachments.values()).map(a => ({
         id: a.id,
         url: a.url,
@@ -241,6 +241,7 @@ export class MessageHandler extends BasicService {
       await messagesCollection.insertOne(messageData, {});
       await this.channelManager.markChannelActive(message.channel.id, message.guild.id);
       this.logger.debug("💾 Message saved to database");
+      return true;
     } catch (error) {
       this.logger.error(`Error saving message to database: ${error.message}`);
       console.error(error.stack);

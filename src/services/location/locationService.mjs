@@ -134,11 +134,14 @@ export class LocationService extends BasicService {
    * @param {string} imageUrl
    * @returns {Promise<string>}
    */
-  async generateLocationDescription(locationName, imageUrl) {
+  async generateLocationDescription(locationName, description) {
     try {
       const prompt = `
-        You are a master storyteller describing a mystical location.
+        You are a master storyteller describing the layout of a location.
         Looking at this scene of ${locationName}, write a vivid, evocative description that brings it to life.
+        
+        ${description}
+        
         Focus on the atmosphere, unique features, and feelings it evokes.
         Keep it to 2-3 compelling sentences.
       `;
@@ -232,7 +235,7 @@ If already suitable, return as is. If it needs editing, revise it while preservi
         [
           {
             role: 'system',
-            content: 'Generate a brief, atmospheric description of this fantasy location.'
+            content: 'Generate a brief, atmospheric description of this fantasy location, describing its layout and features in an interesting way.'
           },
           {
             role: 'user',
@@ -258,27 +261,11 @@ If already suitable, return as is. If it needs editing, revise it while preservi
         throw new Error('Failed to create thread for location');
       }
 
-      // Post the location image
-      await thread.send({
-        files: [
-          {
-            attachment: locationImage,
-            name: `${cleanLocationName.toLowerCase().replace(/\s+/g, '_')}.png`
-          }
-        ]
-      });
-
-      // Generate a final evocative description
-      const evocativeDescription = await this.generateLocationDescription(
-        cleanLocationName,
-        locationImage
-      );
-
 
       // Create location document
       const locationDocument = {
         name: cleanLocationName,
-        description: evocativeDescription,
+        description: locationDescription,
         imageUrl: locationImage,
         channelId: thread.id,
         type: 'thread',

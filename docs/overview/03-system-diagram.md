@@ -9,54 +9,54 @@ It illustrates how the **Platform Interfaces** connect with external APIs, how t
 ```mermaid
 flowchart TD
     subgraph PI["Platform Interfaces"]
-        DS[Discord Bot]:::blue
-        TB[Telegram Bot]:::blue
-        XB[X Bot]:::blue
-        WI[Web Interface]:::blue
+        DS["Discord Bot"]
+        TB["Telegram Bot"]
+        XB["X Bot"]
+        WI["Web Interface"]
     end
     
     subgraph PA["Platform APIs"]
-        DISCORD[Discord]:::gold
-        TG[Telegram]:::gold
-        X[Twitter]:::gold
-        WEB[REST API]:::gold
+        DISCORD["Discord"]
+        TG["Telegram"]
+        X["Twitter"]
+        WEB["REST API"]
     end
     
     subgraph CS["Core Services"]
-        CHAT[Chat Service]:::green
-        AS[Avatar Service]:::green
-        IS[Item Service]:::green
-        LS[Location Service]:::green
-        MS[Memory Service]:::green
-        AIS[AI Service]:::green
-        TS[Tool Service]:::green
+        CHAT["Chat Service"]
+        AS["Avatar Service"]
+        IS["Item Service"]
+        LS["Location Service"]
+        MS["Memory Service"]
+        AIS["AI Service"]
+        TS["Tool Service"]
     end
     
     subgraph RAS["RATi Avatar System"]
-        AM[Avatar Manager]:::purple
-        IM[Item Manager]:::purple
-        LM[Location Manager]:::purple
-        DW[Doorway Manager]:::purple
-        EV[Evolution Engine]:::purple
+        AM["Avatar Manager"]
+        IM["Item Manager"]
+        LM["Location Manager"]
+        DW["Doorway Manager"]
+        EV["Evolution Engine"]
     end
     
     subgraph SL["Storage Layer"]
-        MONGO[MongoDB]:::brown
-        S3[S3 Storage]:::brown
+        MONGO["MongoDB"]
+        S3["S3 Storage"]
     end
     
     subgraph BC["Blockchain Infrastructure"]
-        ARW[Arweave]:::orange
-        SOL[Solana]:::orange
-        IPFS[IPFS]:::orange
-        NFT[NFT Service]:::orange
+        ARW["Arweave"]
+        SOL["Solana"]
+        IPFS["IPFS"]
+        NFT["NFT Service"]
     end
     
     subgraph AI["AI Services"]
-        OR[OpenRouter]:::gold
-        GAI[Google AI]:::gold
-        OL[Ollama]:::gold
-        REP[Replicate]:::gold
+        OR["OpenRouter"]
+        GAI["Google AI"]
+        OL["Ollama"]
+        REP["Replicate"]
     end
     
     %% Platform connections
@@ -129,12 +129,20 @@ flowchart TD
     
     MS --> ARW
     
+    %% Styling
     classDef blue fill:#1a5f7a,stroke:#666,color:#fff
     classDef green fill:#145a32,stroke:#666,color:#fff
     classDef purple fill:#4a235a,stroke:#666,color:#fff
     classDef brown fill:#5d4037,stroke:#666,color:#fff
     classDef orange fill:#a04000,stroke:#666,color:#fff
     classDef gold fill:#7d6608,stroke:#666,color:#fff
+    
+    class DS,TB,XB,WI blue
+    class CHAT,AS,IS,LS,MS,AIS,TS green
+    class AM,IM,LM,DW,EV purple
+    class MONGO,S3 brown
+    class ARW,SOL,IPFS,NFT orange
+    class DISCORD,TG,X,WEB,OR,GAI,OL,REP gold
     
     style PI fill:#1a1a1a,stroke:#666,color:#fff
     style PA fill:#1a1a1a,stroke:#666,color:#fff
@@ -260,39 +268,39 @@ This component diagram illustrates how the RATi Avatar System maintains consiste
 ```mermaid
 flowchart TD
     subgraph BC["Blockchain Layer"]
-        SOL[Solana NFTs]:::orange
-        ARW[Arweave Metadata]:::orange
-        IPFS[IPFS Media]:::orange
+        SOL["Solana NFTs"]
+        ARW["Arweave Metadata"]
+        IPFS["IPFS Media"]
     end
     
     subgraph CM["Core Metadata"]
-        AT[Avatar Traits]:::purple
-        IT[Item Properties]:::purple
-        LT[Location Features]:::purple
-        MM[Memory Records]:::purple
+        AT["Avatar Traits"]
+        IT["Item Properties"]
+        LT["Location Features"]
+        MM["Memory Records"]
     end
     
     subgraph PI["Platform Interfaces"]
         subgraph DC["Discord"]
-            DA[Avatar Profiles]:::blue
-            DC1[Chat Channels]:::blue
-            DL[Location Rooms]:::blue
+            DA["Avatar Profiles"]
+            DC1["Chat Channels"]
+            DL["Location Rooms"]
         end
         
         subgraph TG["Telegram"]
-            TA[Avatar Bots]:::blue
-            TC[Telegram Chats]:::blue
+            TA["Avatar Bots"]
+            TC["Telegram Chats"]
         end
         
         subgraph XP["X Platform"]
-            XA[Avatar Accounts]:::blue
-            XT[Tweet Threads]:::blue
+            XA["Avatar Accounts"]
+            XT["Tweet Threads"]
         end
         
         subgraph WB["Web Interface"]
-            WD[Dashboard]:::blue
-            WI[Inventory]:::blue
-            WM[Map View]:::blue
+            WD["Dashboard"]
+            WI["Inventory"]
+            WM["Map View"]
         end
     end
     
@@ -329,9 +337,14 @@ flowchart TD
     MM --> XT
     MM --> WD
     
+    %% Styling
     classDef blue fill:#1a5f7a,stroke:#666,color:#fff
     classDef purple fill:#4a235a,stroke:#666,color:#fff
     classDef orange fill:#a04000,stroke:#666,color:#fff
+    
+    class SOL,ARW,IPFS orange
+    class AT,IT,LT,MM purple
+    class DA,DC1,DL,TA,TC,XA,XT,WD,WI,WM blue
     
     style BC fill:#1a1a1a,stroke:#666,color:#fff
     style CM fill:#1a1a1a,stroke:#666,color:#fff
