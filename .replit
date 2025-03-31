@@ -12,7 +12,7 @@ build = ["sh", "-c", "NODE_OPTIONS='--max-old-space-size=4096' npm run build"]
 ignorePorts = true
 
 [[ports]]
-localPort = 3001
+localPort = 3000
 externalPort = 80
 
 [workflows]
