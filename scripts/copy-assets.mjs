@@ -61,6 +61,7 @@ function copyFile(src, dest, transform = false) {
 function copyAssets() {
   console.log('Starting to copy assets...');
   ensureDirectoryExists(destDir);
+  ensureDirectoryExists(path.join(destDir, 'js'));
 
   for (const asset of assetsToCopy) {
     copyFile(asset.src, asset.dest, asset.transform);
