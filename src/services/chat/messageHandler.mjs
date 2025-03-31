@@ -48,6 +48,18 @@ export class MessageHandler extends BasicService {
    */
   async handleMessage(message) {
 
+    // Check if the message already exists in the database
+    const db = this.databaseService.getDatabase();
+    const messagesCollection = db.collection("messages");
+    const existingMessage = await messagesCollection.findOne({
+      messageId: message.id
+    });
+
+    if (existingMessage) {
+      this.logger.debug(`Message ${messageData.messageId} already exists in the database.`);
+      return;
+    }
+
     const channel = message.channel;
     if (channel && channel.name) {
       if (process.env.NODE_ENV === 'development') {
@@ -224,8 +236,9 @@ export class MessageHandler extends BasicService {
         this.logger.error("Missing required message data:", messageData);
         return;
       }
-    
-      await messagesCollection.insertOne(messageData);
+
+      // Insert the message into the database
+      await messagesCollection.insertOne(messageData, { });
       await this.channelManager.markChannelActive(message.channel.id, message.guild.id);
       this.logger.debug("💾 Message saved to database");
     } catch (error) {
