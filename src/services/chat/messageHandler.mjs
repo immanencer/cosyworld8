@@ -48,8 +48,20 @@ export class MessageHandler extends BasicService {
    */
   async handleMessage(message) {
 
+    if (this.discordService.messageCache) {
+      // Check if the message is already cached
+      const cachedMessage = this.discordService.messageCache.get(message.id);
+      if (cachedMessage) {
+        this.logger.debug(`Message ${message.id} is already cached.`);
+        return;
+      }
+      // Cache the message to avoid reprocessing
+      this.discordService.messageCache.set(message.id, message);
+      this.logger.debug(`Caching message ${message.id}.`);
+    }
+
     // Persist the message to the database
-    if (!await this.saveMessage(message)) {
+    if (!await this.databaseService.saveMessage(message)) {
       this.logger.warn("Duplicate message detected, skipping save.");
       return;
     }
@@ -100,7 +112,7 @@ export class MessageHandler extends BasicService {
 
     // Check if the message is a command
     const avatar = (await this.services.avatarService.getAvatarFromMessage(message)) ||
-      (await this.services.avatarService.summonUserAvatar(message));
+      (await this.services.avatarService.summonUserAvatar(message)).avatar;
     if (avatar) {
       await handleCommands(message, this.services, avatar);
     }
@@ -109,7 +121,7 @@ export class MessageHandler extends BasicService {
     const guildId = message.guild.id;
 
     // Mark the channel as active
-    await this.services.channelManager.markChannelActive(channelId, guildId);
+    await this.databaseService.markChannelActive(channelId, guildId);
 
     // Process the channel (initial pass, e.g., for immediate responses)
     await this.processChannel(channelId, message);
@@ -179,73 +191,6 @@ export class MessageHandler extends BasicService {
 
     message.imageDescription = imageDescription;
     message.hasImages = hasImages;
-  }
-
-  /**
-   * Saves the message to the database.
-   * @param {Object} message - The Discord message object to save.
-   */
-  async saveMessage(message) {
-    try {
-      const db = this.databaseService.getDatabase();
-      const messagesCollection = db.collection("messages");
-    // Check if the message already exists in the database
-    const existingMessage = await messagesCollection.findOne({
-      messageId: message.id
-    });
-    if (existingMessage) {
-      this.logger.debug(`Message ${message.id} already exists in the database.`);
-      return false;
-    }
-      // Prepare the message data for insertion
-      const attachments = Array.from(message.attachments.values()).map(a => ({
-        id: a.id,
-        url: a.url,
-        proxyURL: a.proxyURL,
-        filename: a.name,
-        contentType: a.contentType,
-        size: a.size,
-        height: a.height,
-        width: a.width,
-      }));
-
-      const embeds = message.embeds.map(e => ({
-        type: e.type,
-        title: e.title,
-        description: e.description,
-        url: e.url,
-        image: e.image ? { url: e.image.url, proxyURL: e.image.proxyURL, height: e.image.height, width: e.image.width } : null,
-        thumbnail: e.thumbnail ? { url: e.thumbnail.url, proxyURL: e.thumbnail.proxyURL, height: e.thumbnail.height, width: e.thumbnail.width } : null,
-      }));
-
-      const messageData = {
-        guildId: message.guild.id,
-        messageId: message.id,
-        channelId: message.channel.id,
-        authorId: message.author.id,
-        authorUsername: message.author.username,
-        author: { id: message.author.id, bot: message.author.bot, username: message.author.username, discriminator: message.author.discriminator, avatar: message.author.avatar },
-        content: message.content,
-        attachments,
-        embeds,
-        hasImages: attachments.some(a => a.contentType?.startsWith("image/")) || embeds.some(e => e.image || e.thumbnail),
-        timestamp: message.createdTimestamp,
-      };
-
-      if (!messageData.messageId || !messageData.channelId) {
-        this.logger.error("Missing required message data:", messageData);
-        return;
-      }
-
-      // Insert the message into the database
-      await messagesCollection.insertOne(messageData, {});
-      await this.channelManager.markChannelActive(message.channel.id, message.guild.id);
-      this.logger.debug("💾 Message saved to database");
-      return true;
-    } catch (error) {
-      this.logger.error(`Error saving message to database: ${error.message}`);
-      console.error(error.stack);
-    }
   }
 
   /**

@@ -1,4 +1,4 @@
-import { MongoClient } from 'mongodb';
+import { MongoClient, ObjectId } from 'mongodb';
 
 export class DatabaseService {
   static instance = null;
@@ -27,15 +27,7 @@ export class DatabaseService {
     const isDev = process.env.NODE_ENV === 'development' || process.env.NODE_ENV === 'test' || !process.env.NODE_ENV;
 
     if (!process.env.MONGO_URI) {
-      this.logger.error('MongoDB URI not provided in environment variables.');
-
-      if (isDev) {
-        this.logger.warn('Creating mock database for development mode');
-        this.setupMockDatabase();
-        return this.db;
-      }
-
-      return null;
+      throw new Error('MongoDB URI not provided in environment variables.');
     }
 
     try {
@@ -63,13 +55,6 @@ export class DatabaseService {
         }
       }
 
-      // In development mode, use mock database if connection fails
-      if (isDev) {
-        this.logger.warn('Using mock database due to connection failure in development mode');
-        this.setupMockDatabase();
-        return this.db;
-      }
-
       // Set up reconnection with exponential backoff
       const reconnectDelay = Math.min(this.reconnectDelay * 1.5, 30000); // Maximum 30 seconds
       this.logger.info(`Will attempt to reconnect in ${reconnectDelay / 1000} seconds...`);
@@ -79,29 +64,100 @@ export class DatabaseService {
     }
   }
 
-  /**
-   * Sets up a mock database for development/testing
-   */
-  setupMockDatabase() {
-    // Create a simple in-memory mock database
-    this.db = {
-      collection: (name) => ({
-        find: () => ({ toArray: async () => [] }),
-        findOne: async () => null,
-        insertOne: async () => ({ insertedId: 'mock-id' }),
-        updateOne: async () => ({ modifiedCount: 1 }),
-        deleteOne: async () => ({ deletedCount: 1 }),
-        countDocuments: async () => 0,
-        createIndex: async () => 'mock-index',
-        createIndexes: async () => ['mock-index-1', 'mock-index-2'],
-      }),
-      listCollections: () => ({ toArray: async () => [] }),
-      createCollection: async () => ({}),
-    };
+  async getMessageById(messageId) {
+    if (!this.db) {
+      this.logger.warn('Database is not connected. Cannot retrieve message.');
+      return null;
+    }
 
-    this.connected = true;
-    this.logger.info('Mock database initialized for development mode');
-  }
+    try {
+      const messages = this.db.collection('messages');
+      return await messages.findOne({ _id: ObjectId.createFromTime(messageId) });
+    } catch (error) {
+      this.logger.error(`Error retrieving message by ID: ${error.message}`);
+      return null;
+    }
+  }  
+  /**
+  * Marks a channel as active by updating its last activity timestamp in the database.
+  * @param {string} channelId - The ID of the channel.
+  * @param {string} guildId - The ID of the guild the channel belongs to.
+  */
+ async markChannelActive(channelId, guildId) {
+  const channelActivityCollection = this.getDatabase().collection('channel_activity');
+   await channelActivityCollection.updateOne(
+     { _id: channelId },
+     { $set: { lastActivityTimestamp: Date.now() }, $setOnInsert: { guildId: guildId } },
+     { upsert: true }
+   );
+ }
+
+    /**
+   * Saves the message to the database.
+   * @param {Object} message - The Discord message object to save.
+   */
+    async saveMessage(message) {
+      try {
+        const db = this.getDatabase();
+        const messagesCollection = db.collection("messages");
+      // Check if the message already exists in the database
+      const existingMessage = await messagesCollection.findOne({
+        messageId: message.id
+      });
+      if (existingMessage) {
+        this.logger.debug(`Message ${message.id} already exists in the database.`);
+        return false;
+      }
+        // Prepare the message data for insertion
+        const attachments = Array.from(message.attachments.values()).map(a => ({
+          id: a.id,
+          url: a.url,
+          proxyURL: a.proxyURL,
+          filename: a.name,
+          contentType: a.contentType,
+          size: a.size,
+          height: a.height,
+          width: a.width,
+        }));
+  
+        const embeds = message.embeds.map(e => ({
+          type: e.type,
+          title: e.title,
+          description: e.description,
+          url: e.url,
+          image: e.image ? { url: e.image.url, proxyURL: e.image.proxyURL, height: e.image.height, width: e.image.width } : null,
+          thumbnail: e.thumbnail ? { url: e.thumbnail.url, proxyURL: e.thumbnail.proxyURL, height: e.thumbnail.height, width: e.thumbnail.width } : null,
+        }));
+  
+        const messageData = {
+          guildId: message.guild.id,
+          messageId: message.id,
+          channelId: message.channel.id,
+          authorId: message.author.id,
+          authorUsername: message.author.username,
+          author: { id: message.author.id, bot: message.author.bot, username: message.author.username, discriminator: message.author.discriminator, avatar: message.author.avatar },
+          content: message.content,
+          attachments,
+          embeds,
+          hasImages: attachments.some(a => a.contentType?.startsWith("image/")) || embeds.some(e => e.image || e.thumbnail),
+          timestamp: message.createdTimestamp,
+        };
+  
+        if (!messageData.messageId || !messageData.channelId) {
+          this.logger.error("Missing required message data:", messageData);
+          return;
+        }
+  
+        // Insert the message into the database
+        await messagesCollection.insertOne(messageData, {});
+        await this.markChannelActive(message.channel.id, message.guild.id);
+        this.logger.debug("💾 Message saved to database");
+        return true;
+      } catch (error) {
+        this.logger.error(`Error saving message to database: ${error.message}`);
+        console.error(error.stack);
+      }
+    }
 
   getDatabase() {
     if (!this.connected || !this.db) {

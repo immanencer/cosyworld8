@@ -75,12 +75,13 @@ Services that power the web interface:
 - [Auth Service](web/authService.md) - Web authentication and authorization
 - [Thumbnail Service](web/thumbnailService.md) - Image thumbnail generation
 
-### Integration Services
-Services that connect to external platforms:
+### Social Integrations
+Services that connect to social media platforms:
 
-- [X Authentication](integration/x-authentication.md) - Twitter/X platform integration
-- [X Service](integration/xService.md) - X platform utilities
-- [Rati Service](integration/ratiService.md) - Rati platform integration
+- [Social Overview](social/README.md) - Social integration architecture
+- [X Integration](social/x-integration.md) - Twitter/X platform integration
+- [Discord Integration](social/discord-integration.md) - Discord communication platform
+- [Telegram Integration](social/telegram-integration.md) - Telegram messaging (coming soon)
 
 ### Blockchain Services
 Services that handle blockchain and cryptocurrency interactions:

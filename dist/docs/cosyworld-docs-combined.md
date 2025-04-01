@@ -26,6 +26,10 @@ This document contains all documentation for the CosyWorld project.
 - [Item Service](#item-service)
 - [Web Service](#web-service)
 - [Tool Service](#tool-service)
+- [X (Twitter) Integration](#x-twitter-integration)
+- [Telegram Integration (Coming Soon)](#telegram-integration-coming-soon)
+- [Discord Integration](#discord-integration)
+- [Social Integrations](#social-integrations)
 - [S3 Service](#s3-service)
 - [Quest Generator Service](#quest-generator-service)
 - [S3 Service](#s3-service)
@@ -109,7 +113,6 @@ Welcome to the CosyWorld documentation! This comprehensive guide covers all aspe
 - [Message Handler](services/communication/messageHandler.md) - Message routing
 - [Decision Maker](services/communication/decisionMaker.md) - Response generation
 - [Periodic Task Manager](services/communication/periodicTaskManager.md) - Scheduled tasks
-- [Discord Service](services/communication/discordService.md) - Discord integration
 - [Command Handler](services/communication/commandHandler.md) - Command processing
 - [Spam Control Service](services/communication/spamControlService.md) - Rate limiting
 
@@ -135,10 +138,11 @@ Welcome to the CosyWorld documentation! This comprehensive guide covers all aspe
 - [Auth Service](services/web/authService.md) - Web authentication
 - [Thumbnail Service](services/web/thumbnailService.md) - Image thumbnails
 
-#### Integration Services
-- [X Authentication](services/integration/x-authentication.md) - Twitter integration
-- [X Service](services/integration/xService.md) - X platform utilities
-- [Rati Service](services/integration/ratiService.md) - Rati integration
+#### Social Integrations
+- [Social Overview](services/social/README.md) - Social media integration architecture
+- [X Integration](services/social/x-integration.md) - Twitter/X platform integration
+- [Discord Integration](services/social/discord-integration.md) - Discord platform integration
+- [Telegram Integration](services/social/telegram-integration.md) - Telegram integration (coming soon)
 
 #### Blockchain Services
 - [Token Service](services/blockchain/tokenService.md) - Token management
@@ -1254,12 +1258,13 @@ Services that power the web interface:
 - [Auth Service](web/authService.md) - Web authentication and authorization
 - [Thumbnail Service](web/thumbnailService.md) - Image thumbnail generation
 
-#### Integration Services
-Services that connect to external platforms:
+#### Social Integrations
+Services that connect to social media platforms:
 
-- [X Authentication](integration/x-authentication.md) - Twitter/X platform integration
-- [X Service](integration/xService.md) - X platform utilities
-- [Rati Service](integration/ratiService.md) - Rati platform integration
+- [Social Overview](social/README.md) - Social integration architecture
+- [X Integration](social/x-integration.md) - Twitter/X platform integration
+- [Discord Integration](social/discord-integration.md) - Discord communication platform
+- [Telegram Integration](social/telegram-integration.md) - Telegram messaging (coming soon)
 
 #### Blockchain Services
 Services that handle blockchain and cryptocurrency interactions:
@@ -2031,6 +2036,891 @@ The service uses the ActionLog component to record all tool usage, providing a h
 
 
 
+## Document: services/social/x-integration.md
+
+#### X (Twitter) Integration
+
+#### Overview
+
+Moonstone Sanctum includes a comprehensive integration with X (formerly Twitter) that allows avatars to authenticate, link their X accounts, and interact with the X platform programmatically. This document outlines the end-to-end X authentication and linking lifecycle, including technical details and recommended improvements.
+
+#### Authentication Flow
+
+The X authentication system implements the OAuth 2.0 authorization code flow with PKCE (Proof Key for Code Exchange) and includes the following main components:
+
+1. **Client-side Integration**: Implemented in `xService.mjs` in the client's code
+2. **Server-side Routes**: Implemented in `xauth.mjs` as Express routes
+3. **X Social Tools**: Functionality for X social interactions (`XPostTool.mjs` and `XSocialTool.mjs`)
+
+#### Authentication Lifecycle
+
+```mermaid
+sequenceDiagram
+    participant User
+    participant Client
+    participant Server
+    participant X
+
+    User->>Client: Request X authentication
+    Client->>Server: Request auth URL (/api/xauth/auth-url?avatarId=123)
+    Server->>Server: Generate state & code verifier
+    Server->>Server: Store in x_auth_temp
+    Server->>X: Create auth URL
+    X-->>Server: Return auth URL
+    Server-->>Client: Return auth URL
+    Client->>Client: Open popup window with auth URL
+    Client-->>User: Show X auth popup
+    User->>X: Authorize app
+    X->>Server: Redirect to callback URL with code
+    Server->>Server: Verify state parameter
+    Server->>X: Exchange code for tokens
+    X-->>Server: Return access & refresh tokens
+    Server->>Server: Store tokens in x_auth collection
+    Server-->>Client: Send success message via window.opener
+    Client->>Client: Handle auth success
+    Client-->>User: Show auth success
+```
+
+#### Implementation Details
+
+#### 1. Client-Side Initialization
+
+When a user initiates X authentication:
+
+```javascript
+// From src/services/xService.mjs
+export async function initiateXAuth(avatarId) {
+  const response = await fetch(`/api/xauth/auth-url?avatarId=${avatarId}`);
+  const data = await response.json();
+  
+  // Open X authentication popup
+  window.open(
+    data.url,
+    'xauth_popup',
+    `width=600,height=650,top=${window.screen.height/2-325},left=${window.screen.width/2-300}`
+  );
+  
+  return { success: true, message: 'X authentication initiated' };
+}
+```
+
+#### 2. Server-Side Authorization URL Generation
+
+The server handles the request and generates an authorization URL:
+
+```javascript
+// From src/services/web/server/routes/xauth.mjs
+router.get('/auth-url', async (req, res) => {
+  const { avatarId } = req.query;
+  
+  // Generate state for CSRF protection
+  const state = crypto.randomBytes(16).toString('hex');
+  
+  // Create X API client
+  const client = new TwitterApi({
+    clientId: process.env.X_CLIENT_ID,
+    clientSecret: process.env.X_CLIENT_SECRET,
+  });
+  
+  // Generate OAuth URL with PKCE
+  const { url, codeVerifier } = client.generateOAuth2AuthLink(
+    process.env.X_CALLBACK_URL,
+    { scope: ['tweet.read', 'tweet.write', 'users.read', 'offline.access'], state }
+  );
+  
+  // Store temporarily for callback verification
+  await db.collection('x_auth_temp').insertOne({
+    avatarId,
+    codeVerifier,
+    state,
+    createdAt: new Date(),
+    expiresAt: new Date(Date.now() + AUTH_SESSION_TIMEOUT),
+  });
+  
+  res.json({ url, state });
+});
+```
+
+#### 3. OAuth Callback Processing
+
+After the user authorizes the application:
+
+```javascript
+router.get('/callback', async (req, res) => {
+  const { code, state } = req.query;
+  
+  // Find the temporary auth record
+  const storedAuth = await db.collection('x_auth_temp').findOne({ state });
+  
+  // Exchange the code for tokens
+  const { accessToken, refreshToken, expiresIn } = await client.loginWithOAuth2({
+    code,
+    codeVerifier: storedAuth.codeVerifier,
+    redirectUri: process.env.X_CALLBACK_URL,
+  });
+  
+  // Store tokens in database
+  await db.collection('x_auth').updateOne(
+    { avatarId: storedAuth.avatarId },
+    {
+      $set: {
+        accessToken,
+        refreshToken,
+        expiresAt: new Date(Date.now() + expiresIn * 1000),
+        updatedAt: new Date(),
+      }
+    },
+    { upsert: true }
+  );
+  
+  // Close the popup and notify the opener
+  res.send(`
+    <script>
+      window.opener.postMessage({ type: 'X_AUTH_SUCCESS' }, '*');
+      window.close();
+    </script>
+  `);
+});
+```
+
+#### 4. Wallet Linking
+
+After authentication, users can optionally link their wallet:
+
+```javascript
+// Client-side request
+export async function connectWalletToXAuth(avatarId, walletAddress, signature, message) {
+  const response = await fetch('/api/xauth/connect-wallet', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ avatarId, walletAddress, signature, message })
+  });
+  
+  return await response.json();
+}
+
+// Server-side handler
+router.post('/connect-wallet', async (req, res) => {
+  const { avatarId, walletAddress, signature, message } = req.body;
+  
+  // Verify signature
+  if (!verifyWalletSignature(message, signature, walletAddress)) {
+    return res.status(401).json({ error: 'Invalid signature' });
+  }
+  
+  // Update X auth record with wallet address
+  await db.collection('x_auth').updateOne(
+    { avatarId },
+    { $set: { walletAddress, updatedAt: new Date() } }
+  );
+  
+  res.json({ success: true });
+});
+```
+
+#### 5. Token Refresh
+
+When tokens expire, the system refreshes them:
+
+```javascript
+async function refreshAccessToken(auth) {
+  const client = new TwitterApi({
+    clientId: process.env.X_CLIENT_ID,
+    clientSecret: process.env.X_CLIENT_SECRET,
+  });
+  
+  const { accessToken, refreshToken: newRefreshToken, expiresIn } = 
+    await client.refreshOAuth2Token(auth.refreshToken);
+  
+  await db.collection('x_auth').updateOne(
+    { avatarId: auth.avatarId },
+    {
+      $set: {
+        accessToken,
+        refreshToken: newRefreshToken,
+        expiresAt: new Date(Date.now() + expiresIn * 1000),
+        updatedAt: new Date(),
+      },
+    }
+  );
+  
+  return { accessToken, expiresAt };
+}
+```
+
+#### 6. X Social Interactions
+
+The system provides X social tools for authenticated avatars:
+
+#### XPostTool
+Allows avatars to post to X:
+
+```javascript
+// From XPostTool.mjs
+async execute(message, params, avatar) {
+  // Check auth and retrieve tokens
+  const auth = await db.collection('x_auth').findOne({ avatarId: avatar._id.toString() });
+  
+  // Post to X
+  const twitterClient = new TwitterApi(decrypt(auth.accessToken));
+  await twitterClient.v2.tweet(messageText);
+  
+  // Store post record
+  await db.collection('social_posts').insertOne({
+    avatarId: avatar._id,
+    content: messageText,
+    timestamp: new Date(),
+    postedToX: true
+  });
+  
+  return `✨ Posted to X: "${messageText}"`;
+}
+```
+
+#### XSocialTool
+Provides enhanced social interactions with AI-driven actions:
+
+```javascript
+// From XSocialTool.mjs - AI-assisted X interactions
+async execute(message, params, avatar) {
+  if (command === 'auto') {
+    // Get context and X timeline data
+    const context = await this.getChannelContext(message.channel);
+    const { timeline, notifications } = await this.getXTimelineAndNotifications(avatar);
+    
+    // Generate AI-driven social actions
+    const actions = await this.generateSocialActions(avatar, context, timeline, notifications);
+    
+    // Execute actions
+    for (const action of actions.actions) {
+      switch (action.type) {
+        case 'post':
+          await v2Client.tweet(action.content);
+          break;
+        case 'reply':
+          await v2Client.reply(action.content, action.tweetId);
+          break;
+        // Additional action types...
+      }
+    }
+  }
+}
+```
+
+#### Data Storage
+
+The X authentication system uses two MongoDB collections:
+
+1. **x_auth_temp**: Temporary storage for authentication state and PKCE code verifier
+   - `avatarId`: The avatar being authenticated
+   - `codeVerifier`: PKCE code verifier
+   - `state`: Random state for CSRF protection
+   - `createdAt`: Creation timestamp
+   - `expiresAt`: Expiration timestamp (10 minutes)
+
+2. **x_auth**: Permanent storage for X authentication tokens
+   - `avatarId`: The authenticated avatar
+   - `accessToken`: OAuth access token (should be encrypted)
+   - `refreshToken`: OAuth refresh token (should be encrypted)
+   - `expiresAt`: Token expiration timestamp
+   - `walletAddress`: Associated wallet address (optional)
+   - `updatedAt`: Last update timestamp
+
+#### Security Considerations
+
+The implementation includes several security features:
+
+1. **PKCE Flow**: Uses code verifier and challenge for additional security
+2. **State Parameter**: Prevents CSRF attacks during the OAuth flow
+3. **Token Encryption**: Refresh tokens should be encrypted before storage
+4. **Wallet Signature Verification**: Validates wallet ownership for linking
+5. **Token Refresh**: Handles token expiration and refresh
+6. **Temporary Session Cleanup**: Removes expired authentication sessions
+
+#### Improvement Plan
+
+#### 1. Enhanced Token Security
+
+**Current Status**: The implementation includes token encryption, but it may not be consistently applied across all components.
+
+**Improvements**:
+- Ensure all tokens are encrypted at rest using a strong encryption method
+- Implement key rotation for encryption keys
+- Add a salt to each token's encryption to prevent rainbow table attacks
+
+#### 2. Improved Error Handling
+
+**Current Status**: Basic error handling exists but could be more comprehensive.
+
+**Improvements**:
+- Add more detailed error logging with correlation IDs
+- Implement more graceful degradation when X API is unavailable
+- Add retry logic for transient failures
+- Create a dashboard for monitoring authentication failures
+
+#### 3. User Experience Enhancements
+
+**Current Status**: Basic authentication flow with popup windows.
+
+**Improvements**:
+- Add a modal progress indicator during authentication
+- Implement silent token refresh when possible
+- Add clearer error messages for users
+- Provide visual indicators of X connection status
+- Add a "reconnect" option when tokens are expired but refresh tokens are invalid
+
+#### 4. Rate Limiting and Quotas
+
+**Current Status**: No explicit handling of X API rate limits.
+
+**Improvements**:
+- Implement client-side rate limiting to prevent quota exhaustion
+- Add a queue system for high-volume posting scenarios
+- Implement backoff strategies for rate limit errors
+- Add monitoring for quota usage
+
+#### 5. Enhanced X Features
+
+**Current Status**: Basic posting, replying, and timeline viewing.
+
+**Improvements**:
+- Add support for media uploads (images, videos)
+- Implement thread creation capabilities
+- Add analytics for X engagement
+- Support X Spaces creation and management
+- Add support for list management
+
+#### 6. Advanced AI Integration
+
+**Current Status**: Basic AI-driven social actions.
+
+**Improvements**:
+- Enhance persona consistency in X interactions
+- Add sentiment analysis for appropriate responses
+- Implement time-aware posting strategies
+- Add context-aware response generation
+- Develop engagement optimization algorithms
+
+#### 7. Compliance and Privacy
+
+**Current Status**: Basic OAuth compliance.
+
+**Improvements**:
+- Add explicit user consent tracking
+- Implement data retention policies
+- Add user data export capabilities
+- Implement detailed audit logging
+- Add compliance reporting features
+
+#### Implementation Timeline
+
+1. **Phase 1 (1-2 weeks)**
+   - Implement token encryption improvements
+   - Enhance error handling
+   - Add basic monitoring
+
+2. **Phase 2 (2-3 weeks)**
+   - Improve user experience
+   - Implement rate limiting
+   - Add media upload support
+
+3. **Phase 3 (3-4 weeks)**
+   - Enhance AI integration
+   - Add analytics
+   - Implement compliance features
+
+4. **Phase 4 (Ongoing)**
+   - Monitor and improve based on usage patterns
+   - Add new X platform features as they become available
+   - Scale systems based on demand
+
+#### Conclusion
+
+The X authentication and integration system provides a robust foundation for avatar interactions with the X platform. By implementing the improvement plan, we can enhance security, reliability, and functionality while providing a better user experience and more powerful social capabilities.
+
+With these enhancements, avatars will be able to maintain a consistent and engaging presence on X, leveraging AI-driven interactions while maintaining high security standards and compliance with platform policies.
+
+---
+
+
+
+## Document: services/social/telegram-integration.md
+
+#### Telegram Integration (Coming Soon)
+
+#### Overview
+
+Telegram integration will expand Moonstone Sanctum's communication capabilities beyond Discord and X, reaching users on one of the world's most popular messaging platforms. This document outlines the planned implementation architecture, features, and timeline for the Telegram integration.
+
+#### Planned Architecture
+
+The Telegram integration will follow a similar pattern to our existing social integrations:
+
+```mermaid
+flowchart TD
+    User[User] -->|Sends Message| Telegram[Telegram Platform]
+    Telegram -->|Webhook Event| TelegramService
+    TelegramService -->|Message Event| MessageHandler
+    MessageHandler -->|Process Message| ConversationManager
+    ConversationManager -->|Generate Response| AvatarService
+    AvatarService -->|Query| MemoryService
+    AvatarService -->|Generate| AIService
+    ConversationManager -->|Send Response| TelegramService
+    TelegramService -->|Send API| Telegram
+    Telegram -->|Shows Reply| User
+```
+
+#### Planned Components
+
+1. **TelegramService**: Core service managing the Telegram Bot API connection
+2. **TelegramWebhookHandler**: Processes incoming webhook events from Telegram
+3. **TelegramMessageFormatter**: Handles formatting messages specific to Telegram's capabilities
+4. **BotFather Integration**: For bot creation and management on Telegram
+
+#### Key Features (Planned)
+
+#### 1. Bot Interaction
+
+- Create personalized bots for each avatar (or a unified bot)
+- Support for both private chats and group conversations
+- Command system with `/` prefix
+- Inline query support for quick avatar actions
+
+#### 2. Rich Media Support
+
+- Image and GIF sharing
+- Voice message capabilities
+- Sticker pack integration
+- Location sharing
+
+#### 3. Advanced Messaging Features
+
+- Inline buttons for interactive elements
+- Custom keyboards for structured responses
+- Message threading and quoting
+- Polls and quizzes for engagement
+
+#### 4. Multi-User Conversations
+
+- Group chat support with multiple users
+- Channel publishing capabilities
+- Forum topic support (on compatible clients)
+
+#### Technical Implementation Plan
+
+#### 1. Core Bot Setup
+
+```javascript
+// Planned implementation for TelegramService
+export class TelegramService extends BasicService {
+  constructor(services) {
+    super(services, [
+      'logger',
+      'configService',
+      'databaseService',
+    ]);
+    
+    this.bot = new Telegraf(process.env.TELEGRAM_BOT_TOKEN);
+    this.db = services.databaseService.getDatabase();
+    this.setupEventListeners();
+  }
+  
+  async initialize() {
+    // Setup webhook or polling
+    const telegramConfig = this.configService.getTelegramConfig();
+    if (telegramConfig.useWebhook) {
+      await this.bot.telegram.setWebhook(`${telegramConfig.webhookUrl}/telegram-webhook`);
+      this.logger.info('Telegram webhook set up successfully');
+    } else {
+      this.bot.launch();
+      this.logger.info('Telegram bot started in polling mode');
+    }
+  }
+  
+  setupEventListeners() {
+    // Handle text messages
+    this.bot.on('text', async (ctx) => {
+      // Process incoming messages
+      await this.services.messageHandler.handleTelegramMessage(ctx);
+    });
+    
+    // Handle commands
+    this.bot.command('start', async (ctx) => {
+      await ctx.reply('Welcome to Moonstone Sanctum!');
+    });
+    
+    // Additional handlers...
+  }
+  
+  async sendMessage(chatId, text, options = {}) {
+    try {
+      const result = await this.bot.telegram.sendMessage(chatId, text, options);
+      return result;
+    } catch (error) {
+      this.logger.error(`Failed to send Telegram message: ${error.message}`);
+      throw error;
+    }
+  }
+  
+  // Additional methods...
+}
+```
+
+#### 2. Authentication & User Linking
+
+Users will need to connect their Telegram accounts to their existing Moonstone Sanctum profiles:
+
+```javascript
+// Planned implementation for user linking
+bot.command('connect', async (ctx) => {
+  // Generate unique code for the user
+  const linkCode = generateUniqueCode();
+  
+  // Store pending link request
+  await db.collection('telegram_link_requests').insertOne({
+    telegramId: ctx.from.id,
+    linkCode,
+    createdAt: new Date(),
+    expiresAt: new Date(Date.now() + 30 * 60 * 1000), // 30 minutes
+  });
+  
+  // Send instructions to user
+  await ctx.reply(
+    `To connect your Moonstone Sanctum account, use this code on the website: ${linkCode}\n` +
+    `The code will expire in 30 minutes.`
+  );
+});
+```
+
+#### 3. Database Collections
+
+Planned collections for Telegram integration:
+
+1. **telegram_users**: Links Telegram user IDs to Moonstone Sanctum accounts
+   - `telegramId`: Telegram user ID
+   - `userId`: Moonstone Sanctum user ID
+   - `username`: Telegram username
+   - `firstName`: User's first name
+   - `lastName`: User's last name
+   - `connectedAt`: Connection timestamp
+   
+2. **telegram_chats**: Stores information about active Telegram chats
+   - `chatId`: Telegram chat ID
+   - `type`: Chat type (private, group, supergroup, channel)
+   - `title`: Chat title (for groups)
+   - `activeAvatars`: Array of avatar IDs active in this chat
+   
+3. **telegram_messages**: Archives Telegram messages for context
+   - `messageId`: Telegram message ID
+   - `chatId`: Chat ID
+   - `senderId`: Sender's Telegram ID
+   - `text`: Message content
+   - `timestamp`: Sent timestamp
+   - `entities`: Special entities in the message
+
+#### Security Considerations
+
+1. **Bot Token Protection**: Secure storage and rotation of bot tokens
+2. **Webhook Security**: HTTPS endpoints with verification
+3. **Message Validation**: Verify authenticity of incoming updates
+4. **Rate Limiting**: Prevent abuse and spam
+5. **User Privacy**: Clear data usage policies and retention limits
+
+#### Implementation Timeline
+
+#### Phase 1: Foundation (Q3 2023)
+- Research and design document creation
+- Core TelegramService implementation
+- Basic messaging capabilities
+- User account linking
+
+#### Phase 2: Core Features (Q4 2023)
+- Avatar integration
+- Group chat support
+- Rich media support
+- Command system
+
+#### Phase 3: Advanced Features (Q1 2024)
+- Interactive elements (buttons, keyboards)
+- Integration with existing Moonstone tools
+- Analytics and monitoring
+- Performance optimization
+
+#### Conclusion
+
+The Telegram integration will significantly expand Moonstone Sanctum's reach and capabilities, allowing avatars to interact with users on one of the world's most popular messaging platforms. By following the architecture and implementation plan outlined in this document, we can deliver a robust, secure, and feature-rich Telegram experience that complements our existing social integrations.
+
+---
+
+
+
+## Document: services/social/discord-integration.md
+
+#### Discord Integration
+
+#### Overview
+
+Discord serves as the primary communication platform for Moonstone Sanctum, enabling avatar interactions with users through channels, direct messages, and guild-based communities. This document outlines the Discord integration architecture, implementation details, and planned improvements.
+
+#### Components
+
+The Discord integration consists of several interconnected components:
+
+1. **DiscordService**: Core service managing the Discord.js client connection and webhook utilities
+2. **ConversationManager**: Orchestrates conversations between users and avatars
+3. **MessageHandler**: Processes incoming Discord messages
+4. **ChannelManager**: Manages channel contexts and metadata
+5. **CommandHandler**: Processes user commands and invokes appropriate actions
+
+#### Architecture
+
+```mermaid
+flowchart TD
+    User[User] -->|Sends Message| Discord[Discord Platform]
+    Discord -->|Webhook Event| DiscordService
+    DiscordService -->|Message Event| MessageHandler
+    MessageHandler -->|Process Message| ConversationManager
+    ConversationManager -->|Generate Response| AvatarService
+    AvatarService -->|Query| MemoryService
+    AvatarService -->|Generate| AIService
+    ConversationManager -->|Send Response| DiscordService
+    DiscordService -->|Webhook| Discord
+    Discord -->|Shows Reply| User
+```
+
+#### Implementation Details
+
+#### DiscordService
+
+The `DiscordService` class extends `BasicService` and manages the core Discord.js client:
+
+```javascript
+export class DiscordService extends BasicService {
+  constructor(services) {
+    super(services, [
+      'logger',
+      'configService',
+      'databaseService',
+    ]);
+    this.webhookCache = new Map();
+    this.client = new Client({
+      intents: [
+        GatewayIntentBits.Guilds,
+        GatewayIntentBits.GuildMessages,
+        GatewayIntentBits.MessageContent,
+        GatewayIntentBits.GuildMessageReactions,
+      ],
+      partials: [Partials.Message, Partials.Channel, Partials.Reaction],
+    });
+    this.db = services.databaseService.getDatabase();
+    this.setupEventListeners();
+  }
+  
+  // Additional methods...
+}
+```
+
+Key functionality includes:
+- Discord client management
+- Guild tracking and updates
+- Webhook creation and caching
+- Message sending via webhooks
+- Avatar embed generation
+- Message reactions and replies
+
+#### ConversationManager
+
+The `ConversationManager` handles conversations between users and avatars:
+
+```javascript
+export class ConversationManager extends BasicService {
+  constructor(services) {
+    super(services, [
+      'discordService',
+      'avatarService',
+      'aiService',
+    ]);
+
+    this.GLOBAL_NARRATIVE_COOLDOWN = 60 * 60 * 1000; // 1 hour
+    this.lastGlobalNarrativeTime = 0;
+    this.channelLastMessage = new Map();
+    this.CHANNEL_COOLDOWN = 5 * 1000; // 5 seconds
+    this.MAX_RESPONSES_PER_MESSAGE = 2;
+    this.channelResponders = new Map();
+    this.requiredPermissions = ['ViewChannel', 'SendMessages', 'ReadMessageHistory', 'ManageWebhooks'];
+   
+    this.db = services.databaseService.getDatabase();
+  }
+  
+  // Methods...
+}
+```
+
+Key functionality includes:
+- Response generation
+- Context management
+- Rate limiting and cooldowns
+- Narrative generation
+- Permission validation
+
+#### Message Flow
+
+1. **Message Reception**: User sends a message in a Discord channel
+2. **Event Handling**: DiscordService receives the message event
+3. **Message Processing**: MessageHandler processes the message content 
+4. **Context Building**: ConversationManager assembles channel context and history
+5. **Avatar Selection**: System decides which avatars should respond
+6. **Response Generation**: AI generates contextually appropriate responses
+7. **Response Sending**: Responses are sent back to Discord via webhooks
+
+#### Data Storage
+
+The Discord integration uses several MongoDB collections:
+
+1. **connected_guilds**: Stores information about guilds the bot is connected to
+2. **detected_guilds**: Tracks all guilds the bot has detected
+3. **channel_contexts**: Stores channel conversation contexts and summaries
+4. **discord_messages**: Archives message history for context building
+5. **guild_config**: Stores per-guild configuration settings
+
+#### Rate Limiting
+
+The system implements multiple rate limiting mechanisms:
+
+- Global narrative cooldown (1 hour)
+- Per-channel response cooldown (5 seconds)
+- Maximum responses per message (2)
+- Discord API rate limit handling
+
+#### Webhooks
+
+Avatars communicate through Discord webhooks, which allow:
+- Custom usernames and avatars
+- Thread-aware messaging
+- Rich embed support
+- Reaction handling
+
+#### Improvement Plan
+
+#### 1. Enhanced Permissions Management
+
+**Current Status**: Basic permission checks for required Discord permissions.
+
+**Improvements**:
+- Implement granular per-channel and per-guild permission models
+- Add self-healing for missing permissions
+- Provide clear user feedback when permissions are missing
+- Implement permission audit system
+
+#### 2. Message Queue System
+
+**Current Status**: Direct message sending with basic rate limiting.
+
+**Improvements**:
+- Implement a robust message queue system
+- Add priority-based message processing
+- Implement smart batching for related messages
+- Add failure recovery and retry mechanisms
+
+#### 3. Multi-Modal Support
+
+**Current Status**: Text-based responses with basic embed support.
+
+**Improvements**:
+- Add voice message support
+- Implement image generation capabilities
+- Support for interactive embeds with buttons
+- Add support for Discord threads as conversation contexts
+
+#### 4. Analytics and Monitoring
+
+**Current Status**: Basic logging of Discord events and errors.
+
+**Improvements**:
+- Implement comprehensive analytics dashboard
+- Add conversation quality metrics
+- Monitor response times and error rates
+- Track user engagement and satisfaction
+
+#### 5. Scale and Performance
+
+**Current Status**: Works well for moderate guild counts.
+
+**Improvements**:
+- Implement sharding for large guild support
+- Optimize memory usage for context storage
+- Add caching layers for frequent data access
+- Implement intelligent context pruning
+
+#### Implementation Timeline
+
+1. **Phase 1 (2-3 weeks)**
+   - Enhance permission handling
+   - Implement message queue system
+   - Optimize context management
+
+2. **Phase 2 (3-4 weeks)**
+   - Add multi-modal support
+   - Implement analytics system
+   - Enhance webhook management
+
+3. **Phase 3 (4-6 weeks)**
+   - Implement sharding architecture
+   - Add advanced rate limiting
+   - Develop admin dashboard integrations
+
+#### Conclusion
+
+The Discord integration provides the core communication infrastructure for Moonstone Sanctum avatars. By implementing the planned improvements, we can enhance scalability, reliability, and user experience while supporting richer interaction models and better analytics.
+
+---
+
+
+
+## Document: services/social/README.md
+
+#### Social Integrations
+
+This section documents all social media integrations for the Moonstone Sanctum project.
+
+#### Available Integrations
+
+- [X (Twitter) Integration](x-integration.md) - Connect avatars to X accounts for posting and interactions
+- [Discord Integration](discord-integration.md) - Core communication platform for avatar interactions
+- [Telegram Integration](telegram-integration.md) - (Coming soon) Future messaging platform support
+
+#### Integration Architecture
+
+Each social integration follows a similar pattern:
+
+1. **Authentication** - OAuth or similar protocol for secure user authorization
+2. **Webhook/Event Systems** - For receiving updates from the platform
+3. **Message Processing** - Handling incoming messages and generating responses
+4. **Content Publishing** - Posting content to the platform programmatically
+5. **Rate Limiting** - Managing API quotas and preventing spam
+
+#### Common Services
+
+Integrations share several service components:
+
+- `conversationManager` - Context management and response generation
+- `promptService` - AI prompt templating and generation
+- `messageHandler` - Processing incoming messages
+- `toolService` - Platform-specific interaction tools
+
+#### Future Plans
+
+Additional platforms under consideration:
+
+- Matrix/Element
+- Slack
+- Instagram
+- Threads
+
+---
+
+
+
 ## Document: services/s3/s3Service.md
 
 #### S3 Service
@@ -2686,405 +3576,11 @@ The service supports different categories of items:
 
 #### X (Twitter) Authentication and Integration
 
-#### Overview
+> **DEPRECATED**: This documentation has been moved to the new Social Integrations section. Please refer to [X Integration](../social/x-integration.md) for the current documentation.
 
-Moonstone Sanctum includes a comprehensive integration with X (formerly Twitter) that allows avatars to authenticate, link their X accounts, and interact with the X platform programmatically. This document outlines the end-to-end X authentication and linking lifecycle, including technical details and recommended improvements.
+---
 
-#### Authentication Flow
-
-The X authentication system implements the OAuth 2.0 authorization code flow with PKCE (Proof Key for Code Exchange) and includes the following main components:
-
-1. **Client-side Integration**: Implemented in `xService.mjs` in the client's code
-2. **Server-side Routes**: Implemented in `xauth.mjs` as Express routes
-3. **X Social Tools**: Functionality for X social interactions (`XPostTool.mjs` and `XSocialTool.mjs`)
-
-#### Authentication Lifecycle
-
-```mermaid
-sequenceDiagram
-    participant User
-    participant Client
-    participant Server
-    participant X
-
-    User->>Client: Request X authentication
-    Client->>Server: Request auth URL (/api/xauth/auth-url?avatarId=123)
-    Server->>Server: Generate state & code verifier
-    Server->>Server: Store in x_auth_temp
-    Server->>X: Create auth URL
-    X-->>Server: Return auth URL
-    Server-->>Client: Return auth URL
-    Client->>Client: Open popup window with auth URL
-    Client-->>User: Show X auth popup
-    User->>X: Authorize app
-    X->>Server: Redirect to callback URL with code
-    Server->>Server: Verify state parameter
-    Server->>X: Exchange code for tokens
-    X-->>Server: Return access & refresh tokens
-    Server->>Server: Store tokens in x_auth collection
-    Server-->>Client: Send success message via window.opener
-    Client->>Client: Handle auth success
-    Client-->>User: Show auth success
-```
-
-#### Implementation Details
-
-#### 1. Client-Side Initialization
-
-When a user initiates X authentication:
-
-```javascript
-// From src/services/xService.mjs
-export async function initiateXAuth(avatarId) {
-  const response = await fetch(`/api/xauth/auth-url?avatarId=${avatarId}`);
-  const data = await response.json();
-  
-  // Open X authentication popup
-  window.open(
-    data.url,
-    'xauth_popup',
-    `width=600,height=650,top=${window.screen.height/2-325},left=${window.screen.width/2-300}`
-  );
-  
-  return { success: true, message: 'X authentication initiated' };
-}
-```
-
-#### 2. Server-Side Authorization URL Generation
-
-The server handles the request and generates an authorization URL:
-
-```javascript
-// From src/services/web/server/routes/xauth.mjs
-router.get('/auth-url', async (req, res) => {
-  const { avatarId } = req.query;
-  
-  // Generate state for CSRF protection
-  const state = crypto.randomBytes(16).toString('hex');
-  
-  // Create X API client
-  const client = new TwitterApi({
-    clientId: process.env.X_CLIENT_ID,
-    clientSecret: process.env.X_CLIENT_SECRET,
-  });
-  
-  // Generate OAuth URL with PKCE
-  const { url, codeVerifier } = client.generateOAuth2AuthLink(
-    process.env.X_CALLBACK_URL,
-    { scope: ['tweet.read', 'tweet.write', 'users.read', 'offline.access'], state }
-  );
-  
-  // Store temporarily for callback verification
-  await db.collection('x_auth_temp').insertOne({
-    avatarId,
-    codeVerifier,
-    state,
-    createdAt: new Date(),
-    expiresAt: new Date(Date.now() + AUTH_SESSION_TIMEOUT),
-  });
-  
-  res.json({ url, state });
-});
-```
-
-#### 3. OAuth Callback Processing
-
-After the user authorizes the application:
-
-```javascript
-router.get('/callback', async (req, res) => {
-  const { code, state } = req.query;
-  
-  // Find the temporary auth record
-  const storedAuth = await db.collection('x_auth_temp').findOne({ state });
-  
-  // Exchange the code for tokens
-  const { accessToken, refreshToken, expiresIn } = await client.loginWithOAuth2({
-    code,
-    codeVerifier: storedAuth.codeVerifier,
-    redirectUri: process.env.X_CALLBACK_URL,
-  });
-  
-  // Store tokens in database
-  await db.collection('x_auth').updateOne(
-    { avatarId: storedAuth.avatarId },
-    {
-      $set: {
-        accessToken,
-        refreshToken,
-        expiresAt: new Date(Date.now() + expiresIn * 1000),
-        updatedAt: new Date(),
-      }
-    },
-    { upsert: true }
-  );
-  
-  // Close the popup and notify the opener
-  res.send(`
-    <script>
-      window.opener.postMessage({ type: 'X_AUTH_SUCCESS' }, '*');
-      window.close();
-    </script>
-  `);
-});
-```
-
-#### 4. Wallet Linking
-
-After authentication, users can optionally link their wallet:
-
-```javascript
-// Client-side request
-export async function connectWalletToXAuth(avatarId, walletAddress, signature, message) {
-  const response = await fetch('/api/xauth/connect-wallet', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ avatarId, walletAddress, signature, message })
-  });
-  
-  return await response.json();
-}
-
-// Server-side handler
-router.post('/connect-wallet', async (req, res) => {
-  const { avatarId, walletAddress, signature, message } = req.body;
-  
-  // Verify signature
-  if (!verifyWalletSignature(message, signature, walletAddress)) {
-    return res.status(401).json({ error: 'Invalid signature' });
-  }
-  
-  // Update X auth record with wallet address
-  await db.collection('x_auth').updateOne(
-    { avatarId },
-    { $set: { walletAddress, updatedAt: new Date() } }
-  );
-  
-  res.json({ success: true });
-});
-```
-
-#### 5. Token Refresh
-
-When tokens expire, the system refreshes them:
-
-```javascript
-async function refreshAccessToken(auth) {
-  const client = new TwitterApi({
-    clientId: process.env.X_CLIENT_ID,
-    clientSecret: process.env.X_CLIENT_SECRET,
-  });
-  
-  const { accessToken, refreshToken: newRefreshToken, expiresIn } = 
-    await client.refreshOAuth2Token(auth.refreshToken);
-  
-  await db.collection('x_auth').updateOne(
-    { avatarId: auth.avatarId },
-    {
-      $set: {
-        accessToken,
-        refreshToken: newRefreshToken,
-        expiresAt: new Date(Date.now() + expiresIn * 1000),
-        updatedAt: new Date(),
-      },
-    }
-  );
-  
-  return { accessToken, expiresAt };
-}
-```
-
-#### 6. X Social Interactions
-
-The system provides X social tools for authenticated avatars:
-
-#### XPostTool
-Allows avatars to post to X:
-
-```javascript
-// From XPostTool.mjs
-async execute(message, params, avatar) {
-  // Check auth and retrieve tokens
-  const auth = await db.collection('x_auth').findOne({ avatarId: avatar._id.toString() });
-  
-  // Post to X
-  const twitterClient = new TwitterApi(decrypt(auth.accessToken));
-  await twitterClient.v2.tweet(messageText);
-  
-  // Store post record
-  await db.collection('social_posts').insertOne({
-    avatarId: avatar._id,
-    content: messageText,
-    timestamp: new Date(),
-    postedToX: true
-  });
-  
-  return `✨ Posted to X: "${messageText}"`;
-}
-```
-
-#### XSocialTool
-Provides enhanced social interactions with AI-driven actions:
-
-```javascript
-// From XSocialTool.mjs - AI-assisted X interactions
-async execute(message, params, avatar) {
-  if (command === 'auto') {
-    // Get context and X timeline data
-    const context = await this.getChannelContext(message.channel);
-    const { timeline, notifications } = await this.getXTimelineAndNotifications(avatar);
-    
-    // Generate AI-driven social actions
-    const actions = await this.generateSocialActions(avatar, context, timeline, notifications);
-    
-    // Execute actions
-    for (const action of actions.actions) {
-      switch (action.type) {
-        case 'post':
-          await v2Client.tweet(action.content);
-          break;
-        case 'reply':
-          await v2Client.reply(action.content, action.tweetId);
-          break;
-        // Additional action types...
-      }
-    }
-  }
-}
-```
-
-#### Data Storage
-
-The X authentication system uses two MongoDB collections:
-
-1. **x_auth_temp**: Temporary storage for authentication state and PKCE code verifier
-   - `avatarId`: The avatar being authenticated
-   - `codeVerifier`: PKCE code verifier
-   - `state`: Random state for CSRF protection
-   - `createdAt`: Creation timestamp
-   - `expiresAt`: Expiration timestamp (10 minutes)
-
-2. **x_auth**: Permanent storage for X authentication tokens
-   - `avatarId`: The authenticated avatar
-   - `accessToken`: OAuth access token (should be encrypted)
-   - `refreshToken`: OAuth refresh token (should be encrypted)
-   - `expiresAt`: Token expiration timestamp
-   - `walletAddress`: Associated wallet address (optional)
-   - `updatedAt`: Last update timestamp
-
-#### Security Considerations
-
-The implementation includes several security features:
-
-1. **PKCE Flow**: Uses code verifier and challenge for additional security
-2. **State Parameter**: Prevents CSRF attacks during the OAuth flow
-3. **Token Encryption**: Refresh tokens should be encrypted before storage
-4. **Wallet Signature Verification**: Validates wallet ownership for linking
-5. **Token Refresh**: Handles token expiration and refresh
-6. **Temporary Session Cleanup**: Removes expired authentication sessions
-
-#### Improvement Plan
-
-#### 1. Enhanced Token Security
-
-**Current Status**: The implementation includes token encryption, but it may not be consistently applied across all components.
-
-**Improvements**:
-- Ensure all tokens are encrypted at rest using a strong encryption method
-- Implement key rotation for encryption keys
-- Add a salt to each token's encryption to prevent rainbow table attacks
-
-#### 2. Improved Error Handling
-
-**Current Status**: Basic error handling exists but could be more comprehensive.
-
-**Improvements**:
-- Add more detailed error logging with correlation IDs
-- Implement more graceful degradation when X API is unavailable
-- Add retry logic for transient failures
-- Create a dashboard for monitoring authentication failures
-
-#### 3. User Experience Enhancements
-
-**Current Status**: Basic authentication flow with popup windows.
-
-**Improvements**:
-- Add a modal progress indicator during authentication
-- Implement silent token refresh when possible
-- Add clearer error messages for users
-- Provide visual indicators of X connection status
-- Add a "reconnect" option when tokens are expired but refresh tokens are invalid
-
-#### 4. Rate Limiting and Quotas
-
-**Current Status**: No explicit handling of X API rate limits.
-
-**Improvements**:
-- Implement client-side rate limiting to prevent quota exhaustion
-- Add a queue system for high-volume posting scenarios
-- Implement backoff strategies for rate limit errors
-- Add monitoring for quota usage
-
-#### 5. Enhanced X Features
-
-**Current Status**: Basic posting, replying, and timeline viewing.
-
-**Improvements**:
-- Add support for media uploads (images, videos)
-- Implement thread creation capabilities
-- Add analytics for X engagement
-- Support X Spaces creation and management
-- Add support for list management
-
-#### 6. Advanced AI Integration
-
-**Current Status**: Basic AI-driven social actions.
-
-**Improvements**:
-- Enhance persona consistency in X interactions
-- Add sentiment analysis for appropriate responses
-- Implement time-aware posting strategies
-- Add context-aware response generation
-- Develop engagement optimization algorithms
-
-#### 7. Compliance and Privacy
-
-**Current Status**: Basic OAuth compliance.
-
-**Improvements**:
-- Add explicit user consent tracking
-- Implement data retention policies
-- Add user data export capabilities
-- Implement detailed audit logging
-- Add compliance reporting features
-
-#### Implementation Timeline
-
-1. **Phase 1 (1-2 weeks)**
-   - Implement token encryption improvements
-   - Enhance error handling
-   - Add basic monitoring
-
-2. **Phase 2 (2-3 weeks)**
-   - Improve user experience
-   - Implement rate limiting
-   - Add media upload support
-
-3. **Phase 3 (3-4 weeks)**
-   - Enhance AI integration
-   - Add analytics
-   - Implement compliance features
-
-4. **Phase 4 (Ongoing)**
-   - Monitor and improve based on usage patterns
-   - Add new X platform features as they become available
-   - Scale systems based on demand
-
-#### Conclusion
-
-The X authentication and integration system provides a robust foundation for avatar interactions with the X platform. By implementing the improvement plan, we can enhance security, reliability, and functionality while providing a better user experience and more powerful social capabilities.
-
-With these enhancements, avatars will be able to maintain a consistent and engaging presence on X, leveraging AI-driven interactions while maintaining high security standards and compliance with platform policies.
+*This file is maintained for backwards compatibility. Please update your bookmarks.*
 
 ---
 
@@ -5373,54 +5869,54 @@ It illustrates how the **Platform Interfaces** connect with external APIs, how t
 ```mermaid
 flowchart TD
     subgraph PI["Platform Interfaces"]
-        DS[Discord Bot]:::blue
-        TB[Telegram Bot]:::blue
-        XB[X Bot]:::blue
-        WI[Web Interface]:::blue
+        DS["Discord Bot"]
+        TB["Telegram Bot"]
+        XB["X Bot"]
+        WI["Web Interface"]
     end
     
     subgraph PA["Platform APIs"]
-        DISCORD[Discord]:::gold
-        TG[Telegram]:::gold
-        X[Twitter]:::gold
-        WEB[REST API]:::gold
+        DISCORD["Discord"]
+        TG["Telegram"]
+        X["Twitter"]
+        WEB["REST API"]
     end
     
     subgraph CS["Core Services"]
-        CHAT[Chat Service]:::green
-        AS[Avatar Service]:::green
-        IS[Item Service]:::green
-        LS[Location Service]:::green
-        MS[Memory Service]:::green
-        AIS[AI Service]:::green
-        TS[Tool Service]:::green
+        CHAT["Chat Service"]
+        AS["Avatar Service"]
+        IS["Item Service"]
+        LS["Location Service"]
+        MS["Memory Service"]
+        AIS["AI Service"]
+        TS["Tool Service"]
     end
     
     subgraph RAS["RATi Avatar System"]
-        AM[Avatar Manager]:::purple
-        IM[Item Manager]:::purple
-        LM[Location Manager]:::purple
-        DW[Doorway Manager]:::purple
-        EV[Evolution Engine]:::purple
+        AM["Avatar Manager"]
+        IM["Item Manager"]
+        LM["Location Manager"]
+        DW["Doorway Manager"]
+        EV["Evolution Engine"]
     end
     
     subgraph SL["Storage Layer"]
-        MONGO[MongoDB]:::brown
-        S3[S3 Storage]:::brown
+        MONGO["MongoDB"]
+        S3["S3 Storage"]
     end
     
     subgraph BC["Blockchain Infrastructure"]
-        ARW[Arweave]:::orange
-        SOL[Solana]:::orange
-        IPFS[IPFS]:::orange
-        NFT[NFT Service]:::orange
+        ARW["Arweave"]
+        SOL["Solana"]
+        IPFS["IPFS"]
+        NFT["NFT Service"]
     end
     
     subgraph AI["AI Services"]
-        OR[OpenRouter]:::gold
-        GAI[Google AI]:::gold
-        OL[Ollama]:::gold
-        REP[Replicate]:::gold
+        OR["OpenRouter"]
+        GAI["Google AI"]
+        OL["Ollama"]
+        REP["Replicate"]
     end
     
     %% Platform connections
@@ -5493,12 +5989,20 @@ flowchart TD
     
     MS --> ARW
     
+    %% Styling
     classDef blue fill:#1a5f7a,stroke:#666,color:#fff
     classDef green fill:#145a32,stroke:#666,color:#fff
     classDef purple fill:#4a235a,stroke:#666,color:#fff
     classDef brown fill:#5d4037,stroke:#666,color:#fff
     classDef orange fill:#a04000,stroke:#666,color:#fff
     classDef gold fill:#7d6608,stroke:#666,color:#fff
+    
+    class DS,TB,XB,WI blue
+    class CHAT,AS,IS,LS,MS,AIS,TS green
+    class AM,IM,LM,DW,EV purple
+    class MONGO,S3 brown
+    class ARW,SOL,IPFS,NFT orange
+    class DISCORD,TG,X,WEB,OR,GAI,OL,REP gold
     
     style PI fill:#1a1a1a,stroke:#666,color:#fff
     style PA fill:#1a1a1a,stroke:#666,color:#fff
@@ -5624,39 +6128,39 @@ This component diagram illustrates how the RATi Avatar System maintains consiste
 ```mermaid
 flowchart TD
     subgraph BC["Blockchain Layer"]
-        SOL[Solana NFTs]:::orange
-        ARW[Arweave Metadata]:::orange
-        IPFS[IPFS Media]:::orange
+        SOL["Solana NFTs"]
+        ARW["Arweave Metadata"]
+        IPFS["IPFS Media"]
     end
     
     subgraph CM["Core Metadata"]
-        AT[Avatar Traits]:::purple
-        IT[Item Properties]:::purple
-        LT[Location Features]:::purple
-        MM[Memory Records]:::purple
+        AT["Avatar Traits"]
+        IT["Item Properties"]
+        LT["Location Features"]
+        MM["Memory Records"]
     end
     
     subgraph PI["Platform Interfaces"]
         subgraph DC["Discord"]
-            DA[Avatar Profiles]:::blue
-            DC1[Chat Channels]:::blue
-            DL[Location Rooms]:::blue
+            DA["Avatar Profiles"]
+            DC1["Chat Channels"]
+            DL["Location Rooms"]
         end
         
         subgraph TG["Telegram"]
-            TA[Avatar Bots]:::blue
-            TC[Telegram Chats]:::blue
+            TA["Avatar Bots"]
+            TC["Telegram Chats"]
         end
         
         subgraph XP["X Platform"]
-            XA[Avatar Accounts]:::blue
-            XT[Tweet Threads]:::blue
+            XA["Avatar Accounts"]
+            XT["Tweet Threads"]
         end
         
         subgraph WB["Web Interface"]
-            WD[Dashboard]:::blue
-            WI[Inventory]:::blue
-            WM[Map View]:::blue
+            WD["Dashboard"]
+            WI["Inventory"]
+            WM["Map View"]
         end
     end
     
@@ -5693,9 +6197,14 @@ flowchart TD
     MM --> XT
     MM --> WD
     
+    %% Styling
     classDef blue fill:#1a5f7a,stroke:#666,color:#fff
     classDef purple fill:#4a235a,stroke:#666,color:#fff
     classDef orange fill:#a04000,stroke:#666,color:#fff
+    
+    class SOL,ARW,IPFS orange
+    class AT,IT,LT,MM purple
+    class DA,DC1,DL,TA,TC,XA,XT,WD,WI,WM blue
     
     style BC fill:#1a1a1a,stroke:#666,color:#fff
     style CM fill:#1a1a1a,stroke:#666,color:#fff

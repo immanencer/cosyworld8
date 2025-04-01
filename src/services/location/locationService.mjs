@@ -448,10 +448,11 @@ If already suitable, return as is. If it needs editing, revise it while preservi
 
       const items = await this.itemService.searchItems(locationId, '');
       const prompt = `
-        As ${location.name}, describe the recent events, notable characters, and items present.
-        Focus on the atmosphere, interactions, and changes in the environment.
+        
         Recent activity:
         ${channelHistory.map(m => `${m.author}: ${m.content}`).join('\n')}
+        As ${location.name}, provide a short atmosheric summary of the recent activity in this location.
+        No more than one or two paragraphs.
       `;
       const summary = await this.aiService.chat([
         { role: 'system', content: 'You are a mystical location describing events and characters.' },
@@ -460,6 +461,7 @@ If already suitable, return as is. If it needs editing, revise it while preservi
 
       this.discordService.sendLocationEmbed(location, items, avatars, locationId);
       await this.discordService.sendAsWebhook(locationId, summary, {
+        id: locationId,
         name: location.name,
         imageUrl: location.imageUrl
       });

@@ -563,12 +563,13 @@ export class AvatarService extends BasicService {
       return null;
     }
     const { author } = message;
-    const avatar = await this.getAvatarByName(author.username);
-    if (!avatar) {
-      this.logger.warn(`No avatar found for user ${author.username}`);
-      return null;
+    if (message.rati?.avatarId) {
+      const result = await this.getAvatarById(message.rati.avatarId);
+      if (result) {
+        return result.avatar;
+      }
     }
-    return avatar;
+    return null;
   }
 
   /**

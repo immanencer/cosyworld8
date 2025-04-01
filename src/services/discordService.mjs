@@ -32,6 +32,8 @@ export class DiscordService extends BasicService {
     });
     this.db = services.databaseService.getDatabase();
     this.setupEventListeners();
+
+    this.messageCache = new Map(); // Initialize message cache
   }
 
   async initialize() {
@@ -197,6 +199,11 @@ export class DiscordService extends BasicService {
         });
       }
       this.logger.info(`Sent message to channel ${channelId} as ${username}`);
+      sentMessage.rati = {
+        avatarId: avatar.id,
+      };
+      this.databaseService.saveMessage(sentMessage);
+      this.logger.info(`Saved message to database with ID ${sentMessage.id}`);
       return sentMessage;
     } catch (error) {
       this.logger.error(`Failed to send webhook message to ${channelId}: ${error.message}`);

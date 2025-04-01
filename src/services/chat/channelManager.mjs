@@ -9,19 +9,6 @@ export class ChannelManager extends BasicService {
   }
 
   /**
-   * Marks a channel as active by updating its last activity timestamp in the database.
-   * @param {string} channelId - The ID of the channel.
-   * @param {string} guildId - The ID of the guild the channel belongs to.
-   */
-  async markChannelActive(channelId, guildId) {
-    await this.channelActivityCollection.updateOne(
-      { _id: channelId },
-      { $set: { lastActivityTimestamp: Date.now() }, $setOnInsert: { guildId: guildId } },
-      { upsert: true }
-    );
-  }
-
-  /**
    * Checks if a channel is currently active based on the activity timeout.
    * @param {string} channelId - The ID of the channel.
    * @returns {boolean} - True if the channel is active, false otherwise.

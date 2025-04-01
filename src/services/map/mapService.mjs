@@ -115,6 +115,10 @@ export class MapService extends BasicService {
     const db = this.ensureDb();
     const session = await this.db.client.startSession();
 
+    if (!currentAvatar._id) {
+      throw new Error('Current avatar has no ID');
+    }
+
     try {
       const actualPreviousLocationId = previousLocationId || currentAvatar?.channelId;
 

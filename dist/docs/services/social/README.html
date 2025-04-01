@@ -4,7 +4,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>X (Twitter) Authentication and Integration - CosyWorld Documentation</title>
+  <title>Social Integrations - CosyWorld Documentation</title>
   <!-- Mermaid script for diagram rendering -->
   <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
   <script>
@@ -70,12 +70,39 @@
 </head>
 <body>
   <nav><ul><li><a href="../../index.html">Home</a></li><li><span class="section-title">Overview</span><ul><li><a href="../../overview/03-system-diagram.html">System Diagram</a></li><li><a href="../../overview/02-system-overview.html">System Overview</a></li><li><a href="../../overview/01-introduction.html">CosyWorld Introduction</a></li></ul></li><li><span class="section-title">Systems</span><ul><li><a href="../../systems/06-rati-avatar-system.html">RATi Avatar System</a></li><li><a href="../../systems/05-intelligence-system.html">Intelligence System</a></li><li><a href="../../systems/04-action-system.html">Action System</a></li></ul></li><li><span class="section-title">Services</span><ul><li><a href="../../services/x-authentication.html">X (Twitter) Authentication and Integration</a></li><li><a href="../../services/architecture-report.html">CosyWorld Architecture Report</a></li><li><a href="../../services/README.html">CosyWorld Services Documentation</a></li><li><span class="section-title">World</span><ul><li><a href="../../services/world/questGeneratorService.html">Quest Generator Service</a></li><li><a href="../../services/world/locationService.html">Location Service</a></li><li><a href="../../services/world/itemService.html">Item Service</a></li></ul></li><li><span class="section-title">Web</span><ul><li><a href="../../services/web/webService.html">Web Service</a></li></ul></li><li><span class="section-title">Tools</span><ul><li><a href="../../services/tools/toolService.html">Tool Service</a></li></ul></li><li><span class="section-title">Social</span><ul><li><a href="../../services/social/x-integration.html">X (Twitter) Integration</a></li><li><a href="../../services/social/telegram-integration.html">Telegram Integration (Coming Soon)</a></li><li><a href="../../services/social/discord-integration.html">Discord Integration</a></li><li><a href="../../services/social/README.html">Social Integrations</a></li></ul></li><li><span class="section-title">S3</span><ul><li><a href="../../services/s3/s3Service.html">S3 Service</a></li></ul></li><li><span class="section-title">Quest</span><ul><li><a href="../../services/quest/questGeneratorService.html">Quest Generator Service</a></li></ul></li><li><span class="section-title">Media</span><ul><li><a href="../../services/media/s3Service.html">S3 Service</a></li><li><a href="../../services/media/imageProcessingService.html">Image Processing Service</a></li></ul></li><li><span class="section-title">Location</span><ul><li><a href="../../services/location/locationService.html">Location Service</a></li></ul></li><li><span class="section-title">Item</span><ul><li><a href="../../services/item/itemService.html">Item Service</a></li></ul></li><li><span class="section-title">Integration</span><ul><li><a href="../../services/integration/x-authentication.html">X (Twitter) Authentication and Integration</a></li></ul></li><li><span class="section-title">Foundation</span><ul><li><a href="../../services/foundation/logger.html">Logger Service</a></li><li><a href="../../services/foundation/databaseService.html">Database Service</a></li><li><a href="../../services/foundation/configService.html">Config Service</a></li><li><a href="../../services/foundation/basicService.html">Basic Service</a></li></ul></li><li><span class="section-title">Entity</span><ul><li><a href="../../services/entity/memoryService.html">Memory Service</a></li><li><a href="../../services/entity/avatarService.html">Avatar Service</a></li></ul></li><li><span class="section-title">Core</span><ul><li><a href="../../services/core/promptService.html">Prompt Service</a></li><li><a href="../../services/core/memoryService.html">Memory Service</a></li><li><a href="../../services/core/databaseService.html">Database Service</a></li><li><a href="../../services/core/basicService.html">Basic Service</a></li><li><a href="../../services/core/avatarService.html">Avatar Service</a></li><li><a href="../../services/core/aiService.html">AI Service</a></li></ul></li><li><span class="section-title">Communication</span><ul><li><a href="../../services/communication/conversationManager.html">Conversation Manager</a></li></ul></li><li><span class="section-title">Chat</span><ul><li><a href="../../services/chat/conversationManager.html">Conversation Manager</a></li></ul></li><li><span class="section-title">Blockchain</span><ul><li><a href="../../services/blockchain/tokenService.html">Token Service</a></li></ul></li><li><span class="section-title">Ai</span><ul><li><a href="../../services/ai/replicateService.html">Replicate Service</a></li><li><a href="../../services/ai/promptService.html">Prompt Service</a></li><li><a href="../../services/ai/openrouterAIService.html">OpenRouter AI Service</a></li><li><a href="../../services/ai/ollamaService.html">Ollama Service</a></li><li><a href="../../services/ai/googleAIService.html">Google AI Service</a></li><li><a href="../../services/ai/aiService.html">AI Service</a></li></ul></li></ul></li><li><span class="section-title">Deployment</span><ul><li><a href="../../deployment/08-future-work.html">Future Work Priorities</a></li><li><a href="../../deployment/07-deployment.html">Deployment Guide</a></li></ul></li></ul></nav>
-  <main><h1>X (Twitter) Authentication and Integration</h1>
-<blockquote>
-<p><strong>DEPRECATED</strong>: This documentation has been moved to the new Social Integrations section. Please refer to <a href="../../../../../services/social/x-integration">X Integration</a> for the current documentation.</p>
-</blockquote>
-<hr>
-<p><em>This file is maintained for backwards compatibility. Please update your bookmarks.</em></p>
+  <main><h1>Social Integrations</h1>
+<p>This section documents all social media integrations for the Moonstone Sanctum project.</p>
+<h2>Available Integrations</h2>
+<ul>
+<li><a href="x-integration.html">X (Twitter) Integration</a> - Connect avatars to X accounts for posting and interactions</li>
+<li><a href="discord-integration.html">Discord Integration</a> - Core communication platform for avatar interactions</li>
+<li><a href="telegram-integration.html">Telegram Integration</a> - (Coming soon) Future messaging platform support</li>
+</ul>
+<h2>Integration Architecture</h2>
+<p>Each social integration follows a similar pattern:</p>
+<ol>
+<li><strong>Authentication</strong> - OAuth or similar protocol for secure user authorization</li>
+<li><strong>Webhook/Event Systems</strong> - For receiving updates from the platform</li>
+<li><strong>Message Processing</strong> - Handling incoming messages and generating responses</li>
+<li><strong>Content Publishing</strong> - Posting content to the platform programmatically</li>
+<li><strong>Rate Limiting</strong> - Managing API quotas and preventing spam</li>
+</ol>
+<h2>Common Services</h2>
+<p>Integrations share several service components:</p>
+<ul>
+<li><code>conversationManager</code> - Context management and response generation</li>
+<li><code>promptService</code> - AI prompt templating and generation</li>
+<li><code>messageHandler</code> - Processing incoming messages</li>
+<li><code>toolService</code> - Platform-specific interaction tools</li>
+</ul>
+<h2>Future Plans</h2>
+<p>Additional platforms under consideration:</p>
+<ul>
+<li>Matrix/Element</li>
+<li>Slack</li>
+<li>Instagram</li>
+<li>Threads</li>
+</ul>
 </main>
 </body>
 </html>

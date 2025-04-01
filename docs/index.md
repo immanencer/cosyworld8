@@ -43,7 +43,6 @@ Welcome to the CosyWorld documentation! This comprehensive guide covers all aspe
 - [Message Handler](services/communication/messageHandler.md) - Message routing
 - [Decision Maker](services/communication/decisionMaker.md) - Response generation
 - [Periodic Task Manager](services/communication/periodicTaskManager.md) - Scheduled tasks
-- [Discord Service](services/communication/discordService.md) - Discord integration
 - [Command Handler](services/communication/commandHandler.md) - Command processing
 - [Spam Control Service](services/communication/spamControlService.md) - Rate limiting
 
@@ -69,10 +68,11 @@ Welcome to the CosyWorld documentation! This comprehensive guide covers all aspe
 - [Auth Service](services/web/authService.md) - Web authentication
 - [Thumbnail Service](services/web/thumbnailService.md) - Image thumbnails
 
-#### Integration Services
-- [X Authentication](services/integration/x-authentication.md) - Twitter integration
-- [X Service](services/integration/xService.md) - X platform utilities
-- [Rati Service](services/integration/ratiService.md) - Rati integration
+#### Social Integrations
+- [Social Overview](services/social/README.md) - Social media integration architecture
+- [X Integration](services/social/x-integration.md) - Twitter/X platform integration
+- [Discord Integration](services/social/discord-integration.md) - Discord platform integration
+- [Telegram Integration](services/social/telegram-integration.md) - Telegram integration (coming soon)
 
 #### Blockchain Services
 - [Token Service](services/blockchain/tokenService.md) - Token management
