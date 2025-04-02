@@ -61,9 +61,7 @@ export class MessageHandler extends BasicService {
     }
 
     // Persist the message to the database
-    if (!await this.databaseService.saveMessage(message)) {
-      this.logger.warn("Duplicate message detected, skipping save.");
-    }
+    await this.databaseService.saveMessage(message);
 
     const channel = message.channel;
     if (channel && channel.name) {
@@ -104,7 +102,7 @@ export class MessageHandler extends BasicService {
     await this.handleImageAnalysis(message);
 
     // Check if the message is from the bot itself
-    if (message.author.id === this.client.user.id) {
+    if (message.author.bot) {
       this.logger.debug("Message is from the bot itself, skipping.");
       return;
     }

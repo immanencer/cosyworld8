@@ -303,7 +303,7 @@ export class ConversationManager extends BasicService {
         userContent = [...imagePromptParts, { type: 'text', text: userContent }];
         chatMessages = chatMessages.map(msg => msg.role === 'user' ? { role: 'user', content: userContent } : msg);
       }
-      response = await this.aiService.chat(chatMessages, { model: avatar.model, max_tokens: 512 });
+      response = await this.aiService.chat(chatMessages, { model: avatar.model, max_tokens: 256 });
       if (!response) {
         this.logger.error(`Empty response generated for ${avatar.name}`);
         return null;

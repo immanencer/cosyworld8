@@ -23,11 +23,11 @@ export class OpenRouterAIService extends BasicService {
 
     // Default options that will be used if not overridden by the caller.
     this.defaultCompletionOptions = {
-      temperature: 0.7,
       max_tokens: 1000,
-      top_p: 1.0,
-      frequency_penalty: 0,
-      presence_penalty: 0,
+      temperature: 0.9,        // More randomness for creative output
+      top_p: 0.95,             // Broader token selection for diversity
+      frequency_penalty: 0.2,  // Moderate penalty to avoid repetitive loops
+      presence_penalty: 0.3,   // Push for new ideas and concepts
     };
 
     // Note: Chat defaults differ from completions. They can be adjusted as needed.
@@ -35,9 +35,10 @@ export class OpenRouterAIService extends BasicService {
       model: 'meta-llama/llama-3.2-1b-instruct',
       temperature: 0.7,
       max_tokens: 1000,
-      top_p: 1.0,
-      frequency_penalty: 0,
-      presence_penalty: 0,
+      temperature: 0.9,        // More randomness for creative output
+      top_p: 0.95,             // Broader token selection for diversity
+      frequency_penalty: 0.2,  // Moderate penalty to avoid repetitive loops
+      presence_penalty: 0.3,   // Push for new ideas and concepts
     };
 
     this.defaultVisionOptions = {
