@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Avatar Details</title>
+  <link rel="stylesheet" href="/css/tailwind.css">
+  <link rel="stylesheet" href="/css/avatar-styles.css">
+</head>
+<body class="bg-gray-900 text-white">
+  <!-- Navigation Bar -->
+  <nav class="bg-gray-800 shadow-lg">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="flex items-center justify-between h-16">
+        <div class="flex items-center">
+          <div class="flex-shrink-0">
+            <a href="/" class="flex items-center">
+              <img src="/images/logo.png" alt="Logo" class="h-8 w-auto">
+              <span class="ml-2 text-xl font-bold">CosyWorld</span>
+            </a>
+          </div>
+        </div>
+        <div class="wallet-container">
+          <!-- Wallet connection button will be injected here -->
+        </div>
+      </div>
+    </div>
+  </nav>
+
+  <div id="avatar-details-container" class="container mx-auto p-6">
+    <h1 class="text-3xl font-bold mb-4">Loading Avatar...</h1>
+    
+    <!-- Flip Card Container -->
+    <div id="avatar-card" class="avatar-card-container mx-auto max-w-2xl shadow-lg">
+      <div class="avatar-card relative bg-gray-800 rounded-lg overflow-hidden">
+        <!-- Front Side -->
+        <div class="front p-6">
+          <div class="flex flex-col md:flex-row md:items-center gap-6">
+            <div class="md:w-1/3 flex flex-col items-center">
+              <div class="relative">
+                <img id="avatar-image" src="" alt="Avatar Image" class="w-32 h-32 rounded-full object-cover">
+                <div id="claimed-badge" class="absolute top-0 right-0 bg-green-500 text-white text-xs p-1 rounded-full hidden">
+                  Claimed
+                </div>
+              </div>
+              <div id="tier-badge" class="mt-2 px-2 py-1 text-xs font-bold rounded"></div>
+            </div>
+            <div class="md:w-2/3">
+              <h2 id="avatar-name" class="text-2xl font-bold text-white"></h2>
+              <div id="avatar-meta" class="mt-1 text-sm text-gray-400"></div>
+              
+              <!-- Stats summary -->
+              <div class="grid grid-cols-3 gap-2 mt-4">
+                <div class="bg-gray-700 p-2 rounded text-center">
+                  <div id="avatar-hp" class="text-xl font-bold text-red-500"></div>
+                  <div class="text-xs text-gray-400">HP</div>
+                </div>
+                <div class="bg-gray-700 p-2 rounded text-center">
+                  <div id="avatar-ac" class="text-xl font-bold text-blue-500"></div>
+                  <div class="text-xs text-gray-400">AC</div>
+                </div>
+                <div class="bg-gray-700 p-2 rounded text-center">
+                  <div id="avatar-init" class="text-xl font-bold text-green-500"></div>
+                  <div class="text-xs text-gray-400">Initiative</div>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <div class="mt-6">
+            <h3 class="text-xl font-bold text-white">Social Posts</h3>
+            <div id="social-posts" class="social-posts-scroll mt-2 bg-gray-700 rounded p-3">
+              <!-- Social posts will load here -->
+            </div>
+          </div>
+          
+          <div class="mt-6 flex flex-wrap gap-2 justify-center">
+            <button id="claim-with-phantom" class="px-4 py-2 bg-purple-500 text-white rounded hover:bg-purple-600 flex items-center hidden">
+              <svg class="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                <path d="M20.6 12.25c0-.5-.4-.9-.9-.9h-1.8c-.5 0-.9.4-.9.9v1.8c0 .5.4.9.9.9h1.8c.5 0 .9-.4.9-.9v-1.8zm-10.1-.9h1.8c.5 0 .9.4.9.9v1.8c0 .5-.4.9-.9.9h-1.8c-.5 0-.9-.4-.9-.9v-1.8c0-.5.4-.9.9-.9zm-5.5 0h1.8c.5 0 .9.4.9.9v1.8c0 .5-.4.9-.9.9H5c-.5 0-.9-.4-.9-.9v-1.8c0-.5.4-.9.9-.9z"/>
+              </svg>
+              Claim with Phantom
+            </button>
+            <button id="link-to-x" class="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 flex items-center hidden">
+              <svg class="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
+              </svg>
+              <span id="link-x-text">Link to X</span>
+            </button>
+          </div>
+          
+          <div class="mt-4 text-center">
+            <a id="flip-to-back" href="javascript:void(0)" class="text-sm text-indigo-300 underline flex items-center justify-center">
+              <span>View Bio</span>
+              <svg class="w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"></path>
+              </svg>
+            </a>
+          </div>
+        </div>
+        
+        <!-- Back Side -->
+        <div class="back p-6 bg-gray-900">
+          <div class="text-center mb-6">
+            <h2 class="text-2xl font-bold text-white">Bio</h2>
+            <div class="mt-4 bg-gray-800 p-4 rounded-lg">
+              <h3 class="text-lg font-semibold mb-2">Personality</h3>
+              <p id="avatar-personality" class="text-gray-300">
+                <!-- Personality goes here -->
+              </p>
+            </div>
+            <div class="mt-4 bg-gray-800 p-4 rounded-lg">
+              <h3 class="text-lg font-semibold mb-2">Description</h3>
+              <p id="avatar-description" class="text-gray-300">
+                <!-- Description goes here -->
+              </p>
+            </div>
+          </div>
+          <div class="mt-4 text-center">
+            <a id="flip-to-front" href="javascript:void(0)" class="text-sm text-indigo-300 underline flex items-center justify-center">
+              <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path>
+              </svg>
+              <span>Back to Details</span>
+            </a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  
+  <!-- Toast Container -->
+  <div id="toast-container" class="fixed bottom-4 right-4 flex flex-col gap-2"></div>
+  
+  <!-- Load Scripts -->
+  <script src="https://cdn.jsdelivr.net/npm/@solana/web3.js@1.73.0/lib/index.iife.min.js"></script>
+  <script src="/js/avatar-details.js?id=123456"></script>
+</body>
+</html>

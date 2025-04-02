@@ -64,6 +64,7 @@ const avatarSchema = {
   claimed: 1,
   claimedBy: 1,
   emoji: 1,
+  stats: 1,
 };
 
 /**
@@ -371,7 +372,7 @@ export default function avatarRoutes(db) {
 
       // Fetch inventory items for this avatar (items where "owner" matches the avatar's _id)
       const items = await db.collection('items').find({
-        owner: new ObjectId(avatar._id)
+        owner: avatar._id
       }).toArray();
 
       // Generate thumbnails for each inventory item if needed
@@ -699,6 +700,17 @@ export default function avatarRoutes(db) {
         error: 'Failed to fetch avatar details',
         details: process.env.NODE_ENV === 'development' ? error.message : undefined
       });
+    }
+  });
+
+  router.get('/:avatarId/social-posts', async (req, res) => {
+    try {
+      const { avatarId } = req.params;
+      const posts = await db.collection('social_posts').find({ avatarId }).toArray();
+      res.json(posts);
+    } catch (error) {
+      console.error('Error fetching social posts:', error);
+      res.status(500).json({ error: 'Failed to fetch social posts' });
     }
   });
 

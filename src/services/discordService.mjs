@@ -246,7 +246,16 @@ export class DiscordService extends BasicService {
         )
         .setImage(imageUrl)
         .setTimestamp(new Date(updatedAt || Date.now()))
-        .setFooter({ text: `Profile of ${name}`, iconURL: imageUrl });
+        .setFooter({
+          text: `View more details about ${name}`,
+          iconURL: imageUrl,
+        });
+
+      embed.addFields({
+        name: "🔗 Avatar Page",
+        value: `[View Details](${process.env.BASE_URL}/avatar.html?id=${avatar._id})`,
+        inline: false,
+      });
 
       if (stats) {
         const { strength, dexterity, constitution, intelligence, wisdom, charisma, hp } = stats;

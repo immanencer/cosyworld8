@@ -1,0 +1,80 @@
+/* ...existing code... */
+
+#link-to-x:hover {
+  background-color: #2563eb; /* Tailwind's blue-600 */
+}
+
+/* Flip card styles */
+.avatar-card-container {
+  perspective: 1000px;
+  max-width: 800px;
+  margin: 0 auto;
+}
+.avatar-card {
+  transition: transform 0.8s;
+  transform-style: preserve-3d;
+  position: relative;
+  min-height: 600px;
+}
+.avatar-card .front,
+.avatar-card .back {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+  border-radius: 0.5rem;
+}
+.avatar-card .back {
+  transform: rotateY(180deg);
+}
+.avatar-card.flipped {
+  transform: rotateY(180deg);
+}
+
+/* Social posts scrolling container */
+.social-posts-scroll {
+  max-height: 200px;
+  overflow-y: auto;
+  padding-right: 1rem;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.2) transparent;
+}
+
+.social-posts-scroll::-webkit-scrollbar {
+  width: 6px;
+}
+
+.social-posts-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.social-posts-scroll::-webkit-scrollbar-thumb {
+  background-color: rgba(255, 255, 255, 0.2);
+  border-radius: 3px;
+}
+
+/* Button hover effects */
+#claim-with-phantom:hover {
+  background-color: #9333ea;
+}
+
+/* Toast animations */
+#toast-container .opacity-0 {
+  opacity: 0;
+}
+
+#toast-container .transition-opacity {
+  transition-property: opacity;
+}
+
+#toast-container .duration-500 {
+  transition-duration: 500ms;
+}
+
+/* Media queries for responsive design */
+@media (max-width: 640px) {
+  .avatar-card {
+    min-height: 750px;
+  }
+}
