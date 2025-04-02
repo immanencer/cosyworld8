@@ -56,11 +56,6 @@ export class RememberTool extends BasicTool {
   }
 
   async getSyntax() {
-    // return '🧠 [optional focus]';
-    return new Promise((resolve) => {
-      this.getEmoji().then(emoji => {
-        resolve(`${emoji} [optional focus]`);
-      });
-    });
+    return `${this.emoji} [optional focus]`;
   }
 }

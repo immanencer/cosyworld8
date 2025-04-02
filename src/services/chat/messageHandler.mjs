@@ -63,7 +63,6 @@ export class MessageHandler extends BasicService {
     // Persist the message to the database
     if (!await this.databaseService.saveMessage(message)) {
       this.logger.warn("Duplicate message detected, skipping save.");
-      return;
     }
 
     const channel = message.channel;

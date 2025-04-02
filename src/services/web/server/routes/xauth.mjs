@@ -2,8 +2,8 @@ import express from 'express';
 import crypto from 'crypto';
 import nacl from 'tweetnacl';
 import { TwitterApi } from 'twitter-api-v2';
-import ethUtil from 'ethereumjs-util';
 import bs58 from 'bs58';
+import { encrypt } from '../../../utils/encryption.mjs';
 
 const DEFAULT_TOKEN_EXPIRY = 7200; // 2 hours in seconds
 const AUTH_SESSION_TIMEOUT = 10 * 60 * 1000; // 10 minutes in milliseconds
@@ -144,8 +144,8 @@ export default function xauthRoutes(db) {
                 { avatarId: storedAuth.avatarId },
                 {
                     $set: {
-                        accessToken,
-                        refreshToken,
+                        accessToken: encrypt(accessToken),
+                        refreshToken: encrypt(refreshToken),
                         expiresAt,
                         updatedAt: new Date(),
                     },

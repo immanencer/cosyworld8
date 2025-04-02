@@ -1,7 +1,7 @@
 import { BasicTool } from './BasicTool.mjs';
 import { TwitterApi } from 'twitter-api-v2';
 import { MongoClient } from 'mongodb';
-import { encrypt, decrypt } from 'crypto'; // Assuming a crypto module for encryption
+import { encrypt, decrypt } from '../../utils/encryption.mjs'; // Placeholder for encryption
 
 // Singleton MongoClient for connection pooling
 let mongoClient = null;

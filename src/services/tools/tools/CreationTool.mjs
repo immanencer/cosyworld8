@@ -64,10 +64,6 @@ export class CreationTool extends BasicTool {
   }
 
   async getSyntax() {
-    return new Promise((resolve) => {
-      this.getEmoji().then(emoji => {
-        resolve(`${emoji} [target]`);
-      });
-    });
+    return `${this.emoji || ''} [target]`;
   }
 }

@@ -164,6 +164,6 @@ export class ItemTool extends BasicTool {
   }
 
   async getSyntax() {
-    return new Promise(r => '📦 select|take|drop|use|craft');
+    return '📦 select|take|drop|use|craft';
   }
 }

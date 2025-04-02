@@ -47,8 +47,8 @@ export class AttackTool extends BasicTool {
     }
 
     // Get or create stats for attacker and target using MapService and StatGenerationService
-    const attackerStats = await services.avatarService.getOrCreateStats(attackerId, services);
-    const targetStats = await services.avatarService.getOrCreateStats(targetAvatar._id, services);
+    const attackerStats = await services.avatarService.getOrCreateStats(attackerAvatar, services);
+    const targetStats = await services.avatarService.getOrCreateStats(targetAvatar, services);
 
     // D&D style attack roll: d20 + strength modifier
     const strMod = Math.floor((attackerStats.strength - 10) / 2);

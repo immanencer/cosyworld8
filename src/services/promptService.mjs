@@ -42,7 +42,6 @@ ${avatar.personality}
 ${avatar.dynamicPersonality}
 ${lastNarrative ? lastNarrative.content : ''}
 Location: ${location.name || 'Unknown'} - ${location.description || 'No description available'}
-Last updated: ${new Date(location.updatedAt).toLocaleString() || 'Unknown'}
   `.trim();
   }
 

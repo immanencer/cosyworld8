@@ -25,7 +25,8 @@ export async function handleCommands(message, services, avatar) {
       services.toolService.extractToolCommands(content).forEach(async ({ command, params }) => {
         const tool = services.toolService.tools.get(command);
         if (tool) {
-          await tool.execute(message, params, avatar, services);
+          const result = await tool.execute(message, params, avatar, services);
+          await services.discordService.replyToMessage(`-# ${tool.emoji} [${result}]`);
           await services.discordService.reactToMessage(message, tool.emoji);
         } else {
           await services.discordService.reactToMessage(message, "❌");

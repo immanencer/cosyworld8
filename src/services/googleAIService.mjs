@@ -94,29 +94,6 @@ export class GoogleAIService {
       return false;
     }
   }
-
-  toResponseSchema(formatObject, schemaName = "character") {
-    return {
-      type: "json_schema",
-      json_schema: {
-        name: schemaName,
-        strict: true,
-        schema: {
-          type: "object",
-          properties: Object.fromEntries(
-            Object.entries(formatObject.properties).map(([key, value]) => ({
-              [key]: {
-                type: value.type.toLowerCase(),
-                description: value.description || ""
-              }
-            }))
-          ),
-          required: formatObject.required,
-          additionalProperties: false
-        }
-      }
-    };
-  }
   
 
   async chat(messages, options = {}) {
@@ -249,6 +226,7 @@ Include fields: name, description, type, rarity, properties.`;
         properties: { type: 'object' },
       },
       required: ['name', 'description', 'type', 'rarity', 'properties'],
+      additionalProperties: false,
     };
 
     return await this.generateStructuredOutput({ prompt, schema });

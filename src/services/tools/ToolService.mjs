@@ -123,9 +123,13 @@ export class ToolService extends BasicService {
   async getCommandsDescription(guildId) {
     const commands = [];
     for (const [name, tool] of this.tools.entries()) {
-      const syntax = (await tool.getSyntax(guildId)) || `${tool.emoji || name}`;
-      const description = tool.getDescription() || 'No description available.';
-      commands.push(`**${name}**\nTrigger: ${tool.emoji || 'N/A'}\nSyntax: ${syntax}\n${description}`);
+      try {
+        const syntax = (await tool.getSyntax(guildId)) || `${tool.emoji || name}`;
+        const description = tool.getDescription() || 'No description available.';
+        commands.push(`**${name}**\nTrigger: ${tool.emoji || 'N/A'}\nSyntax: ${syntax}\n${description}`);
+      } catch (error) {
+        this.logger.error(`Error getting syntax for tool '${name}': ${error.message}`);
+      }
     }
     return commands.join('\n\n');
   }

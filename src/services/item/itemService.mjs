@@ -56,8 +56,8 @@ Name: "${itemName}"
 Description: "${description}"
 Include fields: name, description, type, rarity, properties.`;
     const schema = {
-      name: 'com.rati.item.create',
-      strict: true, 
+      name: 'rati-item',
+      strict: true,
       schema: {
         type: 'object',
         properties: {
@@ -67,7 +67,8 @@ Include fields: name, description, type, rarity, properties.`;
           rarity: { type: 'string' },
           properties: { type: 'object' }
         },
-        required: ['name', 'description', 'type', 'rarity', 'properties']
+        required: ['name', 'description', 'type', 'rarity', 'properties'],
+        additionalProperties: false,
       }
     };
     return await this.creationService.executePipeline({ prompt, schema });
@@ -108,15 +109,21 @@ Include fields: name, description, type, rarity, properties.`;
 Return a JSON object with keys: name, description, type, rarity, properties.`;
 
     const itemSchema = {
-      type: 'object',
-      properties: {
-        name: { type: 'string' },
-        description: { type: 'string' },
-        type: { type: 'string', enum: ['weapon', 'armor', 'consumable', 'quest', 'key', 'artifact'] },
-        rarity: { type: 'string', enum: ['common', 'uncommon', 'rare', 'epic', 'legendary'] },
-        properties: { type: 'object' }
-      },
-      required: ['name', 'description', 'type', 'rarity', 'properties']
+      name: 'rati-item',
+      strict: true,
+      schema: {
+        type: 'object',
+        properties: {
+          name: { type: 'string' },
+          description: { type: 'string' },
+          type: { type: 'string', enum: ['weapon', 'armor', 'consumable', 'quest', 'key', 'artifact'] },
+          rarity: { type: 'string', enum: ['common', 'uncommon', 'rare', 'epic', 'legendary'] },
+          properties: { type: 'object' }
+        },
+        required: ['name', 'description', 'type', 'rarity', 'properties'],
+
+        additionalProperties: false,
+      }
     };
 
     let itemData;
@@ -222,7 +229,9 @@ Return a JSON object with keys: name, description, type, rarity, properties.`;
         rarity: { type: 'string' },
         imageUrl: { type: 'string' }
       },
-      required: ['name', 'description', 'type', 'rarity', 'imageUrl']
+      required: ['name', 'description', 'type', 'rarity', 'imageUrl'],
+
+      additionalProperties: false,
     };
   }
 
@@ -275,15 +284,21 @@ Return a JSON object with keys: name, description, type, rarity, properties.`;
 Return a JSON object with keys: name, description, type, rarity, properties.`;
 
     const itemSchema = {
-      type: 'object',
-      properties: {
-        name: { type: 'string' },
-        description: { type: 'string' },
-        type: { type: 'string', enum: ['weapon', 'armor', 'consumable', 'quest', 'key', 'artifact'] },
-        rarity: { type: 'string', enum: ['common', 'uncommon', 'rare', 'epic', 'legendary'] },
-        properties: { type: 'object' }
-      },
-      required: ['name', 'description', 'type', 'rarity', 'properties']
+      name: 'rati-avatar',
+      strict: true,
+      schema: {
+        type: 'object',
+        properties: {
+          name: { type: 'string' },
+          description: { type: 'string' },
+          type: { type: 'string', enum: ['weapon', 'armor', 'consumable', 'quest', 'key', 'artifact'] },
+          rarity: { type: 'string', enum: ['common', 'uncommon', 'rare', 'epic', 'legendary'] },
+          properties: { type: 'object' }
+        },
+        required: ['name', 'description', 'type', 'rarity', 'properties'],
+
+        additionalProperties: false,
+      }
     };
 
     let itemData;

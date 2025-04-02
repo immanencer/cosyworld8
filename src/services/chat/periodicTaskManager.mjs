@@ -11,18 +11,17 @@ export class PeriodicTaskManager extends BasicService {
     ]);
     this.intervals = [];
     this.AMBIENT_CHECK_INTERVAL = 60 * 60 * 1000; // 1 hour
-    this.REFLECTION_INTERVAL = 1 * 3600 * 1000; // 1 hour
-    this.AMBIANCE_UPDATE_INTERVAL = 60 * 60 * 1000; // 1 hour
+    this.REFLECTION_INTERVAL = 8 * 3600 * 1000; // 1 hour
+    this.AMBIANCE_UPDATE_INTERVAL = 12 * 60 * 60 * 1000; // 1 hour
   }
 
   /** Starts all periodic tasks. */
   start() {
-    this.triggerAmbientResponses();
-    this.generateReflections();
     this.intervals.push(
       setInterval(() => this.triggerAmbientResponses(), this.AMBIENT_CHECK_INTERVAL),
       setInterval(() => this.generateReflections(), this.REFLECTION_INTERVAL),
     );
+    this.logger.info('Periodic tasks initialized.');
   }
 
   /** Stops all periodic tasks. */

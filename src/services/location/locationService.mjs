@@ -155,7 +155,9 @@ export class LocationService extends BasicService {
         properties: {
           description: { type: 'string' }
         },
-        required: ['description']
+        required: ['description'],
+
+        additionalProperties: false,
       }};
 
       const response = await this.creationService.executePipeline({ prompt, schema });

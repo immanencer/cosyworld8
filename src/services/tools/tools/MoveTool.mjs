@@ -217,6 +217,6 @@ export class MoveTool extends BasicTool {
    * Syntax instruction for help or usage references.
    */
   async getSyntax() {
-    return new Promise(r => '!move <location>');
+    return `${this.emoji} <location>`;
   }
 }
