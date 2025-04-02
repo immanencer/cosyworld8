@@ -16,13 +16,15 @@ export async function handleCommands(message, services, avatar) {
   }
 
   // Check if the message starts with any tool emoji
-  const isToolCommand = toolEmojis.some(emoji => content.startsWith(emoji));
+  const isToolCommand = toolEmojis.some(emoji => content.indexOf(emoji) !== -1);
 
   if (isToolCommand) {
     try {
       await services.mapService.updateAvatarPosition(avatar, message.channel.id);
 
-      services.toolService.extractToolCommands(content).forEach(async ({ command, params }) => {
+     const commands = services.toolService.extractToolCommands(content);
+     
+     commands. forEach(async ({ command, params }) => {
         const tool = services.toolService.tools.get(command);
         if (tool) {
           const result = await tool.execute(message, params, avatar, services);
@@ -30,13 +32,13 @@ export async function handleCommands(message, services, avatar) {
           await services.discordService.reactToMessage(message, tool.emoji);
         } else {
           await services.discordService.reactToMessage(message, "❌");
-          await services.discordService.replyToMessage(message, `Unknown command: ${command}`);
+          await services.discordService.replyToMessage(message, `-# [Unknown command: ${command}]`);
         }
       });
     } catch (error) {
       console.error("Error handling tool command:", error);
       await services.discordService.reactToMessage(message, "❌");
-      await services.discordService.replyToMessage(message, `There was an error processing your command: ${error.message}`);
+      await services.discordService.replyToMessage(message, `-# [There was an error processing your command: ${error.message}]`);
     }
     return;
   }
