@@ -1,0 +1,98 @@
+PublicPath: /dist/js/
+asset src_services_web_public_js_components_avatar_js.bundle.js 22 KiB {src_services_web_public_js_components_avatar_js} [emitted]
+asset adminPanel.bundle.js 21.4 KiB {adminPanel} [emitted] (name: adminPanel)
+asset main.bundle.js 14.9 KiB {main} [emitted] (name: main)
+asset src_services_web_public_js_tabs_tribes_js.bundle.js 9.35 KiB {src_services_web_public_js_tabs_tribes_js} [emitted]
+asset src_services_web_public_js_services_xService_mjs.bundle.js 6.17 KiB {src_services_web_public_js_services_xService_mjs} [emitted]
+Entrypoint main 14.9 KiB = main.bundle.js
+Entrypoint adminPanel 21.4 KiB = adminPanel.bundle.js
+chunk {adminPanel} (runtime: adminPanel) adminPanel.bundle.js (adminPanel) 18.6 KiB (javascript) 274 bytes (runtime) [entry] [rendered]
+  > ./src/services/web/public/js/adminPanel.js adminPanel
+chunk {main} (runtime: main) main.bundle.js (main) 4.1 KiB (javascript) 5.36 KiB (runtime) >{src_services_web_public_js_components_avatar_js}< >{src_services_web_public_js_tabs_tribes_js}< [entry] [rendered]
+  > ./src/services/web/public/js/main.js main
+chunk {src_services_web_public_js_components_avatar_js} (runtime: main) src_services_web_public_js_components_avatar_js.bundle.js 19.5 KiB <{main}> >{src_services_web_public_js_services_xService_mjs}< [rendered]
+  > ./components/avatar.js [./src/services/web/public/js/main.js] ./src/services/web/public/js/main.js 142:16-48
+chunk {src_services_web_public_js_services_xService_mjs} (runtime: main) src_services_web_public_js_services_xService_mjs.bundle.js 4.77 KiB <{src_services_web_public_js_components_avatar_js}> [rendered]
+  > ../services/xService.mjs [./src/services/web/public/js/components/avatar.js] ./src/services/web/public/js/components/avatar.js 257:33-67
+  > ../services/xService.mjs [./src/services/web/public/js/components/avatar.js] ./src/services/web/public/js/components/avatar.js 301:33-67
+chunk {src_services_web_public_js_tabs_tribes_js} (runtime: main) src_services_web_public_js_tabs_tribes_js.bundle.js 7.81 KiB <{main}> [rendered]
+  > ./tabs/tribes.js [./src/services/web/public/js/main.js] ./src/services/web/public/js/main.js 158:16-42
+runtime modules 5.62 KiB
+  webpack/runtime/ensure chunk 326 bytes {main} [code generated]
+    [no exports]
+    [used exports unknown]
+  webpack/runtime/get javascript chunk filename 174 bytes {main} [code generated]
+    [no exports]
+    [used exports unknown]
+  webpack/runtime/hasOwnProperty shorthand 88 bytes {main} [code generated]
+    [no exports]
+    [used exports unknown]
+  webpack/runtime/jsonp chunk loading 3 KiB {main} [code generated]
+    [no exports]
+    [used exports unknown]
+  webpack/runtime/load script 1.48 KiB {main} [code generated]
+    [no exports]
+    [used exports unknown]
+  webpack/runtime/make namespace object 274 bytes {main} [code generated]
+    [no exports]
+    [used exports unknown]
+  webpack/runtime/make namespace object 274 bytes {adminPanel} [code generated]
+    [no exports]
+    [used exports unknown]
+  webpack/runtime/publicPath 36 bytes {main} [code generated]
+    [no exports]
+    [used exports unknown]
+cacheable modules 54.7 KiB
+  optional modules 32.1 KiB [optional]
+    ./src/services/web/public/js/components/avatar.js 19.5 KiB {src_services_web_public_js_components_avatar_js} [depth 1] [optional] [built] [code generated]
+      [no exports]
+      [used exports unknown]
+    ./src/services/web/public/js/tabs/tribes.js 7.81 KiB {src_services_web_public_js_tabs_tribes_js} [depth 1] [optional] [built] [code generated]
+      [no exports]
+      [used exports unknown]
+    ./src/services/web/public/js/services/xService.mjs 4.77 KiB {src_services_web_public_js_services_xService_mjs} [depth 2] [optional] [built] [code generated]
+      [no exports]
+      [used exports unknown]
+  modules by path ./src/services/web/public/js/*.js 22.7 KiB
+    ./src/services/web/public/js/main.js 4.1 KiB {main} [depth 0] [built] [code generated]
+      [no exports]
+      [used exports unknown]
+    ./src/services/web/public/js/adminPanel.js 18.6 KiB {adminPanel} [depth 0] [built] [code generated]
+      [no exports]
+      [used exports unknown]
+
+LOG from webpack.Compilation
+    5 modules hashed, 0 from cache (1 variants per module in average)
+    100% code generated (5 generated, 0 from cache)
+    100% code generated (8 generated, 0 from cache)
++ 24 hidden lines
+
+LOG from webpack.ResolverCachePlugin
+    67% really resolved (6 real resolves with 0 cached but invalid, 3 cached valid, 0 concurrent)
+
+LOG from webpack.FlagDependencyExportsPlugin
+    100% of exports of modules have been determined (0 no declared exports, 5 not cached, 0 flagged uncacheable, 0 from cache, 0 from mem cache, 0 additional calculations due to dependencies)
++ 3 hidden lines
+
+LOG from webpack.buildChunkGraph
+    16 queue items processed (10 blocks)
+    4 chunk groups connected
+    4 chunk groups processed for merging (4 module sets, 0 forked, 0 + 0 modules forked, 0 + 0 modules merged into fork, 0 resulting modules)
+    4 chunk group info updated (0 already connected chunk groups reconnected)
++ 15 hidden lines
+
+LOG from webpack.FileSystemInfo
+    11 new snapshots created
+    0% root snapshot uncached (0 / 3)
+    0% children snapshot uncached (0 / 0)
+    0 entries tested
+    File info in cache: 29 timestamps 0 hashes 0 timestamp hash combinations
+    File timestamp snapshot optimization: 63% (50/80) entries shared via 2 shared snapshots (7 times referenced)
+    Directory info in cache: 0 timestamps 0 hashes 0 timestamp hash combinations
+    Missing items snapshot optimization: 69% (20/29) entries shared via 1 shared snapshots (3 times referenced)
+    Managed items info in cache: 3 items
+    Managed items snapshot optimization: 0% (0/3) entries shared via 0 shared snapshots (0 times referenced)
+    Managed files snapshot optimization: 0% (0/4) entries shared via 0 shared snapshots (0 times referenced)
+    Managed missing snapshot optimization: 0% (0/4) entries shared via 0 shared snapshots (0 times referenced)
+
+2025-04-01 17:59:20: webpack 5.98.0 compiled successfully in 448 ms (7115248fd283f245e558)

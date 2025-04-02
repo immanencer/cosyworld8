@@ -5,7 +5,6 @@ export async function handleCommands(message, services, avatar) {
   }
   const summonEmoji = (await services.configService.getGuildConfig(message.guildId)).summonEmoji || "🪄";
 
-
   // Get allowed tool emojis
   let toolEmojis = [];
   try {
@@ -21,13 +20,13 @@ export async function handleCommands(message, services, avatar) {
 
   if (isToolCommand) {
     try {
-      await services.discordService.reactToMessage(message, "⏳");
       await services.mapService.updateAvatarPosition(avatar, message.channel.id);
 
       services.toolService.extractToolCommands(content).forEach(async ({ command, params }) => {
         const tool = services.toolService.tools.get(command);
         if (tool) {
           await tool.execute(message, params, avatar, services);
+          await services.discordService.reactToMessage(message, tool.emoji);
         } else {
           await services.discordService.reactToMessage(message, "❌");
           await services.discordService.replyToMessage(message, `Unknown command: ${command}`);

@@ -103,9 +103,11 @@ export class OpenRouterAIService extends BasicService {
   async chat(messages, options = {}, retries = 3) {
     // Merge our default chat options with any caller options, preserving structure
     const mergedOptions = {
-      model: options.model || this.model,
+      model: this.model,
       transforms: ["middle-out"],
       messages: messages.filter(m => m.content),
+      ...this.defaultChatOptions
+      , ...options,
     };
 
     if (options.schema) {

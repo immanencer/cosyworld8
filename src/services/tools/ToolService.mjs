@@ -81,39 +81,50 @@ export class ToolService extends BasicService {
   }
 
   extractToolCommands(text) {
+    // Handle empty or null input
     if (!text) return { commands: [], cleanText: '', commandLines: [] };
-
-    const lines = text.split('\n');
+  
+    // Get the list of tool emojis from the map
+    const emojis = Array.from(this.toolEmojis.keys());
+    // Create a regex pattern to match any tool emoji, capturing it in the split
+    const pattern = new RegExp(`(${emojis.join('|')})`, 'g');
+    
     const commands = [];
-    const commandLines = [];
-    const narrativeLines = [];
-
+    // Split the text into lines
+    const lines = text.split('\n');
+  
+    // Process each line
     for (const line of lines) {
-      const trimmedLine = line.trim();
-      let isCommand = false;
-      for (const [emoji, toolName] of this.toolEmojis.entries()) {
-        if (trimmedLine.startsWith(emoji)) {
-          const rest = trimmedLine.slice(emoji.length).trim();
+      // Split the line by tool emojis, keeping the emojis in the result
+      const parts = line.split(pattern);
+      // Iterate over the parts array, stepping by 2 since emojis are at odd indices
+      for (let i = 1; i < parts.length; i += 2) {
+        const emoji = parts[i];
+        // Verify the emoji is in toolEmojis and there is text following it
+        if (this.toolEmojis.has(emoji) && i + 1 < parts.length) {
+          // Extract and trim the text following the emoji
+          const rest = parts[i + 1].trim();
+          // Split the remaining text into parameters by whitespace
           const params = rest ? rest.split(/\s+/) : [];
+          // Get the tool name associated with the emoji
+          const toolName = this.toolEmojis.get(emoji);
+          // Add the command object to the list
           commands.push({ command: toolName, emoji, params });
-          commandLines.push(line);
-          isCommand = true;
-          break;
         }
       }
-      if (!isCommand) narrativeLines.push(line);
     }
-
+  
+    // Return the array of extracted commands
     return commands;
   }
 
   // --- Command Processing ---
 
-  getCommandsDescription(guildId) {
+  async getCommandsDescription(guildId) {
     const commands = [];
     for (const [name, tool] of this.tools.entries()) {
-      const syntax = tool.getSyntax?.(guildId) || `${tool.emoji || name}`;
-      const description = tool.getDescription?.() || 'No description available.';
+      const syntax = (await tool.getSyntax(guildId)) || `${tool.emoji || name}`;
+      const description = tool.getDescription() || 'No description available.';
       commands.push(`**${name}**\nTrigger: ${tool.emoji || 'N/A'}\nSyntax: ${syntax}\n${description}`);
     }
     return commands.join('\n\n');

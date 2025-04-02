@@ -3,8 +3,11 @@
  * Handles X platform integration
  */
 
-import { ENDPOINTS } from '../core/config.js';
-import { showToast } from '../utils/toast.js';
+// Define API endpoints directly to avoid import issues
+const API_BASE_URL = '/api';
+const ENDPOINTS = {
+  XAUTH: `${API_BASE_URL}/xauth`
+};
 
 class XService {
   /**

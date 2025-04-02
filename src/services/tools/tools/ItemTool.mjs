@@ -163,7 +163,7 @@ export class ItemTool extends BasicTool {
     return 'Manage items: select an item from your inventory, take items from the ground, drop the selected item, use the selected item, or craft a new item from two existing items.';
   }
 
-  getSyntax() {
-    return '📦 select|take|drop|use|craft';
+  async getSyntax() {
+    return new Promise(r => '📦 select|take|drop|use|craft');
   }
 }

@@ -20,19 +20,32 @@ export class ConfigService extends BasicService {
       prompt: {
         summon: process.env.SUMMON_PROMPT || "Create a twisted avatar, a servant of dark V.A.L.I.S.",
         introduction: process.env.INTRODUCTION_PROMPT || "You've just arrived. Introduce yourself."
+      
       },
       ai: {
+        google: {
+          apiKey:  process.env.GOOGLE_AI_API_KEY,
+          model: process.env.GOOGLE_AI_MODEL || 'gemini-2.0-flash',
+          structuredModel: process.env.GOOGLE_AI_STRUCTURED_MODEL || 'gemini-2.0-flash',
+          chatModel: process.env.GOOGLE_AI_CHAT_MODEL || 'gemini-2.0-flash',
+          visionModel: process.env.GOOGLE_AI_VISION_MODEL || 'gemini-2.0-flash',
+          temperature: 0.7,
+          maxTokens: 1000,
+          topP: 1.0,
+          frequencyPenalty: 0,
+          presencePenalty: 0
+        },
         openrouter: {
           apiKey: process.env.OPENROUTER_API_KEY || process.env.OPENROUTER_API_TOKEN,
           model: process.env.OPENROUTER_MODEL || 'meta-llama/llama-3.2-3b-instruct',
           structuredModel: process.env.OPENROUTER_STRUCTURED_MODEL || 'openai/gpt-4o',
           chatModel: process.env.OPENROUTER_CHAT_MODEL || 'meta-llama/llama-3.2-1b-instruct',
           visionModel: process.env.OPENROUTER_VISION_MODEL || '"x-ai/grok-2-vision-1212"',
-          temperature: 0.7,
+          temperature: 0.8,
           maxTokens: 1000,
           topP: 1.0,
-          frequencyPenalty: 0,
-          presencePenalty: 0
+          frequencyPenalty: 0.5,
+          presencePenalty: 0.3
         },
         replicate: {
           apiToken: process.env.REPLICATE_API_TOKEN,
@@ -41,7 +54,6 @@ export class ConfigService extends BasicService {
           loraTriggerWord: process.env.REPLICATE_LORA_TRIGGER,
           style: "Cyberpunk, Manga, Anime, Watercolor, Experimental."
         },
-        metaModel: process.env.META_PROMPT_MODEL,
       },
       mongo: {
         uri: process.env.MONGO_URI,
@@ -56,6 +68,33 @@ export class ConfigService extends BasicService {
     };
     
     this.guildConfigCache = new Map(); // Cache for guild configurations
+  }
+
+  getAIConfig(service = null) {
+    if (service) {
+      return this.config.ai[service] || this.config.ai.openrouter;
+    }
+    if (!process.env.AI_SERVICE) {
+      console.warn('AI_SERVICE not found in environment variables, using default: openrouter');
+    }
+    service = service || process.env.AI_SERVICE || 'openrouter';
+    if (service === 'replicate') {
+      return this.config.ai.replicate;
+    }
+    if (service === 'openrouter') {
+      return this.config.ai.openrouter;
+    }
+    if (service === 'openai') {
+      return this.config.ai.openai;
+    }
+    if (service === 'ollama') {
+      return this.config.ai.ollama;
+    }
+    if (service === 'google') {
+      return this.config.ai.google;
+    }
+    console.warn(`Unknown AI service: ${service}. Defaulting to openrouter.`);
+    return this.config.ai.openrouter;
   }
 
 

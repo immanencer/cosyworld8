@@ -89,7 +89,7 @@ Based on all of the above context, share an updated personality that reflects yo
    * @returns {Promise<string>} The dungeon prompt.
    */
   async buildDungeonPrompt(avatar, guildId) {
-    const commandsDescription = this.toolService.getCommandsDescription(guildId) || '';
+    const commandsDescription = (await this.toolService.getCommandsDescription(guildId)) || '';
     const location = await this.mapService.getLocationDescription(avatar.channelId, avatar.channelName);
     const items = await this.itemService.getItemsDescription(avatar);
     const locationText = location ? `You are currently in ${location.name}. ${location.description}` : `You are in ${avatar.channelName || 'a chat channel'}.`;
@@ -115,8 +115,6 @@ Based on all of the above context, share an updated personality that reflects yo
     }
     return `
 These commands are available in this location:
-${summonEmoji} <any concept or thing> - Summon an avatar to your location.
-${breedEmoji} <avatar one> <avatar two> - Breed two avatars together.
 ${commandsDescription}
 ${locationText}
 ${selectedItemText}

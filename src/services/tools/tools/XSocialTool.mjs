@@ -1,8 +1,6 @@
 import { BasicTool } from '../BasicTool.mjs';
 import { TwitterApi } from 'twitter-api-v2';
 import { MongoClient } from 'mongodb';
-import { MemoryService } from '../../memoryService.mjs';
-import { AIService } from "../../aiService.mjs";
 import { encrypt, decrypt } from '../../utils/encryption.mjs'; // Placeholder for encryption
 
 let mongoClient = null;
@@ -69,7 +67,7 @@ export class XSocialTool extends BasicTool {
     }
 
     async generateSocialActions(avatar, context, timeline, notifications) {
-        const memories = await this.memoryService.getMemories(avatar._id, 20); // Last 5 memories
+        const memories = await this.memoryService.getMemories(avatar._id, 20); // Last 20 memories
         const systemPrompt = `You are an AI managing an avatar's X social presence. Based on the avatar's personality, memories, and current X context (timeline and notifications), generate a set of social actions (post, reply, quote, follow, like, repost, block). Return a JSON object with actions, each with a type and relevant details. Keep posts/replies under 280 characters. Example:
         {
           "actions": [
@@ -79,18 +77,18 @@ export class XSocialTool extends BasicTool {
           ]
         }`;
 
-        const responseSchema = {
-            type: "OBJECT",
+        const schema = {
+            type: "object",
             properties: {
                 actions: {
-                    type: "ARRAY",
+                    type: "array",
                     items: {
-                        type: "OBJECT",
+                        type: "object",
                         properties: {
-                            type: { type: "STRING", enum: ["post", "reply", "quote", "follow", "like", "repost", "block"] },
-                            content: { type: "STRING", description: "Text for post/reply/quote (max 280 chars)" },
-                            tweetId: { type: "STRING", description: "Tweet ID for reply/quote/like/repost" },
-                            userId: { type: "STRING", description: "User ID for follow/block" }
+                            type: { type: "string", enum: ["post", "reply", "quote", "follow", "like", "repost", "block"] },
+                            content: { type: "string", description: "Text for post/reply/quote (max 280 chars)" },
+                            tweetId: { type: "string", description: "Tweet ID for reply/quote/like/repost" },
+                            userId: { type: "string", description: "User ID for follow/block" }
                         },
                         required: ["type"]
                     }
@@ -99,12 +97,28 @@ export class XSocialTool extends BasicTool {
             required: ["actions"]
         };
 
-        const aiResponse = await this.aiService.chat([
-            { role: 'system', content: systemPrompt },
-            { role: 'user', content: `Avatar: ${JSON.stringify(avatar)}\nMemories: ${memories.map(m => m.content).join('\n')}\nContext: ${context}\nTimeline: ${JSON.stringify(timeline)}\nNotifications: ${JSON.stringify(notifications)}` }
-        ], { responseSchema });
+        const prompt = `Avatar:
+        ${JSON.stringify(avatar)}
 
-        return typeof aiResponse === 'string' ? JSON.parse(aiResponse.match(/\{[\s\S]*\}/)[0]) : aiResponse;
+        Memories:
+        ${memories.map(m => m.content).join('\n')}
+        
+        Context:
+        ${context}
+        
+        Timeline:
+        ${JSON.stringify(timeline)}
+        
+        Notifications: 
+        ${JSON.stringify(notifications)}`;
+
+        // Use CreationService's executePipeline method
+        const actions = await this.services.creationService.executePipeline({
+            prompt: systemPrompt + '\n' + prompt,
+            schema
+        });
+
+        return actions;
     }
 
     async execute(message, params, avatar) {
@@ -186,8 +200,8 @@ export class XSocialTool extends BasicTool {
         return 'Manage X interactions: status (timeline/notifications), post <message>, auto (AI-driven actions).';
     }
 
-    getSyntax() {
-        return '🐦 status | post <message> | auto';
+    async getSyntax() {
+        return `${this.emoji} <command> [<message>]`;
     }
 
     async close() {

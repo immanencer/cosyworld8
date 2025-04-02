@@ -65,7 +65,7 @@ export class ConversationManager extends BasicService {
         return null;
       }
       await this.storeNarrative(avatar._id, narrative);
-      await this.updateNarrativeHistory(avatar, narrative);
+      avatar = await this.updateNarrativeHistory(avatar, narrative);
       avatar.prompt = await this.services.promptService.getFullSystemPrompt(avatar, this.db);
       avatar.dynamicPrompt = narrative;
       await this.avatarService.updateAvatar(avatar);
@@ -243,7 +243,7 @@ export class ConversationManager extends BasicService {
     avatar.narrativeHistory = avatar.narrativeHistory || [];
     avatar.narrativeHistory.unshift(narrativeData);
     avatar.narrativeHistory = avatar.narrativeHistory.slice(0, 5);
-    await this.avatarService.updateAvatar(avatar);
+    return avatar
   }
 
   removeAvatarPrefix(response, avatar) {
@@ -303,7 +303,7 @@ export class ConversationManager extends BasicService {
         userContent = [...imagePromptParts, { type: 'text', text: userContent }];
         chatMessages = chatMessages.map(msg => msg.role === 'user' ? { role: 'user', content: userContent } : msg);
       }
-      response = await this.aiService.chat(chatMessages, { model: avatar.model, max_tokens: 1024 });
+      response = await this.aiService.chat(chatMessages, { model: avatar.model, max_tokens: 512 });
       if (!response) {
         this.logger.error(`Empty response generated for ${avatar.name}`);
         return null;

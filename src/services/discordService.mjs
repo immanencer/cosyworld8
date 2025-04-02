@@ -193,7 +193,7 @@ export class DiscordService extends BasicService {
       for (const chunk of chunks) {
         sentMessage = await webhook.send({
           content: chunk,
-          username,
+          username: username.replace(/discord/ig, ''),
           avatarURL: avatar.imageUrl || this.client.user.displayAvatarURL(),
           threadId: channel.isThread() ? channelId : undefined,
         });
@@ -202,6 +202,8 @@ export class DiscordService extends BasicService {
       sentMessage.rati = {
         avatarId: avatar.id,
       };
+      sentMessage.guild = channel.guild;
+      sentMessage.channel = channel;
       this.databaseService.saveMessage(sentMessage);
       this.logger.info(`Saved message to database with ID ${sentMessage.id}`);
       return sentMessage;
@@ -393,11 +395,11 @@ export class DiscordService extends BasicService {
   }
 
   async reactToMessage(message, emoji) {
-    try {
+    try {        
+      if (!message) throw new Error('Message not found');
       if (!message.react) {
         // Try to fetch the message if it's a partial
         message = this.client.channels.cache.get(message.channel.id).messages.cache.get(message.id);
-        if (!message) throw new Error('Message not found');
       }
       if (!message || !emoji || typeof emoji !== 'string') {
         this.logger.error('Invalid message or emoji for reaction');
@@ -406,7 +408,7 @@ export class DiscordService extends BasicService {
       await message.react(emoji);
       this.logger.info(`Reacted to message ${message.id} with ${emoji}`);
     } catch (error) {
-      this.logger.error(`Failed to react to message ${message.id}: ${error.message}`);
+      this.logger.error(`Failed to react to message ${message?.id}: ${error?.message}`);
     }
   }
 

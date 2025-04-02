@@ -4,8 +4,8 @@
  * A client library for interacting with the RATi API
  */
 
-const http = require('http');
-const https = require('https');
+import http from 'http';
+import https from 'https';
 
 class RATiVerseClient {
   /**

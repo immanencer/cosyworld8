@@ -55,7 +55,12 @@ export class RememberTool extends BasicTool {
     return 'Remember an important fact or generate a memory from context.';
   }
 
-  getSyntax() {
-    return '🧠 [optional focus]';
+  async getSyntax() {
+    // return '🧠 [optional focus]';
+    return new Promise((resolve) => {
+      this.getEmoji().then(emoji => {
+        resolve(`${emoji} [optional focus]`);
+      });
+    });
   }
 }

@@ -153,8 +153,8 @@ export class XPostTool extends BasicTool {
         return 'Post a message to X/Twitter (requires authorization). Use --preview to see before posting.';
     }
 
-    getSyntax() {
-        return '🐦 <message> [--preview | --post]';
+    async getSyntax() {
+        return `${this.emoji} <message> [--preview]`;
     }
 
     // Cleanup method for application shutdown (optional)

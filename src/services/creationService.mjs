@@ -2,7 +2,6 @@ import fs from 'fs/promises';
 import Replicate from 'replicate';
 import { BasicService } from './basicService.mjs';
 import { SchemaValidator } from './utils/schemaValidator.mjs';
-import { response } from 'express';
 
 export class CreationService extends BasicService {
   constructor(services) {
@@ -81,7 +80,7 @@ export class CreationService extends BasicService {
       // Generate AI response
       const response = await this.aiService.chat([{ role: 'user', content: prompt }], {
         ...options,
-        model: this.configService.config.ai.metaModel,
+        model: this.configService.getAIConfig().structuredModel,
         schema
       });
 

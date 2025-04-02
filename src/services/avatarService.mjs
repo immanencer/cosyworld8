@@ -476,7 +476,7 @@ export class AvatarService extends BasicService {
       }
       if (updateResult.modifiedCount === 1) {
         this.avatarCache = [];
-        this.logger.info(`Avatar ID ${avatar._id} updated successfully.`);
+        this.logger.info(`${avatar.emoji} (${avatar.name}) Avatar ID ${avatar._id} updated successfully.`);
         const updatedAvatar = await this.db.collection(this.AVATARS_COLLECTION).findOne({ _id: avatar._id });
         return updatedAvatar;
       } else {

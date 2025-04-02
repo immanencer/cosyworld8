@@ -77,7 +77,7 @@ export class LocationService extends BasicService {
    * @returns {Promise<string>} - The uploaded image URL.
    */
   async generateLocationImage(locationName, description) {
-    return await this.creationService.generateImage(`${locationName}: ${description}`, '16:9'); // Use CreationService
+    return await this.creationService.generateImage(`${locationName}: ${description} Overhead RPG Map Style`, '16:9'); // Use CreationService
   }
 
   /**
@@ -235,7 +235,7 @@ If already suitable, return as is. If it needs editing, revise it while preservi
         [
           {
             role: 'system',
-            content: 'Generate a brief, atmospheric description of this fantasy location, describing its layout and features in an interesting way.'
+            content: 'Generate a brief, atmospheric description of this location, describing its layout and features in an interesting way.'
           },
           {
             role: 'user',
@@ -381,11 +381,11 @@ If already suitable, return as is. If it needs editing, revise it while preservi
     this.ensureDbConnection();
 
     const location = await this.db.collection('locations').findOne({ channelId });
-    if (!location || !location.lastSummaryUpdate) {
+    if (!location || (!location.lastSummaryUpdate && !location.updatedAt)) {
       return true; // Needs update if no summary exists
     }
 
-    const lastUpdate = new Date(location.lastSummaryUpdate);
+    const lastUpdate = new Date(location.lastSummaryUpdate || location.updatedAt);
     const now = new Date();
     const hoursSinceUpdate = (now - lastUpdate) / (1000 * 60 * 60); // Convert ms to hours
     return hoursSinceUpdate > 48;

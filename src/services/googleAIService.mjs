@@ -3,14 +3,12 @@ import defaultModels from '../models.google.config.mjs';
 import { response } from 'express';
 
 export class GoogleAIService {
-  constructor(config = {}, services) {
+  constructor(services) {
+    const config = services.configService.config.ai.google;
     this.modelConfig = [];
     this.model = config.defaultModel || 'gemini-2.0-flash';
-    this.structured_model = this.configService.config.ai.openrouter.structured_model || 'gemini-2.0-flash';
-    this.apiKey = process.env.GOOGLE_AI_API_KEY;
-    if (!this.apiKey) {
-      throw new Error('GOOGLE_AI_API_KEY environment variable is not set');
-    }
+    this.structured_model = config.structured_model || 'gemini-2.0-flash';
+    this.apiKey = config.apiKey || process.env.GOOGLE_API_KEY;
     this.googleAI = new GoogleGenerativeAI(this.apiKey);
     this.services = services; // Store services
     this.lastModelFetchTime = 0;

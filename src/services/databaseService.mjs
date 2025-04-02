@@ -100,14 +100,7 @@ export class DatabaseService {
       try {
         const db = this.getDatabase();
         const messagesCollection = db.collection("messages");
-      // Check if the message already exists in the database
-      const existingMessage = await messagesCollection.findOne({
-        messageId: message.id
-      });
-      if (existingMessage) {
-        this.logger.debug(`Message ${message.id} already exists in the database.`);
-        return false;
-      }
+      
         // Prepare the message data for insertion
         const attachments = Array.from(message.attachments.values()).map(a => ({
           id: a.id,
@@ -147,12 +140,23 @@ export class DatabaseService {
           this.logger.error("Missing required message data:", messageData);
           return;
         }
-  
-        // Insert the message into the database
-        await messagesCollection.insertOne(messageData, {});
         await this.markChannelActive(message.channel.id, message.guild.id);
-        this.logger.debug("💾 Message saved to database");
-        return true;
+
+        // Insert the message into the database using updateOne with upsert
+        const result = await messagesCollection.updateOne(
+          { messageId: messageData.messageId },
+          { $setOnInsert: messageData },
+          { upsert: true }
+        );
+        
+        // Check if a new document was inserted
+        if (result.upsertedCount === 1) {
+          this.logger.debug("💾 Message saved to database");
+          return true;
+        } else {
+          this.logger.debug(`Message ${messageData.messageId} already exists in the database.`);
+          return false;
+        }
       } catch (error) {
         this.logger.error(`Error saving message to database: ${error.message}`);
         console.error(error.stack);

@@ -63,7 +63,11 @@ export class CreationTool extends BasicTool {
     return 'Handle custom abilities and actions';
   }
 
-  getSyntax() {
-    return '!<custom-action> [target]';
+  async getSyntax() {
+    return new Promise((resolve) => {
+      this.getEmoji().then(emoji => {
+        resolve(`${emoji} [target]`);
+      });
+    });
   }
 }

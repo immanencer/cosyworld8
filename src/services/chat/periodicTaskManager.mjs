@@ -58,9 +58,17 @@ export class PeriodicTaskManager extends BasicService {
 
   /** Generates reflections for active avatars. */
   async generateReflections() {
-    const avatars = await this.services.avatarService.getActiveAvatars();
-    for (const avatar of avatars.sort(() => Math.random() - 0.5)) {
-      await this.services.conversationManager.generateNarrative(avatar);
+    const avatars = (await this.services.avatarService.getActiveAvatars()).slice(0, 3);
+    if (avatars.length === 0) {
+      this.logger.info('No active avatars found for reflection generation.');
+      return;
     }
+
+    await Promise.all(
+      avatars.map(async (avatar) => {
+        await this.services.conversationManager.generateNarrative(avatar);
+      })
+    );
+    this.logger.info('Reflections generated for active avatars.');
   }
 }

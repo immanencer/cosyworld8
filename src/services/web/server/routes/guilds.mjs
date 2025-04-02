@@ -156,7 +156,7 @@ export default function(db, client, configService) {
 
       // If it exists, update it
       if (existingConfig) {
-        const result = await configService.updateGuildConfig(db, guildData.guildId, guildData);
+        await configService.updateGuildConfig(guildData.guildId, guildData);
         const updatedConfig = await configService.getGuildConfig(guildData.guildId);
         return res.json(updatedConfig);
       }
@@ -247,7 +247,7 @@ export default function(db, client, configService) {
     const updates = req.body;
 
     try {
-      const result = await configService.updateGuildConfig(db, guildId, updates);
+      await configService.updateGuildConfig(guildId, updates);
       const updatedConfig = await configService.getGuildConfig(guildId);
       res.json(updatedConfig);
     } catch (error) {
@@ -261,7 +261,7 @@ export default function(db, client, configService) {
     const updates = req.body;
 
     try {
-      const result = await configService.updateGuildConfig(db, guildId, updates);
+      await configService.updateGuildConfig(guildId, updates);
       const updatedConfig = await configService.getGuildConfig(guildId);
       res.json(updatedConfig);
     } catch (error) {

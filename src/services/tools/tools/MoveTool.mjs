@@ -216,7 +216,7 @@ export class MoveTool extends BasicTool {
   /**
    * Syntax instruction for help or usage references.
    */
-  getSyntax() {
-    return '!move <location>';
+  async getSyntax() {
+    return new Promise(r => '!move <location>');
   }
 }

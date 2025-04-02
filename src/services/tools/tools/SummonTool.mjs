@@ -51,7 +51,7 @@ export class SummonTool extends BasicTool {
    */
   async getSyntax(guildId) {
     const emoji = await this.getEmoji(guildId);
-    return `${emoji} <description or name>`;
+    return `${emoji} <description>`;
   }
 
   /**

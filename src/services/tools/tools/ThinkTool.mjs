@@ -16,8 +16,8 @@ export class ThinkTool extends BasicTool {
     return this.description;
   }
 
-  getSyntax() {
-    return '💭 <optional focus for your thoughts>';
+  async getSyntax() {
+    return `${this.emoji} <message>`;
   }
 
   // Borrowed from RememberTool to fetch channel context
