@@ -193,7 +193,7 @@ export class XSocialTool extends BasicTool {
                         results.push(`❌ ${action.type} failed: ${error.message}`);
                     }
                 }
-                return results.join('\n');
+                return results.map(T => `-# ${this.emoji} [${T}]`).join('\n');
             }
 
             return '❌ Unknown command. Use: status, post <message>, or auto';

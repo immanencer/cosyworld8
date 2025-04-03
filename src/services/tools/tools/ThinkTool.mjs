@@ -73,7 +73,7 @@ export class ThinkTool extends BasicTool {
         );
       }
 
-      return '💭 reflection generated';
+      return 'reflection generated';
     } catch (error) {
       console.error('Error in ThinkTool:', error);
       return `Error generating reflection: ${error.message}`;
