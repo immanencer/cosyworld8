@@ -2,6 +2,7 @@ import { BasicTool } from '../BasicTool.mjs';
 import { TwitterApi } from 'twitter-api-v2';
 import { MongoClient } from 'mongodb';
 import { encrypt, decrypt } from '../../utils/encryption.mjs'; // Placeholder for encryption
+import { act } from 'react';
 
 let mongoClient = null;
 
@@ -156,7 +157,9 @@ export class XSocialTool extends BasicTool {
                 const actions = await this.generateSocialActions(avatar, context, timeline, notifications);
                 let results = [];
 
+
                 for (const action of actions.actions) {
+                    const tweeturl = `[post](https://x.com/ratimics/status/${action.tweetId})`;
                     try {
                         switch (action.type) {
                             case 'post':
@@ -166,11 +169,11 @@ export class XSocialTool extends BasicTool {
                                 break;
                             case 'reply':
                                 await v2Client.reply(action.content, action.tweetId);
-                                results.push(`↩️ Replied to ${action.tweetId}: "${action.content}"`);
+                                results.push(`↩️ Replied to ${tweeturl}: "${action.content}"`);
                                 break;
                             case 'quote':
                                 await v2Client.tweet({ text: action.content, quote_tweet_id: action.tweetId });
-                                results.push(`📜 Quoted ${action.tweetId}: "${action.content}"`);
+                                results.push(`📜 Quoted ${tweeturl}: "${action.content}"`);
                                 break;
                             case 'follow':
                                 await v2Client.follow(action.userId);
@@ -178,11 +181,11 @@ export class XSocialTool extends BasicTool {
                                 break;
                             case 'like':
                                 await v2Client.like(await v2Client.me().then(u => u.data.id), action.tweetId);
-                                results.push(`❤️ Liked ${action.tweetId}`);
+                                results.push(`❤️ Liked ${tweeturl}`);
                                 break;
                             case 'repost':
                                 await v2Client.retweet(await v2Client.me().then(u => u.data.id), action.tweetId);
-                                results.push(`🔄 Reposted ${action.tweetId}`);
+                                results.push(`🔄 Reposted ${tweeturl}`);
                                 break;
                             case 'block':
                                 await v2Client.block(await v2Client.me().then(u => u.data.id), action.userId);
@@ -193,7 +196,7 @@ export class XSocialTool extends BasicTool {
                         results.push(`❌ ${action.type} failed: ${error.message}`);
                     }
                 }
-                return results.map(T => `-# ${this.emoji} [${T}]`).join('\n');
+                return results.map(T => `-# [${T}]`).join('\n');
             }
 
             return '❌ Unknown command. Use: status, post <message>, or auto';

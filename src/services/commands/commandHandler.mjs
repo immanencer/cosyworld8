@@ -24,11 +24,11 @@ export async function handleCommands(message, services, avatar) {
 
      const commands = services.toolService.extractToolCommands(content);
      
-     commands. forEach(async ({ command, params }) => {
+     commands.forEach(async ({ command, params }) => {
         const tool = services.toolService.tools.get(command);
         if (tool) {
           const result = await tool.execute(message, params, avatar, services);
-          await services.discordService.replyToMessage(message, `-# ${tool.emoji} [${result}]`);
+          await services.discordService.replyToMessage(message, `-# ${tool.emoji} **results for ${avatar.name}.**\n${result}`);
           await services.discordService.reactToMessage(message, tool.emoji);
         } else {
           await services.discordService.reactToMessage(message, "❌");
