@@ -19,7 +19,7 @@ export class DefendTool extends BasicTool {
     
     stats.isDefending = true;
     await services.avatarService.updateAvatarStats(avatar, stats);
-    return `🛡️ ${message.author.username} takes a defensive stance! AC increased by 2 until next attack.`;
+    return `-# 🛡️ [ ${message.author.username} takes a defensive stance! AC increased by 2 until next attack. ]`;
   }
 
   getDescription() {

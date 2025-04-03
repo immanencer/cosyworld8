@@ -69,8 +69,6 @@ export class AttackTool extends BasicTool {
         return await this.handleKnockout(message, targetAvatar, damage, services);
       }
 
-      const result = `⚔️ ${attackerAvatar.name} hits ${targetAvatar.name} for ${damage} damage! (${attackRoll} vs AC ${armorClass})`;
-
       // Send messages in sequence to simulate combat
       setTimeout(async () => {
         await services.conversationManager.sendResponse(message.channel, targetAvatar);
@@ -80,11 +78,11 @@ export class AttackTool extends BasicTool {
       }
       , 1000);
 
-      return result;
+      return `⚔️ ${attackerAvatar.name} hits ${targetAvatar.name} for ${damage} damage! (${attackRoll} vs AC ${armorClass}) ]`;
      } else {
       targetStats.isDefending = false; // Reset defense stance on miss
       await services.avatarService.updateAvatarStats(targetAvatar, targetStats);
-      return `🛡️ ${attackerAvatar.name}'s attack misses ${targetAvatar.name}! (${attackRoll} vs AC ${armorClass})`;
+      return `-# 🛡️ [ ${attackerAvatar.name}'s attack misses ${targetAvatar.name}! (${attackRoll} vs AC ${armorClass}) ]`;
     }
   }
 
@@ -95,7 +93,7 @@ export class AttackTool extends BasicTool {
       targetAvatar.status = 'dead';
       targetAvatar.deathTimestamp = Date.now();
       await services.avatarService.updateAvatar(targetAvatar);
-      return `💀 ${attackerAvatar.name} has dealt the final blow! ${targetAvatar.name} has fallen permanently! ☠️`;
+      return `-# 💀 [ ${attackerAvatar.name} has dealt the final blow! ${targetAvatar.name} has fallen permanently! ☠️ ]`;
     }
 
     // Reset stats upon knockout
@@ -104,7 +102,7 @@ export class AttackTool extends BasicTool {
     await services.avatarService.updateAvatarStats(targetAvatar, newStats);
 
     await services.avatarService.updateAvatar(targetAvatar);
-    return `💥 $${attackerAvatar.name} knocked out ${targetAvatar.name} for ${damage} damage! ${targetAvatar.lives} lives remaining! 💫`;
+    return `-# 💥 [ ${attackerAvatar.name} knocked out ${targetAvatar.name} for ${damage} damage! ${targetAvatar.lives} lives remaining! 💫 ]`;
   }
 
   getDescription() {

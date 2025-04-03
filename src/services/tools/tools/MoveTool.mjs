@@ -202,7 +202,7 @@ export class MoveTool extends BasicTool {
       return userFacingDepartureMessage || `${avatar.name} moved to ${newLocation.channel.name}!`;
     } catch (error) {
       console.error('Error in MoveTool execute:', error);
-      return `Failed to move: ${error.message}`;
+      return `-# [Failed to move: ${error.message}]`;
     }
   }
 

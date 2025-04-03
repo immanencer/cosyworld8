@@ -110,7 +110,7 @@ export class SummonTool extends BasicTool {
           await this.discordService.sendAvatarEmbed(existingAvatar, message.channel.id);
           await this.conversationManager.sendResponse(message.channel, existingAvatar);
         }, 1000);
-        return `${existingAvatar.name} has been summoned to this location.`;
+        return `-# [ ${existingAvatar.name} has been summoned to this location. ]`;
       }
 
       // Check summon limit (bypass for specific user ID, e.g., admin)
@@ -118,7 +118,7 @@ export class SummonTool extends BasicTool {
       const canSummon = message.author.id === '1175877613017895032' || (await this.checkDailySummonLimit(message.author.id));
       if (!canSummon) {
         await this.discordService.replyToMessage(message, `Daily summon limit of ${this.DAILY_SUMMON_LIMIT} reached. Try again tomorrow!`);
-        return 'Failed to summon: Daily limit reached';
+        return '-# [ Failed to summon: Daily limit reached. ]';
       }
 
       // Get guild configuration
@@ -149,7 +149,7 @@ export class SummonTool extends BasicTool {
       createdAvatar.createdAt = creationDate;
       if (!createdAvatar || !createdAvatar.name) {
         await this.discordService.replyToMessage(message, 'Failed to create avatar. Try a more detailed description.');
-        return 'Failed to create avatar. The description may be too vague.';
+        return '-# [ Failed to create avatar. The description may be too vague. ]';
       }
 
       // Generate introduction
@@ -186,7 +186,7 @@ export class SummonTool extends BasicTool {
       this.logger.error(`Summon error: ${error.message}`);
       this.logger.debug(`${error.stack}`);
       await this.discordService.reactToMessage(message, '❌');
-      return `Failed to summon: ${error.message}`;
+      return `-# [ Failed to summon: ${error.message} ]`;
     }
   }
 }

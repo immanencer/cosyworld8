@@ -36,7 +36,7 @@ export class ThinkTool extends BasicTool {
       } else if (params.length > 0) {
         messageToRespondTo = params.join(' ');
       } else {
-        return "Please provide a message to respond to or reply to a message.";
+        return "-# [Please provide a message to respond to or reply to a message.]";
       }
 
       // Step 2: Fetch conversation context
@@ -73,10 +73,10 @@ export class ThinkTool extends BasicTool {
         );
       }
 
-      return 'reflection generated';
+      return '-# [ Reflection Generated ]';
     } catch (error) {
       console.error('Error in ThinkTool:', error);
-      return `Error generating reflection: ${error.message}`;
+      return `-# [Error generating reflection: ${error.message}]`;
     }
   }
 }

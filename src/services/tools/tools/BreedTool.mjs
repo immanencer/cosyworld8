@@ -57,7 +57,7 @@ export class BreedTool extends BasicTool {
 
       if (mentionedAvatars.length !== 2) {
         await this.discordService.replyToMessage(message, "Please mention exactly two avatars to breed.");
-        return "Failed to breed: Need exactly two avatars";
+        return "-# [ Failed to breed: Need exactly two avatars. ]";
       }
 
       const [avatar1, avatar2] = mentionedAvatars;
@@ -73,7 +73,7 @@ export class BreedTool extends BasicTool {
 
       if (await checkRecentBreed(avatar1) || await checkRecentBreed(avatar2)) {
         await this.discordService.replyToMessage(message, `${(await checkRecentBreed(avatar1) ? avatar1 : avatar2).name} has been bred in the last 24 hours.`);
-        return "Failed to breed: Avatar recently bred";
+        return "-# [ Failed to breed: Avatar recently bred. ]";
       }
 
       await this.discordService.replyToMessage(message, `Breeding ${avatar1.name} with ${avatar2.name}...`);
@@ -95,10 +95,10 @@ export class BreedTool extends BasicTool {
       const result = await summonTool.execute(message, { breed: true, attributes: { parents: [avatar1._id, avatar2._id] } }, avatar);
       message.content = originalContent;
       
-      return `Successfully bred: ${result}`;
+      return `-# [ Successfully bred: ${result} ]`;
     } catch (error) {
       console.error('Error in BreedTool:', error);
-      return `Failed to breed avatars: ${error.message}`;
+      return `-# [ Failed to breed avatars: ${error.message} ]`;
     }
   }
 }
