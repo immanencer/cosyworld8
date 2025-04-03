@@ -85,7 +85,7 @@ router.get('/auth-url', async (req, res) => {
   // Generate OAuth URL with PKCE
   const { url, codeVerifier } = client.generateOAuth2AuthLink(
     process.env.X_CALLBACK_URL,
-    { scope: ['tweet.read', 'tweet.write', 'users.read', 'offline.access'], state }
+    { scope: ['tweet.read', 'tweet.write', 'users.read', 'follows.write', 'like.write', 'block.write', 'offline.access'], state }
   );
   
   // Store temporarily for callback verification

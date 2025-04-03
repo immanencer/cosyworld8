@@ -74,7 +74,7 @@ export default function xauthRoutes(db) {
     
             // Let the library generate codeChallenge from the codeVerifier.
             const { url, codeVerifier } = client.generateOAuth2AuthLink(process.env.X_CALLBACK_URL, {
-                scope: ['tweet.read', 'tweet.write', 'users.read', 'offline.access'].join(' '),
+                scope: ['tweet.read', 'tweet.write', 'users.read', 'follows.write', 'like.write', 'block.write', 'offline.access'].join(' '),
                 state,
             });
     
