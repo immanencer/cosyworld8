@@ -1,12 +1,12 @@
 
-run = "npm run dev"
+run = "NODE_ENV=production node src/index.mjs"
 modules = ["nodejs-20:v8-20230920-bd784b9"]
 
 [nix]
 channel = "stable-24_05"
 
 [deployment]
-run = ["sh", "-c", "NODE_ENV=production node src/index.mjs"]
+run = "NODE_ENV=production node src/index.mjs"
 deploymentTarget = "gce"
 build = ["sh", "-c", "NODE_OPTIONS='--max-old-space-size=4096' npm run build"]
 ignorePorts = true
@@ -15,33 +15,7 @@ ignorePorts = true
 localPort = 3000
 externalPort = 80
 
-[workflows]
-runButton = "Production"
+[[ports]]
+localPort = 3080
+externalPort = 3000
 
-[[workflows.workflow]]
-name = "Development"
-mode = "parallel"
-
-[[workflows.workflow.tasks]]
-task = "shell.exec"
-args = "npm run dev:js"
-
-[[workflows.workflow.tasks]]
-task = "shell.exec"
-args = "npm run dev:css"
-
-[[workflows.workflow.tasks]]
-task = "shell.exec"
-args = "npm run serve"
-
-[[workflows.workflow]]
-name = "Production"
-mode = "sequential"
-
-[[workflows.workflow.tasks]]
-task = "shell.exec"
-args = "npm run build"
-
-[[workflows.workflow.tasks]]
-task = "shell.exec"
-args = "NODE_ENV=production npm run serve:prod"
