@@ -1,10 +1,6 @@
 // index.mjs
-import express from 'express';
 import { logger } from "./services/logger.mjs";
 import { initializeServices } from "./services/initializeServices.mjs";
-
-const app = express();
-const PORT = process.env.PORT || 3000;
 
 async function shutdown(signal, services) {
   logger.info(`Received ${signal}. Shutting down gracefully...`);
@@ -33,10 +29,6 @@ async function main() {
     logger.error(`Fatal startup error: ${error.stack}`);
     await shutdown("STARTUP_ERROR", { databaseService: services?.databaseService });
   }
-  
-  app.listen(PORT, '0.0.0.0', () => {
-    logger.info(`Server running on port ${PORT}`);
-  });
 }
 
 main().catch((error) => {

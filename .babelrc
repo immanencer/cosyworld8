@@ -1,16 +1,3 @@
-
 {
-  "presets": [
-    "@babel/preset-react",
-    ["@babel/preset-env", {
-      "modules": "commonjs",
-      "targets": {
-        "node": "current",
-        "browsers": "> 0.25%, not dead"
-      }
-    }]
-  ],
-  "plugins": [
-    "@babel/plugin-transform-modules-commonjs"
-  ]
+  "presets": ["@babel/preset-env"]
 }
