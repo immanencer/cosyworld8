@@ -41,6 +41,7 @@
     "bs58": "^6.0.0",
     "cloudinary": "^2.5.1",
     "concurrently": "^9.1.2",
+    "copy-webpack-plugin": "^13.0.0",
     "cors": "^2.8.5",
     "discord.js": "^14.14.1",
     "dotenv": "^16.4.5",

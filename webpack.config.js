@@ -5,6 +5,7 @@ import tailwindcss from 'tailwindcss';
 import autoprefixer from 'autoprefixer';
 import { fileURLToPath } from 'url';
 import { dirname } from 'path';
+import CopyWebpackPlugin from 'copy-webpack-plugin';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -110,6 +111,12 @@ export default (env, argv) => {
       // Extract CSS into separate files
       new MiniCssExtractPlugin({
         filename: '../css/[name].css',
+      }),
+      // Copy static files to the dist folder
+      new CopyWebpackPlugin({
+        patterns: [
+          { from: './src/services/web/public', to: '../' }
+        ]
       }),
     ]
   };
