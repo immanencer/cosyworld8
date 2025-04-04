@@ -394,7 +394,7 @@ export class AvatarService extends BasicService {
    * @returns {Object} - The generated avatar details.
    */
   async generateAvatarDetails(userPrompt, guildId = null) {
-    const prompt = `Generate a unique and creative character for a role-playing game based on this description: "${userPrompt}". Include fields: name, description, personality, and emoji.`;
+    const prompt = `Generate a unique and creative character for a role-playing game based on this description: "${userPrompt}". Include fields: name, description, personality, and emoji, and model if specified, otherwise "none".`;
     const schema = {
       name: 'rati-avatar',
       strict: true,
@@ -405,8 +405,9 @@ export class AvatarService extends BasicService {
           description: { type: 'string' },
           personality: { type: 'string' },
           emoji: { type: 'string' },
+          model: { type: 'string' },
         },
-        required: ['name', 'description', 'personality', 'emoji'],
+        required: ['name', 'description', 'personality', 'emoji', 'model'],
         additionalProperties: false,
       }
     };

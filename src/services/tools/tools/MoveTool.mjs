@@ -7,17 +7,16 @@ export class MoveTool extends BasicTool {
    * @param {Object} services - The services container
    */
   constructor(services) {
-    super(services);
+    super(services, [
+      'avatarService',
+      'mapService',
+      'locationService',
+      'discordService',
+      'conversationManager',
+    ]);
     this.name = 'move';
     this.description = 'Move to the location specified, creating it if it does not exist.';
     this.emoji = '🏃‍♂️';
-    this.logger = services?.logger;
-    this.configService = services?.configService;
-    this.databaseService = services?.databaseService;
-    
-    // These will be set when the tool is used
-    this.toolService = null;
-    this.locationService = null;
   }
 
   /**
@@ -101,14 +100,7 @@ export class MoveTool extends BasicTool {
    * @param {Object} avatar - The avatar (must have at least { name, imageUrl, _id, channelId }).
    * @returns {Promise<string>} A status or error message.
    */
-  async execute(message, params, avatar, services) {
-    // Initialize services if not already set
-    this.toolService = services.toolService;
-    this.locationService = this.toolService?.locationService;
-    
-    if (!this.toolService) {
-      return 'ToolService not available';
-    }
+  async execute(message, params, avatar) {
     
     if (!this.locationService) {
       return 'LocationService not available';
@@ -157,7 +149,7 @@ export class MoveTool extends BasicTool {
 
       // 5. Update the avatar's position in the database
       // Don't send profile yet - we'll do it separately below
-      const updatedAvatar = await this.avatarService.updateAvatarPosition(
+      const updatedAvatar = await this.mapService.updateAvatarPosition(
         avatar,
         newLocation.channel.id,
         currentLocationId,

@@ -22,7 +22,7 @@ export async function handleCommands(message, services, avatar) {
     try {
       await services.mapService.updateAvatarPosition(avatar, message.channel.id);
 
-     const commands = services.toolService.extractToolCommands(content);
+     const { commands } = services.toolService.extractToolCommands(content);
      
      commands.forEach(async ({ command, params }) => {
         const tool = services.toolService.tools.get(command);
