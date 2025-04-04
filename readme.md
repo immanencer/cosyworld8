@@ -44,7 +44,7 @@ MONGO_DB_NAME="moonstone"
 # AI Services
 OPENROUTER_API_TOKEN="your_openrouter_token"
 REPLICATE_API_TOKEN="your_replicate_token"
-GOOGLE_AI_API_KEY="your_google_ai_key"
+GOOGLE_API_KEY="your_google_ai_key"
 
 # Storage
 S3_API_ENDPOINT="your_s3_endpoint"

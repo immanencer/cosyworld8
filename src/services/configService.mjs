@@ -24,7 +24,7 @@ export class ConfigService extends BasicService {
       },
       ai: {
         google: {
-          apiKey:  process.env.GOOGLE_AI_API_KEY,
+          apiKey:  process.env.GOOGLE_API_KEY || process.env.GOOGLE_AI_API_KEY,
           model: process.env.GOOGLE_AI_MODEL || 'gemini-2.0-flash',
           structuredModel: process.env.GOOGLE_AI_STRUCTURED_MODEL || 'gemini-2.0-flash',
           chatModel: process.env.GOOGLE_AI_CHAT_MODEL || 'gemini-2.0-flash',

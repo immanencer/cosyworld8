@@ -1,6 +1,5 @@
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import defaultModels from '../models.google.config.mjs';
-import { response } from 'express';
 
 export class GoogleAIService {
   constructor(services) {
