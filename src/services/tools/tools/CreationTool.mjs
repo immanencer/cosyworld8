@@ -42,7 +42,7 @@ export class CreationTool extends BasicTool {
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
-          model: process.env.OPENROUTER_MODEL,
+          model: process.env.STRUCTURED_MODEL,
           messages: [
             { role: "system", content: "You are a creative fantasy RPG narrator." },
             { role: "user", content: prompt }

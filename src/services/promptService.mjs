@@ -160,21 +160,22 @@ ${items}
   
     // Return the formatted prompt without a separate image descriptions list
     return `
-  Channel: #${context.channelName} in ${context.guildName}
-  
-  Channel summary:
-  ${channelSummary}
-  
-  Actions Available:
-  ${dungeonPrompt}
-  
-  Keep your response SHORT, respond with either a message  to contribute to the conversation or one of the available actions.
-  Since this is discord, you do not need to use capitalization, and feel free to use emojis.
-
-  Recent conversation history:
-  ${channelContextText}
-
-  Respond with one or two SHORT sentences or actions to continue the conversation.`.trim();
+    Channel: #${context.channelName} in ${context.guildName}
+    
+    Channel summary:
+    ${channelSummary}
+    
+    Actions Available:
+    ${dungeonPrompt}
+    
+    Keep your response SHORT, respond with either a message to contribute to the conversation or one of the available actions.
+    Since this is discord, you do not need to use capitalization, and feel free to use emojis.
+    
+    Recent conversation history:
+    ${channelContextText}
+    
+    Respond with one or two SHORT sentences to continue the conversation, or perform an action using the format: <emoji> <command_name> <parameters>.
+    `.trim();
   }
 
   /**

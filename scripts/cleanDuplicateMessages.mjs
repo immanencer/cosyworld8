@@ -5,7 +5,7 @@ import { configDotenv } from 'dotenv';
 configDotenv();
 
 const uri = process.env.MONGO_URI || 'mongodb://127.0.0.1:27017'; // or your connection string
-const dbName = 'cosyworld8';
+const dbName = process.env.MONGO_DB_NAME || 'cosyworld8';
 const collectionName = 'messages';
 
 async function cleanDuplicates() {

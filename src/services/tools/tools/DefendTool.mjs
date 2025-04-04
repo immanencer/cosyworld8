@@ -25,27 +25,4 @@ export class DefendTool extends BasicTool {
   getDescription() {
     return 'Take a defensive stance (+2 AC until next attack)';
   }
-
-  async getEmoji(guildId) {
-    if (!this.configService) return this.emoji;
-    
-    try {
-      const guildConfig = await this.configService.getGuildConfig(
-        guildId
-      );
-      
-      if (guildConfig?.toolEmojis?.defend) {
-        return guildConfig.toolEmojis.defend;
-      }
-      return this.emoji;
-    } catch (error) {
-      console.error(`Error getting defend emoji from config: ${error.message}`);
-      return this.emoji;
-    }
-  }
-
-  async getSyntax(guildId) {
-    const emoji = await this.getEmoji(guildId);
-    return `${emoji}`;
-  }
 }

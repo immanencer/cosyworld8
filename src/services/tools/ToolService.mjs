@@ -86,8 +86,8 @@ export class ToolService extends BasicService {
 
     // Get the list of tool emojis from the map
     const emojis = Array.from(this.toolEmojis.keys());
-    // Regex to match lines starting with an emoji followed by text
-    const pattern = new RegExp(`^(${emojis.join('|')})\\s+(.+)$`, 'gm');
+    // Regex to match lines starting with an emoji, followed by a command name (single word), and then parameters
+    const pattern = new RegExp(`^(${emojis.join('|')})\\s+(\\w+)\\s+(.+)$`, 'gm');
 
     const commands = [];
     const commandLines = [];
@@ -96,14 +96,17 @@ export class ToolService extends BasicService {
     // Find all matches in the text
     let match;
     while ((match = pattern.exec(text)) !== null) {
-        const emoji = match[1]; // The matched emoji
-        const rest = match[2].trim(); // The text following the emoji
-        const params = rest.split(/\s+/); // Split into parameters
-        const toolName = this.toolEmojis.get(emoji); // Get tool name from map
+        const emoji = match[1];         // The matched emoji
+        const supposedCommand = match[2]; // The word after the emoji (supposed command name)
+        const paramsString = match[3];   // The remaining text (parameters)
+        const toolName = this.toolEmojis.get(emoji); // The actual tool name from the map
 
-        // Add the command to the list
-        commands.push({ command: toolName, emoji, params });
-        commandLines.push(match[0]); // Store the full matched line
+        // Trigger the command only if the supposed command name matches the tool name
+        if (supposedCommand === toolName) {
+            const params = paramsString.split(/\s+/); // Split parameters by whitespace
+            commands.push({ command: toolName, emoji, params });
+            commandLines.push(match[0]); // Store the full matched line
+        }
     }
 
     // Remove command lines from cleanText
@@ -120,9 +123,9 @@ export class ToolService extends BasicService {
     const commands = [];
     for (const [name, tool] of this.tools.entries()) {
       try {
-        const syntax = (await tool.getSyntax(guildId)) || `${tool.emoji || name}`;
+        const syntax = (await tool.getSyntax(guildId)) || `${tool.emoji} ${name}`;
         const description = tool.getDescription() || 'No description available.';
-        commands.push(`**${name}**\nTrigger: ${tool.emoji || 'N/A'}\nSyntax: ${syntax}\n${description}`);
+        commands.push(`**${name}**\nCommand format: ${syntax}\nDescription: ${description}`);
       } catch (error) {
         this.logger.error(`Error getting syntax for tool '${name}': ${error.message}`);
       }

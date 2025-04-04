@@ -20,38 +20,11 @@ export class SummonTool extends BasicTool {
   }
 
   /**
-   * Retrieves the summon emoji for a guild, falling back to the default if unavailable.
-   * @param {string} guildId - The ID of the guild.
-   * @returns {string} The emoji to use.
-   */
-  async getEmoji(guildId) {
-    if (!this.configService) return this.emoji;
-
-    try {
-      const guildConfig = await this.configService.getGuildConfig(guildId);
-      return guildConfig?.toolEmojis?.summon || guildConfig?.summonEmoji || this.emoji;
-    } catch (error) {
-      console.error(`Error getting summon emoji: ${error.message}`);
-      return this.emoji;
-    }
-  }
-
-  /**
    * Returns a static description of the tool.
    * @returns {string} The description.
    */
   getDescription() {
     return 'Summons a new avatar into existence';
-  }
-
-  /**
-   * Returns the command syntax with the guild-specific emoji.
-   * @param {string} guildId - The ID of the guild.
-   * @returns {string} The syntax string.
-   */
-  async getSyntax(guildId) {
-    const emoji = await this.getEmoji(guildId);
-    return `${emoji} <description>`;
   }
 
   /**

@@ -37,7 +37,7 @@ export class ConfigService extends BasicService {
         },
         openrouter: {
           apiKey: process.env.OPENROUTER_API_KEY || process.env.OPENROUTER_API_TOKEN,
-          model: process.env.OPENROUTER_MODEL || 'meta-llama/llama-3.2-3b-instruct',
+          model: process.env.STRUCTURED_MODEL || 'meta-llama/llama-3.2-3b-instruct',
           structuredModel: process.env.OPENROUTER_STRUCTURED_MODEL || 'openai/gpt-4o',
           chatModel: process.env.OPENROUTER_CHAT_MODEL || 'meta-llama/llama-3.2-1b-instruct',
           visionModel: process.env.OPENROUTER_VISION_MODEL || '"x-ai/grok-2-vision-1212"',

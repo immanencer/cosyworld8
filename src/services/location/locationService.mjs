@@ -4,7 +4,7 @@ import { ObjectId } from 'mongodb';
 import { SchemaValidator } from '../utils/schemaValidator.mjs';
 import { BasicService } from '../basicService.mjs';
 
-const OPENROUTER_MODEL = process.env.OPENROUTER_MODEL || 'openai/gpt-4o';
+const STRUCTURED_MODEL = process.env.STRUCTURED_MODEL || 'openai/gpt-4o';
 
 export class LocationService extends BasicService {
   /**
@@ -202,7 +202,7 @@ If already suitable, return as is. If it needs editing, revise it while preservi
           }
         ],
         {
-          model: OPENROUTER_MODEL
+          model: STRUCTURED_MODEL
         }
       );
 
@@ -245,7 +245,7 @@ If already suitable, return as is. If it needs editing, revise it while preservi
           }
         ],
         {
-          model: OPENROUTER_MODEL
+          model: STRUCTURED_MODEL
         }
       );
       const locationImage = await this.generateLocationImage(
@@ -278,7 +278,7 @@ If already suitable, return as is. If it needs editing, revise it while preservi
       };
 
       // Post the evocative description as a webhook
-      await this.discordService.sendAsWebhook(thread.id, evocativeDescription, locationDocument);
+      await this.discordService.sendAsWebhook(thread.id, locationDescription, locationDocument);
 
       // Validate location schema
       const schemaValidator = new SchemaValidator();
@@ -335,7 +335,7 @@ If already suitable, return as is. If it needs editing, revise it while preservi
             content: `Refine this channel name for a fantasy location: "${locationName}". Return ONLY the refined name, less than 80 characters.`
           }
         ],
-        { model: OPENROUTER_MODEL }
+        { model: STRUCTURED_MODEL }
       ).catch(() => locationName.slice(0, 80)); // Fallback to original name if AI fails
 
       // Generate a description
@@ -344,7 +344,7 @@ If already suitable, return as is. If it needs editing, revise it while preservi
           { role: 'system', content: 'Generate a brief, atmospheric description of this fantasy location.' },
           { role: 'user', content: `Describe ${cleanLocationName} in 2-3 sentences.` }
         ],
-        { model: OPENROUTER_MODEL }
+        { model: STRUCTURED_MODEL }
       );
 
       // Generate an image

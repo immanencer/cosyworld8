@@ -1,55 +1,55 @@
+import { BasicService } from './basicService.mjs';
 import { GoogleGenerativeAI } from '@google/generative-ai';
-import defaultModels from '../models.google.config.mjs';
+import models from '../models.google.config.mjs';
+import stringSimilarity from 'string-similarity';
 
-export class GoogleAIService {
+export class GoogleAIService extends BasicService {
   constructor(services) {
-    const config = services.configService.config.ai.google;
-    this.modelConfig = [];
-    this.model = config.defaultModel || 'gemini-2.0-flash';
-    this.structured_model = config.structured_model || 'gemini-2.0-flash';
+    super(services, ['configService']);
+    const config = this.configService.config.ai.google;
     this.apiKey = config.apiKey || process.env.GOOGLE_API_KEY;
-    this.googleAI = new GoogleGenerativeAI(this.apiKey);
-    this.services = services; // Store services
-    this.lastModelFetchTime = 0;
-    this.modelRefreshInterval = 3600000; // 1 hour in milliseconds
-    this.defaultChatOptions = {}; // Added missing property
-    console.log(`Initialized GoogleAIService with default model: ${this.model}`);
 
-    // Initialize models immediately
-    this.fetchModels().then(() => {
-      if (!this.modelIsAvailable(this.model)) {
-        const availableModel = this.modelConfig.find(m => m.model.startsWith('gemini-'));
-        if (availableModel) {
-          console.log(`Default model ${this.model} not available, switching to ${availableModel.model}`);
-          this.model = availableModel.model;
-        }
-      }
-    }).catch(error => {
-      console.error('Failed to initialize models:', error);
-    });
-  }
-
-  async fetchModels() {
-    try {
-      const now = Date.now();
-      if (now - this.lastModelFetchTime > this.modelRefreshInterval || this.modelConfig.length === 0) {
-        console.log('Loading models from local configuration');
-        this.modelConfig = defaultModels || [];
-        this.lastModelFetchTime = now;
-        console.log(`Loaded ${this.modelConfig.length} models from configuration`);
-      }
-      return this.modelConfig;
-    } catch (error) {
-      console.error('Error loading model configuration:', error);
-      return [];
+    if (!this.apiKey) {
+      console.error(`[${new Date().toISOString()}] [FATAL] Google API Key is missing. Please configure GOOGLE_API_KEY.`);
+      this.googleAI = null;
+      return;
     }
+
+    this.googleAI = new GoogleGenerativeAI(this.apiKey);
+    this.model = config.defaultModel || 'gemini-1.5-flash';
+    this.structured_model = config.structured_model || this.model;
+    this.modelConfig = models;
+
+    // Default options for chat and completion
+    this.defaultCompletionOptions = {
+      temperature: 0.9,
+      maxOutputTokens: 1000,
+      topP: 0.95,
+      topK: 40,
+      frequencyPenalty: 0.2,
+      presencePenalty: 0.3,
+    };
+
+    this.defaultChatOptions = {
+      model: this.model,
+      temperature: 0.7,
+      maxOutputTokens: 1000,
+      topP: 0.95,
+      topK: 40,
+      frequencyPenalty: 0.2,
+      presencePenalty: 0.3,
+    };
+
+    this.defaultVisionOptions = {
+      model: 'gemini-1.5-vision',
+      temperature: 0.5,
+      maxOutputTokens: 200,
+    };
+
+    console.log(`[${new Date().toISOString()}] Initialized GoogleAIService with default model: ${this.model}`);
   }
 
   async selectRandomModel() {
-    if (this.modelConfig.length === 0) {
-      await this.fetchModels();
-    }
-
     const rarityRanges = [
       { rarity: 'common', min: 1, max: 12 },
       { rarity: 'uncommon', min: 13, max: 17 },
@@ -59,99 +59,205 @@ export class GoogleAIService {
 
     const roll = Math.ceil(Math.random() * 20);
     const selectedRarity = rarityRanges.find(range => roll >= range.min && roll <= range.max)?.rarity;
+
     const availableModels = this.modelConfig.filter(model => model.rarity === selectedRarity);
 
-    return availableModels.length > 0
-      ? availableModels[Math.floor(Math.random() * availableModels.length)].model
-      : this.model;
+    if (availableModels.length > 0) {
+      const randomIndex = Math.floor(Math.random() * availableModels.length);
+      return availableModels[randomIndex].model;
+    }
+    return this.model;
   }
 
-  async generateStructuredOutput({ prompt, schema, options = {} }) {
+  modelIsAvailable(model) {
+    if (!model) return false;
+    return this.modelConfig.some(m => m.model === model.replace(':online', ''));
+  }
+
+  async generateCompletion(prompt, options = {}) {
+    if (!this.googleAI) throw new Error("Google AI client not initialized.");
+
+    const modelId = options.model || this.model;
+    const generativeModel = this.googleAI.getGenerativeModel({ model: modelId });
+
+    const generationConfig = {
+      ...this.defaultCompletionOptions,
+      ...options,
+    };
+
     try {
-      const generativeModel = this.googleAI.getGenerativeModel({ model: this.structured_model });
-
-      const generationConfig = {
-        temperature: options.temperature || 0.7,
-        maxOutputTokens: options.maxOutputTokens || 1024,
-        topP: options.topP || 0.95,
-        topK: options.topK || 40,
-        responseSchema: schema
-      };
-
       const result = await generativeModel.generateContent({
         contents: [{ role: 'user', parts: [{ text: prompt }] }],
-        generationConfig
-      });
-
-      return result.response.json();
-    } catch (error) {
-      console.error('Error generating structured output:', error);
-      throw error;
-    }
-  }
-
-  async analyzeImage(imageBase64, mimeType, prompt, options = {}) {
-    try {
-      const generativeModel = this.googleAI.getGenerativeModel({ model: this.model });
-
-      const generationConfig = {
-        temperature: options.temperature || 0.7,
-        maxOutputTokens: options.maxOutputTokens || 1024,
-        topP: options.topP || 0.95,
-        topK: options.topK || 40
-      };
-
-      const parts = [
-        { inlineData: { data: imageBase64, mimeType } },
-        { text: prompt }
-      ];
-
-      const result = await generativeModel.generateContent({
-        contents: [{ role: 'user', parts }],
-        generationConfig
+        generationConfig,
       });
 
       return result.response.text();
     } catch (error) {
-      console.error('Image analysis error:', error);
+      console.error(`[${new Date().toISOString()}] Completion error:`, error.message);
       throw error;
     }
   }
 
-  async speakAsItem(item, channelId) {
-    const prompt = `
-      You are a mystical item called "${item.name}" located in a dungeon channel (ID: ${channelId}).
-      Your description is: ${item.description}.
-      Respond with only your speech as if you are the item coming to life in this channel.
-    `;
+  async chat(history, options = {}) {
+    if (!this.googleAI) throw new Error("Google AI client not initialized.");
+  
+    if (!Array.isArray(history) || history.length === 0) {
+      throw new Error("History must be a non-empty array.");
+    }
+  
+    // Normalize roles: convert 'assistant' -> 'model'
+    const normalizedHistory = history.map(msg => ({
+      ...msg,
+      role: msg.role === 'assistant' ? 'model' : msg.role
+    }));
+  
+    // Extract the last message (user input)
+    const lastMessage = normalizedHistory[normalizedHistory.length - 1];
+    if (lastMessage.role !== 'user') {
+      throw new Error("The last message in history must have the role 'user'.");
+    }
+  
+    // Pull system instructions
+    const systemMessages = normalizedHistory.filter(msg => msg.role === 'system');
+    const systemInstruction = systemMessages.map(msg => msg.content).join('\n');
+  
+    // All but the last message, minus system messages
+    let chatHistory = normalizedHistory
+      .slice(0, -1)
+      .filter(msg => msg.role !== 'system');
+  
+    // Inject dummy user message if history is empty or invalid
+    if (chatHistory.length === 0 || chatHistory[0].role !== 'user') {
+      console.warn("Inserting dummy user message to satisfy Google chat constraints.");
+      chatHistory.unshift({
+        role: 'user',
+        content: 'Hi.'
+      });
+    }
+  
+    // Format messages for Gemini
+    const formattedHistory = chatHistory.map(msg => ({
+      role: msg.role,
+      parts: [{ text: msg.content }]
+    }));
+  
+    // Select model
+    let modelId = options.model || this.model;
+    if (!this.modelIsAvailable(modelId)) {
+      console.warn(`Model "${modelId}" not available, selecting fallback.`);
+      modelId = await this.selectRandomModel();
+    }
+  
+    const generativeModel = this.googleAI.getGenerativeModel({ model: modelId });
+  
+    // Generation config
+    const generationConfig = {
+      temperature: options.temperature ?? 0.7,
+      maxOutputTokens: options.maxOutputTokens ?? 1500,
+      topP: options.topP ?? 0.95,
+      topK: options.topK ?? 40,
+      ...(options.schema && {
+        responseFormat: {
+          type: 'json',
+          schema: options.schema
+        }
+      })
+    };
+  
+    // Start chat session
+    const chatSession = generativeModel.startChat({
+      history: formattedHistory,
+      generationConfig,
+      ...(systemInstruction && {
+        systemInstruction: {
+          role: 'system',
+          parts: [{ text: systemInstruction }]
+        }
+      })
+    });
+  
     try {
-      const response = await this.chat(null, prompt);
-      return response || `The ${item.name} remains silent.`;
+      const result = await chatSession.sendMessage([
+        { text: lastMessage.content }
+      ]);
+      return result.response.text();
     } catch (error) {
-      return `The ${item.name} remains silent.`;
+      console.error(`[${new Date().toISOString()}] Chat error:`, error.message);
+      throw error;
+    }
+  }
+  
+  
+
+  async getModel(modelName) {
+    if (!modelName) {
+      console.warn('No model name provided for retrieval.');
+      return await this.selectRandomModel();
+    }
+
+    modelName = modelName.replace(/:online$/, '').trim();
+    const modelNames = this.modelConfig.map(model => model.model);
+
+    if (modelNames.includes(modelName)) {
+      return modelName;
+    }
+
+    const { bestMatch } = stringSimilarity.findBestMatch(modelName, modelNames);
+
+    if (bestMatch.rating > 0.5) {
+      console.info(`Fuzzy match found: "${modelName}" -> "${bestMatch.target}" (score: ${bestMatch.rating})`);
+      return bestMatch.target;
+    }
+
+    console.warn(`No close match found for model: "${modelName}", defaulting to random model.`);
+    return await this.selectRandomModel();
+  }
+
+  async speakAsItem(item, channelId) {
+    if (!item || !item.name || !item.description) {
+      console.warn("Invalid item:", item);
+      return "The item glitches silently.";
+    }
+
+    const prompt = `
+      You are a mystical item called "${item.name}".
+      Description: ${item.description}.
+      You're in a channel (ID: ${channelId}).
+      Generate a short (10–30 words), immersive phrase of what the item would say or sound like.
+      Do not use quotation marks or identify yourself explicitly.
+    `;
+
+    try {
+      const response = await this.chat(null, prompt, { temperature: 0.8, maxOutputTokens: 60 });
+      return response?.trim() || `The ${item.name} remains eerily silent.`;
+    } catch {
+      return `The ${item.name} remains unnervingly silent.`;
     }
   }
 
-  // Example usage for item creation
   async createItem(itemName, description) {
-    const prompt = `Generate a JSON object for an item with the following details:
+    const prompt = `Create a fantasy RPG item as JSON.
 Name: "${itemName}"
 Description: "${description}"
-Include fields: name, description, type, rarity, properties.`;
+Fields: name, description, type, rarity (common/uncommon/rare/legendary), properties (e.g., {damage: "1d6"})`;
 
     const schema = {
-      type: 'object',
+      type: "OBJECT",
       properties: {
-        name: { type: 'string' },
-        description: { type: 'string' },
-        type: { type: 'string' },
-        rarity: { type: 'string' },
-        properties: { type: 'object' },
+        name: { type: "STRING" },
+        description: { type: "STRING" },
+        type: { type: "STRING" },
+        rarity: { type: "STRING", enum: ["common", "uncommon", "rare", "legendary"] },
+        properties: { type: "OBJECT" },
       },
-      required: ['name', 'description', 'type', 'rarity', 'properties'],
-      additionalProperties: false,
+      required: ['name', 'description', 'type', 'rarity', 'properties']
     };
 
-    return await this.generateStructuredOutput({ prompt, schema });
+    try {
+      return await this.generateStructuredOutput({ prompt, schema, options: { temperature: 0.5 } });
+    } catch (error) {
+      console.error(`Failed to generate item "${itemName}":`, error.message);
+      return null;
+    }
   }
 }

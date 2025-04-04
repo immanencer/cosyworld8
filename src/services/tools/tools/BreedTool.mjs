@@ -20,28 +20,6 @@ export class BreedTool extends BasicTool {
     return 'Breeds two existing avatars to create a new one';
   }
 
-  async getEmoji(guildId) {
-    if (!this.configService) return this.emoji;
-    
-    try {
-      const guildConfig = await this.configService.getGuildConfig(
-        guildId
-      );
-      
-      if (guildConfig?.toolEmojis?.breed) {
-        return guildConfig.toolEmojis.breed;
-      }
-      return this.emoji;
-    } catch (error) {
-      console.error(`Error getting breed emoji from config: ${error.message}`);
-      return this.emoji;
-    }
-  }
-
-  async getSyntax(guildId) {
-    const emoji = await this.getEmoji(guildId);
-    return `${emoji} <avatar1> <avatar2>`;
-  }
   async getMemories(avatar, count = 10) {
     const memoryRecords = await this.memoryService.getMemories(avatar._id, count);
     return memoryRecords.map(m => m.memory).join('\n');
