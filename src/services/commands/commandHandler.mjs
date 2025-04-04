@@ -27,9 +27,9 @@ export async function handleCommands(message, services, avatar) {
      commands.forEach(async ({ command, params }) => {
         const tool = services.toolService.tools.get(command);
         if (tool) {
+          await services.discordService.reactToMessage(message, tool.emoji);
           const result = await tool.execute(message, params, avatar, services);
           await services.discordService.replyToMessage(message, `-# ${tool.emoji} **results for ${avatar.name}.**\n${result}`);
-          await services.discordService.reactToMessage(message, tool.emoji);
         } else {
           await services.discordService.reactToMessage(message, "❌");
           await services.discordService.replyToMessage(message, `-# [Unknown command: ${command}]`);

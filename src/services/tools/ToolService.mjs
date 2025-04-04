@@ -82,41 +82,37 @@ export class ToolService extends BasicService {
 
   extractToolCommands(text) {
     // Handle empty or null input
-    if (!text) return { commands: [], cleanText: '', commandLines: [] };
-  
+    if (!text) return { commands: [], cleanText: text || '', commandLines: [] };
+
     // Get the list of tool emojis from the map
     const emojis = Array.from(this.toolEmojis.keys());
-    // Create a regex pattern to match any tool emoji, capturing it in the split
-    const pattern = new RegExp(`(${emojis.join('|')})`, 'g');
-    
+    // Regex to match lines starting with an emoji followed by text
+    const pattern = new RegExp(`^(${emojis.join('|')})\\s+(.+)$`, 'gm');
+
     const commands = [];
-    // Split the text into lines
-    const lines = text.split('\n');
-  
-    // Process each line
-    for (const line of lines) {
-      // Split the line by tool emojis, keeping the emojis in the result
-      const parts = line.split(pattern);
-      // Iterate over the parts array, stepping by 2 since emojis are at odd indices
-      for (let i = 1; i < parts.length; i += 2) {
-        const emoji = parts[i];
-        // Verify the emoji is in toolEmojis and there is text following it
-        if (this.toolEmojis.has(emoji) && i + 1 < parts.length) {
-          // Extract and trim the text following the emoji
-          const rest = parts[i + 1].trim();
-          // Split the remaining text into parameters by whitespace
-          const params = rest ? rest.split(/\s+/) : [];
-          // Get the tool name associated with the emoji
-          const toolName = this.toolEmojis.get(emoji);
-          // Add the command object to the list
-          commands.push({ command: toolName, emoji, params });
-        }
-      }
+    const commandLines = [];
+    let cleanText = text;
+
+    // Find all matches in the text
+    let match;
+    while ((match = pattern.exec(text)) !== null) {
+        const emoji = match[1]; // The matched emoji
+        const rest = match[2].trim(); // The text following the emoji
+        const params = rest.split(/\s+/); // Split into parameters
+        const toolName = this.toolEmojis.get(emoji); // Get tool name from map
+
+        // Add the command to the list
+        commands.push({ command: toolName, emoji, params });
+        commandLines.push(match[0]); // Store the full matched line
     }
-  
-    // Return the array of extracted commands
-    return commands;
-  }
+
+    // Remove command lines from cleanText
+    commandLines.forEach(line => {
+        cleanText = cleanText.replace(line, '').trim();
+    });
+
+    return { commands, cleanText, commandLines };
+}
 
   // --- Command Processing ---
 
