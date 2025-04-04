@@ -67,115 +67,39 @@ export class GoogleAIService {
       : this.model;
   }
 
-  async modelIsAvailable(model) {
+  async generateStructuredOutput({ prompt, schema, options = {} }) {
     try {
-      if (!this.modelConfig?.length) {
-        await this.fetchModels();
-      }
-
-      const modelExists = this.modelConfig.some(m => m.model === model);
-      if (!modelExists) {
-        console.log(`Model ${model} not found in configuration`);
-        return false;
-      }
-
-      // Additional check: try to fetch the model capabilities to ensure it's actually available
-      try {
-        const generativeModel = this.googleAI.getGenerativeModel({ model });
-        // We don't need to do anything with the model, just see if we can create it
-        return true;
-      } catch (modelError) {
-        // If there's an error creating the model, it's likely not available
-        console.log(`Model ${model} exists in configuration but is not accessible: ${modelError.message}`);
-        return false;
-      }
-    } catch (error) {
-      console.error(`Error checking model availability: ${error.message}`);
-      return false;
-    }
-  }
-  
-
-  async chat(messages, options = {}) {
-    try {
-      // Extract system instruction if present
-      let systemInstruction;
-      if (messages[0]?.role === 'system') {
-        systemInstruction = messages[0].content;
-        messages = messages.slice(1);
-      }
-      
-      // Use a non-constant variable for model selection
-      let selectedModel = options.model || this.model;
-
-      // Map messages to Google's format, supporting both text and images
-      const contents = messages
-        .filter(msg => msg.content)
-        .map(msg => {
-          const role = msg.role === 'assistant' ? 'model' : msg.role;
-          if (role !== 'user' && role !== 'model') {
-            throw new Error(`Invalid role: ${msg.role}`);
-          }
-          const parts = Array.isArray(msg.content)
-            ? msg.content.map(part => {
-                if (part.text) return { text: part.text };
-                if (part.inlineData) return { inlineData: part.inlineData };
-                return part; // Fallback for unexpected part formats
-              })
-            : [{ text: msg.content }];
-          return { role, parts };
-        });
-
-      // Model availability check and fallback
-      if (!await this.modelIsAvailable(selectedModel)) {
-        console.warn(`Model ${selectedModel} unavailable, using default: ${this.model}`);
-        selectedModel = this.model;
-      }
-
-      // Initialize generative model with system instruction
-      const generativeModel = this.googleAI.getGenerativeModel({
-        model: selectedModel,
-        systemInstruction
-      });
-
-      // Configure generation options
-      const generationConfig = {
-        temperature: options.temperature || 0.7,
-        maxOutputTokens: options.max_tokens || 1024,
-        topP: options.top_p || 0.95,
-        topK: options.top_k || 40,
-        responseSchema: options.responseSchema || (options.response_format ? this.toResponseSchema(options.response_format) : undefined),
-      };
-
-      // Generate response
-      const result = await generativeModel.generateContent({
-        contents,
-        generationConfig
-      });
-
-      // Extract and return the response text
-      const candidates = result.response.candidates;
-      if (candidates && candidates.length > 0) {
-        return candidates[0].content.parts[0].text;
-      }
-      throw new Error('No candidates returned');
-    } catch (error) {
-      console.error('Chat error:', error);
-      throw error;
-    }
-  }
-
-  async analyzeImage(imageBase64, mimeType, prompt, options = {}) {
-    try {
-      const model = options.model || this.model;
-      const generativeModel = this.googleAI.getGenerativeAI({ model });
+      const generativeModel = this.googleAI.getGenerativeModel({ model: this.structured_model });
 
       const generationConfig = {
         temperature: options.temperature || 0.7,
         maxOutputTokens: options.maxOutputTokens || 1024,
         topP: options.topP || 0.95,
         topK: options.topK || 40,
-        ...(options.responseSchema ? { responseSchema: options.responseSchema } : {})
+        responseSchema: schema
+      };
+
+      const result = await generativeModel.generateContent({
+        contents: [{ role: 'user', parts: [{ text: prompt }] }],
+        generationConfig
+      });
+
+      return result.response.json();
+    } catch (error) {
+      console.error('Error generating structured output:', error);
+      throw error;
+    }
+  }
+
+  async analyzeImage(imageBase64, mimeType, prompt, options = {}) {
+    try {
+      const generativeModel = this.googleAI.getGenerativeModel({ model: this.model });
+
+      const generationConfig = {
+        temperature: options.temperature || 0.7,
+        maxOutputTokens: options.maxOutputTokens || 1024,
+        topP: options.topP || 0.95,
+        topK: options.topK || 40
       };
 
       const parts = [
