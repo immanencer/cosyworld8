@@ -182,7 +182,14 @@ export class OpenRouterAIService extends BasicService {
    * @param {string} modelName - The name of the model to search for.
    * @returns {string|null} - The exact or closest matching model name, or null if no match is found.
    */
-    getModel(modelName) {
+    async getModel(modelName) {
+      if (!modelName) {
+        console.warn('No model name provided for retrieval.');
+        return await this.selectRandomModel();
+      }
+      // Normalize the model name by removing any suffixes (e.g., ":online")
+      modelName = modelName.replace(/:online$/, '').trim();
+      
       // Extract all model names from the configuration
       const modelNames = this.modelConfig.map(model => model.model);
   
@@ -200,8 +207,10 @@ export class OpenRouterAIService extends BasicService {
         return bestMatch.target;
       }
   
-      console.warn(`No close match found for model: "${modelName}"`);
-      return null;
+      console.warn(`No close match found for model: "${modelName}", defaulting to random model.`);
+      // If no close match is found, return null or a default model
+
+      return await this.selectRandomModel();
     }
 
   /**

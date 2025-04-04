@@ -504,9 +504,7 @@ export class AvatarService extends BasicService {
 
 
       // Set avatar properties
-    const model = avatarDetails.model
-        ? await this.aiService.getModel(avatarDetails.model)
-        : await this.aiService.selectRandomModel();
+    const model = await this.aiService.getModel(avatarDetails.model);
 
     const avatarDocument = {
       ...avatarDetails,

@@ -174,9 +174,7 @@ ${items}
   Recent conversation history:
   ${channelContextText}
 
-  Respond with one or two SHORT sentences or actions from
-
-  ${avatar.name} ${avatar.emoji}:`.trim();
+  Respond with one or two SHORT sentences or actions to continue the conversation.`.trim();
   }
 
   /**
