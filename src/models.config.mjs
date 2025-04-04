@@ -108,15 +108,15 @@ export default [
     "rarity": "rare"
   },
   {
-    "model": "anthropic/claude-3.7-sonnet:beta",
-    "rarity": "rare"
-  },
-  {
     "model": "anthropic/claude-3.7-sonnet",
     "rarity": "rare"
   },
   {
     "model": "anthropic/claude-3.7-sonnet:thinking",
+    "rarity": "rare"
+  },
+  {
+    "model": "anthropic/claude-3.7-sonnet:beta",
     "rarity": "rare"
   },
   {
@@ -136,14 +136,6 @@ export default [
     "rarity": "rare"
   },
   {
-    "model": "anthropic/claude-3-sonnet:beta",
-    "rarity": "rare"
-  },
-  {
-    "model": "anthropic/claude-3-sonnet",
-    "rarity": "rare"
-  },
-  {
     "model": "cohere/command-r-plus",
     "rarity": "rare"
   },
@@ -152,7 +144,11 @@ export default [
     "rarity": "rare"
   },
   {
-    "model": "allenai/llama-3.1-tulu-3-405b",
+    "model": "anthropic/claude-3-sonnet:beta",
+    "rarity": "rare"
+  },
+  {
+    "model": "anthropic/claude-3-sonnet",
     "rarity": "rare"
   },
   {
@@ -176,6 +172,10 @@ export default [
     "rarity": "rare"
   },
   {
+    "model": "cohere/command-r-plus-08-2024",
+    "rarity": "rare"
+  },
+  {
     "model": "openai/gpt-4o-2024-08-06",
     "rarity": "rare"
   },
@@ -193,10 +193,6 @@ export default [
   },
   {
     "model": "x-ai/grok-2-1212",
-    "rarity": "rare"
-  },
-  {
-    "model": "cohere/command-r-plus-08-2024",
     "rarity": "rare"
   },
   {
@@ -269,6 +265,10 @@ export default [
   },
   {
     "model": "google/gemini-pro-1.5",
+    "rarity": "uncommon"
+  },
+  {
+    "model": "all-hands/openhands-lm-32b-v0.1",
     "rarity": "uncommon"
   },
   {
@@ -356,6 +356,10 @@ export default [
     "rarity": "uncommon"
   },
   {
+    "model": "cohere/command",
+    "rarity": "uncommon"
+  },
+  {
     "model": "openai/gpt-3.5-turbo-0613",
     "rarity": "uncommon"
   },
@@ -377,10 +381,6 @@ export default [
   },
   {
     "model": "google/palm-2-codechat-bison",
-    "rarity": "uncommon"
-  },
-  {
-    "model": "cohere/command",
     "rarity": "uncommon"
   },
   {
@@ -424,6 +424,14 @@ export default [
     "rarity": "uncommon"
   },
   {
+    "model": "cohere/command-r",
+    "rarity": "uncommon"
+  },
+  {
+    "model": "cohere/command-r-03-2024",
+    "rarity": "uncommon"
+  },
+  {
     "model": "google/gemini-pro-vision",
     "rarity": "uncommon"
   },
@@ -445,14 +453,6 @@ export default [
   },
   {
     "model": "openai/gpt-3.5-turbo-0125",
-    "rarity": "uncommon"
-  },
-  {
-    "model": "cohere/command-r",
-    "rarity": "uncommon"
-  },
-  {
-    "model": "cohere/command-r-03-2024",
     "rarity": "uncommon"
   },
   {
@@ -532,11 +532,15 @@ export default [
     "rarity": "uncommon"
   },
   {
+    "model": "sao10k/l3-euryale-70b",
+    "rarity": "common"
+  },
+  {
     "model": "allenai/olmo-2-0325-32b-instruct",
     "rarity": "common"
   },
   {
-    "model": "sao10k/l3-euryale-70b",
+    "model": "google/gemma-2-27b-it",
     "rarity": "common"
   },
   {
@@ -636,15 +640,15 @@ export default [
     "rarity": "common"
   },
   {
+    "model": "cohere/command-r-08-2024",
+    "rarity": "common"
+  },
+  {
     "model": "openai/gpt-4o-mini",
     "rarity": "common"
   },
   {
     "model": "openai/gpt-4o-mini-2024-07-18",
-    "rarity": "common"
-  },
-  {
-    "model": "cohere/command-r-08-2024",
     "rarity": "common"
   },
   {
@@ -657,10 +661,6 @@ export default [
   },
   {
     "model": "ai21/jamba-1-5-mini",
-    "rarity": "common"
-  },
-  {
-    "model": "google/gemma-2-27b-it",
     "rarity": "common"
   },
   {
@@ -748,10 +748,6 @@ export default [
     "rarity": "common"
   },
   {
-    "model": "teknium/openhermes-2.5-mistral-7b",
-    "rarity": "common"
-  },
-  {
     "model": "nousresearch/nous-hermes-llama2-13b",
     "rarity": "common"
   },
@@ -776,10 +772,6 @@ export default [
     "rarity": "common"
   },
   {
-    "model": "google/gemma-7b-it",
-    "rarity": "common"
-  },
-  {
     "model": "qwen/qwen-turbo",
     "rarity": "common"
   },
@@ -793,6 +785,10 @@ export default [
   },
   {
     "model": "microsoft/phi-4",
+    "rarity": "common"
+  },
+  {
+    "model": "mistral/ministral-8b",
     "rarity": "common"
   },
   {
@@ -832,7 +828,15 @@ export default [
     "rarity": "common"
   },
   {
+    "model": "google/gemma-2-9b-it",
+    "rarity": "common"
+  },
+  {
     "model": "microsoft/wizardlm-2-7b",
+    "rarity": "common"
+  },
+  {
+    "model": "openchat/openchat-7b",
     "rarity": "common"
   },
   {
@@ -852,19 +856,7 @@ export default [
     "rarity": "common"
   },
   {
-    "model": "openchat/openchat-7b",
-    "rarity": "common"
-  },
-  {
-    "model": "qwen/qwen-2-7b-instruct",
-    "rarity": "common"
-  },
-  {
     "model": "sao10k/l3-lunaris-8b",
-    "rarity": "common"
-  },
-  {
-    "model": "google/gemma-2-9b-it",
     "rarity": "common"
   },
   {
@@ -917,6 +909,10 @@ export default [
   },
   {
     "model": "meta-llama/llama-3.2-1b-instruct",
+    "rarity": "common"
+  },
+  {
+    "model": "openrouter/quasar-alpha",
     "rarity": "common"
   },
   {
@@ -1108,10 +1104,6 @@ export default [
     "rarity": "common"
   },
   {
-    "model": "qwen/qwen-2-7b-instruct:free",
-    "rarity": "common"
-  },
-  {
     "model": "google/gemma-2-9b-it:free",
     "rarity": "common"
   },
@@ -1128,10 +1120,6 @@ export default [
     "rarity": "common"
   },
   {
-    "model": "meta-llama/llama-3-8b-instruct:free",
-    "rarity": "common"
-  },
-  {
     "model": "openchat/openchat-7b:free",
     "rarity": "common"
   },
@@ -1141,10 +1129,6 @@ export default [
   },
   {
     "model": "huggingfaceh4/zephyr-7b-beta:free",
-    "rarity": "common"
-  },
-  {
-    "model": "gryphe/mythomax-l2-13b:free",
     "rarity": "common"
   }
 ];
