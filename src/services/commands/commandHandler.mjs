@@ -3,20 +3,17 @@ export async function handleCommands(message, services, avatar) {
   if (!message.guildId) {
     throw new Error("Message does not have a guild ID.");
   }
-  const summonEmoji = (await services.configService.getGuildConfig(message.guildId)).summonEmoji || "🪄";
+  const guildConfig = await services.configService.getGuildConfig(message.guildId);
 
-  // Get allowed tool emojis
-  let toolEmojis = [];
-  try {
-    toolEmojis = services.toolService
-      ? Array.from(services.toolService.toolEmojis.keys())
-      : [summonEmoji, "⚔️", "🛡️", "🏹", "🔍", "🧠", "🧪", "🏃"];
-  } catch (error) {
-    toolEmojis = [summonEmoji, "⚔️", "🛡️", "🏹", "🔍", "🧠", "🧪", "🏃"];
+  if (services.toolService) {
+    services.toolService.applyGuildToolEmojiOverrides(guildConfig);
   }
 
-  // Check if the message starts with any tool emoji
-  const isToolCommand = toolEmojis.some(emoji => content.indexOf(emoji) !== -1);
+  const toolEmojis = services.toolService
+    ? Array.from(services.toolService.toolEmojis.keys())
+    : [];
+
+  const isToolCommand = toolEmojis.some(emoji => content.includes(emoji));
 
   if (isToolCommand) {
     try {

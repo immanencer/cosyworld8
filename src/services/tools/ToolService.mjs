@@ -123,8 +123,25 @@ export class ToolService extends BasicService {
     }
 
     return { commands, cleanText, commandLines };
-}
+  }
 
+  applyGuildToolEmojiOverrides(guildConfig) {
+    if (!guildConfig?.toolEmojis) return;
+
+    for (const [toolName, overrideEmoji] of Object.entries(guildConfig.toolEmojis)) {
+      if (!overrideEmoji) continue;
+
+      // Remove all emojis currently mapped to this tool
+      for (const [emoji, mappedTool] of this.toolEmojis.entries()) {
+        if (mappedTool === toolName) {
+          this.toolEmojis.delete(emoji);
+        }
+      }
+
+      // Add override emoji
+      this.toolEmojis.set(overrideEmoji, toolName);
+    }
+  }
 
   // --- Command Processing ---
 

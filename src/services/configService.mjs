@@ -161,14 +161,23 @@ export class ConfigService extends BasicService {
   // Merge database guild config with defaults
   mergeWithDefaults(guildConfig, guildId) {
     const defaults = this.getDefaultGuildConfig(guildId);
-    return {
+    const merged = {
       ...defaults,
       ...guildConfig,
       prompts: {
         summon: guildConfig?.prompts?.summon || defaults.prompts.summon,
         introduction: guildConfig?.prompts?.introduction || defaults.prompts.introduction
+      },
+      toolEmojis: {
+        ...defaults.toolEmojis,
+        ...(guildConfig?.toolEmojis || {})
       }
     };
+
+    // Always sync summonEmoji to toolEmojis.summon
+    merged.summonEmoji = merged.toolEmojis.summon || '🔮';
+
+    return merged;
   }
 
   // Get guild configuration with caching
