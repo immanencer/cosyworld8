@@ -269,14 +269,44 @@ Return a JSON object with keys: name, description, type, rarity, properties.`;
     });
     if (itemsCreatedToday >= this.itemCreationLimit) return null;
 
+    // Enforce leveling: require two items of same level
+    const levels = inputItems.map(i => i.evolutionLevel || 1);
+    const baseLevel = levels[0];
+    if (levels.some(l => l !== baseLevel)) {
+      console.warn('Crafting failed: items not same level');
+      return null;
+    }
+
+    // Roll d20 for rarity and special cases
+    const roll = Math.ceil(Math.random() * 20);
+    let rarity = 'common';
+    if (roll === 1) {
+      // On 1, randomly destroy one input item, no upgrade
+      const unlucky = inputItems[Math.floor(Math.random() * inputItems.length)];
+      await itemsCollection.deleteOne({ _id: unlucky._id });
+      console.warn('Critical failure: destroyed one input item');
+      return null;
+    } else if (roll === 20) {
+      rarity = 'legendary';
+    } else if (roll >= 18) {
+      rarity = 'rare';
+    } else if (roll >= 13) {
+      rarity = 'uncommon';
+    }
+
+    // Calculate next level
+    const newLevel = baseLevel + 1;
+
+    // Average DnD stats if present
+    const stats = ['str','dex','con','int','wis','cha'];
+    const avgStats = {};
+    for(const stat of stats) {
+      const vals = inputItems.map(i => i.properties?.stats?.[stat] || 10);
+      avgStats[stat] = Math.round(vals.reduce((a,b)=>a+b,0)/vals.length);
+    }
+
     const inputNames = inputItems.map(i => i.name).join(', ');
-    const prompt = `Combine the following items into a new unique item: ${inputNames}. Generate a complete item with:
-- A name that reflects the combination.
-- A description that incorporates elements from the input items.
-- The item type, choosing from: weapon, armor, consumable, quest, key, artifact.
-- The rarity, choosing from: common, uncommon, rare, epic, legendary.
-- Special properties or effects based on the input items.
-Return a JSON object with keys: name, description, type, rarity, properties.`;
+    const prompt = `Combine these items: ${inputNames}. Generate a new item with level ${newLevel}, rarity ${rarity}, and DnD stats.`;
 
     const itemSchema = {
       name: 'rati-avatar',
@@ -286,47 +316,53 @@ Return a JSON object with keys: name, description, type, rarity, properties.`;
         properties: {
           name: { type: 'string' },
           description: { type: 'string' },
-          type: { type: 'string', enum: ['weapon', 'armor', 'consumable', 'quest', 'key', 'artifact'] },
-          rarity: { type: 'string', enum: ['common', 'uncommon', 'rare', 'epic', 'legendary'] },
+          type: { type: 'string', enum: ['weapon','armor','consumable','quest','key','artifact'] },
+          rarity: { type: 'string', enum: ['common','uncommon','rare','epic','legendary'] },
           properties: { type: 'object' }
         },
-        required: ['name', 'description', 'type', 'rarity', 'properties'],
-
-        additionalProperties: false,
+        required: ['name','description','type','rarity','properties'],
+        additionalProperties: false
       }
     };
 
     let itemData;
     try {
       itemData = await this.creationService.executePipeline({ prompt, schema: itemSchema });
-    } catch (error) {
-      console.error('Error generating crafted item data:', error);
+    } catch (e) {
+      console.error('Error generating crafted item data:', e);
       return null;
     }
 
-    const refinedItemName = this.cleanItemName(itemData.name.trim().slice(0, 50));
+    const refinedName = this.cleanItemName(itemData.name.trim().slice(0,50));
     const description = itemData.description.trim();
-    const imageUrl = await this.generateItemImage(refinedItemName, description);
+    const imageUrl = await this.generateItemImage(refinedName, description);
 
     const newItem = {
-      key: refinedItemName.toLowerCase(),
-      name: refinedItemName,
+      key: refinedName.toLowerCase(),
+      name: refinedName,
       description,
       type: itemData.type,
-      rarity: itemData.rarity,
-      properties: itemData.properties,
+      rarity,
+      properties: itemData.properties || {},
       imageUrl,
       creator: creatorId,
       owner: creatorId,
       locationId: null,
       createdAt: now.toISOString(),
       updatedAt: now.toISOString(),
-      version: this.CURRENT_SCHEMA_VERSION
+      version: this.CURRENT_SCHEMA_VERSION,
+      evolutionLevel: newLevel,
+      sourceItemIds: inputItems.map(i => i._id),
     };
+
+    // Attach averaged stats
+    newItem.properties.stats = avgStats;
 
     const result = await itemsCollection.insertOne(newItem);
     if (result.insertedId) {
       newItem._id = result.insertedId;
+      // Burn source items
+      await itemsCollection.deleteMany({ _id: { $in: inputItems.map(i => i._id) } });
       return newItem;
     }
     return null;

@@ -84,7 +84,7 @@ export class ToolService extends BasicService {
     if (!text) return { commands: [], cleanText: text || '', commandLines: [] };
 
     const emojis = Array.from(this.toolEmojis.keys());
-    const pattern = new RegExp(`(${emojis.join('|')})(?:\s+([^\n]*))?`, 'g');
+    const pattern = new RegExp(`(${emojis.join('|')})(?:\s*(.*))?`, 'g');
 
     const commands = [];
     const commandLines = [];
@@ -146,5 +146,47 @@ export class ToolService extends BasicService {
       }
     }
     return commands.join('\n\n');
+  }
+
+  /**
+   * Executes a tool by name, logs the action, and returns the result.
+   * @param {string} toolName - The tool name (e.g., 'move', 'item')
+   * @param {Object} message - The Discord message object
+   * @param {string[]} params - The command parameters
+   * @param {Object} avatar - The avatar performing the action
+   * @returns {Promise<string>} The tool's response
+   */
+  async executeToolWithLogging(toolName, message, params, avatar) {
+    const tool = this.tools.get(toolName);
+    if (!tool) {
+      return `Tool '${toolName}' not found.`;
+    }
+
+    let result;
+    try {
+      result = await tool.execute(message, params, avatar);
+    } catch (error) {
+      result = `Error executing ${toolName}: ${error.message}`;
+    }
+
+    try {
+      await this.ActionLog.logAction({
+        channelId: message.channel.id,
+        action: toolName,
+        actorId: avatar._id,
+        actorName: avatar.name,
+        displayName: avatar.displayName || avatar.name,
+        target: params.join(' '),
+        result,
+        tool: toolName,
+        emoji: tool.emoji,
+        isCustom: false,
+        timestamp: Date.now(),
+      });
+    } catch (logError) {
+      this.logger?.error(`Failed to log action '${toolName}': ${logError.message}`);
+    }
+
+    return result;
   }
 }

@@ -28,15 +28,23 @@ export async function handleCommands(message, services, avatar) {
             ? params.slice(1)
             : params;
           await services.discordService.reactToMessage(message, tool.emoji);
-          const result = await tool.execute(message, args, avatar, services);
-          await services.discordService.replyToMessage(message, `-# ${tool.emoji} **results for ${avatar.name}.**\n${result}`);
+          const result = await services.toolService.executeToolWithLogging(command, message, args, avatar);
+          // Save command and result as avatar memory
+          const memoryEntry = `You used ${command} ${args.join(' ')}: ${result}`;
+          services.logger.info(`[Avatar Memory] ${memoryEntry}`);
+          try {
+            await services.memoryService.addMemory(avatar._id, memoryEntry);
+          } catch (err) {
+            services.logger.error('Failed to save avatar memory:', err);
+          }
+          await services.discordService.reactToMessage(message, tool.emoji);
         } else {
           await services.discordService.reactToMessage(message, "❌");
           await services.discordService.replyToMessage(message, `-# [Unknown command: ${command}]`);
         }
       });
     } catch (error) {
-      console.error("Error handling tool command:", error);
+      services.logger.error("Error handling tool command:", error);1
       await services.discordService.reactToMessage(message, "❌");
       await services.discordService.replyToMessage(message, `-# [There was an error processing your command: ${error.message}]`);
     }

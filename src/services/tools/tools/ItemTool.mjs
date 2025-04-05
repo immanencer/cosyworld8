@@ -8,7 +8,7 @@ export class ItemTool extends BasicTool {
     this.itemService = services.itemService;
 
     this.name = 'item';
-    this.description = 'Manage items in your inventory';
+    this.description = 'Manage items: use or craft items. Usage: !item use <item>, or !item craft <item1> <item2>.';
     this.emoji = '📦';
   }
 
@@ -22,10 +22,9 @@ export class ItemTool extends BasicTool {
       return `-# [${this.emoji} This command can only be used in a guild!]`;
     }
     if (!params || params.length < 1) {
-      return `-# [${this.emoji} Usage: !item <select|take|drop|use|craft> [params]]`;
+      return `-# [${this.emoji} Usage: !item <use|craft|take|drop> [params]]`;
     }
 
-    // Ensure inventory exists
     if (!avatar.inventory || !Array.isArray(avatar.inventory)) {
       avatar.inventory = [];
     }
@@ -35,123 +34,85 @@ export class ItemTool extends BasicTool {
 
     try {
       switch (subcommand) {
-        case 'select': {
-          // Existing select logic remains unchanged
-          if (avatar.inventory.length === 0) {
-            return `-# [${this.emoji} Your inventory is empty. No item to select.]`;
-          }
-          const sortedInventory = avatar.inventory.slice().sort((a, b) => a.name.localeCompare(b.name));
-          let selectedItem;
-          if (!avatar.selectedItemId || !avatar.inventory.some(i => i._id === avatar.selectedItemId)) {
-            selectedItem = sortedInventory[0];
-          } else {
-            const currentIndex = sortedInventory.findIndex(i => i._id === avatar.selectedItemId);
-            const nextIndex = (currentIndex + 1) % sortedInventory.length;
-            selectedItem = sortedInventory[nextIndex];
-          }
-          avatar.selectedItemId = selectedItem._id;
-          await this.avatarService.updateAvatar(avatar);
-          return `-# [${this.emoji} Selected item: ${selectedItem.name}]`;
-        }
+        case 'use':
         case 'take': {
-          // Existing take logic remains unchanged
           const itemName = params.slice(1).join(' ').trim();
           if (!itemName) {
-            return `-# [${this.emoji} Specify the name of the item to take.]`;
+            return `-# [${this.emoji} Specify the name of the item to use or take.]`;
           }
-          const takenItem = await this.itemService.takeItem(avatar, itemName, locationId);
-          if (!takenItem) {
-            return `-# [${this.emoji} No item named "${itemName}" was found on the ground.]`;
+
+          // Fuzzy match in inventory
+          let item = this.findClosestItem(avatar.inventory, itemName);
+
+          if (!item) {
+            // If not found in inventory, try to take from ground
+            item = await this.itemService.takeClosestItem(avatar, itemName, locationId);
+            if (!item) {
+              return `-# [${this.emoji} No item similar to "${itemName}" found in inventory or on the ground.]`;
+            }
+            avatar.inventory.push(item);
+            await this.avatarService.updateAvatar(avatar);
+            await this.postItemDetails(message.channel.id, item);
           }
-          await this.postItemDetails(message.channel.id, takenItem);
-          avatar.inventory.push(takenItem);
-          await this.avatarService.updateAvatar(avatar);
-          return `-# [${this.emoji} ${avatar.name} has taken the item "${takenItem.name}."]`;
-        }
-        case 'drop': {
-          // Existing drop logic remains unchanged
-          if (!avatar.selectedItemId) {
-            return `-# [${this.emoji} No item selected to drop.]`;
-          }
-          const selectedItem = avatar.inventory.find(i => i._id === avatar.selectedItemId);
-          if (!selectedItem) {
-            return `-# [${this.emoji} Selected item not found in inventory.]`;
-          }
-          await this.itemService.dropItem(avatar, selectedItem, locationId);
-          avatar.inventory = avatar.inventory.filter(i => i._id !== selectedItem._id);
-          avatar.selectedItemId = null;
-          await this.avatarService.updateAvatar(avatar);
-          await this.postItemDetails(message.channel.id, selectedItem);
-          return `-# [${this.emoji} ${avatar.name} has dropped the item "${selectedItem.name}."]`;
-        }
-        case 'use': {
-          // Existing use logic remains unchanged
-          if (!avatar.selectedItemId) {
-            return `-# [${this.emoji} No item selected to use.]`;
-          }
-          const selectedItem = avatar.inventory.find(i => i._id === avatar.selectedItemId);
-          if (!selectedItem) {
-            return `-# [${this.emoji} Selected item not found in inventory.]`;
-          }
-          const extraContext = params.slice(1).join(' ').trim();
+
+          // Use the item
+          const extraContext = params.slice(2).join(' ').trim();
           const response = await this.itemService.useItem(
             avatar,
-            selectedItem,
+            item,
             message.channel.id,
             extraContext
           );
           return response;
         }
         case 'craft': {
-          // Check for at least two item names after 'craft'
           if (params.length < 3) {
             return `-# [${this.emoji} Usage: !item craft <item1> <item2>]`;
           }
 
-          // Get the names of the items to craft
           const itemName1 = params[1].trim();
           const itemName2 = params[2].trim();
 
-          // Find the items in the avatar's inventory (case-insensitive)
-          const item1 = avatar.inventory.find(i => i.name.toLowerCase() === itemName1.toLowerCase());
-          const item2 = avatar.inventory.find(i => i.name.toLowerCase() === itemName2.toLowerCase());
+          const item1 = this.findClosestItem(avatar.inventory, itemName1);
+          const item2 = this.findClosestItem(avatar.inventory, itemName2);
 
-          // Ensure both items exist
           if (!item1 || !item2) {
             return `-# [${this.emoji} You do not have the specified items in your inventory.]`;
           }
 
-          // Collect input items
           const inputItems = [item1, item2];
-
-          // Create the new crafted item
           const newItem = await this.itemService.createCraftedItem(inputItems, avatar._id);
           if (!newItem) {
             return `-# [${this.emoji} Cannot craft item: daily item creation limit reached or failed to generate item.]`;
           }
 
-          // Add the new item to the inventory
           avatar.inventory.push(newItem);
-
-          // Remove the input items from the inventory
           const inputItemIds = inputItems.map(i => i._id);
+          // Remove both source items from inventory
           avatar.inventory = avatar.inventory.filter(i => !inputItemIds.includes(i._id));
-
-          // Save the updated avatar
           await this.avatarService.updateAvatar(avatar);
-
-          // Delete the consumed input items from the items collection
           await this.services.db.collection('items').deleteMany({ _id: { $in: inputItemIds } });
-
-          // Display the new item's details
           await this.postItemDetails(message.channel.id, newItem);
-
-          // Return success message
           return `-# [${this.emoji} You have crafted a new item: ${newItem.name}]`;
         }
-        default: {
-          return `-# [${this.emoji} Invalid subcommand. Use !item <select|take|drop|use|craft> [params]]`;
+        case 'drop': {
+          const itemName = params.slice(1).join(' ').trim();
+          if (!itemName) {
+            return `-# [${this.emoji} Specify the name of the item to drop.]`;
+          }
+          const item = this.findClosestItem(avatar.inventory, itemName);
+          if (!item) {
+            return `-# [${this.emoji} No item similar to "${itemName}" found in your inventory.]`;
+          }
+          // Remove from inventory
+          avatar.inventory = avatar.inventory.filter(i => i._id !== item._id);
+          await this.avatarService.updateAvatar(avatar);
+          // Place item on ground/location
+          await this.itemService.dropItemAtLocation(item, locationId);
+          return `-# [${this.emoji} You dropped ${item.name}.]`;
         }
+        default:
+          return `-# [${this.emoji} Invalid subcommand. Use !item <use|craft|take|drop> [params]]`;
       }
     } catch (error) {
       console.error('Error in ItemTool execute:', error);
@@ -159,11 +120,52 @@ export class ItemTool extends BasicTool {
     }
   }
 
+  findClosestItem(items, query) {
+    if (!items || items.length === 0) return null;
+    query = query.toLowerCase();
+    let bestMatch = null;
+    let bestScore = Infinity;
+    for (const item of items) {
+      const name = item.name.toLowerCase();
+      const dist = this.levenshteinDistance(query, name);
+      if (dist < bestScore) {
+        bestScore = dist;
+        bestMatch = item;
+      }
+    }
+    // Accept only reasonably close matches
+    return bestScore <= Math.max(3, query.length / 2) ? bestMatch : null;
+  }
+
+  levenshteinDistance(a, b) {
+    const matrix = [];
+    for (let i = 0; i <= b.length; i++) {
+      matrix[i] = [i];
+    }
+    for (let j = 0; j <= a.length; j++) {
+      matrix[0][j] = j;
+    }
+    for (let i = 1; i <= b.length; i++) {
+      for (let j = 1; j <= a.length; j++) {
+        if (b.charAt(i - 1) === a.charAt(j - 1)) {
+          matrix[i][j] = matrix[i - 1][j - 1];
+        } else {
+          matrix[i][j] = Math.min(
+            matrix[i - 1][j - 1] + 1,
+            matrix[i][j - 1] + 1,
+            matrix[i - 1][j] + 1
+          );
+        }
+      }
+    }
+    return matrix[b.length][a.length];
+  }
+
   getDescription() {
-    return 'Manage items: select an item from your inventory, take items from the ground, drop the selected item, use the selected item, or craft a new item from two existing items.';
+    return 'Manage items: take, drop, use, or craft items. Usage: 📦 take <item>, 📦 drop <item>, 📦 use <item>, or 📦 craft <item1> <item2>.';
   }
 
   async getSyntax() {
-    return '📦 select|take|drop|use|craft';
+    return '📦 take|use|craft|drop <item1> <item2>';
   }
 }
