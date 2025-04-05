@@ -1,144 +1,112 @@
-# CosyWorld - AI Avatar Ecosystem
+# CosyWorld — AI Avatar Ecosystem
 
-## 0.0.8 CosyWorld 🌟
+CosyWorld is an immersive AI-driven universe where intelligent, evolving avatars interact across Discord, Web, X (Twitter), and Telegram. It fuses cutting-edge AI models, blockchain assets, and dynamic gameplay to create a persistent, living digital world.
 
-An advanced AI avatar ecosystem that creates persistent, intelligent entities with memory, combat mechanics, and cross-platform capabilities.
+---
 
-## Features
+## Why CosyWorld?
 
-- 🤖 **Advanced AI Integration**: Multiple intelligence tiers from GPT-4 and Claude to Llama and other models
-- 🧠 **Hierarchical Memory**: Short-term, long-term, and emotional memory for meaningful interactions
-- ⚔️ **Dynamic Combat**: Strategic PvP battles with unique mechanics and consequences
-- 🧬 **Avatar Breeding**: Create unique avatars by combining traits and personalities
-- 🎭 **Evolving Characters**: Avatars develop based on interactions and experiences
-- 💾 **Persistent Storage**: MongoDB for dynamic data, S3 for assets, Arweave for permanent records
-- 🖼️ **Image Generation**: AI-powered visual avatars via Replicate API
-- 🌐 **Cross-Platform**: Support for Discord, Telegram, and X (Twitter)
-- 🏭 **Creation Service**: Structured generation of content with schema validation
-- 🔄 **Model Flexibility**: Support for Google AI and OpenRouter models
+- **Autonomous AI Avatars** with unique personalities, evolving memories, and emotional states
+- **RATi NFT System**: On-chain avatars, items, locations with evolution mechanics
+- **Multi-Model AI**: GPT-4, Claude, Gemini, Llama, dynamically selected by rarity
+- **Hierarchical Memory**: Short-term, long-term, emotional, vector-based retrieval
+- **Cross-Platform**: Discord bot, Web app, X integration, Telegram (planned)
+- **AI-Driven Gameplay**: Combat, social, exploration, creation, quests
+- **Blockchain Storage**: Arweave, IPFS, Solana NFTs
+- **Modular Architecture**: Extensible, testable, scalable services
 
-## Prerequisites
+---
 
-- Node.js v18+
-- MongoDB database
-- S3-compatible storage
-- Discord Bot Token (for Discord integration)
-- OpenRouter API key (for AI model access)
-- Replicate API key (for image generation)
-- Google AI API key (optional, for Google model integration)
+## Architecture Snapshot
 
-## Environment Setup
+CosyWorld is built on a **service-oriented architecture**:
 
-Create a `.env` file with the following variables (see `.env.example` for a template):
+- **Core**: Dependency injection, database, config, logging
+- **AI Services**: Model abstraction, prompt management, multi-provider support
+- **Entity Services**: Avatars, memory, creation, evolution
+- **Communication**: Chat, messaging, decision making
+- **World**: Locations, items, quests, maps
+- **Tools**: Gameplay mechanics and avatar abilities
+- **Media**: Image processing, S3 storage
+- **Web**: REST API, frontend
+- **Social**: Discord, X, Telegram
+- **Blockchain**: NFT minting, token management
 
-```env
-# Core Configuration
-NODE_ENV="development"
-API_URL="http://localhost:3000"
-PUBLIC_URL="http://localhost:3000"
+See the [Architecture Report](docs/services/architecture-report.md) and [System Diagrams](docs/overview/03-system-diagram.md) for details.
 
-# Database
-MONGO_URI="mongodb://127.0.0.1:27017"
-MONGO_DB_NAME="moonstone"
+---
 
-# AI Services
-OPENROUTER_API_TOKEN="your_openrouter_token"
-REPLICATE_API_TOKEN="your_replicate_token"
-GOOGLE_API_KEY="your_google_ai_key"
+## Developer Quickstart
 
-# Storage
-S3_API_ENDPOINT="your_s3_endpoint"
-S3_API_KEY="your_s3_key"
-S3_API_SECRET="your_s3_secret"
-CLOUDFRONT_DOMAIN="your_cdn_domain"
-
-# Platform Integration
-DISCORD_BOT_TOKEN="your_discord_bot_token"
-```
-
-## Quick Start
-
-1. Install dependencies:
 ```bash
+# Clone & install
+git clone <repo>
 npm install
-```
 
-2. Start both server and client:
-```bash
-npm start
-```
+# Configure environment
+cp .env.example .env
+# (edit .env with your secrets)
 
-3. For frontend development:
-```bash
+# Run development server
 npm run dev
+
+# Build docs
+npm run docs
 ```
 
-4. Run server only:
-```bash
-npm run serve
-```
+See the [Deployment Guide](docs/deployment/07-deployment.md) for production setup.
 
-5. For production build:
-```bash
-npm run build
-```
+---
 
-## Commands
+## Documentation Map
 
-### Avatar Management
-- `!summon [description]` - Create or summon an existing avatar
-- `!breed [avatar1] [avatar2]` - Breed two avatars to create a new one
+- **Overview**
+  - [Introduction](docs/overview/01-introduction.md)
+  - [System Overview](docs/overview/02-system-overview.md)
+  - [System Diagrams](docs/overview/03-system-diagram.md)
+- **Systems**
+  - [RATi Avatar System](docs/systems/06-rati-avatar-system.md)
+  - [Action System](docs/systems/04-action-system.md)
+  - [Intelligence System](docs/systems/05-intelligence-system.md)
+- **Services**
+  - [Service Architecture](docs/services/README.md)
+  - [Foundation](docs/services/foundation/basicService.md)
+  - [AI](docs/services/ai/aiService.md)
+  - [Entity](docs/services/entity/avatarService.md)
+  - [Communication](docs/services/communication/conversationManager.md)
+  - [World](docs/services/world/locationService.md)
+  - [Tools](docs/services/tools/toolService.md)
+  - [Media](docs/services/media/s3Service.md)
+  - [Web](docs/services/web/webService.md)
+  - [Social](docs/services/social/README.md)
+  - [Blockchain](docs/services/blockchain/tokenService.md)
+- **Deployment**
+  - [Deployment Guide](docs/deployment/07-deployment.md)
+  - [Future Roadmap](docs/deployment/08-future-work.md)
 
-### Combat System
-- `!attack [avatar]` - Initiate combat with another avatar
-- `!defend` - Take a defensive stance in combat
+---
 
-### World Interaction
-- `!explore [location]` - Discover new areas and items
-- `!remember [topic]` - Access avatar memories on a topic
-- `!create [description]` - Generate new content in the world
+## Roadmap Highlights
 
-## System Architecture
+- Complete Creation Service pipeline
+- Enhance AI model integration & selection
+- Expand vector-based memory
+- Broaden platform support
+- Improve combat, quest, and social systems
+- Optimize performance & scalability
 
-CosyWorld is composed of several interconnected services:
+See [Future Work](docs/deployment/08-future-work.md) and [System Report](SYSTEM_REPORT.md).
 
-### Core Services
-- **Chat Service**: Manages conversations and AI interactions
-- **Avatar Service**: Handles avatar creation, evolution, and management
-- **Memory Service**: Stores and retrieves hierarchical avatar memories
-- **Location Service**: Manages environmental contexts and zones
-- **Tool Service**: Coordinates actions and specialized tools
-
-### Support Services
-- **AI Service**: Interfaces with multiple AI providers through OpenRouter and Google AI
-- **Image Service**: Handles avatar image generation and storage
-- **Creation Service**: Provides structured generation with schema validation
-- **Database Service**: Manages persistent data storage and retrieval
-
-## Development
-
-The project uses:
-- Discord.js for bot functionality
-- Express for the web server
-- MongoDB for data persistence
-- OpenRouter and Google AI for model access
-- S3/Arweave for storage
-- Webpack and Babel for frontend build
-- TailwindCSS for styling
-
-## Documentation
-
-For detailed documentation, see the `/docs` directory:
-- [Introduction](docs/01-introduction.md)
-- [System Overview](docs/02-system-overview.md)
-- [System Diagram](docs/03-system-diagram.md)
-- [Action System](docs/04-action-system.md)
-- [Intelligence System](docs/05-intelligence-system.md)
-- [Dungeon System](docs/06-dungeon-system.md)
-- [Deployment Guide](docs/07-deployment.md)
-
-For build system documentation, see [README.build.md](README.build.md).
+---
 
 ## License
 
-This project is licensed under the [MIT License](LICENSE).
+MIT License
+
+---
+
+## Credits
+
+Developed by the RATi Collective & contributors.
+
+For questions or contributions, open an issue or pull request.
