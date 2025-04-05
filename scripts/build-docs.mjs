@@ -279,8 +279,8 @@ async function buildDocs() {
   const mainNavigation = await buildNavigation();
   
   // Copy the main README as index.html
-  const mainReadme = await fs.readFile(path.join(docsDir, 'README.md'), 'utf8');
-  const mainContent = md.render(transformMarkdown(mainReadme, path.join(docsDir, 'README.md')));
+  const mainReadme = await fs.readFile(path.join(docsDir, 'index.md'), 'utf8');
+  const mainContent = md.render(transformMarkdown(mainReadme, path.join(docsDir, 'index.md')));
   let indexHtml = htmlTemplate('Home', mainContent, mainNavigation);
   // Fix any path issues
   indexHtml = fixPathIssues(indexHtml);
