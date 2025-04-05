@@ -608,6 +608,10 @@ export default [
     "rarity": "common"
   },
   {
+    "model": "meta-llama/llama-4-maverick",
+    "rarity": "common"
+  },
+  {
     "model": "thedrummer/unslopnemo-12b",
     "rarity": "common"
   },
@@ -689,6 +693,10 @@ export default [
   },
   {
     "model": "mistralai/mixtral-8x7b-instruct",
+    "rarity": "common"
+  },
+  {
+    "model": "meta-llama/llama-4-scout",
     "rarity": "common"
   },
   {
