@@ -102,6 +102,12 @@ export async function initializeServices(logger) {
   await services.discordService.initialize();
   services.logger.info("DiscordService initialized.");
 
+  // WebService (moved up to be initialized early, right after DiscordService)
+  services.logger.info("Initializing WebService...");
+  services.webService = new WebService(services);
+  await services.webService.start();
+  services.logger.info("WebService initialized.");
+
   // AIService
   services.logger.info("Initializing AIService...");
   services.aiService = new AIService(services);
@@ -181,13 +187,6 @@ export async function initializeServices(logger) {
   services.promptService = new PromptService(services);
   services.logger.info("PromptService initialized.");
 
-
-  // WebService
-  services.logger.info("Initializing WebService...");
-  services.webService = new WebService(services);
-  await services.webService.start();
-  services.logger.info("WebService initialized.");
-
   // PeriodicTaskManager
   services.logger.info("Initializing PeriodicTaskManager...");
   services.periodicTaskManager = new PeriodicTaskManager(services);
@@ -211,6 +210,10 @@ export async function initializeServices(logger) {
   } catch (error) {
     services.logger.warn(`Failed to update Arweave prompts: ${error.message}`);
   }
+
+  // TODO: Consider building a dependency graph or service registry
+  // to automatically resolve initialization order and dependencies.
+  // This would reduce manual ordering and improve maintainability.
 
   // Return the subset of services needed by the caller
   return {
