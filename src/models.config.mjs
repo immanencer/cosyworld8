@@ -196,6 +196,10 @@ export default [
     "rarity": "rare"
   },
   {
+    "model": "google/gemini-2.5-pro-preview-03-25",
+    "rarity": "rare"
+  },
+  {
     "model": "mistralai/mistral-medium",
     "rarity": "rare"
   },
@@ -456,6 +460,10 @@ export default [
     "rarity": "uncommon"
   },
   {
+    "model": "qwen/qwen2.5-vl-32b-instruct",
+    "rarity": "uncommon"
+  },
+  {
     "model": "tokyotech-llm/llama-3.1-swallow-70b-instruct-v0.3",
     "rarity": "uncommon"
   },
@@ -481,6 +489,14 @@ export default [
   },
   {
     "model": "scb10x/llama3.1-typhoon2-70b-instruct",
+    "rarity": "uncommon"
+  },
+  {
+    "model": "latitudegames/wayfarer-large-70b-llama-3.3",
+    "rarity": "uncommon"
+  },
+  {
+    "model": "steelskull/l3.3-electra-r1-70b",
     "rarity": "uncommon"
   },
   {
@@ -512,14 +528,6 @@ export default [
     "rarity": "uncommon"
   },
   {
-    "model": "steelskull/l3.3-electra-r1-70b",
-    "rarity": "uncommon"
-  },
-  {
-    "model": "latitudegames/wayfarer-large-70b-llama-3.3",
-    "rarity": "uncommon"
-  },
-  {
     "model": "deepseek/deepseek-chat-v3-0324",
     "rarity": "uncommon"
   },
@@ -540,6 +548,10 @@ export default [
     "rarity": "common"
   },
   {
+    "model": "eva-unit-01/eva-qwen-2.5-72b",
+    "rarity": "common"
+  },
+  {
     "model": "google/gemma-2-27b-it",
     "rarity": "common"
   },
@@ -556,10 +568,6 @@ export default [
     "rarity": "common"
   },
   {
-    "model": "eva-unit-01/eva-qwen-2.5-72b",
-    "rarity": "common"
-  },
-  {
     "model": "neversleep/llama-3.1-lumimaid-8b",
     "rarity": "common"
   },
@@ -573,6 +581,10 @@ export default [
   },
   {
     "model": "minimax/minimax-01",
+    "rarity": "common"
+  },
+  {
+    "model": "thedrummer/skyfall-36b-v2",
     "rarity": "common"
   },
   {
@@ -593,10 +605,6 @@ export default [
   },
   {
     "model": "mistralai/mixtral-8x7b",
-    "rarity": "common"
-  },
-  {
-    "model": "thedrummer/skyfall-36b-v2",
     "rarity": "common"
   },
   {
@@ -752,11 +760,11 @@ export default [
     "rarity": "common"
   },
   {
-    "model": "google/gemma-3-27b-it",
+    "model": "qwen/qwq-32b",
     "rarity": "common"
   },
   {
-    "model": "qwen/qwq-32b",
+    "model": "google/gemma-3-27b-it",
     "rarity": "common"
   },
   {
@@ -1065,6 +1073,10 @@ export default [
   },
   {
     "model": "qwen/qwen-2.5-coder-32b-instruct:free",
+    "rarity": "common"
+  },
+  {
+    "model": "qwen/qwen-2.5-7b-instruct:free",
     "rarity": "common"
   },
   {
