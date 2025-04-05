@@ -257,7 +257,11 @@ export class DecisionMaker extends BasicService {
         temperature: 0.5,
         max_tokens: 32
       });
-      console.log(response);
+      if (!response) {
+        this.logger.debug('AI response is empty');
+        return false;
+      }
+      
       const decision = response.trim().toUpperCase().indexOf('YES') !== -1;
 
       if (decision) {
