@@ -154,7 +154,19 @@ export class ConfigService extends BasicService {
       prompts: {
         summon: this.config.prompt.summon,
         introduction: this.config.prompt.introduction
-      }
+      },
+      toolEmojis: {
+        summon: '🔮',
+        breed: '🏹',
+        attack: '⚔️',
+        defend: '🛡️'
+      },
+      features: {
+        breeding: true,
+        combat: true,
+        itemCreation: true
+      },
+      viewDetailsEnabled: true
     };
   }
 
@@ -171,10 +183,14 @@ export class ConfigService extends BasicService {
       toolEmojis: {
         ...defaults.toolEmojis,
         ...(guildConfig?.toolEmojis || {})
-      }
+      },
+      features: {
+        ...defaults.features,
+        ...(guildConfig?.features || {})
+      },
+      viewDetailsEnabled: guildConfig?.viewDetailsEnabled !== undefined ? guildConfig.viewDetailsEnabled : defaults.viewDetailsEnabled
     };
 
-    // Always sync summonEmoji to toolEmojis.summon
     merged.summonEmoji = merged.toolEmojis.summon || '🔮';
 
     return merged;

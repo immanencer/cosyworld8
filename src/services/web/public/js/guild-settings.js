@@ -441,6 +441,8 @@ class GuildSettingsManager {
     document.getElementById("attack-prompt").value = prompts.attack || "";
     document.getElementById("defend-prompt").value = prompts.defend || "";
     document.getElementById("breed-prompt").value = prompts.breed || "";
+
+    document.getElementById("feature-view-details").checked = guildConfig.viewDetailsEnabled !== false;
   }
 
   /** Set up form submission handler */
@@ -492,7 +494,7 @@ class GuildSettingsManager {
 
   /** Collect data from the settings form */
   getFormData() {
-    return {
+    const data = {
       guildId: document.getElementById("guild-id").value.trim(),
       name: document.getElementById("guild-name").value.trim(),
       summonerRole: document.getElementById("summoner-role").value.trim(),
@@ -530,7 +532,9 @@ class GuildSettingsManager {
         defend: document.getElementById("defend-prompt").value.trim(),
         breed: document.getElementById("breed-prompt").value.trim(),
       },
+      viewDetailsEnabled: document.getElementById("feature-view-details").checked
     };
+    return data;
   }
 
   /** Display a modal to add a new guild */
