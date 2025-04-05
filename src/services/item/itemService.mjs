@@ -213,11 +213,6 @@ Return a JSON object with keys: name, description, type, rarity, properties.`;
       .toArray();
   }
 
-  /** Validates an item against its schema using CreationService. */
-  validateItem(item) {
-    return this.creationService.validateEntity(item, this.getItemSchema());
-  }
-
   /** Returns the item schema for validation. */
   getItemSchema() {
     return {

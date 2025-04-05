@@ -1,14 +1,15 @@
 import { BasicService } from '../basicService.mjs';
 
 // Configuration constants (consider moving to a config file or env variables)
-const DECISION_MODEL = 'google/gemma-3-4b-it:free';
 const BASE_RESPONSE_CHANCE = 0.25;
 const DAILY_RESPONSE_LIMIT = 100; // Max immediate responses per human per day
 const DAILY_RESET_INTERVAL = 24 * 60 * 60 * 1000; // 24 hours in ms
 
 export class DecisionMaker extends BasicService {
-  constructor(services, config = {}) {
-    super(services, ['aiService', 'logger']);
+  constructor(services) {
+    super(services, ['aiService', 'configService', 'logger']);
+
+    this.model = this.configService.getAIConfig().decisionMakerModel;
 
     // Configurable constants with defaults
     this.config = {
@@ -20,8 +21,7 @@ export class DecisionMaker extends BasicService {
       MINIMUM_ATTENTION_THRESHOLD: 15,
       ATTENTION_DECAY_RATE: 0.95,              // Decay rate per minute
       TOP_N: 8,
-      RANDOM_N: 5,
-      ...config
+      RANDOM_N: 5
     };
 
     // Mind modes for varying behavior
@@ -300,10 +300,10 @@ export class DecisionMaker extends BasicService {
         const haiku = await this.aiService.chat([
           { role: 'system', content: `Generate a haiku reflecting the ${this.currentMode} mind mode.` },
           { role: 'user', content: 'Create a single haiku.' }
-        ], { model: DECISION_MODEL });
+        ], { model: this.model });
 
         const { sendAsWebhook } = await import('../discordService.mjs');
-        await this.services.discordService.sendAsWebhook(avatar.innerMonologueChannel, `🧠 [${this.currentMode}]\n${haiku}`, avatar);
+        await this.services.discordService.sendAsWebhook(avatar.innerMonologueChannel, `[${this.currentMode}]\n${haiku}`, avatar);
       } catch (error) {
         this.logger.error(`Haiku generation error: ${error.message}`);
       }

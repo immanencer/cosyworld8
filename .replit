@@ -11,7 +11,7 @@ deploymentTarget = "gce"
 build = ["sh", "-c", "npm run build"]
 
 [[ports]]
-localPort = 3000
+localPort = 3001
 externalPort = 80
 
 [workflows]

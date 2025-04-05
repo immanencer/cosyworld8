@@ -86,8 +86,11 @@ export class ToolService extends BasicService {
 
     // Get the list of tool emojis from the map
     const emojis = Array.from(this.toolEmojis.keys());
-    // Regex to match lines starting with an emoji, followed by a command name (single word), and then parameters
-    const pattern = new RegExp(`^(${emojis.join('|')})\\s+(\\w+)\\s+(.+)$`, 'gm');
+    
+    // Regex to match either:
+    // 1. Emoji at start of line followed by params (^${emoji}\s+(.+))
+    // 2. Emoji followed by command name and params anywhere (${emoji}\s+(\w+)\s+(.+))
+    const pattern = new RegExp(`(?:^(${emojis.join('|')})\\s+(.+))|(?:(${emojis.join('|')})\\s+(\\w+)\\s+(.+))`, 'gm');
 
     const commands = [];
     const commandLines = [];
@@ -96,26 +99,32 @@ export class ToolService extends BasicService {
     // Find all matches in the text
     let match;
     while ((match = pattern.exec(text)) !== null) {
-        const emoji = match[1];         // The matched emoji
-        const supposedCommand = match[2]; // The word after the emoji (supposed command name)
-        const paramsString = match[3];   // The remaining text (parameters)
-        const toolName = this.toolEmojis.get(emoji); // The actual tool name from the map
+        let emoji, paramsString, toolName, fullMatch;
 
-        // Trigger the command only if the supposed command name matches the tool name
-        if (supposedCommand === toolName) {
-            const params = paramsString.split(/\s+/); // Split parameters by whitespace
-            commands.push({ command: toolName, emoji, params });
-            commandLines.push(match[0]); // Store the full matched line
+        if (match[1]) { // Case 1: Emoji at start of line
+            emoji = match[1];
+            paramsString = match[2];
+            toolName = this.toolEmojis.get(emoji);
+            fullMatch = match[0];
+        } else { // Case 2: Emoji with command name anywhere
+            emoji = match[3];
+            const supposedCommand = match[4];
+            paramsString = match[5];
+            toolName = this.toolEmojis.get(emoji);
+            fullMatch = match[0];
+
+            // Only proceed if supposed command matches tool name
+            if (supposedCommand !== toolName) continue;
         }
-    }
 
-    // Remove command lines from cleanText
-    commandLines.forEach(line => {
-        cleanText = cleanText.replace(line, '').trim();
-    });
+        const params = paramsString.split(/\s+/); // Split parameters by whitespace
+        commands.push({ command: toolName, emoji, params });
+        commandLines.push(fullMatch); // Store the full matched line
+    }
 
     return { commands, cleanText, commandLines };
 }
+
 
   // --- Command Processing ---
 

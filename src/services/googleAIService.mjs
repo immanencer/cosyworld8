@@ -49,6 +49,65 @@ export class GoogleAIService extends BasicService {
     console.log(`[${new Date().toISOString()}] Initialized GoogleAIService with default model: ${this.model}`);
   }
 
+  schemaToPromptInstructions(schema) {
+    const props = schema.properties || {};
+    const required = new Set(schema.required || []);
+  
+    const fields = Object.entries(props).map(([key, def]) => {
+      const type = def.type || 'string';
+      const req = required.has(key) ? '(required)' : '(optional)';
+      const enumValues = def.enum ? ` Possible values: ${def.enum.join(', ')}.` : '';
+      return `- ${key}: ${type} ${req}.${enumValues}`;
+    }).join('\n');
+  
+    const jsonExample = JSON.stringify(
+      Object.fromEntries(
+        Object.keys(props).map(k => [k, '...'])
+      ),
+      null,
+      2
+    );
+  
+    return `
+  Respond only with a valid JSON object (no commentary).
+  The object must match this structure:
+  
+  ${jsonExample}
+  
+  Field definitions:
+  ${fields}
+    `.trim();
+  }
+
+  async tryParseGeminiJSONResponse(getRawResponse, retries = 2) {
+    for (let i = 0; i <= retries; i++) {
+      const raw = await getRawResponse();
+      try {
+        const jsonMatch = raw.match(/\{[\s\S]*\}/);
+        if (!jsonMatch) throw new Error("No JSON found");
+        return JSON.parse(jsonMatch[0]);
+      } catch (err) {
+        console.warn(`JSON parse failed (attempt ${i + 1}):`, err.message);
+        if (i === retries) throw new Error("Failed to parse JSON after retries");
+      }
+    }
+  }
+  
+  
+  async generateStructuredOutput({ prompt, schema, options = {} }) {
+    const actualSchema = schema?.schema || schema;
+  
+    const fullPrompt = `${prompt.trim()}\n\n${this.schemaToPromptInstructions(actualSchema)}`;
+  
+    return await this.tryParseGeminiJSONResponse(() =>
+      this.generateCompletion(fullPrompt, {
+        ...this.defaultCompletionOptions,
+        ...options
+      })
+    );
+  }
+  
+  
   async selectRandomModel() {
     const rarityRanges = [
       { rarity: 'common', min: 1, max: 12 },
@@ -156,12 +215,8 @@ export class GoogleAIService extends BasicService {
       maxOutputTokens: options.maxOutputTokens ?? 1500,
       topP: options.topP ?? 0.95,
       topK: options.topK ?? 40,
-      ...(options.schema && {
-        responseFormat: {
-          type: 'json',
-          schema: options.schema
-        }
-      })
+      responseMimeType: options.schema ? 'application/json' : 'text/plain',
+        ...(options.schema && { responseSchema: options.schema }),
     };
   
     // Start chat session
@@ -236,11 +291,10 @@ export class GoogleAIService extends BasicService {
   }
 
   async createItem(itemName, description) {
-    const prompt = `Create a fantasy RPG item as JSON.
-Name: "${itemName}"
-Description: "${description}"
-Fields: name, description, type, rarity (common/uncommon/rare/legendary), properties (e.g., {damage: "1d6"})`;
-
+    const prompt = `Create a fantasy RPG item.
+  Name: "${itemName}"
+  Description: "${description}"`;
+  
     const schema = {
       type: "OBJECT",
       properties: {
@@ -252,12 +306,13 @@ Fields: name, description, type, rarity (common/uncommon/rare/legendary), proper
       },
       required: ['name', 'description', 'type', 'rarity', 'properties']
     };
-
+  
     try {
-      return await this.generateStructuredOutput({ prompt, schema, options: { temperature: 0.5 } });
+      return await this.generateStructuredOutput({ prompt, schema });
     } catch (error) {
       console.error(`Failed to generate item "${itemName}":`, error.message);
       return null;
     }
   }
+  
 }

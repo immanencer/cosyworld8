@@ -517,18 +517,6 @@ export class AvatarService extends BasicService {
       lives: 3,
       status: 'alive',
     };
-
-    this.creationService.validateEntity(avatarDocument, {
-      type: 'object',
-      properties: {
-        name: { type: 'string' },
-        description: { type: 'string' },
-        personality: { type: 'string' },
-        emoji: { type: 'string' },
-        imageUrl: { type: 'string' },
-      },
-      required: ['name', 'description', 'personality', 'emoji', 'imageUrl'],
-    });
       
     const result = await this.db.collection('avatars').insertOne(avatarDocument);
     return { ...avatarDocument, _id: result.insertedId };

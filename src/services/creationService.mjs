@@ -60,57 +60,31 @@ export class CreationService extends BasicService {
     return this.rarityRanges.find(range => roll >= range.min && roll <= range.max)?.rarity || 'common';
   }
 
-  validateEntity(entity, schema) {
-    const validation = this.schemaValidator.validate(entity, schema);
-    if (!validation.valid) {
-      throw new Error(`Validation failed: ${JSON.stringify(validation.errors)}`);
-    }
-  }
-
   /**
-   * Executes a structured prompting pipeline.
+   * Executes a structured prompting pipeline using Gemini-compatible structured output.
    * @param {Object} config - Configuration for the pipeline.
    * @param {string} config.prompt - The base prompt to use.
    * @param {Object} config.schema - The schema to validate the output against.
-   * @param {Object} [config.options] - Additional options for the AI service.
+   * @param {Object} [config.options] - Additional options (e.g., temperature).
    * @returns {Promise<Object>} - The validated output.
    */
   async executePipeline({ prompt, schema, options = {} }) {
+    if (!schema) throw new Error('Schema is required for structured prompting.');
+
     try {
-      // Generate AI response
-      const response = await this.aiService.chat([{ role: 'user', content: prompt }], {
-        ...options,
-        model: this.configService.getAIConfig().structuredModel,
-        schema
+      const result = await this.aiService.generateStructuredOutput({
+        prompt,
+        schema,
+        options,
       });
-
-      // Parse and validate response
-      const parsedResponse = this.parseResponse(response);
-      if (!parsedResponse) {
-        throw new Error('Failed to parse AI response.');
-      }
-      if (!schema) {
-        throw new Error('Schema is required for validation.');
-      }
-      this.validateAgainstSchema(parsedResponse, schema.schema);
-
-      return parsedResponse;
+      
+      const actualSchema = schema?.schema || schema;
+      this.validateAgainstSchema(result, actualSchema);
+      
+      return result;
     } catch (error) {
-      console.error('Error in structured prompting pipeline:', error);
+      console.error('Error in structured prompting pipeline:', error.message);
       throw error;
-    }
-  }
-
-  /**
-   * Parses the AI response into a structured object.
-   * @param {string} response - The raw AI response.
-   * @returns {Object} - The parsed response.
-   */
-  parseResponse(response) {
-    try {
-      return JSON.parse(response);
-    } catch (error) {
-      throw new Error('Failed to parse AI response as JSON.');
     }
   }
 

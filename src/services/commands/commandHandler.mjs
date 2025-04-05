@@ -22,13 +22,16 @@ export async function handleCommands(message, services, avatar) {
     try {
       await services.mapService.updateAvatarPosition(avatar, message.channel.id);
 
-     const { commands } = services.toolService.extractToolCommands(content);
-     
-     commands.forEach(async ({ command, params }) => {
+      const { commands } = services.toolService.extractToolCommands(content);
+
+      commands.forEach(async ({ command, params }) => {
         const tool = services.toolService.tools.get(command);
         if (tool) {
+          const args = Array.isArray(params) && params[0] === tool.name
+            ? params.slice(1)
+            : params;
           await services.discordService.reactToMessage(message, tool.emoji);
-          const result = await tool.execute(message, params, avatar, services);
+          const result = await tool.execute(message, args, avatar, services);
           await services.discordService.replyToMessage(message, `-# ${tool.emoji} **results for ${avatar.name}.**\n${result}`);
         } else {
           await services.discordService.reactToMessage(message, "❌");

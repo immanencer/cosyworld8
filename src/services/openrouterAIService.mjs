@@ -78,6 +78,41 @@ export class OpenRouterAIService extends BasicService {
     return this.modelConfig.some(m => m.model === model.replace(':online', ''));
   }
 
+  /**
+ * Generates structured output using OpenRouter-compatible models and OpenAI-style schema.
+ * @param {Object} config
+ * @param {string} config.prompt - The user prompt to send.
+ * @param {Object} config.schema - A JSON schema describing the expected structure.
+ * @param {Object} config.options - Additional chat options (e.g., model, temperature).
+ * @returns {Promise<Object>} - The parsed and validated JSON object from the model.
+ */
+  async generateStructuredOutput({ prompt, schema, options = {} }) {
+    this.logger.warn('UNTESTED: generateStructuredOutput() is not yet tested for OpenRouterAIService.');
+    const messages = [
+      { role: 'user', content: prompt }
+    ];
+
+    const structuredOptions = {
+      model: options.model || this.structured_model,
+      schema,
+      response_format: {
+        type: 'json_schema',
+        json_schema: schema
+      },
+      ...options
+    };
+
+    const response = await this.chat(messages, structuredOptions);
+
+    try {
+      return typeof response === 'string' ? JSON.parse(response) : response;
+    } catch (err) {
+      this.logger.error('Failed to parse structured output from OpenRouter:', err);
+      throw new Error('Structured output was not valid JSON.');
+    }
+  }
+
+
   async generateCompletion(prompt, options = {}) {
     // Merge our defaults with caller-supplied options.
     const mergedOptions = {
@@ -140,8 +175,8 @@ export class OpenRouterAIService extends BasicService {
         this.logger.error('Error in OpenRouter response:', response.error);
         return null;
       }
-      
-      if(!response.choices || response.choices.length === 0) {
+
+      if (!response.choices || response.choices.length === 0) {
         this.logger.error('Unexpected response format from OpenRouter:', response);
         this.logger.info('Response:', JSON.stringify(response, null, 2));
         return null;
@@ -177,41 +212,41 @@ export class OpenRouterAIService extends BasicService {
     }
   }
 
-    /**
-   * Retrieves a model by exact match or finds the closest match using fuzzy search.
-   * @param {string} modelName - The name of the model to search for.
-   * @returns {string|null} - The exact or closest matching model name, or null if no match is found.
-   */
-    async getModel(modelName) {
-      if (!modelName) {
-        console.warn('No model name provided for retrieval.');
-        return await this.selectRandomModel();
-      }
-      // Normalize the model name by removing any suffixes (e.g., ":online")
-      modelName = modelName.replace(/:online$/, '').trim();
-      
-      // Extract all model names from the configuration
-      const modelNames = this.modelConfig.map(model => model.model);
-  
-      // Check for an exact match first
-      if (modelNames.includes(modelName)) {
-        return modelName;
-      }
-  
-      // Perform fuzzy search to find the closest match
-      const { bestMatch } = stringSimilarity.findBestMatch(modelName, modelNames);
-  
-      // Return the closest match if the similarity score is above a threshold (e.g., 0.5)
-      if (bestMatch.rating > 0.5) {
-        this.logger.info(`Fuzzy match found: "${modelName}" -> "${bestMatch.target}" (score: ${bestMatch.rating})`);
-        return bestMatch.target;
-      }
-  
-      console.warn(`No close match found for model: "${modelName}", defaulting to random model.`);
-      // If no close match is found, return null or a default model
-
+  /**
+ * Retrieves a model by exact match or finds the closest match using fuzzy search.
+ * @param {string} modelName - The name of the model to search for.
+ * @returns {string|null} - The exact or closest matching model name, or null if no match is found.
+ */
+  async getModel(modelName) {
+    if (!modelName) {
+      console.warn('No model name provided for retrieval.');
       return await this.selectRandomModel();
     }
+    // Normalize the model name by removing any suffixes (e.g., ":online")
+    modelName = modelName.replace(/:online$/, '').trim();
+
+    // Extract all model names from the configuration
+    const modelNames = this.modelConfig.map(model => model.model);
+
+    // Check for an exact match first
+    if (modelNames.includes(modelName)) {
+      return modelName;
+    }
+
+    // Perform fuzzy search to find the closest match
+    const { bestMatch } = stringSimilarity.findBestMatch(modelName, modelNames);
+
+    // Return the closest match if the similarity score is above a threshold (e.g., 0.5)
+    if (bestMatch.rating > 0.5) {
+      this.logger.info(`Fuzzy match found: "${modelName}" -> "${bestMatch.target}" (score: ${bestMatch.rating})`);
+      return bestMatch.target;
+    }
+
+    console.warn(`No close match found for model: "${modelName}", defaulting to random model.`);
+    // If no close match is found, return null or a default model
+
+    return await this.selectRandomModel();
+  }
 
   /**
    * Generates a spoken response as the item within the current channel context.

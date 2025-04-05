@@ -122,13 +122,5 @@ export default [
   {
     "model": "gemini-2.0-flash-thinking-exp-1219",
     "rarity": "uncommon"
-  },
-  {
-    "model": "gemini-embedding-exp-03-07",
-    "rarity": "uncommon"
-  },
-  {
-    "model": "gemini-embedding-exp",
-    "rarity": "uncommon"
   }
 ];
