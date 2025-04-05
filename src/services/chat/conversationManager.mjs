@@ -345,7 +345,6 @@ export class ConversationManager extends BasicService {
             this.logger.error(`Guild not found for channel ${avatar.channelId}`);
             return null;
           }
-
           sentMessage.guildId = guild.id;
           sentMessage.channel = channel;
           handleCommands(sentMessage, this.services, avatar);

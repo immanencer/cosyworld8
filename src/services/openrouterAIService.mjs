@@ -193,10 +193,14 @@ export class OpenRouterAIService extends BasicService {
         return result;
       }
 
-      if (!result.content) {
+      if (!result.content || !result.reasoning) {
         this.logger.error('Invalid response from OpenRouter during chat.');
         this.logger.info(JSON.stringify(result, null, 2));
         return '\n-# [⚠️ No response from OpenRouter]';
+      }
+
+      if (result.reasoning) { 
+        result.content = '<think>' + result.reasoning + '</think>' + result.content;
       }
 
       return (result.content.trim() || '...') + (fallback ? `\n-# [⚠️ Fallback model (${mergedOptions.model}) used.]` : '');
