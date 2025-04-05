@@ -77,14 +77,16 @@ export class CreationService extends BasicService {
         schema,
         options,
       });
-      
+
       const actualSchema = schema?.schema || schema;
       this.validateAgainstSchema(result, actualSchema);
-      
+
       return result;
     } catch (error) {
-      console.error('Error in structured prompting pipeline:', error.message);
-      throw error;
+      const msg = error.message || '';
+      const truncated = msg.length > 500 ? msg.slice(0, 500) + '... [truncated]' : msg;
+      console.error('Error in structured prompting pipeline:', truncated);
+      throw new Error(truncated);
     }
   }
 

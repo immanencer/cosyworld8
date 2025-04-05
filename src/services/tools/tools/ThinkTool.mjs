@@ -36,7 +36,7 @@ export class ThinkTool extends BasicTool {
       } else if (params.length > 0) {
         messageToRespondTo = params.join(' ');
       } else {
-        return "-# [Please provide a message to respond to or reply to a message.]";
+        messageToRespondTo = 'Let your mind wander...';
       }
 
       // Step 2: Fetch conversation context

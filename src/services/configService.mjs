@@ -25,11 +25,11 @@ export class ConfigService extends BasicService {
       ai: {
         google: {
           apiKey:  process.env.GOOGLE_API_KEY || process.env.GOOGLE_AI_API_KEY,
-          model: process.env.GOOGLE_AI_MODEL || 'gemini-2.0-flash',
-          decisionMakerModel: process.env.GOOGLE_AI_DECISION_MAKER_MODEL || 'gemini-2.0-flash-lite',
-          structuredModel: process.env.GOOGLE_AI_STRUCTURED_MODEL || 'gemini-2.0-flash',
-          chatModel: process.env.GOOGLE_AI_CHAT_MODEL || 'gemini-2.0-flash',
-          visionModel: process.env.GOOGLE_AI_VISION_MODEL || 'gemini-2.0-flash',
+          model: process.env.GOOGLE_AI_MODEL || 'gemini-2.0-flash-001',
+          decisionMakerModel: process.env.GOOGLE_AI_DECISION_MAKER_MODEL || 'gemini-2.0-flash-lite-001',
+          structuredModel: process.env.GOOGLE_AI_STRUCTURED_MODEL || 'gemini-2.0-flash-001',
+          chatModel: process.env.GOOGLE_AI_CHAT_MODEL || 'gemini-2.0-flash-001',
+          visionModel: process.env.GOOGLE_AI_VISION_MODEL || 'gemini-2.0-flash-001',
           temperature: 0.7,
           maxTokens: 1000,
           topP: 1.0,

@@ -16,8 +16,8 @@ export class GoogleAIService extends BasicService {
     }
 
     this.googleAI = new GoogleGenerativeAI(this.apiKey);
-    this.model = config.defaultModel || 'gemini-1.5-flash';
-    this.structured_model = config.structured_model || this.model;
+    this.model = config.defaultModel || 'gemini-2.0-flash-001';
+    this.structured_model = config.structuredModel || this.model;
     this.modelConfig = models;
 
     // Default options for chat and completion
@@ -79,6 +79,23 @@ export class GoogleAIService extends BasicService {
     `.trim();
   }
 
+  sanitizeSchema(schema) {
+    if (!schema || typeof schema !== 'object') return schema;
+
+    const clone = Array.isArray(schema) ? [] : {};
+    for (const key in schema) {
+      if (key === 'additionalProperties' || key === 'const') continue;
+
+      const value = schema[key];
+      if (typeof value === 'object' && value !== null) {
+        clone[key] = this.sanitizeSchema(value);
+      } else {
+        clone[key] = value;
+      }
+    }
+    return clone;
+  }
+
   async tryParseGeminiJSONResponse(getRawResponse, retries = 2) {
     for (let i = 0; i <= retries; i++) {
       const raw = await getRawResponse();
@@ -93,21 +110,44 @@ export class GoogleAIService extends BasicService {
     }
   }
   
-  
   async generateStructuredOutput({ prompt, schema, options = {} }) {
     const actualSchema = schema?.schema || schema;
-  
-    const fullPrompt = `${prompt.trim()}\n\n${this.schemaToPromptInstructions(actualSchema)}`;
-  
+
+    // Clone and sanitize schema
+    const sanitizedSchema = this.sanitizeSchema(actualSchema);
+
+    // Add propertyOrdering recursively if missing
+    function addOrdering(obj) {
+      if (obj && typeof obj === 'object') {
+        if (obj.type === 'object' && obj.properties && !obj.propertyOrdering) {
+          obj.propertyOrdering = Object.keys(obj.properties);
+        }
+        if (obj.properties) {
+          for (const key of Object.keys(obj.properties)) {
+            addOrdering(obj.properties[key]);
+          }
+        }
+        if (obj.items) {
+          addOrdering(obj.items);
+        }
+      }
+    }
+    addOrdering(sanitizedSchema);
+
+    const schemaInstructions = this.schemaToPromptInstructions(actualSchema);
+    const fullPrompt = `${schemaInstructions}\n\n${prompt.trim()}`;
+
     return await this.tryParseGeminiJSONResponse(() =>
       this.generateCompletion(fullPrompt, {
         ...this.defaultCompletionOptions,
-        ...options
+        ...options,
+        model: this.structured_model,
+        responseMimeType: 'application/json',
+        responseSchema: sanitizedSchema,
       })
     );
   }
-  
-  
+
   async selectRandomModel() {
     const rarityRanges = [
       { rarity: 'common', min: 1, max: 12 },
@@ -137,11 +177,15 @@ export class GoogleAIService extends BasicService {
     if (!this.googleAI) throw new Error("Google AI client not initialized.");
 
     const modelId = options.model || this.model;
+
+    // Remove 'model' from options before spreading into generationConfig
+    const { model, ...restOptions } = options;
+
     const generativeModel = this.googleAI.getGenerativeModel({ model: modelId });
 
     const generationConfig = {
       ...this.defaultCompletionOptions,
-      ...options,
+      ...restOptions,
     };
 
     try {

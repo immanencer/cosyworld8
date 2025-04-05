@@ -150,7 +150,7 @@ export default function dungeonRoutes(db) {
         if (entry.action === 'remember') {
           const memory = await db.collection('memories').findOne({ avatarId: actor?._id, timestamp: entry.timestamp });
           if (memory) additionalData.memory = memory.content;
-        } else if (entry.action === 'xpost') {
+        } else if (entry.action === 'xpost' || entry.action === 'post') {
           const tweet = await db.collection('tweets').findOne({ avatarId: actor?._id, timestamp: entry.timestamp });
           if (tweet) additionalData.tweet = tweet.content;
         } else if (entry.action === 'item') {

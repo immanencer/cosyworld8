@@ -298,7 +298,7 @@ If already suitable, return as is. If it needs editing, revise it while preservi
         id: thread.id,
         name: cleanLocationName,
         channel: thread,
-        description: evocativeDescription,
+        description: locationDescription,
         imageUrl: locationImage
       };
     } catch (error) {

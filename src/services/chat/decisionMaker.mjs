@@ -253,7 +253,7 @@ export class DecisionMaker extends BasicService {
       ];
 
       const response = await this.aiService.chat(prompt, {
-        model: DECISION_MODEL,
+        model: this.configService.getAIConfig().decisionMakerModel,
         temperature: 0.5,
         max_tokens: 32
       });
