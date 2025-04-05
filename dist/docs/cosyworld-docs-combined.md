@@ -7,7 +7,7 @@ This document contains all documentation for the CosyWorld project.
 ### Overview
 
 - [System Diagram](#system-diagram)
-- [System Overview](#system-overview)
+- [CosyWorld System Overview](#cosyworld-system-overview)
 - [CosyWorld Introduction](#cosyworld-introduction)
 
 ### Systems
@@ -20,7 +20,6 @@ This document contains all documentation for the CosyWorld project.
 
 - [X (Twitter) Authentication and Integration](#x-twitter-authentication-and-integration)
 - [CosyWorld Architecture Report](#cosyworld-architecture-report)
-- [CosyWorld Services Documentation](#cosyworld-services-documentation)
 - [Quest Generator Service](#quest-generator-service)
 - [Location Service](#location-service)
 - [Item Service](#item-service)
@@ -29,7 +28,6 @@ This document contains all documentation for the CosyWorld project.
 - [X (Twitter) Integration](#x-twitter-integration)
 - [Telegram Integration (Coming Soon)](#telegram-integration-coming-soon)
 - [Discord Integration](#discord-integration)
-- [Social Integrations](#social-integrations)
 - [S3 Service](#s3-service)
 - [Quest Generator Service](#quest-generator-service)
 - [S3 Service](#s3-service)
@@ -62,7 +60,7 @@ This document contains all documentation for the CosyWorld project.
 ### Deployment
 
 - [Future Work Priorities](#future-work-priorities)
-- [Deployment Guide](#deployment-guide)
+- [CosyWorld Deployment Guide](#cosyworld-deployment-guide)
 
 
 
@@ -70,144 +68,97 @@ This document contains all documentation for the CosyWorld project.
 
 #### CosyWorld Documentation
 
-Welcome to the CosyWorld documentation! This comprehensive guide covers all aspects of the CosyWorld system, from high-level architecture to detailed service implementations.
-
-#### Documentation Sections
-
-#### Overview
-- [Introduction](overview/01-introduction.md) - Getting started with CosyWorld
-- [System Overview](overview/02-system-overview.md) - High-level architecture and components
-- [System Diagram](overview/03-system-diagram.md) - Visual representation of system architecture
-
-#### Systems
-- [Action System](systems/04-action-system.md) - Commands and interactions
-- [Intelligence System](systems/05-intelligence-system.md) - AI and cognitive processes
-- [RATi Avatar System](systems/06-rati-avatar-system.md) - On-chain NFT-based avatars, items, and locations
-
-#### Services
-- [Services Overview](services/README.md) - Introduction to the service architecture
-- [Architecture Report](services/architecture-report.md) - Comprehensive analysis and recommendations
-
-#### Foundation Services
-- [Basic Service](services/foundation/basicService.md) - Foundation for all services
-- [Database Service](services/foundation/databaseService.md) - Data persistence layer
-- [Config Service](services/foundation/configService.md) - Configuration management
-- [Logger Service](services/foundation/logger.md) - Logging system
-
-#### AI Services
-- [AI Service](services/ai/aiService.md) - AI model abstraction
-- [Google AI Service](services/ai/googleAIService.md) - Google AI integration
-- [OpenRouter AI Service](services/ai/openrouterAIService.md) - OpenRouter integration
-- [Ollama Service](services/ai/ollamaService.md) - Local AI models
-- [Replicate Service](services/ai/replicateService.md) - Replicate.com integration
-- [Prompt Service](services/ai/promptService.md) - AI prompt construction
-
-#### Entity Services
-- [Avatar Service](services/entity/avatarService.md) - Avatar management
-- [Memory Service](services/entity/memoryService.md) - Long-term memory system
-- [Creation Service](services/entity/creationService.md) - Entity creation
-
-#### Communication Services
-- [Conversation Manager](services/communication/conversationManager.md) - Message handling
-- [Channel Manager](services/communication/channelManager.md) - Channel management
-- [Message Handler](services/communication/messageHandler.md) - Message routing
-- [Decision Maker](services/communication/decisionMaker.md) - Response generation
-- [Periodic Task Manager](services/communication/periodicTaskManager.md) - Scheduled tasks
-- [Command Handler](services/communication/commandHandler.md) - Command processing
-- [Spam Control Service](services/communication/spamControlService.md) - Rate limiting
-
-#### World Services
-- [Location Service](services/world/locationService.md) - Spatial management
-- [Map Service](services/world/mapService.md) - Navigation and mapping
-- [Item Service](services/world/itemService.md) - Item and inventory system
-- [Quest Generator Service](services/world/questGeneratorService.md) - Quest creation
-- [Quest Service](services/world/questService.md) - Quest management
-
-#### Tool System
-- [Tool Service](services/tools/toolService.md) - Tool framework
-- [Basic Tool](services/tools/basicTool.md) - Tool base class
-- [Action Log](services/tools/actionLog.md) - Action tracking
-- [Tool Implementations](services/tools/implementations.md) - Available tools
-
-#### Media Services
-- [Image Processing Service](services/media/imageProcessingService.md) - Image handling
-- [S3 Service](services/media/s3Service.md) - File storage
-
-#### Web Services
-- [Web Service](services/web/webService.md) - HTTP API
-- [Auth Service](services/web/authService.md) - Web authentication
-- [Thumbnail Service](services/web/thumbnailService.md) - Image thumbnails
-
-#### Social Integrations
-- [Social Overview](services/social/README.md) - Social media integration architecture
-- [X Integration](services/social/x-integration.md) - Twitter/X platform integration
-- [Discord Integration](services/social/discord-integration.md) - Discord platform integration
-- [Telegram Integration](services/social/telegram-integration.md) - Telegram integration (coming soon)
-
-#### Blockchain Services
-- [Token Service](services/blockchain/tokenService.md) - Token management
-- [Token Burn Service](services/blockchain/tokenBurnService.md) - Token burning
-- [NFT Mint Service](services/blockchain/nftMintService.md) - NFT creation
-- [Crossmint Service](services/blockchain/crossmintService.md) - Crossmint integration
-
-#### Deployment
-- [Deployment Guide](deployment/07-deployment.md) - Deployment procedures
-- [Future Work](deployment/08-future-work.md) - Roadmap and planned features
-
-#### Building Documentation
-
-To build the HTML version of this documentation, run:
-
-```bash
-npm run docs
-```
-
-This will generate HTML files in the `docs/build` directory that you can view in a web browser.
+Welcome to the CosyWorld developer hub. This guide covers everything from high-level architecture to detailed service implementations.
 
 ---
 
+#### Contents
 
+#### Overview
+- [Introduction](overview/01-introduction.md)
+- [System Overview](overview/02-system-overview.md)
+- [System Diagrams](overview/03-system-diagram.md)
 
-## Document: README.md
+#### Core Systems
+- [RATi Avatar System](systems/06-rati-avatar-system.md)
+- [Action System](systems/04-action-system.md)
+- [Intelligence System](systems/05-intelligence-system.md)
 
-#### CosyWorld Documentation
+#### Services
+- **Foundation**
+  - [Basic Service](services/foundation/basicService.md)
+  - [Database Service](services/foundation/databaseService.md)
+  - [Config Service](services/foundation/configService.md)
+  - [Logger Service](services/foundation/logger.md)
+- **AI Services**
+  - [AI Service](services/ai/aiService.md)
+  - [Google AI](services/ai/googleAIService.md)
+  - [OpenRouter](services/ai/openrouterAIService.md)
+  - [Ollama](services/ai/ollamaService.md)
+  - [Replicate](services/ai/replicateService.md)
+  - [Prompt Service](services/ai/promptService.md)
+- **Entity Services**
+  - [Avatar Service](services/entity/avatarService.md)
+  - [Memory Service](services/entity/memoryService.md)
+  - [Creation Service](services/entity/creationService.md)
+- **Communication**
+  - [Conversation Manager](services/communication/conversationManager.md)
+  - [Channel Manager](services/communication/channelManager.md)
+  - [Message Handler](services/communication/messageHandler.md)
+  - [Decision Maker](services/communication/decisionMaker.md)
+  - [Periodic Task Manager](services/communication/periodicTaskManager.md)
+  - [Command Handler](services/communication/commandHandler.md)
+  - [Spam Control](services/communication/spamControlService.md)
+- **World Services**
+  - [Location Service](services/world/locationService.md)
+  - [Map Service](services/world/mapService.md)
+  - [Item Service](services/world/itemService.md)
+  - [Quest Generator](services/world/questGeneratorService.md)
+  - [Quest Service](services/world/questService.md)
+- **Tool System**
+  - [Tool Service](services/tools/toolService.md)
+  - [Basic Tool](services/tools/basicTool.md)
+  - [Action Log](services/tools/actionLog.md)
+  - [Tool Implementations](services/tools/implementations.md)
+- **Media Services**
+  - [Image Processing](services/media/imageProcessingService.md)
+  - [S3 Storage](services/media/s3Service.md)
+- **Web Services**
+  - [Web API](services/web/webService.md)
+  - [Auth](services/web/authService.md)
+  - [Thumbnail](services/web/thumbnailService.md)
+- **Social Integrations**
+  - [Discord](services/social/discord-integration.md)
+  - [X (Twitter)](services/social/x-integration.md)
+  - [Telegram](services/social/telegram-integration.md)
+- **Blockchain**
+  - [Token Service](services/blockchain/tokenService.md)
+  - [NFT Minting](services/blockchain/nftMintService.md)
+  - [Crossmint](services/blockchain/crossmintService.md)
 
-This directory contains comprehensive documentation for the CosyWorld system.
+#### Deployment
+- [Deployment Guide](deployment/07-deployment.md)
+- [Future Roadmap](deployment/08-future-work.md)
 
-#### Organization
+#### Architecture & Reports
+- [Architecture Report](services/architecture-report.md)
+- [System Report](../SYSTEM_REPORT.md)
 
-The documentation is organized into the following sections:
+---
 
-- **Overview**: General introduction and system architecture
-  - [Introduction](overview/01-introduction.md)
-  - [System Overview](overview/02-system-overview.md)
-  - [System Diagram](overview/03-system-diagram.md)
+#### Building the Docs
 
-- **Systems**: Detailed information about specific subsystems
-  - [Action System](systems/04-action-system.md)
-  - [Intelligence System](systems/05-intelligence-system.md)
-  - [Dungeon System](systems/06-dungeon-system.md)
-
-- **Services**: Documentation for individual services
-  - [Services Overview](services/README.md)
-  - [Architecture Report](services/architecture-report.md)
-  - Core Services (BasicService, DatabaseService, etc.)
-  - Domain Services (Chat, Location, Item, etc.)
-  - Integration Services (Web, S3, etc.)
-
-- **Deployment**: Information about deployment and operations
-  - [Deployment Guide](deployment/07-deployment.md)
-  - [Future Work](deployment/08-future-work.md)
-
-#### Building the Documentation
-
-You can build a HTML version of this documentation by running:
+Generate the HTML docs with:
 
 ```bash
 npm run docs
 ```
 
-This will generate HTML files in the `docs/build` directory.
+Output is in `docs/build`.
+
+---
+
+For contribution guidelines, style guide, and tooling, see [README.docs.md](../README.docs.md).
 
 ---
 
@@ -942,393 +893,111 @@ With these enhancements, avatars will be able to maintain a consistent and engag
 
 #### CosyWorld Architecture Report
 
-#### Executive Summary
+#### Overview
 
-CosyWorld is a sophisticated AI ecosystem built around a service-oriented architecture that enables AI-driven avatar interactions in a rich, evolving environment. The system combines multiple AI models, database persistence, Discord integration, and specialized subsystems to create an immersive experience.
-
-This report analyzes the current architecture, identifies key design patterns, highlights strengths and challenges, and provides actionable recommendations for improvement.
-
-#### System Architecture Overview
-
-The CosyWorld architecture follows a modular, service-oriented approach with clear separation of concerns:
-
-#### Core Services Layer
-- **BasicService**: Foundation class providing dependency injection, service registration, and lifecycle management
-- **DatabaseService**: Manages data persistence using MongoDB and provides fallback mechanisms for development
-- **ConfigService**: Centralizes system configuration and environment variables
-- **AIService**: Abstracts AI model providers (OpenRouter, Google AI, Ollama) behind a consistent interface
-- **PromptService**: Constructs AI prompts from various contextual elements
-
-#### Domain-Specific Services Layer
-- **Chat Services**: Manage conversations, message flow, and response generation
-- **Tool Services**: Implement gameplay mechanics and interactive capabilities
-- **Location Services**: Handle spatial aspects of the environment including maps and positioning
-- **Avatar Services**: Manage avatar creation, evolution, and personality
-- **Item Services**: Implement inventory, item creation and usage
-- **Memory Services**: Handle short and long-term memory for AI entities
-
-#### Integration Layer
-- **DiscordService**: Interfaces with Discord for user interaction
-- **WebService**: Provides web-based interfaces and APIs
-- **S3Service**: Manages external storage for media and data
-- **XService**: Enables Twitter/X integration
-
-#### Key Architectural Patterns
-
-1. **Service Locator/Dependency Injection**
-   - Implementation via `BasicService` provides a foundational dependency management pattern
-   - Services are registered and initialized in a controlled sequence
-   - Dependencies are explicitly declared and validated
-
-2. **Singleton Pattern**
-   - Used for services requiring single instances across the system (e.g., DatabaseService)
-   - Ensures resource sharing and consistency
-
-3. **Facade Pattern**
-   - AIService provides a consistent interface across different AI providers
-   - Isolates implementation details of external dependencies
-
-4. **Command Pattern**
-   - ToolService implements commands as standalone objects with a consistent interface
-   - Allows for dynamic command registration and processing
-
-5. **Observer Pattern**
-   - Event-based communication between services, particularly for avatar movements and state changes
-
-#### Strengths of Current Architecture
-
-1. **Modularity and Separation of Concerns**
-   - Each service has a clear, focused responsibility
-   - Services can be developed, tested, and replaced independently
-
-2. **Adaptability to Different AI Providers**
-   - Abstraction allows for switching between different AI models and providers
-   - Resilience through fallback mechanisms
-
-3. **Robust Error Handling**
-   - Comprehensive error recovery in critical services
-   - Graceful degradation in development environments
-
-4. **Context Management**
-   - Sophisticated prompt construction for rich context
-   - Tiered memory system balancing recency and relevance
-
-5. **Extensibility**
-   - New tools and capabilities can be added with minimal changes to existing code
-   - Service-based architecture supports new integrations
-
-#### Challenges and Areas for Improvement
-
-1. **Initialization Complexity**
-   - Service initialization is verbose and potentially fragile
-   - Circular dependencies could cause subtle issues
-
-2. **Inconsistent Error Handling**
-   - Some services use console logging, others use the logger service
-   - Error recovery strategies vary between services
-
-3. **Duplication in Prompt Management**
-   - Some prompt construction logic exists in both ConversationManager and PromptService
-   - Potential for divergence and inconsistency
-
-4. **Limited Testing Infrastructure**
-   - No evident test framework or comprehensive testing strategy
-   - Reliance on manual testing increases risk during changes
-
-5. **Configuration Management**
-   - Heavy reliance on environment variables
-   - Limited validation of configuration values
-
-6. **Documentation Gaps**
-   - Minimal inline documentation in some services
-   - Service interactions not fully documented
-
-#### Actionable Recommendations
-
-#### 1. Service Initialization Refactoring
-- **Implement a Dependency Graph** to manage service initialization order
-- **Create a ServiceContainer** class to formalize the service locator pattern
-- **Automated Dependency Validation** to detect circular dependencies
-
-```javascript
-// Example ServiceContainer implementation
-class ServiceContainer {
-  constructor() {
-    this.services = new Map();
-    this.dependencyGraph = new Map();
-  }
-  
-  register(name, ServiceClass, dependencies = []) {
-    this.dependencyGraph.set(name, dependencies);
-    return this;
-  }
-  
-  async initialize() {
-    // Topological sort of dependencies
-    const order = this.resolveDependencies();
-    
-    // Initialize in correct order
-    for (const serviceName of order) {
-      await this.initializeService(serviceName);
-    }
-  }
-}
-```
-
-#### 2. Standardized Error Handling
-- **Create an ErrorHandlingService** to centralize error handling strategies
-- **Implement Consistent Error Types** with specific recovery actions
-- **Add Error Reporting** to track errors across the system
-
-```javascript
-// Example ErrorHandlingService
-class ErrorHandlingService {
-  constructor(logger) {
-    this.logger = logger;
-    this.errorCounts = new Map();
-  }
-  
-  handleError(error, context, recovery) {
-    this.logError(error, context);
-    this.trackError(error);
-    return this.executeRecovery(recovery, error);
-  }
-}
-```
-
-#### 3. Prompt Management Consolidation
-- **Move All Prompt Logic** to PromptService
-- **Implement Versioned Prompts** to track prompt evolution
-- **Create Prompt Testing Framework** to evaluate prompt effectiveness
-
-#### 4. Testing Infrastructure
-- **Implement Unit Testing** for core services
-- **Create Integration Tests** for service interactions
-- **Develop Simulation Environment** for AI behavior testing
-
-```javascript
-// Example test structure
-describe('PromptService', () => {
-  let promptService;
-  let mockServices;
-  
-  beforeEach(() => {
-    mockServices = {
-      logger: createMockLogger(),
-      avatarService: createMockAvatarService(),
-      // Other dependencies
-    };
-    promptService = new PromptService(mockServices);
-  });
-  
-  test('getBasicSystemPrompt returns expected format', async () => {
-    const avatar = createTestAvatar();
-    const prompt = await promptService.getBasicSystemPrompt(avatar);
-    expect(prompt).toContain(avatar.name);
-    expect(prompt).toContain(avatar.personality);
-  });
-});
-```
-
-#### 5. Enhanced Configuration Management
-- **Implement Schema Validation** for configuration values
-- **Create Configuration Presets** for different environments
-- **Add Runtime Configuration Updates** for dynamic settings
-
-#### 6. Documentation Enhancement
-- **Generate API Documentation** from code comments
-- **Create Service Interaction Diagrams** to visualize dependencies
-- **Implement Change Logs** to track architectural evolution
-
-#### 7. Performance Optimization
-- **Implement Caching** for frequently accessed data
-- **Add Performance Monitoring** for key service operations
-- **Create Benchmark Suite** for performance testing
-
-#### 8. Security Enhancements
-- **Implement Input Validation** at service boundaries
-- **Add Rate Limiting** for external-facing services
-- **Create Security Review Process** for new features
-
-#### Implementation Roadmap
-
-#### Phase 1: Foundational Improvements (1-2 Months)
-- Service container implementation
-- Standardized error handling
-- Documentation enhancement
-
-#### Phase 2: Quality and Testing (2-3 Months)
-- Testing infrastructure
-- Configuration management
-- Prompt management consolidation
-
-#### Phase 3: Performance and Security (3-4 Months)
-- Performance optimization
-- Security enhancements
-- Monitoring implementation
-
-#### Conclusion
-
-The CosyWorld architecture demonstrates a well-thought-out approach to building a complex AI ecosystem. The service-oriented design provides a solid foundation for future growth while maintaining adaptability to changing requirements and technologies.
-
-By addressing the identified challenges through the recommended improvements, the system can achieve greater robustness, maintainability, and performance while preserving its core strengths of modularity and extensibility.
-
-The recommended roadmap provides a structured approach to implementing these improvements while minimizing disruption to ongoing development and operations.
+CosyWorld is a modular, service-oriented AI ecosystem enabling persistent, evolving avatars with rich gameplay and cross-platform integration.
 
 ---
 
+#### Architecture Layers
 
+- **Core Services**: Dependency injection, database, config, AI abstraction, prompt management
+- **Domain Services**: Chat, tools, locations, avatars, items, memory
+- **Integration**: Discord, Web API, S3, X (Twitter)
 
-## Document: services/README.md
+---
 
-#### CosyWorld Services Documentation
+#### Key Patterns
 
-#### Overview
-This documentation provides a comprehensive overview of the service architecture in the CosyWorld system. Each service is documented with its purpose, functionality, implementation details, and dependencies.
+- **Dependency Injection** via `BasicService`
+- **Singletons** for shared resources
+- **Facade** for multi-provider AI
+- **Command Pattern** for tools/actions
+- **Observer/Event** for service communication
 
-#### Architecture Report
-The [Architecture Report](architecture-report.md) provides a high-level analysis of the system's design, strengths, challenges, and recommendations for improvement.
+---
 
-#### Service Categories
+#### Strengths
 
-#### Foundation Services
-These services form the core infrastructure of the system:
+- **Highly modular** and extensible
+- **Multi-model AI abstraction**
+- **Robust error handling**
+- **Sophisticated context & memory management**
+- **Easy to add new tools, services, integrations**
 
-- [Basic Service](foundation/basicService.md) - Base class for dependency injection and service lifecycle
-- [Database Service](foundation/databaseService.md) - Data persistence and MongoDB integration
-- [Config Service](foundation/configService.md) - Configuration management and environment variables
-- [Logger Service](foundation/logger.md) - Logging system for application events
+---
 
-#### AI Services
-Services that handle artificial intelligence and natural language processing:
+#### Challenges
 
-- [AI Service](ai/aiService.md) - AI model abstraction and provider management
-- [Google AI Service](ai/googleAIService.md) - Integration with Google AI Platform
-- [OpenRouter AI Service](ai/openrouterAIService.md) - Integration with OpenRouter API
-- [Ollama Service](ai/ollamaService.md) - Self-hosted AI model integration
-- [Replicate Service](ai/replicateService.md) - Integration with Replicate.com
-- [Prompt Service](ai/promptService.md) - AI prompt construction and optimization
+- Complex service initialization, risk of circular dependencies
+- Inconsistent error handling/logging
+- Duplicated prompt logic
+- Limited automated testing
+- Heavy reliance on env vars, limited validation
+- Documentation gaps
 
-#### Entity Services
-Services that manage game entities and their data:
+---
 
-- [Avatar Service](entity/avatarService.md) - Avatar creation and management
-- [Memory Service](entity/memoryService.md) - Long-term memory for avatars
-- [Creation Service](entity/creationService.md) - Character and asset creation
+#### Recommendations
 
-#### Communication Services
-Services that handle messaging and player interactions:
+#### Architecture
+- Implement **ServiceContainer** with dependency graph
+- Automate dependency validation
 
-- [Conversation Manager](communication/conversationManager.md) - Manages message flow and responses
-- [Channel Manager](communication/channelManager.md) - Manages chat channels and contexts
-- [Message Handler](communication/messageHandler.md) - Processes and routes messages
-- [Decision Maker](communication/decisionMaker.md) - AI-driven decision making
-- [Periodic Task Manager](communication/periodicTaskManager.md) - Scheduled task execution
-- [Discord Service](communication/discordService.md) - Discord platform integration
-- [Command Handler](communication/commandHandler.md) - User command processing
-- [Spam Control Service](communication/spamControlService.md) - Anti-spam measures
+#### Error Handling
+- Centralize with **ErrorHandlingService**
+- Standardize error types & recovery
+- Add error reporting
 
-#### World Services
-Services that manage the game world and environment:
+#### Prompt Management
+- Consolidate in **PromptService**
+- Version prompts
+- Add prompt testing framework
 
-- [Location Service](world/locationService.md) - Spatial management and environment
-- [Map Service](world/mapService.md) - Dungeon mapping and navigation
-- [Item Service](world/itemService.md) - Item creation and inventory management
-- [Quest Generator Service](world/questGeneratorService.md) - Quest creation
-- [Quest Service](world/questService.md) - Quest lifecycle management
+#### Testing
+- Add unit & integration tests
+- Develop AI simulation environment
 
-#### Tool System
-Services that enable game mechanics and avatar abilities:
+#### Config
+- Schema validation
+- Environment presets
+- Runtime updates
 
-- [Tool Service](tools/toolService.md) - Tool framework and management
-- [Basic Tool](tools/basicTool.md) - Tool base class and shared functionality
-- [Action Log](tools/actionLog.md) - Avatar action tracking
-- [Tool Implementations](tools/implementations.md) - Individual game mechanics tools
+#### Docs
+- Generate API docs
+- Add service diagrams
+- Maintain changelogs
 
-#### Media Services
-Services that handle media files and processing:
+#### Performance & Security
+- Cache frequently accessed data
+- Add monitoring & benchmarks
+- Input validation & rate limiting
+- Security review process
 
-- [Image Processing Service](media/imageProcessingService.md) - Image handling and analysis
-- [S3 Service](media/s3Service.md) - Cloud storage integration
+---
 
-#### Web Services
-Services that power the web interface:
+#### Roadmap
 
-- [Web Service](web/webService.md) - HTTP API and web interface
-- [Auth Service](web/authService.md) - Web authentication and authorization
-- [Thumbnail Service](web/thumbnailService.md) - Image thumbnail generation
+**Phase 1 (1-2 months)**
+- Service container
+- Error handling
+- Docs enhancement
 
-#### Social Integrations
-Services that connect to social media platforms:
+**Phase 2 (2-3 months)**
+- Testing infrastructure
+- Config improvements
+- Prompt consolidation
 
-- [Social Overview](social/README.md) - Social integration architecture
-- [X Integration](social/x-integration.md) - Twitter/X platform integration
-- [Discord Integration](social/discord-integration.md) - Discord communication platform
-- [Telegram Integration](social/telegram-integration.md) - Telegram messaging (coming soon)
+**Phase 3 (3-4 months)**
+- Performance optimization
+- Security enhancements
+- Monitoring
 
-#### Blockchain Services
-Services that handle blockchain and cryptocurrency interactions:
+---
 
-- [Token Service](blockchain/tokenService.md) - Token creation and management
-- [Token Burn Service](blockchain/tokenBurnService.md) - Token burn operations
-- [NFT Mint Service](blockchain/nftMintService.md) - NFT minting functionality
-- [Crossmint Service](blockchain/crossmintService.md) - Crossmint platform integration
+#### Summary
 
-#### Service Interactions
-The services interact in a layered architecture:
-
-1. **Foundation Layer**: BasicService, DatabaseService, ConfigService, Logger
-2. **Core Layer**: AI Services, Entity Services
-3. **Domain Layer**: World Services, Tool Services, Communication Services
-4. **Integration Layer**: Web Services, Media Services, Integration Services, Blockchain Services
-
-Services communicate through dependency injection, with dependencies explicitly declared and validated during initialization.
-
-#### Development Guidelines
-
-#### Adding a New Service
-1. Create a new class that extends BasicService
-2. Declare dependencies in the constructor
-3. Implement required functionality
-4. Register the service in initializeServices.mjs
-5. Document the service following the documentation template
-
-#### Modifying Existing Services
-1. Ensure backward compatibility with existing consumers
-2. Update dependencies as needed
-3. Document changes and update unit tests
-4. Follow the service lifecycle patterns
-5. Update service documentation
-
-#### Documentation Template
-When documenting a service, follow this structure:
-
-```markdown
-# Service Name
-
-#### Overview
-Brief description of the service's purpose and role in the system.
-
-#### Functionality
-List of key features and capabilities.
-
-#### Implementation
-Technical details, code examples, and design patterns.
-
-#### Dependencies
-List of services this service depends on.
-
-#### Usage Examples
-Code snippets showing how to use the service.
-```
-
-#### Best Practices
-- Use dependency injection consistently
-- Handle errors gracefully with proper logging
-- Document service interfaces and behaviors
-- Write unit tests for critical functionality
-- Follow asynchronous patterns with async/await
-- Adhere to the established code style guidelines
+CosyWorld's architecture is a strong foundation for a complex AI ecosystem. By addressing these improvements, it will become more robust, maintainable, and scalable, accelerating development of innovative AI-driven experiences.
 
 ---
 
@@ -2872,50 +2541,6 @@ Avatars communicate through Discord webhooks, which allow:
 #### Conclusion
 
 The Discord integration provides the core communication infrastructure for Moonstone Sanctum avatars. By implementing the planned improvements, we can enhance scalability, reliability, and user experience while supporting richer interaction models and better analytics.
-
----
-
-
-
-## Document: services/social/README.md
-
-#### Social Integrations
-
-This section documents all social media integrations for the Moonstone Sanctum project.
-
-#### Available Integrations
-
-- [X (Twitter) Integration](x-integration.md) - Connect avatars to X accounts for posting and interactions
-- [Discord Integration](discord-integration.md) - Core communication platform for avatar interactions
-- [Telegram Integration](telegram-integration.md) - (Coming soon) Future messaging platform support
-
-#### Integration Architecture
-
-Each social integration follows a similar pattern:
-
-1. **Authentication** - OAuth or similar protocol for secure user authorization
-2. **Webhook/Event Systems** - For receiving updates from the platform
-3. **Message Processing** - Handling incoming messages and generating responses
-4. **Content Publishing** - Posting content to the platform programmatically
-5. **Rate Limiting** - Managing API quotas and preventing spam
-
-#### Common Services
-
-Integrations share several service components:
-
-- `conversationManager` - Context management and response generation
-- `promptService` - AI prompt templating and generation
-- `messageHandler` - Processing incoming messages
-- `toolService` - Platform-specific interaction tools
-
-#### Future Plans
-
-Additional platforms under consideration:
-
-- Matrix/Element
-- Slack
-- Instagram
-- Threads
 
 ---
 
@@ -6221,80 +5846,60 @@ flowchart TD
 
 ## Document: overview/02-system-overview.md
 
-#### System Overview
-CosyWorld is an **ecosystem** composed of interconnected services, each responsible for a facet of AI life and gameplay. These services integrate AI modeling, blockchain storage, distributed data, and real-time user interactions across multiple platforms.
+#### CosyWorld System Overview
 
-#### **1. Chat Service**
-- **Function**: Orchestrates immersive conversations between users and avatars.  
-- **AI Models**: GPT-4, Claude, Llama, etc., accessed via OpenRouter and Google AI.  
-- **Features**:  
-  - **ConversationManager** for routing messages  
-  - **DecisionMaker** for avatar response logic  
-  - **PeriodicTaskManager** for scheduled operations
-  - **Rate Limiting** to maintain believable pace
+CosyWorld is a modular ecosystem of interconnected services powering AI avatars, gameplay, and cross-platform interactions.
 
+---
 
-#### **2. Tool Service**
-- **Purpose**: Handles dynamic, AI-driven gameplay and interactions.  
-- **Key Components**:  
-  - **ActionLog**: Maintains world state and events  
-  - **Specialized Tools**: AttackTool, DefendTool, MoveTool, RememberTool, CreationTool, XPostTool, etc.
-  - **StatGenerationService**: Creates and manages avatar statistics
+#### Core Services
 
+#### Chat Service
+- Orchestrates conversations between users and avatars
+- Uses multi-model AI (GPT-4, Claude, Llama, Gemini)
+- Components: **ConversationManager**, **DecisionMaker**, **PeriodicTaskManager**, **Rate Limiting**
 
-#### **3. Location Service**
-- **Role**: Generates and persists **AI-created environments**.  
-- **Core Functions**:  
-  - **Dynamic Environments**: Always-evolving landscapes  
-  - **Channel Management**: Discord-based or web-based zones  
-  - **Memory Integration**: Ties memories to location contexts
-  - **Avatar Position Tracking**: Maps avatars to locations
+#### Tool Service
+- Handles AI-driven gameplay mechanics
+- Components: **ActionLog**, **AttackTool**, **DefendTool**, **MoveTool**, **RememberTool**, **CreationTool**, **XPostTool**, **StatGenerationService**
 
+#### Location Service
+- Generates and manages AI-created environments
+- Tracks avatar positions and contextual memories
+- Supports Discord channels and web zones
 
-#### **4. Creation Service**
-- **Role**: Provides structured generation of content with schema validation
-- **Core Functions**:
-  - **Image Generation**: Creates visual representations using Replicate
-  - **Schema Validation**: Ensures content meets defined specifications
-  - **Pipeline Execution**: Manages multi-step generation processes
-  - **Rarity Determination**: Assigns rarity levels to generated entities
+#### Creation Service
+- Structured content generation with schema validation
+- AI-driven image generation (Replicate)
+- Multi-step pipelines and rarity assignment
 
+---
 
-#### **5. Support Services**
+#### Support Services
 
-1. **AI Service**  
-   - Mediates between the platform and external AI providers (OpenRouter, Google AI)
-   - Implements **error handling**, **retries**, and **model selection**
-   - Supports multiple model tiers and fallback strategies
+- **AI Service**: Mediates multi-provider AI, error handling, retries, model selection
+- **Memory Service**: Short-term cache, long-term vector DB, context-aware retrieval
+- **Avatar Service**: Lifecycle, breeding, evolution, image integration
+- **Item Service**: Creation, inventory, AI-driven item behavior, trading
+- **Storage**: S3, Arweave (permanent), MongoDB (structured data), Replicate (images)
 
-2. **Memory Service**  
-   - **Short-Term**: Recent interaction caching (2048-token context)  
-   - **Long-Term**: MongoDB with vector embeddings & hierarchical storage
-   - **Memory Retrieval**: Context-aware information access
+---
 
-3. **Avatar Service**  
-   - Creates, updates, and verifies unique avatars  
-   - Integrates with Creation Service for image generation
-   - Manages avatar lifecycle and relationships
-   - Handles breeding and evolution mechanisms
+#### Ecosystem Flow
 
-4. **Item Service**  
-   - Creates and manages interactive items
-   - Integrates with AI for item personality and behavior
-   - Implements inventory and item effects
-   - Handles item discovery and trading
+1. **User Input** → Chat/Tool Services → AI Models → Avatar Decisions
+2. **Memory Logging** → MongoDB → Summaries & Relevancy
+3. **Content Creation** → Creation Service → Schema Validation
+4. **Blockchain Storage** → Arweave for immutable data & media
 
-5. **Storage Services**  
-   - S3 and Arweave for **scalable** and **permanent** storage  
-   - Replicate for on-demand AI-driven image generation
-   - MongoDB for structured data persistence
+---
 
+#### Learn More
 
-#### **Ecosystem Flow**
-1. **User Input** → **Chat/Tool Services** → **AI Models** → **Avatar Decision**  
-2. **Memory Logging** → **MongoDB** → Summaries & Relevancy Checking  
-3. **Content Creation** → **Creation Service** → Schema Validation
-4. **Blockchain Storage** → **Arweave** for immutable avatar data & media
+- [Architecture Diagrams](03-system-diagram.md)
+- [Action System](../systems/04-action-system.md)
+- [Intelligence System](../systems/05-intelligence-system.md)
+- [RATi Avatar System](../systems/06-rati-avatar-system.md)
 
 ---
 
@@ -6304,69 +5909,68 @@ CosyWorld is an **ecosystem** composed of interconnected services, each responsi
 
 #### CosyWorld Introduction
 
-#### What is CosyWorld?
+CosyWorld is a next-generation AI avatar universe. It creates persistent, evolving, intelligent entities with unique personalities, memories, and cross-platform presence.
 
-CosyWorld is an advanced AI avatar ecosystem that creates persistent, intelligent entities with memory, personality, and the ability to interact across multiple platforms. It combines cutting-edge AI models, dynamic memory systems, and strategic gameplay mechanics to create an immersive world where avatars can develop, battle, and evolve over time.
+---
+
+#### What Makes CosyWorld Unique?
+
+- **Autonomous AI Avatars**: Personalities generated by multi-model AI (GPT-4, Claude, Gemini, Llama)
+- **Hierarchical Memory**: Short-term, long-term, emotional, with vector-based retrieval
+- **NFT-Backed Assets**: On-chain avatars, items, locations with evolution mechanics
+- **Dynamic Gameplay**: Combat, social, exploration, creation, quests
+- **Cross-Platform**: Discord, Web, X (Twitter), Telegram (planned)
+- **Modular Architecture**: Extensible, scalable, service-oriented
+
+---
 
 #### Core Concepts
 
 #### AI Avatars
-
-Avatars are the central entities in CosyWorld. Each avatar:
-- Has a unique personality generated by AI
-- Develops persistent memories of interactions
-- Evolves based on experiences and relationships
-- Can participate in strategic combat
-- Has a visual representation generated by AI
+- Unique personalities & visuals
+- Evolve through interactions & experiences
+- Participate in combat, social, and creative activities
 
 #### Intelligence Tiers
+- **Legendary**: Advanced reasoning (GPT-4, Claude-Opus, Llama-405B)
+- **Rare**: Specialized skills (Eva-Qwen, LumiMaid)
+- **Uncommon**: Balanced (Mistral, Qwen, Mythalion)
+- **Common**: Fast, efficient (Llama-3B, Nova, Phi)
 
-Avatars operate with different levels of AI intelligence:
-- **Legendary**: Advanced reasoning (GPT-4, Claude-3-Opus, Llama-3.1-405B)
-- **Rare**: Specialized abilities (Eva-Qwen-2.5-72B, Llama-3.1-LumiMaid-70B)
-- **Uncommon**: Balanced performance (Mistral-Large, Qwen-32B, Mythalion-13B)
-- **Common**: Fast, efficient responses (Llama-3.2-3B, Nova-Lite, Phi-3.5-Mini)
+#### Memory System
+- **Short-Term**: Recent context
+- **Long-Term**: Personal history
+- **Emotional**: Personality traits & relationships
 
-#### Memory Architecture
+#### Gameplay
+- **Combat**: Strategic battles
+- **Social**: Alliances, rivalries
+- **World**: Exploration, creation
 
-Avatars maintain sophisticated memory structures:
-- **Short-Term**: Recent interactions and current context
-- **Long-Term**: Personal history and significant events
-- **Emotional**: Personality traits and relationship dynamics
+---
 
-#### Dynamic Gameplay
+#### Platforms & Tech
 
-The system supports various gameplay mechanics:
-- **Combat**: Strategic battles with specialized attacks and defenses
-- **Social**: Alliances, rivalries, and other relationships
-- **World**: Exploration, creation, and environmental interaction
+- **Discord**: Full bot integration
+- **Web**: Browser interface
+- **X (Twitter)**: Social integration
+- **Telegram**: Coming soon
 
-#### Platform Support
+- **Backend**: Node.js, Express
+- **Database**: MongoDB, vector store
+- **AI**: OpenRouter, Google AI
+- **Storage**: S3, Arweave
+- **Frontend**: JS, Webpack, TailwindCSS
 
-CosyWorld is designed to work across multiple platforms:
-- **Discord**: Primary platform with full bot integration
-- **Telegram**: Messaging platform integration
-- **X (Twitter)**: Social media integration
-- **Web**: Browser-based interface
+---
 
-#### Technology Stack
+#### Next Steps
 
-- **Backend**: Node.js with Express
-- **Database**: MongoDB for data, vector store for memories
-- **AI**: Multiple models via OpenRouter and Google AI
-- **Storage**: S3 for images, Arweave for permanent records
-- **Frontend**: Modern JavaScript with Webpack, Babel, and TailwindCSS
-- **Creation**: Structured content generation with schema validation
-
-#### Getting Started
-
-1. See the [main README](../readme.md) for installation instructions
-2. Explore the [System Overview](02-system-overview.md) for architecture details
-3. Review the [System Diagram](03-system-diagram.md) for visual representation
-4. Understand the [Action System](04-action-system.md) for gameplay mechanics
-5. Learn about the [Intelligence System](05-intelligence-system.md) for AI details
-6. Check the [Dungeon System](06-dungeon-system.md) for combat and exploration
-7. Follow the [Deployment Guide](07-deployment.md) for production setup
+- See the [System Overview](02-system-overview.md) for architecture
+- Explore [System Diagrams](03-system-diagram.md)
+- Learn about [Action System](../systems/04-action-system.md)
+- Dive into [Intelligence System](../systems/05-intelligence-system.md)
+- Review [Deployment Guide](../deployment/07-deployment.md)
 
 ---
 
@@ -6500,167 +6104,85 @@ This document outlines the prioritized roadmap for CosyWorld development based o
 
 ## Document: deployment/07-deployment.md
 
-#### Deployment Guide
+#### CosyWorld Deployment Guide
 
-#### Environment Setup
+---
 
-#### Required Environment Variables
-Create a `.env` file with the following variables:
+#### Environment Variables
 
-```env
-# Core Configuration
-NODE_ENV="production"  # Use "production" for deployment
-API_URL="https://your-api-domain.com"
-PUBLIC_URL="https://your-public-domain.com"
+Create a `.env` file with:
 
-# Database
-MONGO_URI="mongodb://your-mongo-instance:27017"
-MONGO_DB_NAME="moonstone"
+- **Core:** `NODE_ENV`, `API_URL`, `PUBLIC_URL`
+- **Database:** `MONGO_URI`, `MONGO_DB_NAME`
+- **AI:** `OPENROUTER_API_TOKEN`, `REPLICATE_API_TOKEN`, `GOOGLE_AI_API_KEY`
+- **Storage:** `S3_API_ENDPOINT`, `S3_API_KEY`, `S3_API_SECRET`, `CLOUDFRONT_DOMAIN`
+- **Discord:** `DISCORD_BOT_TOKEN`
+- **Performance:** `MEMORY_CACHE_SIZE`, `MAX_CONCURRENT_REQUESTS`
 
-# AI Services
-OPENROUTER_API_TOKEN="your_openrouter_token"
-REPLICATE_API_TOKEN="your_replicate_token"
-GOOGLE_AI_API_KEY="your_google_ai_key"
-
-# Storage
-S3_API_ENDPOINT="your_s3_endpoint"
-S3_API_KEY="your_s3_key"
-S3_API_SECRET="your_s3_secret"
-CLOUDFRONT_DOMAIN="your_cdn_domain"
-
-# Platform Integration
-DISCORD_BOT_TOKEN="your_discord_bot_token"
-
-# Optional: Performance Tuning
-MEMORY_CACHE_SIZE="1000"  # Number of memory entries to keep in cache
-MAX_CONCURRENT_REQUESTS="50"  # Maximum concurrent AI requests
-```
+---
 
 #### Database Setup
 
-#### MongoDB Configuration
-1. Ensure MongoDB instance is running (v4.4+ recommended)
-2. Create required collections:
-   - `avatars`: Stores avatar data and metadata
-   - `dungeon_stats`: Combat and stat tracking
-   - `dungeon_log`: History of interactions and battles
-   - `narratives`: Generated story elements
-   - `memories`: Long-term memory storage
-   - `messages`: Communication history
-   - `locations`: Environmental data
-   - `items`: In-world items and artifacts
-
-#### Indexing
-Create the following indexes for optimal performance:
+- Use MongoDB 4.4+
+- Collections: `avatars`, `dungeon_stats`, `dungeon_log`, `narratives`, `memories`, `messages`, `locations`, `items`
+- Indexes:
 ```js
-db.avatars.createIndex({ "avatarId": 1 }, { unique: true })
-db.memories.createIndex({ "avatarId": 1, "timestamp": -1 })
-db.messages.createIndex({ "channelId": 1, "timestamp": -1 })
-db.messages.createIndex({ "messageId": 1 }, { unique: true })
+db.avatars.createIndex({ avatarId: 1 }, { unique: true })
+db.memories.createIndex({ avatarId: 1, timestamp: -1 })
+db.messages.createIndex({ channelId: 1, timestamp: -1 })
+db.messages.createIndex({ messageId: 1 }, { unique: true })
 ```
 
-#### Server Configuration
+---
 
-#### System Requirements
-- 4+ CPU cores
-- 8GB+ RAM
-- 50GB+ SSD storage
-- 100Mbps+ network connection
+#### Server Requirements
 
-#### Node.js Setup
-- Use Node.js v18+ LTS
-- Set appropriate memory limits:
-  ```bash
-  NODE_OPTIONS="--max-old-space-size=4096"
-  ```
+- Node.js 18+ LTS
+- 4+ CPU cores, 8GB+ RAM, 50GB+ SSD
+- Set memory limit:
+```bash
+NODE_OPTIONS="--max-old-space-size=4096"
+```
 
-#### Web Server
-For production deployment, use Nginx as a reverse proxy:
+---
 
-1. Install Nginx: `sudo apt install nginx`
-2. Configure Nginx using the template in `/config/nginx.conf`
-3. Enable and start the service:
-   ```bash
-   sudo ln -s /path/to/config/nginx.conf /etc/nginx/sites-enabled/moonstone
-   sudo systemctl restart nginx
-   ```
+#### Production Setup
 
-#### Service Management
+- Use **Nginx** as reverse proxy
+- Use **systemd** for service management
+- Example configs in `/config/`
 
-#### Systemd Configuration
-Create a systemd service for reliable operation:
+---
 
-1. Copy the service file: `sudo cp /config/moonstone-sanctum.service /etc/systemd/system/`
-2. Enable and start the service:
-   ```bash
-   sudo systemctl enable moonstone-sanctum
-   sudo systemctl start moonstone-sanctum
-   ```
+#### Rate Limits
 
-3. Check status: `sudo systemctl status moonstone-sanctum`
+- AI calls: 5 per avatar/min
+- Image gen: 2 per avatar/hour
+- Avatar creation: 3 per user/day
 
-#### API Rate Limits
+---
 
-#### External Service Limits
-- **OpenRouter**: Based on your subscription plan (typically 3-10 req/min)
-- **Google AI**: Based on your subscription plan
-- **Discord API**: Stay within Discord's published rate limits
-- **Replicate API**: Check your subscription quota
-- **S3 Storage**: No practical limit for normal operation
+#### Monitoring
 
-#### Internal Rate Limiting
-The system implements the following rate limits:
-- AI Model calls: Max 5 per avatar per minute
-- Image Generation: Max 2 per avatar per hour
-- Avatar Creation: Max 3 per user per day
+- Logs: `/logs/` (rotated daily, 7-day retention)
+- Health endpoints: `/health`, `/health/ai`, `/health/db`
 
-#### Monitoring and Logging
+---
 
-#### Log Files
-All logs are in the `/logs` directory with the following structure:
-- `application.log`: Main application logs
-- `avatarService.log`: Avatar-related operations
-- `discordService.log`: Discord interactions
-- `aiService.log`: AI model interactions
-- `errors.log`: Critical errors only
+#### Backups
 
-#### Log Rotation
-Logs are automatically rotated:
-- Daily rotation
-- 7-day retention
-- Compressed archives
+- MongoDB dumps daily
+- `.env` backups
+- Automate with cron
 
-#### Health Checks
-The system exposes health endpoints:
-- `/health`: Basic system health
-- `/health/ai`: AI services status
-- `/health/db`: Database connectivity
+---
 
-#### Backup Strategy
+#### Scaling Tips
 
-1. Database Backups:
-   ```bash
-   mongodump --uri="$MONGO_URI" --db="$MONGO_DB_NAME" --out=/backup/$(date +%Y-%m-%d)
-   ```
-
-2. Environment Backup:
-   ```bash
-   cp .env /backup/env/$(date +%Y-%m-%d).env
-   ```
-
-3. Automated Schedule:
-   ```bash
-   # Add to crontab
-   0 1 * * * /path/to/scripts/backup.sh
-   ```
-
-#### Scaling Considerations
-
-For high-traffic deployments:
-- Implement MongoDB replication
-- Set up multiple application instances behind a load balancer
-- Use Redis for centralized caching
-- Consider containerization with Docker/Kubernetes for easier scaling
+- MongoDB replication
+- Multiple app instances + load balancer
+- Redis cache
+- Containerize with Docker/Kubernetes
 
 ---
 
