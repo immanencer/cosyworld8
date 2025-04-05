@@ -48,7 +48,7 @@ export class ToolService extends BasicService {
       move: MoveTool,
       remember: RememberTool,
       create: CreationTool,
-      xpost: XPostTool,
+      x: XPostTool,
       item: ItemTool,
       respond: ThinkTool,
     };
@@ -81,45 +81,25 @@ export class ToolService extends BasicService {
   }
 
   extractToolCommands(text) {
-    // Handle empty or null input
     if (!text) return { commands: [], cleanText: text || '', commandLines: [] };
 
-    // Get the list of tool emojis from the map
     const emojis = Array.from(this.toolEmojis.keys());
-    
-    // Regex to match either:
-    // 1. Emoji at start of line followed by params (^${emoji}\s+(.+))
-    // 2. Emoji followed by command name and params anywhere (${emoji}\s+(\w+)\s+(.+))
-    const pattern = new RegExp(`(?:^(${emojis.join('|')})\\s+(.+))|(?:(${emojis.join('|')})\\s+(\\w+)\\s+(.+))`, 'gm');
+    const pattern = new RegExp(`(${emojis.join('|')})(?:\s+([^\n]*))?`, 'g');
 
     const commands = [];
     const commandLines = [];
     let cleanText = text;
 
-    // Find all matches in the text
     let match;
     while ((match = pattern.exec(text)) !== null) {
-        let emoji, paramsString, toolName, fullMatch;
+      const emoji = match[1];
+      const paramsString = match[2] || '';
+      const toolName = this.toolEmojis.get(emoji);
+      const fullMatch = match[0];
 
-        if (match[1]) { // Case 1: Emoji at start of line
-            emoji = match[1];
-            paramsString = match[2];
-            toolName = this.toolEmojis.get(emoji);
-            fullMatch = match[0];
-        } else { // Case 2: Emoji with command name anywhere
-            emoji = match[3];
-            const supposedCommand = match[4];
-            paramsString = match[5];
-            toolName = this.toolEmojis.get(emoji);
-            fullMatch = match[0];
-
-            // Only proceed if supposed command matches tool name
-            if (supposedCommand !== toolName) continue;
-        }
-
-        const params = paramsString.split(/\s+/); // Split parameters by whitespace
-        commands.push({ command: toolName, emoji, params });
-        commandLines.push(fullMatch); // Store the full matched line
+      const params = paramsString.trim() ? paramsString.trim().split(/\s+/) : [];
+      commands.push({ command: toolName, emoji, params });
+      commandLines.push(fullMatch);
     }
 
     return { commands, cleanText, commandLines };
@@ -145,13 +125,22 @@ export class ToolService extends BasicService {
 
   // --- Command Processing ---
 
-  async getCommandsDescription(guildId) {
+  async getCommandsDescription(guildId, avatar = null) {
     const commands = [];
     for (const [name, tool] of this.tools.entries()) {
       try {
-        const syntax = (await tool.getSyntax(guildId)) || `${tool.emoji} ${name}`;
-        const description = tool.getDescription() || 'No description available.';
-        commands.push(`**${name}**\nCommand format: ${syntax}\nDescription: ${description}`);
+        if (tool.constructor.name === 'XSocialTool' && avatar) {
+          const status = await tool.getToolStatusForAvatar(avatar);
+          if (!status.visible) continue;
+          const syntax = (await tool.getSyntax(guildId)) || `${tool.emoji} ${name}`;
+          const description = tool.getDescription() || 'No description available.';
+          const info = status.info ? `\n${status.info}` : '';
+          commands.push(`**${name}**\nCommand format: ${syntax}\nDescription: ${description}${info}`);
+        } else {
+          const syntax = (await tool.getSyntax(guildId)) || `${tool.emoji} ${name}`;
+          const description = tool.getDescription() || 'No description available.';
+          commands.push(`**${name}**\nCommand format: ${syntax}\nDescription: ${description}`);
+        }
       } catch (error) {
         this.logger.error(`Error getting syntax for tool '${name}': ${error.message}`);
       }

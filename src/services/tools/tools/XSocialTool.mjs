@@ -1,10 +1,11 @@
 import { BasicTool } from '../BasicTool.mjs';
 import { TwitterApi } from 'twitter-api-v2';
 import { MongoClient } from 'mongodb';
-import { encrypt, decrypt } from '../../utils/encryption.mjs'; // Placeholder for encryption
+import { encrypt, decrypt } from '../../utils/encryption.mjs';
 import { act } from 'react';
 
 let mongoClient = null;
+const statusCache = new Map(); // avatarId -> { timestamp, data }
 
 export class XSocialTool extends BasicTool {
     constructor(services) {
@@ -16,7 +17,7 @@ export class XSocialTool extends BasicTool {
             'conversationManager',
         ]);
         this.emoji = '🐦';
-        this.name = 'xsocial';
+        this.name = 'x';
         this.description = 'Manage X social interactions (post, reply, quote, follow, like, repost, block) using avatar context.';
     }
 
@@ -51,6 +52,12 @@ export class XSocialTool extends BasicTool {
     }
 
     async getXTimelineAndNotifications(avatar) {
+        const now = Date.now();
+        const cached = statusCache.get(avatar._id.toString());
+        if (cached && (now - cached.timestamp < 5 * 60 * 1000)) {
+            return cached.data;
+        }
+
         const client = await this.getMongoClient();
         const db = client.db(process.env.MONGO_DB_NAME);
         const auth = await db.collection('x_auth').findOne({ avatarId: avatar._id.toString() });
@@ -62,16 +69,16 @@ export class XSocialTool extends BasicTool {
         const timeline = await v2Client.userTimeline(await v2Client.me().then(u => u.data.id), { max_results: 10 });
         const notifications = await v2Client.userMentionTimeline(await v2Client.me().then(u => u.data.id), { max_results: 10 });
 
-        return {
+        const data = {
             timeline: timeline?.data?.data.map(t => ({ id: t.id, text: t.text, user: t.author_id })),
-            notifications: notifications.data?.data?.map(n => ({ id: n.id, text: n.text, user: n.author_id }))
+            notifications: notifications.data?.data.map(n => ({ id: n.id, text: n.text, user: n.author_id }))
         };
+        statusCache.set(avatar._id.toString(), { timestamp: now, data });
+        return data;
     }
 
     async generateSocialActions(avatar, context, timeline, notifications) {
-        const memories = await this.memoryService.getMemories(avatar._id, 20); // Last 20 memories
-
-        // Use PromptService to build the system prompt
+        const memories = await this.memoryService.getMemories(avatar._id, 20);
         const systemPrompt = await this.services.promptService.getBasicSystemPrompt(avatar);
 
         const prompt = `
@@ -91,29 +98,30 @@ export class XSocialTool extends BasicTool {
         `.trim();
 
         const schema = {
-        name: 'rati-x-social-actions',
-        strict: true, 
-        schema: {
-            type: "object",
-            properties: {
-                actions: {
-                    type: "array",
-                    items: {
-                        type: "object",
-                        properties: {
-                            type: { type: "string", enum: ["post", "reply", "quote", "follow", "like", "repost", "block"] },
-                            content: { type: "string", description: "Text for post/reply/quote (max 280 chars)" },
-                            tweetId: { type: "string", description: "Tweet ID for reply/quote/like/repost" },
-                            userId: { type: "string", description: "User ID for follow/block" }
-                        },
-                        required: ["type", "content", "tweetId", "userId"],
-                        additionalProperties: false,
+            name: 'rati-x-social-actions',
+            strict: true,
+            schema: {
+                type: "object",
+                properties: {
+                    actions: {
+                        type: "array",
+                        items: {
+                            type: "object",
+                            properties: {
+                                type: { type: "string", enum: ["post", "reply", "quote", "follow", "like", "repost", "block"] },
+                                content: { type: "string", description: "Text for post/reply/quote (max 280 chars)" },
+                                tweetId: { type: "string", description: "Tweet ID for reply/quote/like/repost" },
+                                userId: { type: "string", description: "User ID for follow/block" }
+                            },
+                            required: ["type", "content", "tweetId", "userId"],
+                            additionalProperties: false,
+                        }
                     }
-                }
-            },
-            required: ["actions"],
-            additionalProperties: false,
-        }};
+                },
+                required: ["actions"],
+                additionalProperties: false,
+            }
+        };
 
         // Use CreationService's executePipeline method
         const actions = await this.services.creationService.executePipeline({
@@ -126,11 +134,14 @@ export class XSocialTool extends BasicTool {
 
     async execute(message, params, avatar) {
         try {
-            if (!params.length) return '❌ Please provide a command: status, post <message>, or auto';
+            if (!params.length) {
+                params = ['auto'];
+            }
 
             const client = await this.getMongoClient();
             const db = client.db(process.env.MONGO_DB_NAME);
-            const encryptedToken = (await db.collection('x_auth').findOne({ avatarId: avatar._id.toString() }))?.accessToken
+            const authRecord = await db.collection('x_auth').findOne({ avatarId: avatar._id.toString() });
+            const encryptedToken = authRecord?.accessToken;
             if (!encryptedToken) return '❌ X authorization required. Please connect your account.';
             const twitterClient = new TwitterApi(decrypt(encryptedToken));
             const v2Client = twitterClient.v2;
@@ -201,7 +212,25 @@ export class XSocialTool extends BasicTool {
 
             return '❌ Unknown command. Use: status, post <message>, or auto';
         } catch (error) {
-           return `❌ Error: ${error.message}`;
+            return `❌ Error: ${error.message}`;
+        }
+    }
+
+    async getToolStatusForAvatar(avatar) {
+        const authorized = await this.isAuthorized(avatar);
+        if (!authorized) {
+            return { visible: false, info: '' };
+        }
+
+        try {
+            const { timeline } = await this.getXTimelineAndNotifications(avatar);
+            const recentPosts = timeline.slice(0, 5).map(t => `- ${t.text}`).join('\n');
+            return {
+                visible: true,
+                info: recentPosts ? `Recent X posts:\n${recentPosts}` : 'No recent posts.'
+            };
+        } catch (error) {
+            return { visible: true, info: 'Error fetching timeline.' };
         }
     }
 
@@ -210,7 +239,7 @@ export class XSocialTool extends BasicTool {
     }
 
     async getSyntax() {
-        return `${this.emoji} <command> [<message>]`;
+        return `${this.emoji} [status|post <message>|auto]`;
     }
 
     async close() {
