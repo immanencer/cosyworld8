@@ -62,23 +62,58 @@ export class XSocialTool extends BasicTool {
         const client = await this.getMongoClient();
         const db = client.db(process.env.MONGO_DB_NAME);
         const auth = await db.collection('x_auth').findOne({ avatarId: avatar._id.toString() });
-        if (!auth) return { timeline: [], notifications: [] };
+        if (!auth) return { timeline: [], notifications: [], userId: null };
 
         const twitterClient = new TwitterApi(decrypt(auth.accessToken));
         const v2Client = twitterClient.v2;
 
-        const timeline = await v2Client.userTimeline(await v2Client.me().then(u => u.data.id), { max_results: 10 });
-        const notifications = await v2Client.userMentionTimeline(await v2Client.me().then(u => u.data.id), { max_results: 10 });
+        const userData = await v2Client.me();
+        const userId = userData.data.id;
 
-        const data = {
-            timeline: timeline?.data?.data.map(t => ({ id: t.id, text: t.text, user: t.author_id })),
-            notifications: notifications.data?.data.map(n => ({ id: n.id, text: n.text, user: n.author_id }))
-        };
+        const timelineResp = await v2Client.userTimeline(userId, { max_results: 30 });
+        const notificationsResp = await v2Client.userMentionTimeline(userId, { max_results: 30 });
+
+        const timeline = timelineResp?.data?.data?.map(t => ({
+            id: t.id,
+            text: t.text,
+            user: t.author_id,
+            isOwn: t.author_id === userId
+        })) || [];
+
+        const notifications = notificationsResp?.data?.data?.map(n => ({
+            id: n.id,
+            text: n.text,
+            user: n.author_id,
+            isOwn: n.author_id === userId
+        })) || [];
+
+        // Save all tweets to DB
+        const allTweets = [...timeline, ...notifications];
+        for (const tweet of allTweets) {
+            if (!tweet?.id) continue;
+            await db.collection('social_posts').updateOne(
+                { tweetId: tweet.id },
+                {
+                    $set: {
+                        tweetId: tweet.id,
+                        content: tweet.text,
+                        userId: tweet.user,
+                        isOwn: tweet.isOwn,
+                        avatarId: avatar._id,
+                        timestamp: new Date(),
+                        postedToX: tweet.isOwn
+                    }
+                },
+                { upsert: true }
+            );
+        }
+
+        const data = { timeline, notifications, userId };
         statusCache.set(avatar._id.toString(), { timestamp: now, data });
         return data;
     }
 
-    async generateSocialActions(avatar, context, timeline, notifications) {
+    async generateSocialActions(avatar, context, timeline, notifications, userId) {
         const memories = await this.memoryService.getMemories(avatar._id, 20);
         const systemPrompt = await this.services.promptService.getBasicSystemPrompt(avatar);
 
@@ -97,11 +132,13 @@ ${memories.map(m => m.content).join('\n')}
 Channel Context:
 ${context}
 
-Recent Timeline:
+Recent Timeline (each tweet has isOwn=true if posted by this avatar, false otherwise):
 ${JSON.stringify(timeline)}
 
-Recent Notifications:
+Recent Notifications (each tweet has isOwn=true if posted by this avatar, false otherwise):
 ${JSON.stringify(notifications)}
+
+Avoid replying to or quoting tweets where isOwn=true (your own posts).
 
 Generate a JSON array of actions. Each action must have:
 - "type": one of post, reply, quote, follow, like, repost, block
@@ -109,8 +146,7 @@ Generate a JSON array of actions. Each action must have:
 - "tweetId": the Tweet ID for reply/quote/like/repost, or null if not applicable
 - "userId": the User ID for follow/block, or null if not applicable
 
-Only output the JSON object, no commentary.
-        `.trim();
+Only output the JSON object, no commentary.`.trim();
 
         const schema = {
             name: 'rati-x-social-actions',
@@ -165,29 +201,55 @@ Only output the JSON object, no commentary.
 
             if (command === 'status') {
                 this.replyNotification = false;
-                const { timeline, notifications } = await this.getXTimelineAndNotifications(avatar);
-                return `📡 X Status\nTimeline: \n${timeline.map(t => t.text).join(' | ')}\nNotifications: ${notifications.map(n => n.text).join(' | ')}`;
+                const { timeline, notifications, userId } = await this.getXTimelineAndNotifications(avatar);
+
+                const header = `📡 **X Status**\n**Your X User ID:** ${userId}`;
+
+                const formatTweet = (t) => `[author:${t.user}] ${t.text}`;
+
+                const timelineText = timeline.slice(0, 10).map(formatTweet).join('\n') || 'No recent timeline posts.';
+                const notificationsText = notifications.slice(0, 10).map(formatTweet).join('\n') || 'No recent notifications.';
+
+                return `${header}\n\n**Timeline:**\n${timelineText}\n\n**Notifications:**\n${notificationsText}`;
             }
 
             if (command === 'post') {
                 this.replyNotification = true;
                 const content = params.slice(1).join(' ');
                 if (content.length > 280) return `❌ Message too long (${content.length}/280). Trim by ${content.length - 280}.`;
-                await v2Client.tweet(content);
-                await db.collection('social_posts').insertOne({ avatarId: avatar._id, content, timestamp: new Date(), postedToX: true });
-                return `✨ Posted: "${content}" (${content.length}/280)`;
+                const result = await v2Client.tweet(content);
+                if (!result) return '-# [ ❌ Failed to post to X. ]';
+                const tweetId = result.data.id;
+                const tweetUrl = `https://x.com/ratimics/status/${tweetId}`;
+                await db.collection('social_posts').insertOne({ avatarId: avatar._id, content, timestamp: new Date(), postedToX: true, tweetId });
+                return `-# ✨ [ Posted to X. ]\n>${content} \n-# [view post](${tweetUrl})`;
             }
 
             if (command === 'auto') {
                 this.replyNotification = true;
-                const context = await this.conversationManager.getChannelContext(message.channel.id); // Assuming a similar method
-                const { timeline, notifications } = await this.getXTimelineAndNotifications(avatar);
-                const actions = await this.generateSocialActions(avatar, context, timeline, notifications);
+                const context = await this.conversationManager.getChannelContext(message.channel.id);
+                const { timeline, notifications, userId } = await this.getXTimelineAndNotifications(avatar);
+
+                const actions = await this.generateSocialActions(avatar, context, timeline, notifications, userId);
                 let results = [];
 
+                const isValidId = (id) => typeof id === 'string' && /^\d+$/.test(id);
+
+                for (let i = 0; i < Math.min(2, actions.actions.length); i++) {
+                    const action = actions.actions[i];
+                    if ((['reply', 'quote', 'like', 'repost'].includes(action.type)) && !isValidId(action.tweetId)) {
+                        results.push(`❌ Invalid tweetId for ${action.type} in initial validation: ${action.tweetId}`);
+                    }
+                    if ((['follow', 'block'].includes(action.type)) && !isValidId(action.userId)) {
+                        results.push(`❌ Invalid userId for ${action.type} in initial validation: ${action.userId}`);
+                    }
+                }
+
+                const me = await v2Client.me();
+                const myUserId = me.data.id;
 
                 for (const action of actions.actions) {
-                    const tweeturl = `[post](https://x.com/ratimics/status/${action.tweetId})`;
+                    const tweeturl = action.tweetId ? `[post](https://x.com/ratimics/status/${action.tweetId})` : '';
                     try {
                         switch (action.type) {
                             case 'post':
@@ -196,27 +258,51 @@ Only output the JSON object, no commentary.
                                 results.push(`✨ Posted: "${action.content}"`);
                                 break;
                             case 'reply':
+                                if (!isValidId(action.tweetId)) {
+                                    results.push(`❌ Invalid tweetId for reply: ${action.tweetId}`);
+                                    break;
+                                }
                                 await v2Client.reply(action.content, action.tweetId);
                                 results.push(`↩️ Replied to ${tweeturl}: "${action.content}"`);
                                 break;
                             case 'quote':
+                                if (!isValidId(action.tweetId)) {
+                                    results.push(`❌ Invalid tweetId for quote: ${action.tweetId}`);
+                                    break;
+                                }
                                 await v2Client.tweet({ text: action.content, quote_tweet_id: action.tweetId });
                                 results.push(`📜 Quoted ${tweeturl}: "${action.content}"`);
                                 break;
                             case 'follow':
+                                if (!isValidId(action.userId)) {
+                                    results.push(`❌ Invalid userId for follow: ${action.userId}`);
+                                    break;
+                                }
                                 await v2Client.follow(action.userId);
                                 results.push(`➕ Followed user ${action.userId}`);
                                 break;
                             case 'like':
-                                await v2Client.like(await v2Client.me().then(u => u.data.id), action.tweetId);
+                                if (!isValidId(action.tweetId)) {
+                                    results.push(`❌ Invalid tweetId for like: ${action.tweetId}`);
+                                    break;
+                                }
+                                await v2Client.like(myUserId, action.tweetId);
                                 results.push(`❤️ Liked ${tweeturl}`);
                                 break;
                             case 'repost':
-                                await v2Client.retweet(await v2Client.me().then(u => u.data.id), action.tweetId);
+                                if (!isValidId(action.tweetId)) {
+                                    results.push(`❌ Invalid tweetId for repost: ${action.tweetId}`);
+                                    break;
+                                }
+                                await v2Client.retweet(myUserId, action.tweetId);
                                 results.push(`🔄 Reposted ${tweeturl}`);
                                 break;
                             case 'block':
-                                await v2Client.block(await v2Client.me().then(u => u.data.id), action.userId);
+                                if (!isValidId(action.userId)) {
+                                    results.push(`❌ Invalid userId for block: ${action.userId}`);
+                                    break;
+                                }
+                                await v2Client.block(myUserId, action.userId);
                                 results.push(`🚫 Blocked user ${action.userId}`);
                                 break;
                         }

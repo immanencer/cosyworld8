@@ -10,8 +10,8 @@ import { chunkMessage } from './utils/messageChunker.mjs';
 import { processMessageLinks } from './utils/linkProcessor.mjs';
 import models from '../models.config.mjs';
 import rarityColors from './utils/rarityColors.mjs';
-
 import { BasicService } from './basicService.mjs';
+import { buildMiniAvatarEmbed, buildFullAvatarEmbed, buildLocationEmbed } from './discordEmbedLibrary.mjs';
 
 export class DiscordService extends BasicService {
   constructor(services) {
@@ -211,120 +211,40 @@ export class DiscordService extends BasicService {
     }
   }
 
-  async buildAvatarEmbed(avatar, guildId = null) {
+  async sendAvatarEmbed(avatar, targetChannelId) {
+    this.validateAvatar(avatar);
+    const channelId = targetChannelId || avatar.channelId;
+    if (!channelId || typeof channelId !== 'string') {
+      throw new Error('Invalid channel ID in avatar object');
+    }
     try {
-      this.validateAvatar(avatar);
-
-      const {
-        name,
-        emoji = '',
-        short_description,
-        description,
-        imageUrl,
-        model,
-        createdAt,
-        updatedAt,
-        traits,
-        stats,
-        summoner,
-        inventory = [],
-      } = avatar;
-
-      let viewDetailsEnabled = true;
-      if (guildId && this.configService) {
-        try {
-          const guildConfig = await this.configService.getGuildConfig(guildId);
-          viewDetailsEnabled = guildConfig.viewDetailsEnabled !== false;
-        } catch (e) {
-          this.logger.warn(`Could not fetch guild config for ${guildId}: ${e.message}`);
-        }
-      }
-
-      const rarity = this.getModelRarity(model);
-      const embedColor = rarityColors[rarity.toLowerCase()] || rarityColors.undefined;
-      const tier = { legendary: 'S', rare: 'A', uncommon: 'B', common: 'C', undefined: 'U' }[rarity.toLowerCase()] || 'U';
-
-      const embed = new EmbedBuilder()
-        .setColor(embedColor)
-        .setTitle(`${emoji} ${name}`)
-        .setDescription(short_description || (description ? description.split('. ')[0] + '.' : 'No description available'))
-        .setThumbnail(imageUrl)
-        .addFields(
-          { name: '🎂 Summonsday', value: `<t:${Math.floor(new Date(createdAt || Date.now()).getTime() / 1000)}:F>`, inline: true },
-          { name: `🧠 Tier ${tier}`, value: model || 'N/A', inline: true },
-        )
-        .setImage(imageUrl)
-        .setTimestamp(new Date(updatedAt || Date.now()))
-        .setFooter({
-          text: `RATi Avatar: ${name}`,
-          iconURL: imageUrl,
-        });
-
-      if (viewDetailsEnabled && avatar._id) {
-        embed.addFields({
-          name: "🔗 Avatar Page",
-          value: `[View Details](${process.env.BASE_URL}/avatar.html?id=${avatar._id})`,
-          inline: false,
-        });
-      }
-
-      if (stats) {
-        const { strength, dexterity, constitution, intelligence, wisdom, charisma, hp } = stats;
-        const conModifier = Math.floor((constitution - 10) / 2);
-        const maxHp = 10 + conModifier;
-        const dexModifier = Math.floor((dexterity - 10) / 2);
-        const ac = 10 + dexModifier;
-
-        const statsString = [
-          `🛡️ AC ${ac} ❤️ HP ${hp} / ${maxHp}`,
-          `-# ⚔️ ${strength} 🏃 ${dexterity} 🩸 ${constitution}`,
-          `-# 🧠 ${intelligence} 🌟 ${wisdom} 💬 ${charisma}`,
-        ].join('\n');
-
-        embed.addFields({ name: 'Stats', value: statsString, inline: false });
-      }
-
-      if (inventory.length > 0) {
-        const inventoryList = inventory.map(item => `• ${item.name}`).join('\n');
-        const truncatedList = inventoryList.length > 1000 ? `${inventoryList.slice(0, 997)}...` : inventoryList;
-        embed.addFields({ name: '🎒 Inventory', value: truncatedList || 'No items', inline: false });
-      } else {
-        embed.addFields({ name: '🎒 Inventory', value: 'Empty', inline: false });
-      }
-
-      if (traits) embed.addFields({ name: '🧬 Traits', value: traits, inline: false });
-
-      return embed;
+      const channel = await this.client.channels.fetch(channelId);
+      const guildId = channel.guild?.id;
+      const embed = buildFullAvatarEmbed(avatar, { guildId });
+      await this.sendEmbedAsWebhook(channelId, embed, avatar.name, avatar.imageUrl);
     } catch (error) {
-      this.logger.error(`Error building avatar embed: ${error.message}`);
-      throw error;
+      this.logger.error(`Failed to send avatar embed to ${channelId}: ${error.message}`);
     }
   }
 
-  buildLocationEmbed(location, items = [], avatars = []) {
+  async sendMiniAvatarEmbed(avatar, channelId, message = '') {
     try {
-      if (!location || typeof location !== 'object') throw new Error('Invalid location object');
-
-      const { name, description, imageUrl, rarity = 'common' } = location;
-      const embedColor = rarityColors[rarity.toLowerCase()] || rarityColors.undefined;
-
-      const embed = new EmbedBuilder()
-        .setColor(embedColor)
-        .setTitle(name)
-        .setDescription(description ? description.split('. ')[0] + '.' : 'No description available')
-        .setImage(imageUrl)
-        .addFields(
-          { name: 'Rarity', value: rarity, inline: true },
-          { name: 'Items', value: `${items.length}` || 'None', inline: true },
-          { name: 'Avatars', value: `${avatars.length}` || 'None', inline: true }
-        )
-        .setTimestamp()
-        .setFooter({ text: 'Location Update' });
-
-      return embed;
+      const embed = buildMiniAvatarEmbed(avatar, message);
+      await this.sendEmbedAsWebhook(channelId, embed, avatar.name, avatar.imageUrl);
     } catch (error) {
-      this.logger.error(`Error building location embed: ${error.message}`);
-      throw error;
+      this.logger.error(`Failed to send mini avatar embed: ${error.message}`);
+    }
+  }
+
+  async sendLocationEmbed(location, items, avatars, channelId) {
+    if (!channelId || typeof channelId !== 'string') {
+      throw new Error('Invalid channel ID');
+    }
+    try {
+      const embed = buildLocationEmbed(location, items, avatars);
+      await this.sendEmbedAsWebhook(channelId, embed, 'Location Update', this.client.user.displayAvatarURL());
+    } catch (error) {
+      this.logger.error(`Failed to send location embed to ${channelId}: ${error.message}`);
     }
   }
 
@@ -364,34 +284,6 @@ export class DiscordService extends BasicService {
     catch (error) {
       this.logger.error(`Failed to fetch guild for channel ID ${channelId}: ${error.message}`);
       throw error;
-    }
-  }
-
-  async sendAvatarEmbed(avatar, targetChannelId) {
-    this.validateAvatar(avatar);
-    const channelId = targetChannelId || avatar.channelId;
-    if (!channelId || typeof channelId !== 'string') {
-      throw new Error('Invalid channel ID in avatar object');
-    }
-    try {
-      const channel = await this.client.channels.fetch(channelId);
-      const guildId = channel.guild?.id;
-      const embed = await this.buildAvatarEmbed(avatar, guildId);
-      await this.sendEmbedAsWebhook(channelId, embed, avatar.name, avatar.imageUrl);
-    } catch (error) {
-      this.logger.error(`Failed to send avatar embed to ${channelId}: ${error.message}`);
-    }
-  }
-
-  async sendLocationEmbed(location, items, avatars, channelId) {
-    if (!channelId || typeof channelId !== 'string') {
-      throw new Error('Invalid channel ID');
-    }
-    try {
-      const embed = this.buildLocationEmbed(location, items, avatars);
-      await this.sendEmbedAsWebhook(channelId, embed, 'Location Update', this.client.user.displayAvatarURL());
-    } catch (error) {
-      this.logger.error(`Failed to send location embed to ${channelId}: ${error.message}`);
     }
   }
 

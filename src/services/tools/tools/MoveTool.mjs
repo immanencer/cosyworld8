@@ -1,6 +1,5 @@
 import { BasicTool } from '../BasicTool.mjs';
-import { EmbedBuilder } from 'discord.js';
-
+import { buildMiniAvatarEmbed } from '../../discordEmbedLibrary.mjs';
 export class MoveTool extends BasicTool {
   /**
    * Constructs a new MoveTool.
@@ -33,20 +32,12 @@ export class MoveTool extends BasicTool {
         this.logger?.error('No Discord client available');
         return;
       }
-      
+
       const channel = await client.channels.fetch(channelId);
       if (!channel) return;
 
-      const embed = new EmbedBuilder()
-        .setColor('#3498db') // Blue color for movement
-        .setAuthor({
-          name: avatar.name,
-          iconURL: avatar.imageUrl
-        })
-        .setThumbnail(avatar.imageUrl)
-        .setDescription(message || `${avatar.name} is on the move!`);
+      const embed = buildMiniAvatarEmbed(avatar, message);
 
-      // Send the mini card via webhook
       const webhook = await this.getOrCreateWebhook(channel);
       if (webhook) {
         await webhook.send({
@@ -55,7 +46,6 @@ export class MoveTool extends BasicTool {
           avatarURL: avatar.imageUrl
         });
       } else {
-        // Fallback to regular channel send if webhook fails
         await channel.send({ embeds: [embed] });
       }
     } catch (error) {
@@ -170,27 +160,25 @@ export class MoveTool extends BasicTool {
         }
       }
 
-      // 7. Send the full profile to the new location
+      // 7. Instead of sending full profile embed to new location, send mini embed only
       try {
-        await this.services.discordService.sendAvatarEmbed(updatedAvatar, newLocation.channel.id);
-        this.logger.debug(`Sent profile for ${updatedAvatar.name} to new location ${newLocation.channel.id}`);
-      } catch (profileError) {
-        this.logger.error(`Error sending profile after movement: ${profileError.message}`);
-        // Continue even if profile send fails
+        const arrivalMessage = `${avatar.name} has arrived.`;
+        await this.sendMiniAvatarCard(updatedAvatar, newLocation.channel.id, arrivalMessage);
+        this.logger.debug(`Sent mini arrival card for ${updatedAvatar.name} to ${newLocation.channel.id}`);
+      } catch (miniCardError) {
+        this.logger.error(`Error sending arrival mini card: ${miniCardError.message}`);
       }
 
-      // 8. Generate an arrival message
+      // 8. Optionally, you can trigger conversation or other logic here
       try {
         setTimeout(async () => {
-          await this.discordService.sendAvatarEmbed(updatedAvatar, newLocation.channel.id);
           await this.conversationManager.sendResponse(newLocation.channel.id, updatedAvatar);
         }, 1000);
       } catch (error) {
         console.error('Error sending arrival message:', error);
-        // We still consider the move successful, even if arrival message fails
       }
 
-      // 9. Return success message with atmospheric departure text for user feedback
+      // 9. Return success message
       return userFacingDepartureMessage || `${avatar.name} moved to ${newLocation.channel.name}!`;
     } catch (error) {
       console.error('Error in MoveTool execute:', error);

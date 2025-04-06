@@ -193,7 +193,7 @@ export class OpenRouterAIService extends BasicService {
         return result;
       }
 
-      if (!result.content || !result.reasoning) {
+      if (!result.content && !result.reasoning) {
         this.logger.error('Invalid response from OpenRouter during chat.');
         this.logger.info(JSON.stringify(result, null, 2));
         return '\n-# [⚠️ No response from OpenRouter]';

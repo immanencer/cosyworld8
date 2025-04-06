@@ -22,24 +22,37 @@ export class CreationService extends BasicService {
     ];
   }
 
-  async generateImage(prompt, aspectRatio = '16:9') {
+  async generateImage(prompt, aspectRatio = '1:1') {
     try {
+      const replicateConfig = this.configService.getAIConfig('replicate');
+      const loraTrigger = replicateConfig.loraTriggerWord || '';
+      const loraWeights = replicateConfig.lora_weights;
+
+      const decoratedPrompt = `${loraTrigger} ${prompt} ${loraTrigger}`.trim();
+
       const [output] = await this.replicate.run(
-        process.env.REPLICATE_MODEL || 'immanencer/mirquo',
+        'black-forest-labs/flux-dev-lora',
         {
           input: {
-            prompt,
-            aspect_ratio: aspectRatio,
+            prompt: decoratedPrompt,
+            go_fast: false,
+            guidance: 3,
+            lora_scale: 1,
+            megapixels: '1',
             num_outputs: 1,
+            aspect_ratio: aspectRatio,
+            lora_weights: loraWeights,
             output_format: 'png',
-            guidance_scale: 3.5,
+            output_quality: 80,
+            prompt_strength: 0.8,
             num_inference_steps: 28
           }
         }
       );
+
       const imageUrl = (output.url || output.toString)();
       const imageBuffer = await this.downloadImage(imageUrl);
-      const localFilename = `./images/generated_${Date.now()}.png`;
+      const localFilename = `./images/generated_${Date.now()}.webp`;
       await fs.mkdir('./images', { recursive: true });
       await fs.writeFile(localFilename, imageBuffer);
       return await this.s3Service.uploadImage(localFilename);

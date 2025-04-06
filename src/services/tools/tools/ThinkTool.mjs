@@ -49,15 +49,48 @@ export class ThinkTool extends BasicTool {
     try {
       const client = this.mcpClientService?.clients?.get('memory');
       if (!client) return;
-      await client.callTool({
-        name: 'add_observations',
-        arguments: {
-          observations: [{
-            entityName: avatar.name.replace(/\s+/g, '_'),
-            contents: [reflection]
-          }]
+      const entityName = avatar.name.replace(/\s+/g, '_');
+      try {
+        await client.callTool({
+          name: 'add_observations',
+          arguments: {
+            observations: [{
+              entityName,
+              contents: [reflection]
+            }]
+          }
+        });
+      } catch (err) {
+        if (err.message?.includes('not found')) {
+          this.logger?.warn(`MCP entity ${entityName} not found. Creating entity.`);
+          await client.callTool({
+            name: 'create_entities',
+            arguments: {
+              entities: [{
+                name: entityName,
+                entityType: 'person',
+                observations: [
+                  `Name: ${avatar.name}`,
+                  `Persona: ${avatar.personality || ''}`,
+                  `Created: ${(new Date()).toISOString()}`
+                ]
+              }]
+            }
+          });
+          // Retry adding observation
+          await client.callTool({
+            name: 'add_observations',
+            arguments: {
+              observations: [{
+                entityName,
+                contents: [reflection]
+              }]
+            }
+          });
+        } else {
+          throw err;
         }
-      });
+      }
     } catch (err) {
       this.logger?.warn(`Failed to store reflection in MCP: ${err.message}`);
     }
