@@ -30,6 +30,18 @@ export class PeriodicTaskManager extends BasicService {
   }
 
   /**
+   * Adds a named periodic task.
+   * @param {string} name - Task name for logging.
+   * @param {Function} fn - Async function to execute periodically.
+   * @param {number} intervalMs - Interval in milliseconds.
+   */
+  addTask(name, fn, intervalMs) {
+    const interval = setInterval(fn, intervalMs);
+    this.intervals.push(interval);
+    this.logger.info(`Periodic task '${name}' added with interval ${intervalMs}ms`);
+  }
+
+  /**
    * Triggers ambient responses in active channels, ensuring locations exist and updating ambiance if stale.
    */
   async triggerAmbientResponses() {
