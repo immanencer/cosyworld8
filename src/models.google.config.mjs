@@ -68,6 +68,10 @@ export default [
     "rarity": "legendary"
   },
   {
+    "model": "gemini-2.5-pro-preview-03-25",
+    "rarity": "legendary"
+  },
+  {
     "model": "gemini-2.0-flash-exp",
     "rarity": "uncommon"
   },
@@ -121,6 +125,14 @@ export default [
   },
   {
     "model": "gemini-2.0-flash-thinking-exp-1219",
+    "rarity": "uncommon"
+  },
+  {
+    "model": "gemini-embedding-exp-03-07",
+    "rarity": "uncommon"
+  },
+  {
+    "model": "gemini-embedding-exp",
     "rarity": "uncommon"
   }
 ];

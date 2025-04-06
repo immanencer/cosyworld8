@@ -100,10 +100,6 @@ export default [
     "rarity": "rare"
   },
   {
-    "model": "alpindale/goliath-120b",
-    "rarity": "rare"
-  },
-  {
     "model": "perplexity/sonar-pro",
     "rarity": "rare"
   },
@@ -149,6 +145,10 @@ export default [
   },
   {
     "model": "anthropic/claude-3-sonnet",
+    "rarity": "rare"
+  },
+  {
+    "model": "alpindale/goliath-120b",
     "rarity": "rare"
   },
   {
@@ -252,10 +252,6 @@ export default [
     "rarity": "uncommon"
   },
   {
-    "model": "neversleep/llama-3.1-lumimaid-70b",
-    "rarity": "uncommon"
-  },
-  {
     "model": "neversleep/llama-3-lumimaid-70b",
     "rarity": "uncommon"
   },
@@ -328,14 +324,6 @@ export default [
     "rarity": "uncommon"
   },
   {
-    "model": "anthracite-org/magnum-v4-72b",
-    "rarity": "uncommon"
-  },
-  {
-    "model": "alpindale/magnum-72b",
-    "rarity": "uncommon"
-  },
-  {
     "model": "qwen/qwen-vl-max",
     "rarity": "uncommon"
   },
@@ -348,11 +336,15 @@ export default [
     "rarity": "uncommon"
   },
   {
-    "model": "neversleep/noromaid-20b",
+    "model": "neversleep/llama-3.1-lumimaid-70b",
     "rarity": "uncommon"
   },
   {
-    "model": "mancer/weaver",
+    "model": "anthracite-org/magnum-v4-72b",
+    "rarity": "uncommon"
+  },
+  {
+    "model": "alpindale/magnum-72b",
     "rarity": "uncommon"
   },
   {
@@ -392,7 +384,15 @@ export default [
     "rarity": "uncommon"
   },
   {
+    "model": "mancer/weaver",
+    "rarity": "uncommon"
+  },
+  {
     "model": "meta-llama/llama-3.2-90b-vision-instruct",
+    "rarity": "uncommon"
+  },
+  {
+    "model": "neversleep/noromaid-20b",
     "rarity": "uncommon"
   },
   {
@@ -444,14 +444,6 @@ export default [
     "rarity": "uncommon"
   },
   {
-    "model": "pygmalionai/mythalion-13b",
-    "rarity": "uncommon"
-  },
-  {
-    "model": "undi95/remm-slerp-l2-13b",
-    "rarity": "uncommon"
-  },
-  {
     "model": "openai/gpt-3.5-turbo",
     "rarity": "uncommon"
   },
@@ -493,6 +485,14 @@ export default [
   },
   {
     "model": "latitudegames/wayfarer-large-70b-llama-3.3",
+    "rarity": "uncommon"
+  },
+  {
+    "model": "pygmalionai/mythalion-13b",
+    "rarity": "uncommon"
+  },
+  {
+    "model": "undi95/remm-slerp-l2-13b",
     "rarity": "uncommon"
   },
   {
@@ -568,18 +568,6 @@ export default [
     "rarity": "common"
   },
   {
-    "model": "neversleep/llama-3.1-lumimaid-8b",
-    "rarity": "common"
-  },
-  {
-    "model": "neversleep/llama-3-lumimaid-8b:extended",
-    "rarity": "common"
-  },
-  {
-    "model": "neversleep/llama-3-lumimaid-8b",
-    "rarity": "common"
-  },
-  {
     "model": "minimax/minimax-01",
     "rarity": "common"
   },
@@ -608,10 +596,6 @@ export default [
     "rarity": "common"
   },
   {
-    "model": "meta-llama/llama-4-maverick",
-    "rarity": "common"
-  },
-  {
     "model": "thedrummer/unslopnemo-12b",
     "rarity": "common"
   },
@@ -632,7 +616,23 @@ export default [
     "rarity": "common"
   },
   {
+    "model": "neversleep/llama-3.1-lumimaid-8b",
+    "rarity": "common"
+  },
+  {
+    "model": "neversleep/llama-3-lumimaid-8b:extended",
+    "rarity": "common"
+  },
+  {
+    "model": "neversleep/llama-3-lumimaid-8b",
+    "rarity": "common"
+  },
+  {
     "model": "qwen/qwen-vl-plus",
+    "rarity": "common"
+  },
+  {
+    "model": "meta-llama/llama-4-maverick",
     "rarity": "common"
   },
   {
@@ -676,6 +676,10 @@ export default [
     "rarity": "common"
   },
   {
+    "model": "meta-llama/llama-4-scout",
+    "rarity": "common"
+  },
+  {
     "model": "qwen/qwen-2.5-72b-instruct",
     "rarity": "common"
   },
@@ -693,10 +697,6 @@ export default [
   },
   {
     "model": "mistralai/mixtral-8x7b-instruct",
-    "rarity": "common"
-  },
-  {
-    "model": "meta-llama/llama-4-scout",
     "rarity": "common"
   },
   {
@@ -925,6 +925,14 @@ export default [
   },
   {
     "model": "meta-llama/llama-3.2-1b-instruct",
+    "rarity": "common"
+  },
+  {
+    "model": "meta-llama/llama-4-maverick:free",
+    "rarity": "common"
+  },
+  {
+    "model": "meta-llama/llama-4-scout:free",
     "rarity": "common"
   },
   {
