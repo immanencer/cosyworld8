@@ -16,6 +16,7 @@ export class SummonTool extends BasicTool {
     this.description = 'Summons a new avatar';
     this.emoji = '🔮'; // Default emoji
     this.DAILY_SUMMON_LIMIT = 16;
+    this.replyNotification = true;
     this.db = this.databaseService.getDatabase(); // Assumes this always returns a valid database object
   }
 

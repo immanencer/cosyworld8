@@ -6,6 +6,7 @@ export class ThinkTool extends BasicTool {
       'aiService',
       'memoryService',
       'discordService',
+      'mcpClientService',
     ]);
     this.name = 'think';
     this.description = 'Take a moment to reflect on a message or conversation, updating your thoughts and memories.';
@@ -20,15 +21,50 @@ export class ThinkTool extends BasicTool {
     return `${this.emoji} <message>`;
   }
 
-  // Borrowed from RememberTool to fetch channel context
   async getChannelContext(channel) {
     const messages = await channel.messages.fetch({ limit: 10 });
     return messages.map(m => `${m.author.username}: ${m.content}`).join('\n');
   }
 
+  async fetchMemoryFromMCP(avatar) {
+    try {
+      const client = this.mcpClientService?.clients?.get('memory');
+      if (!client) return '';
+      const result = await client.callTool({
+        name: 'open_nodes',
+        arguments: {
+          names: [avatar.name.replace(/\s+/g, '_')]
+        }
+      });
+      const entities = result?.entities || [];
+      const observations = entities.flatMap(e => e.observations || []);
+      return observations.join('\n');
+    } catch (err) {
+      this.logger?.warn(`Failed to fetch MCP memory: ${err.message}`);
+      return '';
+    }
+  }
+
+  async storeReflectionInMCP(avatar, reflection) {
+    try {
+      const client = this.mcpClientService?.clients?.get('memory');
+      if (!client) return;
+      await client.callTool({
+        name: 'add_observations',
+        arguments: {
+          observations: [{
+            entityName: avatar.name.replace(/\s+/g, '_'),
+            contents: [reflection]
+          }]
+        }
+      });
+    } catch (err) {
+      this.logger?.warn(`Failed to store reflection in MCP: ${err.message}`);
+    }
+  }
+
   async execute(message, params, avatar) {
     try {
-      // Step 1: Determine the message to respond to
       let messageToRespondTo;
       if (message.reference) {
         const repliedMessage = await message.channel.messages.fetch(message.reference.messageId);
@@ -39,11 +75,10 @@ export class ThinkTool extends BasicTool {
         messageToRespondTo = 'Let your mind wander...';
       }
 
-      // Step 2: Fetch conversation context
       const context = await this.getChannelContext(message.channel);
+      const mcpMemory = await this.fetchMemoryFromMCP(avatar);
 
-      // Step 3: Generate a reflection
-      const reflectionPrompt = `Based on this conversation:\n${context}\nYou are about to respond to the message: "${messageToRespondTo}". Reflect in detail on the context, think carefully about the conversation and analyze its meaning.`;
+      const reflectionPrompt = `Based on this conversation:\n${context}\nAnd your current memory:\n${mcpMemory}\nYou are about to respond to the message: "${messageToRespondTo}". Reflect in detail on the context, think carefully about the conversation and analyze its meaning.`;
 
       const reflection = await this.aiService.chat([
         {
@@ -64,8 +99,9 @@ export class ThinkTool extends BasicTool {
         stream: false
       });
 
-      // Step 4: Store the reflection as a memory
       await this.memoryService.addMemory(avatar._id, reflection);
+      await this.storeReflectionInMCP(avatar, reflection);
+
       if (avatar.innerMonologueChannel) {
         await this.discordService.sendAsWebhook(
           avatar.innerMonologueChannel, reflection, avatar

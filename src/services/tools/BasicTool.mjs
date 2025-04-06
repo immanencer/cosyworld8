@@ -3,6 +3,7 @@ export class BasicTool extends BasicService {
 
   constructor(services, requiredServices) { 
     super(services, requiredServices);
+    this.replyNotification = true;
   }
 
   async execute(message, params, avatar, services) {

@@ -16,6 +16,7 @@ export class XSocialTool extends BasicTool {
             'memoryService',
             'conversationManager',
         ]);
+        this.replyNotification = true;
         this.emoji = '🐦';
         this.name = 'x';
         this.description = 'Manage X social interactions (post, reply, quote, follow, like, repost, block) using avatar context.';

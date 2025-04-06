@@ -11,15 +11,16 @@ export class DefendTool extends BasicTool {
     this.name = 'defend';
     this.description = 'Take a defensive stance';
     this.emoji = '🛡️';
+    this.replyNotification = true;
   }
 
-  async execute(message, params, avatar, services) {
+  async execute(message, params, avatar) {
     const avatarId = avatar._id;
-    const stats = await services.avatarService.getOrCreateStats(avatarId, services);
+    const stats = await this.avatarService.getOrCreateStats(avatar);
     
     stats.isDefending = true;
-    await services.avatarService.updateAvatarStats(avatar, stats);
-    return `-# 🛡️ [ ${message.author.username} takes a defensive stance! AC increased by 2 until next attack. ]`;
+    await this.avatarService.updateAvatarStats(avatar, stats);
+    return `-# 🛡️ [ **${avatar.name}** takes a defensive stance! **AC increased by 2** until next attack. ]`;
   }
 
   getDescription() {

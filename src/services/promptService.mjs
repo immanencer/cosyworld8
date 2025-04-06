@@ -187,10 +187,46 @@ ${items}
     const systemPrompt = await this.getBasicSystemPrompt(avatar);
     const assistantContext = await this.getNarrativeAssistantContext(avatar);
     const userPrompt = await this.buildNarrativePrompt(avatar);
+
+    let monologueText = '';
+    if (avatar.innerMonologueChannel) {
+      try {
+        const channel = await this.client.channels.fetch(avatar.innerMonologueChannel);
+        const messages = await channel.messages.fetch({ limit: 10 });
+        monologueText = messages
+          .filter(m => !m.content.startsWith('🌪️'))
+          .map(m => m.content)
+          .join('\n');
+      } catch (error) {
+        console.error(`Error fetching inner monologue: ${error.message}`);
+      }
+    }
+
+    let recentActionsText = '';
+    try {
+      const recentActions = await this.toolService.ActionLog.getRecentActions(avatar.channelId);
+      recentActionsText = recentActions
+        .filter(action => action.actorId === avatar._id.toString())
+        .map(a => `${a.description || a.action}`)
+        .join('\n');
+    } catch (error) {
+      console.error(`Error fetching recent actions: ${error.message}`);
+    }
+
+    const combinedUserPrompt = `
+${userPrompt}
+
+Recent inner thoughts:
+${monologueText}
+
+Recent actions:
+${recentActionsText}
+`.trim();
+
     return [
       { role: 'system', content: systemPrompt },
       { role: 'assistant', content: assistantContext },
-      { role: 'user', content: userPrompt }
+      { role: 'user', content: combinedUserPrompt }
     ];
   }
 

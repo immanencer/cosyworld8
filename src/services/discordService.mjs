@@ -172,7 +172,6 @@ export class DiscordService extends BasicService {
     }
   }
 
-
   async sendAsWebhook(channelId, content, avatar) {
     try {
       this.validateAvatar(avatar);
@@ -212,7 +211,7 @@ export class DiscordService extends BasicService {
     }
   }
 
-  buildAvatarEmbed(avatar) {
+  async buildAvatarEmbed(avatar, guildId = null) {
     try {
       this.validateAvatar(avatar);
 
@@ -231,6 +230,16 @@ export class DiscordService extends BasicService {
         inventory = [],
       } = avatar;
 
+      let viewDetailsEnabled = true;
+      if (guildId && this.configService) {
+        try {
+          const guildConfig = await this.configService.getGuildConfig(guildId);
+          viewDetailsEnabled = guildConfig.viewDetailsEnabled !== false;
+        } catch (e) {
+          this.logger.warn(`Could not fetch guild config for ${guildId}: ${e.message}`);
+        }
+      }
+
       const rarity = this.getModelRarity(model);
       const embedColor = rarityColors[rarity.toLowerCase()] || rarityColors.undefined;
       const tier = { legendary: 'S', rare: 'A', uncommon: 'B', common: 'C', undefined: 'U' }[rarity.toLowerCase()] || 'U';
@@ -247,15 +256,17 @@ export class DiscordService extends BasicService {
         .setImage(imageUrl)
         .setTimestamp(new Date(updatedAt || Date.now()))
         .setFooter({
-          text: `View more details about ${name}`,
+          text: `RATi Avatar: ${name}`,
           iconURL: imageUrl,
         });
 
-      embed.addFields({
-        name: "🔗 Avatar Page",
-        value: `[View Details](${process.env.BASE_URL}/avatar.html?id=${avatar._id})`,
-        inline: false,
-      });
+      if (viewDetailsEnabled && avatar._id) {
+        embed.addFields({
+          name: "🔗 Avatar Page",
+          value: `[View Details](${process.env.BASE_URL}/avatar.html?id=${avatar._id})`,
+          inline: false,
+        });
+      }
 
       if (stats) {
         const { strength, dexterity, constitution, intelligence, wisdom, charisma, hp } = stats;
@@ -363,12 +374,15 @@ export class DiscordService extends BasicService {
       throw new Error('Invalid channel ID in avatar object');
     }
     try {
-      const embed = await this.buildAvatarEmbed(avatar);
+      const channel = await this.client.channels.fetch(channelId);
+      const guildId = channel.guild?.id;
+      const embed = await this.buildAvatarEmbed(avatar, guildId);
       await this.sendEmbedAsWebhook(channelId, embed, avatar.name, avatar.imageUrl);
     } catch (error) {
       this.logger.error(`Failed to send avatar embed to ${channelId}: ${error.message}`);
     }
   }
+
   async sendLocationEmbed(location, items, avatars, channelId) {
     if (!channelId || typeof channelId !== 'string') {
       throw new Error('Invalid channel ID');
@@ -380,7 +394,6 @@ export class DiscordService extends BasicService {
       this.logger.error(`Failed to send location embed to ${channelId}: ${error.message}`);
     }
   }
-
 
   async buildAvatarComponents(avatar) {
     const components = [];

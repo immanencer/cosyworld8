@@ -23,6 +23,8 @@ import { CreationService } from './creationService.mjs';
 import { S3Service } from './s3/s3Service.mjs';
 import { LocationService } from './location/locationService.mjs';
 import { ArweaveService } from './arweave/arweaveService.mjs';
+import { MCPClientService } from './mcp/MCPClientService.ts';
+
 /**
  * Validates the environment variables and sets defaults or exits as needed.
  * @param {Object} logger - The logger instance for logging warnings and errors.
@@ -69,6 +71,37 @@ export async function initializeServices(logger) {
   const services = {
     logger
   };
+
+  // MCPClientService
+  services.logger.info('Initializing MCPClientService...');
+  services.mcpClientService = new MCPClientService();
+
+  try {
+    const spawn = (await import('child_process')).spawn;
+    const transportModule = await import('@modelcontextprotocol/sdk/client/stdio.js');
+    const { StdioClientTransport } = transportModule;
+
+    const transport = new StdioClientTransport({
+      command: 'npx',
+      args: ['-y', '@modelcontextprotocol/server-memory'],
+    });
+
+    await services.mcpClientService.addServer('memory', {
+      identity: {
+        name: 'cosyworld-client',
+        version: '1.0.0'
+      },
+      capabilities: {
+        tools: {},
+        resources: {},
+        prompts: {}
+      },
+      transport
+    });
+    services.logger.info('Connected to MCP memory server');
+  } catch (err) {
+    services.logger.warn(`Failed to start MCP memory server: ${err.message}`);
+  }
 
   // S3ImageService
   services.logger.info("Initializing S3Service...");

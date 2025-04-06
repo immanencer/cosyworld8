@@ -14,6 +14,7 @@ export class BreedTool extends BasicTool {
     this.name = 'breed';
     this.description = 'Breeds two avatars together';
     this.emoji = '🏹';
+    this.replyNotification = true;
   }
 
   getDescription() {

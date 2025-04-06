@@ -30,6 +30,7 @@ export class ToolService extends BasicService {
       'databaseService',
       'configService',
       'mapService',
+      'memoryService',
     ]);
     this.client = this.discordService.client;
     this.db = this.databaseService.getDatabase();
@@ -170,6 +171,8 @@ export class ToolService extends BasicService {
     }
 
     try {
+
+      await this.memoryService.addMemory(avatar._id, result);
       await this.ActionLog.logAction({
         channelId: message.channel.id,
         action: toolName,

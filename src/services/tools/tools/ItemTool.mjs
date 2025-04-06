@@ -10,6 +10,7 @@ export class ItemTool extends BasicTool {
     this.name = 'item';
     this.description = 'Manage items: use or craft items. Usage: !item use <item>, or !item craft <item1> <item2>.';
     this.emoji = '📦';
+    this.replyNotification = true;
   }
 
   async postItemDetails(channelId, item) {

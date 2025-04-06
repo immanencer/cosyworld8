@@ -401,8 +401,10 @@ class GuildSettingsManager {
     document.getElementById("guild-name").value = guildConfig.name || "";
     document.getElementById("summoner-role").value =
       guildConfig.summonerRole || "";
-    document.getElementById("summon-emoji").value =
-      guildConfig.summonEmoji || "✨";
+    const summonEmojiInput = document.getElementById("tool-emoji-summon");
+    if (summonEmojiInput) {
+      summonEmojiInput.value = guildConfig.summonEmoji || "✨";
+    }
     document.getElementById("admin-roles").value = Array.isArray(
       guildConfig.adminRoles,
     )
@@ -418,14 +420,20 @@ class GuildSettingsManager {
       rateLimiting.interval || 60;
 
     const toolEmojis = guildConfig.toolEmojis || {};
-    document.getElementById("tool-emoji-summon").value =
-      toolEmojis.summon || "🔮";
-    document.getElementById("tool-emoji-breed").value =
-      toolEmojis.breed || "🏹";
-    document.getElementById("tool-emoji-attack").value =
-      toolEmojis.attack || "⚔️";
-    document.getElementById("tool-emoji-defend").value =
-      toolEmojis.defend || "🛡️";
+    const toolEmojiContainer = document.getElementById('tool-emojis-container');
+    if(toolEmojiContainer) {
+      toolEmojiContainer.innerHTML = '';
+      const toolNames = ['summon','breed','attack','defend','move','remember','create','x','item','respond'];
+      toolNames.forEach(toolName => {
+        const div = document.createElement('div');
+        div.className = 'sm:col-span-3';
+        div.innerHTML = `
+          <label class="block text-sm font-medium text-gray-700">${toolName.charAt(0).toUpperCase()+toolName.slice(1)} Emoji</label>
+          <input type="text" id="tool-emoji-${toolName}" class="mt-1 focus:ring-indigo-500 focus:border-indigo-500 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md" placeholder="" value="${toolEmojis[toolName] || ''}">
+        `;
+        toolEmojiContainer.appendChild(div);
+      });
+    }
 
     const features = guildConfig.features || {};
     document.getElementById("feature-breeding").checked =
@@ -498,7 +506,7 @@ class GuildSettingsManager {
       guildId: document.getElementById("guild-id").value.trim(),
       name: document.getElementById("guild-name").value.trim(),
       summonerRole: document.getElementById("summoner-role").value.trim(),
-      summonEmoji: document.getElementById("summon-emoji").value.trim(),
+      summonEmoji: document.getElementById("tool-emoji-summon").value.trim(),
       adminRoles: document
         .getElementById("admin-roles")
         .value.split(",")
@@ -514,12 +522,7 @@ class GuildSettingsManager {
           parseInt(document.getElementById("rate-limit-interval").value, 10) ||
           60,
       },
-      toolEmojis: {
-        summon: document.getElementById("tool-emoji-summon").value.trim(),
-        breed: document.getElementById("tool-emoji-breed").value.trim(),
-        attack: document.getElementById("tool-emoji-attack").value.trim(),
-        defend: document.getElementById("tool-emoji-defend").value.trim(),
-      },
+      toolEmojis: {},
       features: {
         breeding: document.getElementById("feature-breeding").checked,
         combat: document.getElementById("feature-combat").checked,
@@ -534,6 +537,13 @@ class GuildSettingsManager {
       },
       viewDetailsEnabled: document.getElementById("feature-view-details").checked
     };
+    const toolNames = ['summon','breed','attack','defend','move','remember','create','x','item','respond'];
+    toolNames.forEach(toolName => {
+      const input = document.getElementById(`tool-emoji-${toolName}`);
+      if(input) {
+        data.toolEmojis[toolName] = input.value.trim();
+      }
+    });
     return data;
   }
 

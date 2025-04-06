@@ -6,7 +6,7 @@ export async function handleCommands(message, services, avatar) {
   const guildConfig = await services.configService.getGuildConfig(message.guildId);
 
   if (services.toolService) {
-    services.toolService.applyGuildToolEmojiOverrides(guildConfig);
+    //services.toolService.applyGuildToolEmojiOverrides(guildConfig);
   }
 
   const toolEmojis = services.toolService
@@ -29,13 +29,10 @@ export async function handleCommands(message, services, avatar) {
             : params;
           await services.discordService.reactToMessage(message, tool.emoji);
           const result = await services.toolService.executeToolWithLogging(command, message, args, avatar);
-          // Save command and result as avatar memory
-          const memoryEntry = `You used ${command} ${args.join(' ')}: ${result}`;
-          services.logger.info(`[Avatar Memory] ${memoryEntry}`);
-          try {
-            await services.memoryService.addMemory(avatar._id, memoryEntry);
-          } catch (err) {
-            services.logger.error('Failed to save avatar memory:', err);
+          if (tool.replyNotification && result) {
+            await services.discordService.sendAsWebhook(message.channel.id, result, {
+              ...avatar, name: `${avatar.name} used ${tool.name} ${tool.emoji ||''}`,
+            });
           }
           await services.discordService.reactToMessage(message, tool.emoji);
         } else {

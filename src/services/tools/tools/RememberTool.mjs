@@ -1,4 +1,3 @@
-
 import { BasicTool } from '../BasicTool.mjs';
 
 export class RememberTool extends BasicTool {
@@ -8,9 +7,10 @@ export class RememberTool extends BasicTool {
       'avatarService',
       'memoryService',
       'discordService',
+      'mcpClientService',
     ]);
     this.name = 'remember';
-    this.description = 'Generates a memory from the current context.';
+    this.description = 'Generates a memory from the current context and stores it in persistent memory.';
     this.emoji = '🧠';
   }
 
@@ -30,6 +30,27 @@ export class RememberTool extends BasicTool {
     return response || 'Failed to generate memory';
   }
 
+  async storeMemoryInMCP(avatar, memoryText) {
+    try {
+      const client = this.mcpClientService?.clients?.get('memory');
+      if (!client) {
+        this.logger?.warn('No MCP memory server connected');
+        return;
+      }
+      await client.callTool({
+        name: 'add_observations',
+        arguments: {
+          observations: [{
+            entityName: avatar.name.replace(/\s+/g, '_'),
+            contents: [memoryText]
+          }]
+        }
+      });
+    } catch (err) {
+      this.logger?.error(`Failed to store memory in MCP: ${err.message}`);
+    }
+  }
+
   async execute(message, params, avatar) {
     const context = await this.getChannelContext(message.channel);
     const prompt = params.join(' ');
@@ -37,10 +58,9 @@ export class RememberTool extends BasicTool {
     const formattedMemory = memory.trim();
 
     await this.memoryService.addMemory(avatar._id, formattedMemory);
+    await this.storeMemoryInMCP(avatar, formattedMemory);
 
-    // Post the memory to the avatar narrative channel
     if (avatar.innerMonologueChannel) {
-      // Post dynamic personality to the inner monologue channel
       await this.services.discordService.sendAsWebhook(
         avatar.innerMonologueChannel,
         `-# [🧠 Memory Generated]\n${formattedMemory}`,
