@@ -277,6 +277,9 @@ If already suitable, return as is. If it needs editing, revise it while preservi
         version: '1.0.0'
       };
 
+      // Post the location image as a webhook
+      await this.discordService.sendAsWebhook(thread.id, locationImage, locationDocument);
+
       // Post the evocative description as a webhook
       await this.discordService.sendAsWebhook(thread.id, locationDescription, locationDocument);
 
