@@ -71,14 +71,9 @@ export function buildFullAvatarEmbed(avatar, options = {}) {
     .setDescription(firstSentence)
     .setThumbnail(avatar.imageUrl)
     .addFields(
-      { name: 'Tier', value: `**${tier}**`, inline: true },
-      { name: 'Model', value: avatar.model || 'N/A', inline: true },
+      { name: 'Model', value: `${avatar.model} (Tier ${tier})` || 'N/A', inline: true },
     )
-    .setFooter({ text: 'Avatar Profile', iconURL: avatar.imageUrl });
-
-  if (rest) {
-    embed.addFields({ name: 'More Info', value: rest, inline: false });
-  }
+    .setFooter({ text: 'RATi Avatar Profile', iconURL: avatar.imageUrl });
 
   if (avatar.stats) {
     const { strength, dexterity, constitution, intelligence, wisdom, charisma, hp } = avatar.stats;
@@ -97,6 +92,9 @@ export function buildFullAvatarEmbed(avatar, options = {}) {
 
   if (avatar.traits) {
     embed.addFields({ name: '🧬 Traits', value: avatar.traits, inline: false });
+  }
+  if (rest) {
+    embed.addFields({ name: 'More Info', value: rest, inline: false });
   }
 
   if (options.viewDetailsUrl || avatar._id) {
