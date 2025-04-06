@@ -11,7 +11,14 @@ function splitDescription(text) {
  * Build a sleek mini avatar embed for movement or notifications.
  */
 export function buildMiniAvatarEmbed(avatar, message = '') {
-  const { firstSentence, rest } = splitDescription(message || `${avatar.name} is on the move!`);
+  const text = message || `${avatar.name} is on the move!`;
+
+  // Split into sentences
+  const sentences = text.match(/[^.!?]+[.!?]+/g) || [text];
+  const randomSentence = sentences[Math.floor(Math.random() * sentences.length)].trim();
+
+  const { firstSentence, rest } = splitDescription(randomSentence);
+
   const embed = new EmbedBuilder()
     .setColor('#00b0f4')
     .setAuthor({ name: `${avatar.emoji || ''} ${avatar.name}`, iconURL: avatar.imageUrl })
@@ -92,9 +99,6 @@ export function buildFullAvatarEmbed(avatar, options = {}) {
 
   if (avatar.traits) {
     embed.addFields({ name: '🧬 Traits', value: avatar.traits, inline: false });
-  }
-  if (rest) {
-    embed.addFields({ name: 'More Info', value: rest, inline: false });
   }
 
   if (options.viewDetailsUrl || avatar._id) {

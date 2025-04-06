@@ -1,7 +1,8 @@
 import { BasicService } from "../basicService.mjs";
 import { handleCommands } from "../commands/commandHandler.mjs";
 /**
- * Handles Discord messages by processing commands, managing avatars, and generating responses.
+ * Handles Discord messages by processing commands, managing avatars, generating responses,
+ * and performing structured content moderation.
  */
 export class MessageHandler extends BasicService {
   /**
@@ -20,10 +21,24 @@ export class MessageHandler extends BasicService {
       'periodicTaskManager',
       'databaseService',
       'decisionMaker',
-      'conversationManager'
+      'conversationManager',
+      'riskManagerService'
     ]);
     this.client = services.discordService.client;
     this.started = false;
+
+    /**
+     * Static regex patterns for immediate moderation triggers.
+     * URL detection is always included.
+     */
+    this.staticModerationRegexes = [
+      /(https?:\/\/[^\s]+)/i
+    ];
+
+    /**
+     * Dynamic AI-generated regex pattern (string or null).
+     */
+    this.dynamicModerationRegex = null;
   }
 
   async start() {
@@ -34,6 +49,18 @@ export class MessageHandler extends BasicService {
     this.started = true;
     this.client.on('messageCreate', (message) => this.handleMessage(message));
     this.logger.info('MessageHandler started.');
+
+    // Periodically refresh dynamic regex and update if backlog exceeds threshold
+    this.periodicTaskManager.addTask('refreshDynamicRegex', async () => {
+      try {
+        const regex = await this.services.riskManagerService.loadDynamicRegex();
+        this.dynamicModerationRegex = regex;
+
+        await this.services.riskManagerService.updateDynamicModerationRegex();
+      } catch (error) {
+        this.logger.error(`Error refreshing dynamic regex: ${error.message}`);
+      }
+    }, 5 * 60 * 1000); // every 5 minutes
   }
 
   async stop() {
@@ -43,7 +70,7 @@ export class MessageHandler extends BasicService {
 
   /**
    * Processes a Discord message through various stages including authorization, spam control,
-   * image analysis, command handling, and avatar management.
+   * image analysis, command handling, avatar management, and content moderation.
    * @param {Object} message - The Discord message object to process.
    */
   async handleMessage(message) {
@@ -125,6 +152,12 @@ export class MessageHandler extends BasicService {
 
     // Process the channel again (e.g., post-avatar creation responses)
     await this.processChannel(channelId, message);
+
+    // Structured moderation: analyze links and assign threat level
+    await this.moderateMessageContent(message);
+
+    // Structured moderation: backlog moderation if needed
+    await this.moderateBacklogIfNeeded(message.channel);
 
     this.logger.debug(`Message processed successfully in channel ${channelId}`);
   }
@@ -218,6 +251,110 @@ export class MessageHandler extends BasicService {
     } catch (error) {
       this.logger.error(`Error processing channel ${channelId}: ${error.message}`);
       throw error;
+    }
+  }
+
+  /**
+   * Analyzes message content for links, assigns threat level, and reacts accordingly.
+   * @param {Object} message - The Discord message object.
+   */
+  async moderateMessageContent(message) {
+    try {
+      const content = message.content || '';
+
+      // Check static regexes
+      let matched = this.staticModerationRegexes.some((regex) => regex.test(content));
+
+      // Check dynamic regex if exists
+      if (!matched && this.dynamicModerationRegex) {
+        try {
+          const dynRegex = new RegExp(this.dynamicModerationRegex, 'i');
+          matched = dynRegex.test(content);
+        } catch (e) {
+          this.logger.warn('Invalid dynamic moderation regex, skipping.');
+        }
+      }
+
+      let threatLevel = 'low';
+      let reason = '';
+
+      if (matched) {
+        const prompt = `Classify the threat level of this message.\n\nMessage: "${content}"\n\nRespond with one of: low, medium, high, and a brief reason.`;
+        const schema = {
+          type: 'object',
+          properties: {
+            threat_level: { type: 'string', enum: ['low', 'medium', 'high'] },
+            reason: { type: 'string' }
+          },
+          required: ['threat_level', 'reason']
+        };
+
+        const result = await this.services.aiService.generateStructuredOutput({ prompt, schema });
+        threatLevel = result.threat_level;
+        reason = result.reason;
+      }
+
+      // Escalate if warning emoji exists
+      const warningEmoji = '🚨';
+      const warningReaction = message.reactions?.cache?.find(r => r.emoji.name === warningEmoji);
+      if (warningReaction && warningReaction.count > 0) {
+        threatLevel = 'high';
+      }
+
+      let emoji = '✅';
+      if (threatLevel === 'high') {
+        emoji = '🚨';
+      } else if (threatLevel === 'medium') {
+        emoji = '⚠️';
+      }
+
+      // React accordingly
+      await message.react(emoji);
+
+      // Reply to medium and high risk messages with reason
+      if (threatLevel === 'medium' || threatLevel === 'high') {
+        const replyText = `-# ${emoji} [${reason}]`;
+        await message.reply(replyText);
+      }
+
+      // If high risk, store in risk DB and assign tags
+      if (threatLevel === 'high') {
+        await this.services.riskManagerService.storeHighRiskMessage({
+          messageId: message.id,
+          channelId: message.channel.id,
+          guildId: message.guild?.id,
+          content,
+          reason
+        });
+
+        const tags = await this.services.aiService.generateTagsForContent(content);
+        await this.services.riskManagerService.updateMessageTags(message.id, tags);
+      }
+
+    } catch (error) {
+      this.logger.error(`Error during message moderation: ${error.message}`);
+    }
+  }
+
+  /**
+   * Checks backlog of unmoderated messages in a channel and moderates if over threshold.
+   * @param {Object} channel - The Discord channel object.
+   */
+  async moderateBacklogIfNeeded(channel) {
+    try {
+      const messages = await channel.messages.fetch({ limit: 100 });
+      const unmoderated = messages.filter(m =>
+        !m.reactions.cache.some(r => ['✅', '⚠️', '🚨'].includes(r.emoji.name))
+      );
+
+      if (unmoderated.size > 50) {
+        this.logger.info(`Moderating backlog of ${unmoderated.size} messages in channel ${channel.id}`);
+        for (const msg of unmoderated.values()) {
+          await this.moderateMessageContent(msg);
+        }
+      }
+    } catch (error) {
+      this.logger.error(`Error moderating backlog: ${error.message}`);
     }
   }
 }
