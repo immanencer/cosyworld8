@@ -12,6 +12,7 @@ export class MapService extends BasicService {
       'discordService',
       'databaseService',
       'configService',
+      'aiService',
     ]);
     this.client = this.discordService.client;
     this.db = this.databaseService.getDatabase();
@@ -150,7 +151,7 @@ export class MapService extends BasicService {
       }
 
       if (sendProfile) {
-        await this.discordService.sendAvatarEmbed(updatedAvatar, newLocationId);
+        await this.discordService.sendAvatarEmbed(updatedAvatar, newLocationId, this.aiService);
       }
 
       this.client.emit('avatarMoved', {

@@ -232,7 +232,10 @@ Only output the JSON object, no commentary.`.trim();
 
                 const actions = await this.generateSocialActions(avatar, context, timeline, notifications, userId);
                 let results = [];
-
+                // shuffle actions
+                actions.actions = actions.actions.sort(() => Math.random() - 0.5);
+                // limit to 2 actions
+                actions.actions = actions.actions.slice(0, 2);
                 const isValidId = (id) => typeof id === 'string' && /^\d+$/.test(id);
 
                 for (let i = 0; i < Math.min(2, actions.actions.length); i++) {
@@ -255,7 +258,7 @@ Only output the JSON object, no commentary.`.trim();
                             case 'post':
                                 await v2Client.tweet(action.content);
                                 await db.collection('social_posts').insertOne({ avatarId: avatar._id, content: action.content, timestamp: new Date(), postedToX: true });
-                                results.push(`✨ Posted: "${action.content}"`);
+                                results.push(`✨ Sent ${tweeturl}: "${action.content}"`);
                                 break;
                             case 'reply':
                                 if (!isValidId(action.tweetId)) {

@@ -1,21 +1,50 @@
 import { EmbedBuilder } from 'discord.js';
 
+function splitDescription(text) {
+  if (!text) return { firstSentence: '', rest: '' };
+  const match = text.match(/([^.!?]+[.!?])\s*(.*)/s);
+  if (!match) return { firstSentence: text, rest: '' };
+  return { firstSentence: match[1].trim(), rest: match[2].trim() };
+}
+
 /**
  * Build a sleek mini avatar embed for movement or notifications.
  */
 export function buildMiniAvatarEmbed(avatar, message = '') {
-  return new EmbedBuilder()
+  const { firstSentence, rest } = splitDescription(message || `${avatar.name} is on the move!`);
+  const embed = new EmbedBuilder()
     .setColor('#00b0f4')
     .setAuthor({ name: `${avatar.emoji || ''} ${avatar.name}`, iconURL: avatar.imageUrl })
-    .setDescription(message || `${avatar.name} is on the move!`)
+    .setDescription(firstSentence)
     .setThumbnail(avatar.imageUrl)
     .setFooter({ text: 'Movement Update', iconURL: avatar.imageUrl });
+
+  if (rest) {
+    embed.addFields({ name: 'More Info', value: rest, inline: false });
+  }
+  return embed;
 }
 
 /**
  * Build a sleek full avatar profile embed.
+ * @param {Object} avatar - The avatar object
+ * @param {Object} options - Additional options
+ * @param {Object} [options.aiService] - Optional AI service instance with modelConfig
  */
 export function buildFullAvatarEmbed(avatar, options = {}) {
+  const aiService = options.aiService;
+
+  let rarity = avatar.rarity;
+
+  if ((!rarity || rarity === 'undefined') && aiService && avatar.model) {
+    const modelEntry = aiService.modelConfig?.find(m => m.model === avatar.model);
+    if (modelEntry) {
+      rarity = modelEntry.rarity;
+    }
+  }
+
+  rarity = rarity || 'undefined';
+
   const rarityColors = {
     legendary: '#FFD700',
     rare: '#1E90FF',
@@ -24,22 +53,32 @@ export function buildFullAvatarEmbed(avatar, options = {}) {
     undefined: '#808080'
   };
 
-  const rarity = avatar.rarity || 'undefined';
   const color = rarityColors[rarity.toLowerCase()] || '#5865F2';
 
-  const tierMap = { legendary: 'S', rare: 'A', uncommon: 'B', common: 'C', undefined: 'U' };
+  const tierMap = { 
+    legendary: 'S', 
+    rare: 'A', 
+    uncommon: 'B', 
+    common: 'C',
+    undefined: 'U' };
   const tier = tierMap[rarity.toLowerCase()] || 'U';
+
+  const { firstSentence, rest } = splitDescription(avatar.short_description || avatar.description || 'No description.');
 
   const embed = new EmbedBuilder()
     .setColor(color)
     .setTitle(`${avatar.emoji || ''} ${avatar.name}`)
-    .setDescription(avatar.short_description || avatar.description || 'No description.')
+    .setDescription(firstSentence)
     .setThumbnail(avatar.imageUrl)
     .addFields(
       { name: 'Tier', value: `**${tier}**`, inline: true },
       { name: 'Model', value: avatar.model || 'N/A', inline: true },
     )
     .setFooter({ text: 'Avatar Profile', iconURL: avatar.imageUrl });
+
+  if (rest) {
+    embed.addFields({ name: 'More Info', value: rest, inline: false });
+  }
 
   if (avatar.stats) {
     const { strength, dexterity, constitution, intelligence, wisdom, charisma, hp } = avatar.stats;
@@ -82,10 +121,12 @@ export function buildLocationEmbed(location, items = [], avatars = []) {
   const rarity = location.rarity || 'undefined';
   const color = rarityColors[rarity.toLowerCase()] || '#5865F2';
 
-  return new EmbedBuilder()
+  const { firstSentence, rest } = splitDescription(location.description || 'No description.');
+
+  const embed = new EmbedBuilder()
     .setColor(color)
     .setTitle(location.name)
-    .setDescription(location.description || 'No description.')
+    .setDescription(firstSentence)
     .setImage(location.imageUrl)
     .addFields(
       { name: 'Rarity', value: rarity, inline: true },
@@ -93,4 +134,10 @@ export function buildLocationEmbed(location, items = [], avatars = []) {
       { name: 'Avatars', value: `${avatars.length}`, inline: true }
     )
     .setFooter({ text: 'Location Info' });
+
+  if (rest) {
+    embed.addFields({ name: 'More Info', value: rest, inline: false });
+  }
+
+  return embed;
 }

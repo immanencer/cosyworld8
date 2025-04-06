@@ -17,6 +17,7 @@ export class SummonTool extends BasicTool {
     this.emoji = '🔮'; // Default emoji
     this.DAILY_SUMMON_LIMIT = 16;
     this.replyNotification = true;
+    this.cooldownMs = 10 * 1000; // 1 minute cooldown
     this.db = this.databaseService.getDatabase(); // Assumes this always returns a valid database object
   }
 
@@ -81,10 +82,10 @@ export class SummonTool extends BasicTool {
       if (existingAvatar) {
         await this.discordService.reactToMessage(message, existingAvatar.emoji || '🔮');
         setTimeout(async () => {
-          await this.discordService.sendAvatarEmbed(existingAvatar, message.channel.id);
+          await this.discordService.sendAvatarEmbed(existingAvatar, message.channel.id, this.aiService);
           await this.conversationManager.sendResponse(message.channel, existingAvatar);
         }, 1000);
-        return `-# [ ${existingAvatar.name} has been summoned to this location. ]`;
+        return `-# ${this.emoji} [ ${existingAvatar.name} has been summoned to this location. ]`;
       }
 
       // Check summon limit (bypass for specific user ID, e.g., admin)
@@ -149,13 +150,14 @@ export class SummonTool extends BasicTool {
       // Send final response
       setImmediate(async () => {
         // Send profile and introduction
+        await this.discordService.sendAsWebhook(message.channel.id, createdAvatar.imageUrl, createdAvatar);
         await this.discordService.sendAsWebhook(message.channel.id, intro, createdAvatar);
-        await this.discordService.sendAvatarEmbed(createdAvatar, message.channel.id);
+        await this.discordService.sendAvatarEmbed(createdAvatar, message.channel.id, this.aiService);
         await this.conversationManager.sendResponse(message.channel, avatar);
-        await this.conversationManager.sendResponse(message.channel, createdAvatar);
         await this.discordService.reactToMessage(message, createdAvatar.emoji || '🔮');
+        setTimeout(() => this.conversationManager.sendResponse(message.channel, createdAvatar), 3000);
       });
-      return `${createdAvatar.name} has been summoned into existence.`;
+      return `-# ${this.emoji} [ ${createdAvatar.name} has been summoned into existence. ]`;
     } catch (error) {
       this.logger.error(`Summon error: ${error.message}`);
       this.logger.debug(`${error.stack}`);

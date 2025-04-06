@@ -172,7 +172,7 @@ export class ToolService extends BasicService {
     if (now - lastUsed < cooldownMs) {
       const remainingMs = cooldownMs - (now - lastUsed);
       const minutes = Math.ceil(remainingMs / 60000);
-      return `Please wait ${minutes} more minute(s) before using '${toolName}' again.`;
+      return `-# [ Please wait ${minutes} more minute(s) before using '${toolName}' again. ]`;
     }
 
     let result;

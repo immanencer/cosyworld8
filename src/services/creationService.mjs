@@ -52,10 +52,11 @@ export class CreationService extends BasicService {
 
       const imageUrl = (output.url || output.toString)();
       const imageBuffer = await this.downloadImage(imageUrl);
-      const localFilename = `./images/generated_${Date.now()}.webp`;
+      const localFilename = `./images/generated_${Date.now()}.png`;
       await fs.mkdir('./images', { recursive: true });
       await fs.writeFile(localFilename, imageBuffer);
-      return await this.s3Service.uploadImage(localFilename);
+      const s3url = await this.s3Service.uploadImage(localFilename);
+      return s3url;
     } catch (error) {
       console.error('Error generating image:', error);
       throw error;

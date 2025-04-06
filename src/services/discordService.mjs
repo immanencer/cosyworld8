@@ -4,12 +4,10 @@ import {
   GatewayIntentBits,
   Partials,
   WebhookClient,
-  EmbedBuilder,
 } from 'discord.js';
 import { chunkMessage } from './utils/messageChunker.mjs';
 import { processMessageLinks } from './utils/linkProcessor.mjs';
 import models from '../models.config.mjs';
-import rarityColors from './utils/rarityColors.mjs';
 import { BasicService } from './basicService.mjs';
 import { buildMiniAvatarEmbed, buildFullAvatarEmbed, buildLocationEmbed } from './discordEmbedLibrary.mjs';
 
@@ -211,7 +209,7 @@ export class DiscordService extends BasicService {
     }
   }
 
-  async sendAvatarEmbed(avatar, targetChannelId) {
+  async sendAvatarEmbed(avatar, targetChannelId, aiService) {
     this.validateAvatar(avatar);
     const channelId = targetChannelId || avatar.channelId;
     if (!channelId || typeof channelId !== 'string') {
@@ -220,7 +218,7 @@ export class DiscordService extends BasicService {
     try {
       const channel = await this.client.channels.fetch(channelId);
       const guildId = channel.guild?.id;
-      const embed = buildFullAvatarEmbed(avatar, { guildId });
+      const embed = buildFullAvatarEmbed(avatar, { guildId, aiService });
       await this.sendEmbedAsWebhook(channelId, embed, avatar.name, avatar.imageUrl);
     } catch (error) {
       this.logger.error(`Failed to send avatar embed to ${channelId}: ${error.message}`);
