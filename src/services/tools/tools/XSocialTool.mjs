@@ -83,19 +83,33 @@ export class XSocialTool extends BasicTool {
         const systemPrompt = await this.services.promptService.getBasicSystemPrompt(avatar);
 
         const prompt = `
-        ${systemPrompt}
+${systemPrompt}
 
-        Memories:
-        ${memories.map(m => m.content).join('\n')}
-        
-        Context:
-        ${context}
-        
-        Timeline:
-        ${JSON.stringify(timeline)}
-        
-        Notifications: 
-        ${JSON.stringify(notifications)}
+You are an AI social media agent managing an avatar's X (Twitter) account.
+
+Your task is to generate a list of social actions the avatar should perform next.
+
+Use the following context:
+
+Memories:
+${memories.map(m => m.content).join('\n')}
+
+Channel Context:
+${context}
+
+Recent Timeline:
+${JSON.stringify(timeline)}
+
+Recent Notifications:
+${JSON.stringify(notifications)}
+
+Generate a JSON array of actions. Each action must have:
+- "type": one of post, reply, quote, follow, like, repost, block
+- "content": text for post/reply/quote (max 280 chars), or null if not applicable
+- "tweetId": the Tweet ID for reply/quote/like/repost, or null if not applicable
+- "userId": the User ID for follow/block, or null if not applicable
+
+Only output the JSON object, no commentary.
         `.trim();
 
         const schema = {
@@ -110,9 +124,9 @@ export class XSocialTool extends BasicTool {
                             type: "object",
                             properties: {
                                 type: { type: "string", enum: ["post", "reply", "quote", "follow", "like", "repost", "block"] },
-                                content: { type: "string", description: "Text for post/reply/quote (max 280 chars)" },
-                                tweetId: { type: "string", description: "Tweet ID for reply/quote/like/repost" },
-                                userId: { type: "string", description: "User ID for follow/block" }
+                                content: { type: "string", nullable: true, description: "Text for post/reply/quote (max 280 chars) or null" },
+                                tweetId: { type: "string", nullable: true, description: "Tweet ID for reply/quote/like/repost or null" },
+                                userId: { type: "string", nullable: true, description: "User ID for follow/block or null" }
                             },
                             required: ["type", "content", "tweetId", "userId"],
                             additionalProperties: false,
@@ -124,7 +138,6 @@ export class XSocialTool extends BasicTool {
             }
         };
 
-        // Use CreationService's executePipeline method
         const actions = await this.services.creationService.executePipeline({
             prompt,
             schema
@@ -151,11 +164,13 @@ export class XSocialTool extends BasicTool {
             if (!(await this.isAuthorized(avatar))) return '❌ X authorization required. Please connect your account.';
 
             if (command === 'status') {
+                this.replyNotification = false;
                 const { timeline, notifications } = await this.getXTimelineAndNotifications(avatar);
-                return `📡 X Status\nTimeline: ${timeline.map(t => t.text).join(' | ')}\nNotifications: ${notifications.map(n => n.text).join(' | ')}`;
+                return `📡 X Status\nTimeline: \n${timeline.map(t => t.text).join(' | ')}\nNotifications: ${notifications.map(n => n.text).join(' | ')}`;
             }
 
             if (command === 'post') {
+                this.replyNotification = true;
                 const content = params.slice(1).join(' ');
                 if (content.length > 280) return `❌ Message too long (${content.length}/280). Trim by ${content.length - 280}.`;
                 await v2Client.tweet(content);
@@ -164,6 +179,7 @@ export class XSocialTool extends BasicTool {
             }
 
             if (command === 'auto') {
+                this.replyNotification = true;
                 const context = await this.conversationManager.getChannelContext(message.channel.id); // Assuming a similar method
                 const { timeline, notifications } = await this.getXTimelineAndNotifications(avatar);
                 const actions = await this.generateSocialActions(avatar, context, timeline, notifications);

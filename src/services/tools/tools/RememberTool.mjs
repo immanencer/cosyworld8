@@ -54,11 +54,27 @@ export class RememberTool extends BasicTool {
   async execute(message, params, avatar) {
     const context = await this.getChannelContext(message.channel);
     const prompt = params.join(' ');
-    const memory = await this.generateMemory(context, prompt);
+
+    let kgContext = '';
+    try {
+      kgContext = await this.memoryService.queryKnowledgeGraph(avatar._id);
+    } catch {}
+
+    let lastNarrative = '';
+    try {
+      lastNarrative = (await this.services.promptService.getLastNarrative(avatar, this.services.databaseService.getDatabase()))?.content || '';
+    } catch {}
+
+    const combinedContext = `Knowledge Graph:\n${kgContext}\n\nLatest narrative:\n${lastNarrative}\n\nRecent conversation:\n${context}`;
+
+    const memory = await this.generateMemory(combinedContext, prompt);
     const formattedMemory = memory.trim();
 
     await this.memoryService.addMemory(avatar._id, formattedMemory);
     await this.storeMemoryInMCP(avatar, formattedMemory);
+
+    // Update KG with new memory
+    await this.memoryService.updateKnowledgeGraph(avatar._id, formattedMemory);
 
     if (avatar.innerMonologueChannel) {
       await this.services.discordService.sendAsWebhook(

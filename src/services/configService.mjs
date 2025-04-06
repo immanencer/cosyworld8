@@ -159,13 +159,7 @@ export class ConfigService extends BasicService {
         summon: '🔮',
         breed: '🏹',
         attack: '⚔️',
-        defend: '🛡️',
-        move: '🚶',
-        remember: '💭',
-        create: '🛠️',
-        x: '✖️',
-        item: '🎒',
-        respond: '💬'
+        defend: '🛡️'
       },
       features: {
         breeding: true,

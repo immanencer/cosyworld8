@@ -54,7 +54,11 @@ Location: ${location.name || 'Unknown'} - ${location.description || 'No descript
     const memories = await this.getMemories(avatar,100);
     const recentActions = await this.getRecentActions(avatar);
     const narrativeContent = await this.getNarrativeContent(avatar);
-    return `Current personality: ${avatar.dynamicPersonality || 'None yet'}\n\nMemories: ${memories}\n\nRecent actions: ${recentActions}\n\nNarrative thoughts: ${narrativeContent}`;
+    let lastNarrative = '';
+    try {
+      lastNarrative = (await this.getLastNarrative(avatar, this.db))?.content || '';
+    } catch {}
+    return `Current personality: ${avatar.dynamicPersonality || 'None yet'}\n\nLatest narrative: ${lastNarrative}\n\nMemories: ${memories}\n\nRecent actions: ${recentActions}\n\nNarrative thoughts: ${narrativeContent}`;
   }
 
   /**
@@ -66,10 +70,15 @@ Location: ${location.name || 'Unknown'} - ${location.description || 'No descript
     const memories = await this.getMemories(avatar,100);
     const recentActions = await this.getRecentActions(avatar);
     const narrativeContent = await this.getNarrativeContent(avatar);
+    let lastNarrative = '';
+    try {
+      lastNarrative = (await this.getLastNarrative(avatar, this.db))?.content || '';
+    } catch {}
     return `
 You are ${avatar.name || ''}.
 Base personality: ${avatar.personality || ''}
 Current dynamic personality: ${avatar.dynamicPersonality || 'None yet'}
+Most recent narrative: ${lastNarrative}
 Physical description: ${avatar.description || ''}
 Recent memories:
 ${memories}

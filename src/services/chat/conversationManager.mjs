@@ -58,18 +58,37 @@ export class ConversationManager extends BasicService {
         avatar.model = await this.aiService.selectRandomModel();
         await this.avatarService.updateAvatar(avatar);
       }
+
+      const kgContext = await this.memoryService.queryKnowledgeGraph(avatar._id);
       const chatMessages = await this.services.promptService.getNarrativeChatMessages(avatar);
+
+      // Inject KG context into user prompt
+      if (chatMessages && chatMessages.length > 0) {
+        const userMsg = chatMessages.find(m => m.role === 'user');
+        if (userMsg) {
+          userMsg.content = `Knowledge Graph:
+${kgContext}
+
+${userMsg.content}`;
+        }
+      }
+
       const narrative = await this.aiService.chat(chatMessages, { model: avatar.model, max_tokens: 2048 });
       if (!narrative) {
         this.logger.error(`No narrative generated for ${avatar.name}.`);
         return null;
       }
-      await this.storeNarrative(avatar._id, narrative);
-      avatar = await this.updateNarrativeHistory(avatar, narrative);
+
+      await this.memoryService.storeNarrative(avatar._id, narrative);
+      avatar = await this.memoryService.updateNarrativeHistory(avatar, narrative);
       avatar.prompt = await this.services.promptService.getFullSystemPrompt(avatar, this.db);
       avatar.dynamicPrompt = narrative;
       await this.avatarService.updateAvatar(avatar);
       this.lastGlobalNarrativeTime = Date.now();
+
+      // Update KG with new narrative
+      await this.memoryService.updateKnowledgeGraph(avatar._id, narrative);
+
       return narrative;
     } catch (error) {
       this.logger.error(`Error generating narrative for ${avatar.name}: ${error.message}`);
@@ -77,32 +96,12 @@ export class ConversationManager extends BasicService {
     }
   }
 
-  async storeNarrative(avatarId, content) {
-    try {
-      if (!this.db) {
-        this.logger.error('DB not initialized. Cannot store narrative.');
-        return;
-      }
-      await this.db.collection('narratives').insertOne({ avatarId, content, timestamp: Date.now() });
-    } catch (error) {
-      this.logger.error(`Error storing narrative for avatar ${avatarId}: ${error.message}`);
-    }
+  async getLastNarrative(avatarId) {
+    return this.memoryService.getLastNarrative(avatarId);
   }
 
-  async getLastNarrative(avatarId) {
-    try {
-      if (!this.db) {
-        this.logger.error('DB not initialized. Cannot fetch narrative.');
-        return null;
-      }
-      return await this.db.collection('narratives').findOne(
-        { $or: [{ avatarId }, { avatarId: avatarId.toString() }] },
-        { sort: { timestamp: -1 } }
-      );
-    } catch (error) {
-      this.logger.error(`Error fetching last narrative for avatar ${avatarId}: ${error.message}`);
-      return null;
-    }
+  async storeNarrative(avatarId, content) {
+    return this.memoryService.storeNarrative(avatarId, content);
   }
 
   async getChannelContext(channelId, limit = 50) {
@@ -234,16 +233,7 @@ export class ConversationManager extends BasicService {
   }
 
   async updateNarrativeHistory(avatar, content) {
-    if (!this.db) {
-      this.logger.error('DB not initialized. Cannot update narrative history.');
-      return;
-    }
-    const guildName = GUILD_NAME;
-    const narrativeData = { timestamp: Date.now(), content, guildName };
-    avatar.narrativeHistory = avatar.narrativeHistory || [];
-    avatar.narrativeHistory.unshift(narrativeData);
-    avatar.narrativeHistory = avatar.narrativeHistory.slice(0, 5);
-    return avatar
+    return this.memoryService.updateNarrativeHistory(avatar, content);
   }
 
   removeAvatarPrefix(response, avatar) {

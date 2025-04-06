@@ -77,8 +77,12 @@ export class ThinkTool extends BasicTool {
 
       const context = await this.getChannelContext(message.channel);
       const mcpMemory = await this.fetchMemoryFromMCP(avatar);
+      let lastNarrative = '';
+      try {
+        lastNarrative = (await this.services.promptService.getLastNarrative(avatar, this.services.databaseService.getDatabase()))?.content || '';
+      } catch {}
 
-      const reflectionPrompt = `Based on this conversation:\n${context}\nAnd your current memory:\n${mcpMemory}\nYou are about to respond to the message: "${messageToRespondTo}". Reflect in detail on the context, think carefully about the conversation and analyze its meaning.`;
+      const reflectionPrompt = `Based on this conversation:\n${context}\n\nLatest narrative:\n${lastNarrative}\n\nAnd your current memory:\n${mcpMemory}\nYou are about to respond to the message: "${messageToRespondTo}". Reflect in detail on the context, think carefully about the conversation and analyze its meaning.`;
 
       const reflection = await this.aiService.chat([
         {

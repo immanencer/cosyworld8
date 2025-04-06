@@ -93,6 +93,31 @@ export class GoogleAIService extends BasicService {
         clone[key] = value;
       }
     }
+
+    // Determine if this is a schema definition (not a nested property)
+    const isSchemaDef =
+      ('properties' in schema || 'items' in schema || 'enum' in schema || 'anyOf' in schema || 'oneOf' in schema || Array.isArray(schema));
+
+    if (!clone.type && isSchemaDef) {
+      if (Array.isArray(clone)) clone.type = 'array';
+      else clone.type = 'object';
+    }
+
+    // Convert OpenAI-style nullable types to Vertex AI compatible
+    if (Array.isArray(schema.type) && schema.type.includes('null')) {
+      const nonNullTypes = schema.type.filter(t => t !== 'null');
+      if (nonNullTypes.length === 1) {
+        clone.type = nonNullTypes[0];
+        clone.nullable = true;
+      } else if (nonNullTypes.length === 0) {
+        clone.type = 'string';
+        clone.nullable = true;
+      } else {
+        clone.type = nonNullTypes[0];
+        clone.nullable = true;
+      }
+    }
+
     return clone;
   }
 
@@ -100,9 +125,29 @@ export class GoogleAIService extends BasicService {
     for (let i = 0; i <= retries; i++) {
       const raw = await getRawResponse();
       try {
-        const jsonMatch = raw.match(/\{[\s\S]*\}/);
-        if (!jsonMatch) throw new Error("No JSON found");
-        return JSON.parse(jsonMatch[0]);
+        // Extract the first JSON object or array, ignoring trailing characters
+        const jsonRegex = /([\[{])[\s\S]*?([\]}])/m;
+        const match = raw.match(jsonRegex);
+        if (!match) throw new Error("No JSON found");
+
+        // Find the full JSON substring from the first opening to its matching closing brace/bracket
+        const startIdx = raw.indexOf(match[1]);
+        let openChar = match[1];
+        let closeChar = openChar === '{' ? '}' : ']';
+        let depth = 0;
+        let endIdx = -1;
+        for (let j = startIdx; j < raw.length; j++) {
+          if (raw[j] === openChar) depth++;
+          else if (raw[j] === closeChar) depth--;
+          if (depth === 0) {
+            endIdx = j + 1;
+            break;
+          }
+        }
+        if (endIdx === -1) throw new Error("Unbalanced JSON braces");
+
+        const jsonStr = raw.slice(startIdx, endIdx).trim();
+        return JSON.parse(jsonStr);
       } catch (err) {
         console.warn(`JSON parse failed (attempt ${i + 1}):`, err.message);
         if (i === retries) throw new Error("Failed to parse JSON after retries");
@@ -331,31 +376,6 @@ export class GoogleAIService extends BasicService {
       return response?.trim() || `The ${item.name} remains eerily silent.`;
     } catch {
       return `The ${item.name} remains unnervingly silent.`;
-    }
-  }
-
-  async createItem(itemName, description) {
-    const prompt = `Create a fantasy RPG item.
-  Name: "${itemName}"
-  Description: "${description}"`;
-  
-    const schema = {
-      type: "OBJECT",
-      properties: {
-        name: { type: "STRING" },
-        description: { type: "STRING" },
-        type: { type: "STRING" },
-        rarity: { type: "STRING", enum: ["common", "uncommon", "rare", "legendary"] },
-        properties: { type: "OBJECT" },
-      },
-      required: ['name', 'description', 'type', 'rarity', 'properties']
-    };
-  
-    try {
-      return await this.generateStructuredOutput({ prompt, schema });
-    } catch (error) {
-      console.error(`Failed to generate item "${itemName}":`, error.message);
-      return null;
     }
   }
   

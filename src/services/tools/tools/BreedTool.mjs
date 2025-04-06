@@ -35,8 +35,7 @@ export class BreedTool extends BasicTool {
         .slice(-2);
 
       if (mentionedAvatars.length !== 2) {
-        await this.discordService.replyToMessage(message, "Please mention exactly two avatars to breed.");
-        return "-# [ Failed to breed: Need exactly two avatars. ]";
+        return "-# [ Failed to breed: Both mentioned avatars must be in this channel. ]";
       }
 
       const [avatar1, avatar2] = mentionedAvatars;

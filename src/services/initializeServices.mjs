@@ -23,7 +23,7 @@ import { CreationService } from './creationService.mjs';
 import { S3Service } from './s3/s3Service.mjs';
 import { LocationService } from './location/locationService.mjs';
 import { ArweaveService } from './arweave/arweaveService.mjs';
-import { MCPClientService } from './mcp/MCPClientService.ts';
+import { MCPClientService } from './mcp/MCPClientService.mjs';
 
 /**
  * Validates the environment variables and sets defaults or exits as needed.
