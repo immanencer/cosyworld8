@@ -1,4 +1,3 @@
-
 import { BasicTool } from '../BasicTool.mjs';
 
 export class DefendTool extends BasicTool {
@@ -12,6 +11,7 @@ export class DefendTool extends BasicTool {
     this.description = 'Take a defensive stance';
     this.emoji = '🛡️';
     this.replyNotification = true;
+    this.cooldownMs = 30 * 1000; // 30 seconds cooldown
   }
 
   async execute(message, params, avatar) {

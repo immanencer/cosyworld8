@@ -40,6 +40,9 @@ export class ToolService extends BasicService {
     this.tools = new Map();
     this.toolEmojis = new Map();
 
+    this.toolCooldowns = new Map(); // toolName -> last execution timestamp
+    this.defaultCooldownMs = 60 * 60 * 1000; // 1 hour cooldown
+
     // Initialize tools
     const toolClasses = {
       summon: SummonTool,
@@ -163,15 +166,24 @@ export class ToolService extends BasicService {
       return `Tool '${toolName}' not found.`;
     }
 
+    const now = Date.now();
+    const lastUsed = this.toolCooldowns.get(toolName) || 0;
+    const cooldownMs = tool.cooldownMs ?? this.defaultCooldownMs;
+    if (now - lastUsed < cooldownMs) {
+      const remainingMs = cooldownMs - (now - lastUsed);
+      const minutes = Math.ceil(remainingMs / 60000);
+      return `Please wait ${minutes} more minute(s) before using '${toolName}' again.`;
+    }
+
     let result;
     try {
       result = await tool.execute(message, params, avatar);
+      this.toolCooldowns.set(toolName, now);
     } catch (error) {
       result = `Error executing ${toolName}: ${error.message}`;
     }
 
     try {
-
       await this.memoryService.addMemory(avatar._id, result);
       await this.ActionLog.logAction({
         channelId: message.channel.id,

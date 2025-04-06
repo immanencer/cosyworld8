@@ -4,6 +4,7 @@ export class BasicTool extends BasicService {
   constructor(services, requiredServices) { 
     super(services, requiredServices);
     this.replyNotification = false;
+    this.cooldownMs = 60 * 60 * 1000; // default 1 hour cooldown
   }
 
   async execute(message, params, avatar, services) {

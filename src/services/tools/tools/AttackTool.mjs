@@ -15,6 +15,7 @@ export class AttackTool extends BasicTool {
     this.description = 'Attacks the specified avatar';
     this.emoji = '⚔️';
     this.replyNotification = true;
+    this.cooldownMs = 30 * 1000; // 30 seconds cooldown
   }
 
   async execute(message, params, avatar, services) {
