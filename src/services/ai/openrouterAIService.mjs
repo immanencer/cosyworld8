@@ -1,4 +1,4 @@
-import { BasicService } from './basicService.mjs';
+import { BasicService } from '../foundation/basicService.mjs';
 
 import OpenAI from 'openai';
 import models from '../models.config.mjs';

@@ -1,11 +1,49 @@
-import { BasicService } from '../basicService.mjs';
+import { BasicService } from '../foundation/basicService.mjs';
 
 export class ChannelManager extends BasicService {
   constructor(services) {
-    super(services, ['databaseService', 'discordService']);
+    super(services, ['databaseService', 'discordService', 'schedulingService']);
     this.client = this.discordService.client;
     this.channelActivityCollection = this.services.databaseService.getDatabase().collection('channel_activity');
     this.ACTIVITY_TIMEOUT = 30 * 60 * 1000; // 30 minutes
+  }
+
+  async initializeServices() {
+    this.logger.info('[ChannelManager] Registering ambient response periodic task');
+    this.schedulingService.addTask(
+      'triggerAmbientResponses',
+      async () => {
+        try {
+          await this.triggerAmbientResponses();
+        } catch (err) {
+          this.logger.warn(`[ChannelManager] Error in ambient response task: ${err.message}`);
+        }
+      },
+      60 * 60 * 1000 // every 60 seconds
+    );
+  }
+
+  async triggerAmbientResponses() {
+    // Ensure locationService is available
+    this.locationService = this.services.locationService;
+
+    const activeChannels = await this.channelManager.getMostRecentActiveChannels(3);
+    for (const channel of activeChannels) {
+      // Ensure location exists
+      await this.locationService.getLocationByChannelId(channel.id);
+
+      // Update ambiance if stale (tied to avatar activity via periodic check)
+      if (await this.locationService.summaryIsStale(channel.id)) {
+        await this.locationService.generateLocationSummary(channel.id);
+      }
+
+      // Handle avatar responses
+      const avatars = (await this.mapService.getLocationAndAvatars(channel.id)).avatars;
+      const selected = avatars.sort(() => Math.random() - 0.5).slice(0, 2);
+      for (const avatar of selected) {
+        await this.services.conversationManager.sendResponse(channel, avatar);
+      }
+    }
   }
 
   /**

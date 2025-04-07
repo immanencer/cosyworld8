@@ -2,7 +2,7 @@ import Fuse from 'fuse.js';
 
 import { ObjectId } from 'mongodb';
 import { SchemaValidator } from '../utils/schemaValidator.mjs';
-import { BasicService } from '../basicService.mjs';
+import { BasicService } from '../foundation/basicService.mjs';
 
 const STRUCTURED_MODEL = process.env.STRUCTURED_MODEL || 'openai/gpt-4o';
 

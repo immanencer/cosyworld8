@@ -1,4 +1,4 @@
-import { BasicService } from './basicService.mjs';
+import { BasicService } from '../foundation/basicService.mjs';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import models from '../models.google.config.mjs';
 import stringSimilarity from 'string-similarity';

@@ -9,7 +9,7 @@ CosyWorld is a modular ecosystem of interconnected services powering AI avatars,
 ### Chat Service
 - Orchestrates conversations between users and avatars
 - Uses multi-model AI (GPT-4, Claude, Llama, Gemini)
-- Components: **ConversationManager**, **DecisionMaker**, **PeriodicTaskManager**, **Rate Limiting**
+- Components: **ConversationManager**, **DecisionMaker**, **schedulingService**, **Rate Limiting**
 
 ### Tool Service
 - Handles AI-driven gameplay mechanics

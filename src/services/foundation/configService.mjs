@@ -2,7 +2,7 @@ import path from 'path';
 import fs from 'fs/promises';
 import { fileURLToPath } from 'url';
 
-import { BasicService } from './basicService.mjs';
+import { BasicService } from '../foundation/basicService.mjs';
 
 import dotenv from 'dotenv';
 dotenv.config();

@@ -1,7 +1,7 @@
 import fs from 'fs/promises';
 import Replicate from 'replicate';
-import { BasicService } from './basicService.mjs';
-import { SchemaValidator } from './utils/schemaValidator.mjs';
+import { BasicService } from '../foundation/basicService.mjs';
+import { SchemaValidator } from '../utils/schemaValidator.mjs';
 
 export class CreationService extends BasicService {
   constructor(services) {

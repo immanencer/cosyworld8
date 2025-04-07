@@ -12,6 +12,7 @@ The BasicService serves as the foundation class for all services in the system. 
 ## Implementation
 The BasicService uses a constructor-based dependency injection pattern where services are passed in and registered. It enforces requirements for dependencies and provides a standard method to initialize dependent services.
 
+### Original Implementation
 ```javascript
 export class BasicService {
   constructor(services = {}, requiredServices = []) {
@@ -41,6 +42,41 @@ export class BasicService {
       }
       this[element] = this.services[element];
     });
+  }
+}
+```
+
+### Enhanced Implementation (BasicService2)
+The enhanced version provides better logging, more graceful dependency handling, and consistent shutdown capabilities:
+
+```javascript
+export class BasicService {
+  constructor(services = {}, requiredServices = []) {
+    this.services = services;
+    this.logger = services.logger || console;
+
+    this.logger.warn(`[BasicService] Constructed ${this.constructor.name}`);
+
+    this.registerServices(requiredServices);
+  }
+
+  registerServices(requiredServices = []) {
+    requiredServices.forEach(dep => {
+      if (!this.services[dep]) {
+        this.logger.warn(`[BasicService] Missing dependency '${dep}' in ${this.constructor.name}`);
+      } else {
+        this[dep] = this.services[dep];
+        this.logger.warn(`[BasicService] Registered dependency '${dep}' in ${this.constructor.name}`);
+      }
+    });
+  }
+
+  async initializeServices() {
+    this.logger.warn(`[BasicService] initializeServices called for ${this.constructor.name}`);
+  }
+
+  async shutdown() {
+    this.logger.warn(`[BasicService] shutdown called for ${this.constructor.name}`);
   }
 }
 ```

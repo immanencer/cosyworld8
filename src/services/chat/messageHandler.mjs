@@ -18,7 +18,7 @@ export class MessageHandler extends BasicService {
       'spamControlService',
       'configService',
       'channelManager',
-      'periodicTaskManager',
+      'schedulingService',
       'databaseService',
       'decisionMaker',
       'conversationManager',
@@ -51,7 +51,7 @@ export class MessageHandler extends BasicService {
     this.logger.info('MessageHandler started.');
 
     // Periodically refresh dynamic regex and update if backlog exceeds threshold
-    this.periodicTaskManager.addTask('refreshDynamicRegex', async () => {
+    this.schedulingService.addTask('refreshDynamicRegex', async () => {
       try {
         const regex = await this.services.riskManagerService.loadDynamicRegex();
         this.dynamicModerationRegex = regex;
@@ -64,7 +64,7 @@ export class MessageHandler extends BasicService {
   }
 
   async stop() {
-    this.periodicTaskManager.stop();
+    this.schedulingService.stop();
     this.logger.info('MessageHandler stopped.');
   }
 
@@ -279,7 +279,25 @@ export class MessageHandler extends BasicService {
       let reason = '';
 
       if (matched) {
-        const prompt = `Classify the threat level of this message.\n\nMessage: "${content}"\n\nRespond with one of: low, medium, high, and a brief reason.`;
+        const prompt = `Classify the risk level of this message, considering the following risky behaviors and content types on Discord:
+
+1. Hate speech or discrimination
+2. Harassment, bullying, or threats
+3. Spam, scams, or phishing attempts
+4. Misinformation or harmful advice
+5. Self-harm or suicide content
+6. Violence or incitement
+7. Sexual or explicit content
+8. Malware or suspicious links
+9. Impersonation of others (users, staff, bots)
+10. Soliciting direct messages (DMs), especially for suspicious reasons
+11. Manipulative, coercive, or grooming behavior
+12. Attempts to evade moderation or rules
+13. Any other emerging or suspicious risky behavior
+
+Message: "${content}"
+
+Respond ONLY with one of: low, medium, high, and a brief reason explaining the risk.`;
         const schema = {
           type: 'object',
           properties: {
@@ -301,6 +319,24 @@ export class MessageHandler extends BasicService {
         threatLevel = 'high';
       }
 
+      // --- User profiling ---
+      let userProfile = '';
+      try {
+        const userId = message.author?.id;
+        if (userId) {
+          const recentRiskyMessages = await this.databaseService.getRecentRiskyMessagesForUser(userId, 20);
+          const highCount = recentRiskyMessages.filter(m => m.threatLevel === 'high').length;
+          const mediumCount = recentRiskyMessages.filter(m => m.threatLevel === 'medium').length;
+          const totalWarnings = mediumCount + highCount;
+          // Emoji risk profile: 1 warning=⚠️, 1 high=🚨, scale up
+          const warningEmojis = '⚠️'.repeat(mediumCount);
+          const dangerEmojis = '🚨'.repeat(highCount);
+          userProfile = `${warningEmojis}${dangerEmojis}`;
+        }
+      } catch (err) {
+        this.logger.error(`Error generating user risk profile: ${err.message}`);
+      }
+
       let emoji = '✅';
       if (threatLevel === 'high') {
         emoji = '🚨';
@@ -311,10 +347,44 @@ export class MessageHandler extends BasicService {
       // React accordingly
       await message.react(emoji);
 
-      // Reply to medium and high risk messages with reason
+      // Reply to medium and high risk messages with reason and user profile
       if (threatLevel === 'medium' || threatLevel === 'high') {
-        const replyText = `-# ${emoji} [${reason}]`;
+        let roleMentions = '';
+        try {
+          const guild = message.guild;
+          if (guild && guild.roles) {
+            const rolesToTag = guild.roles.cache.filter(role => {
+              const name = role.name.toLowerCase();
+              return name.includes('moderator') || name.includes('moderater') || name.includes('admin');
+            });
+            if (rolesToTag.size > 0) {
+              roleMentions = Array.from(rolesToTag.values()).map(r => `<@&${r.id}>`).join(' ');
+            }
+          }
+        } catch (err) {
+          this.logger.error(`Error fetching roles for tagging: ${err.message}`);
+        }
+
+        const replyText = `${roleMentions} ${userProfile} -# ${emoji} [${reason}] \n`;
         await message.reply(replyText);
+      }
+
+      // If medium or high, store risky message for user profiling
+      try {
+        if (threatLevel === 'medium' || threatLevel === 'high') {
+          await this.databaseService.storeRiskyMessage({
+            userId: message.author?.id,
+            messageId: message.id,
+            channelId: message.channel.id,
+            guildId: message.guild?.id,
+            content,
+            reason,
+            threatLevel,
+            timestamp: Date.now()
+          });
+        }
+      } catch (err) {
+        this.logger.error(`Error storing risky message: ${err.message}`);
       }
 
       // If high risk, store in risk DB and assign tags

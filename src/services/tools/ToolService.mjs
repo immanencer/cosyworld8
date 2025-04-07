@@ -1,5 +1,4 @@
-import { BasicService } from '../basicService.mjs';
-import { AIService } from "../aiService.mjs";
+import { BasicService } from '../foundation/basicService.mjs';
 import { ActionLog } from './ActionLog.mjs';
 import { AttackTool } from './tools/AttackTool.mjs';
 import { DefendTool } from './tools/DefendTool.mjs';
@@ -41,7 +40,7 @@ export class ToolService extends BasicService {
     this.toolEmojis = new Map();
 
     this.toolCooldowns = new Map(); // toolName -> last execution timestamp
-    this.defaultCooldownMs = 60 * 60 * 1000; // 1 hour cooldown
+    this.defaultCooldownMs = 60 * 1000; // 1 hour cooldown
 
     // Initialize tools
     const toolClasses = {

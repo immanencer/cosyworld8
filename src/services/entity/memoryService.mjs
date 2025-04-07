@@ -1,4 +1,4 @@
-import { BasicService } from './basicService.mjs';
+import { BasicService } from '../foundation/basicService.mjs';
 
 export class MemoryService extends BasicService {
   constructor(services) {
@@ -156,25 +156,19 @@ export class MemoryService extends BasicService {
       const entityPrompt = `Extract a list of entities (people, organizations, events, places, concepts) from the following text. For each, provide:\n- name (unique identifier, no spaces)\n- entityType (person, organization, event, place, concept)\n- observations (list of facts or attributes)\nReturn as JSON array.`;
 
       const schema = {
-        type: 'object',
-        properties: {
-          entities: {
-            type: 'array',
-            items: {
-              type: 'object',
-              properties: {
-                name: { type: 'string' },
-                entityType: { type: 'string' },
-                observations: {
-                  type: 'array',
-                  items: { type: 'string' }
-                }
-              },
-              required: ['name', 'entityType', 'observations']
+        type: 'array',
+        items: {
+          type: 'object',
+          properties: {
+            name: { type: 'string' },
+            entityType: { type: 'string' },
+            observations: {
+              type: 'array',
+              items: { type: 'string' }
             }
-          }
-        },
-        required: ['entities']
+          },
+          required: ['name', 'entityType', 'observations']
+        }
       };
 
       const entities = await this.creationService.executePipeline({

@@ -5,10 +5,10 @@ import {
   Partials,
   WebhookClient,
 } from 'discord.js';
-import { chunkMessage } from './utils/messageChunker.mjs';
-import { processMessageLinks } from './utils/linkProcessor.mjs';
-import models from '../models.config.mjs';
-import { BasicService } from './basicService.mjs';
+import { chunkMessage } from '../utils/messageChunker.mjs';
+import { processMessageLinks } from '../utils/linkProcessor.mjs';
+import models from '../../models.config.mjs';
+import { BasicService } from '../foundation/basicService.mjs';
 import { buildMiniAvatarEmbed, buildFullAvatarEmbed, buildLocationEmbed } from './discordEmbedLibrary.mjs';
 
 export class DiscordService extends BasicService {

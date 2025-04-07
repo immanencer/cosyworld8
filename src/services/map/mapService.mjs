@@ -1,4 +1,4 @@
-import { BasicService } from '../basicService.mjs';
+import { BasicService } from '../foundation/basicService.mjs';
 
 import { toObjectId } from '../utils/toObjectId.mjs';
 

@@ -1,4 +1,4 @@
-import { BasicService } from './basicService.mjs';
+import { BasicService } from '../foundation/basicService.mjs';
 import initializeApp from './web/server/app.mjs';
 
 export class WebService extends BasicService {

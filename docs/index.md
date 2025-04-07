@@ -38,7 +38,7 @@ Welcome to the CosyWorld developer hub. This guide covers everything from high-l
   - [Channel Manager](services/communication/channelManager.md)
   - [Message Handler](services/communication/messageHandler.md)
   - [Decision Maker](services/communication/decisionMaker.md)
-  - [Periodic Task Manager](services/communication/periodicTaskManager.md)
+  - [Scheduling Service](services/communication/schedulingService.md)
   - [Command Handler](services/communication/commandHandler.md)
   - [Spam Control](services/communication/spamControlService.md)
 - **World Services**

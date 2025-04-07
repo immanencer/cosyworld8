@@ -163,6 +163,26 @@ export class DatabaseService {
       }
     }
 
+  async getRecentRiskyMessagesForUser(userId, limit = 20) {
+    try {
+      const db = this.getDatabase();
+      if (!db) return [];
+      const messagesCollection = db.collection('messages');
+      const riskyMessages = await messagesCollection
+        .find({
+          authorId: userId,
+          threatLevel: { $in: ['medium', 'high'] }
+        })
+        .sort({ timestamp: -1 })
+        .limit(limit)
+        .toArray();
+      return riskyMessages;
+    } catch (error) {
+      this.logger.error(`Error fetching recent risky messages for user ${userId}: ${error.message}`);
+      return [];
+    }
+  }
+
   getDatabase() {
     if (!this.connected || !this.db) {
       this.logger.warn('Database is not connected. Retrying connection...');

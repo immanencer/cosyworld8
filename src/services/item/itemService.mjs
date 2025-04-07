@@ -1,5 +1,5 @@
 import { SchemaValidator } from '../utils/schemaValidator.mjs';
-import { BasicService } from '../basicService.mjs'; // Assuming BasicService is imported
+import { BasicService } from '../foundation/basicService.mjs'; // Assuming BasicService is imported
 
 export class ItemService extends BasicService {
   constructor(services) {

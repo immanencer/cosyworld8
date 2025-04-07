@@ -2,9 +2,9 @@
 import Replicate from 'replicate';
 import process from 'process';
 import Fuse from 'fuse.js';
-import { toObjectId } from './utils/toObjectId.mjs';
+import { toObjectId } from '../utils/toObjectId.mjs';
 
-import { BasicService } from './basicService.mjs';
+import { BasicService } from '../foundation/basicService.mjs';
 
 export class AvatarService extends BasicService {
   constructor(services) {
@@ -15,6 +15,7 @@ export class AvatarService extends BasicService {
       'configService',
       'mapService',
       'creationService',
+      'schedulingService',
     ]);
     this.db = this.databaseService.getDatabase();
     this.channelAvatars = new Map(); // channelId -> Set of avatarIds
@@ -24,9 +25,38 @@ export class AvatarService extends BasicService {
     this.IMAGE_URL_COLLECTION = mongoConfig?.collections?.imageUrls || 'image_urls';
     this.AVATARS_COLLECTION = mongoConfig?.collections?.avatars || 'avatars';
 
-
     this.prompts = null;
     this.avatarCache = [];
+  }
+
+  async initializeServices() {
+    this.logger.info('[AvatarService] Registering generateReflections periodic task');
+    this.schedulingService.addTask(
+      'generateReflections',
+      async () => {
+        try {
+          await this.generateReflections();
+        } catch (err) {
+          this.logger.warn(`[AvatarService] Error in generateReflections task: ${err.message}`);
+        }
+      },
+      5 * 60 * 1000 // every 5 minutes
+    );
+  }
+
+  async generateReflections() {
+    const avatars = (await this.services.avatarService.getActiveAvatars()).slice(0, 3);
+    if (avatars.length === 0) {
+      this.logger.info('No active avatars found for reflection generation.');
+      return;
+    }
+
+    await Promise.all(
+      avatars.map(async (avatar) => {
+        await this.services.conversationManager.generateNarrative(avatar);
+      })
+    );
+    this.logger.info('Reflections generated for active avatars.');
   }
 
   initializeReplicate(aiConfig) {

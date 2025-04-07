@@ -1,5 +1,5 @@
 import { response } from 'express';
-import { BasicService } from '../basicService.mjs';
+import { BasicService } from '../foundation/basicService.mjs';
 import { handleCommands } from '../commands/commandHandler.mjs';
 
 const GUILD_NAME = process.env.GUILD_NAME || 'The Guild';

@@ -1,4 +1,4 @@
-import { BasicService } from '../basicService.mjs';
+import { BasicService } from '../foundation/basicService.mjs';
 
 // Configuration constants (consider moving to a config file or env variables)
 const BASE_RESPONSE_CHANCE = 0.25;
@@ -7,7 +7,7 @@ const DAILY_RESET_INTERVAL = 24 * 60 * 60 * 1000; // 24 hours in ms
 
 export class DecisionMaker extends BasicService {
   constructor(services) {
-    super(services, ['aiService', 'configService', 'logger']);
+    super(services, ['aiService', 'discordService', 'configService', 'logger']);
 
     this.model = this.configService.getAIConfig().decisionMakerModel;
 
@@ -306,8 +306,7 @@ export class DecisionMaker extends BasicService {
           { role: 'user', content: 'Create a single haiku.' }
         ], { model: this.model });
 
-        const { sendAsWebhook } = await import('../discordService.mjs');
-        await this.services.discordService.sendAsWebhook(avatar.innerMonologueChannel, `-# [ ${this.currentMode} ]\n${haiku}`, avatar);
+        await this.discordService.sendAsWebhook(avatar.innerMonologueChannel, `-# [ ${this.currentMode} ]\n${haiku}`, avatar);
       } catch (error) {
         this.logger.error(`Haiku generation error: ${error.message}`);
       }

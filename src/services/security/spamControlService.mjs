@@ -1,5 +1,4 @@
-import e from "express";
-import { BasicService } from "./basicService.mjs";
+import { BasicService } from "../foundation/basicService.mjs";
 
 export class SpamControlService extends BasicService {
   /**

@@ -1,6 +1,6 @@
 // index.mjs
-import { logger } from "./services/logger.mjs";
-import { initializeServices } from "./services/initializeServices.mjs";
+import { logger } from "./services/foundation/logger.mjs";
+import { initializeServices } from "./services/core/serviceInitializer.mjs";
 
 async function shutdown(signal, services) {
   logger.info(`Received ${signal}. Shutting down gracefully...`);
