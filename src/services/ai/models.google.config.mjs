@@ -1,13 +1,5 @@
 export default [
   {
-    "model": "chat-bison-001",
-    "rarity": "uncommon"
-  },
-  {
-    "model": "text-bison-001",
-    "rarity": "uncommon"
-  },
-  {
     "model": "gemini-1.0-pro-vision-latest",
     "rarity": "legendary"
   },
@@ -133,26 +125,6 @@ export default [
   },
   {
     "model": "gemini-2.0-flash-thinking-exp-1219",
-    "rarity": "uncommon"
-  },
-  {
-    "model": "learnlm-1.5-pro-experimental",
-    "rarity": "legendary"
-  },
-  {
-    "model": "gemma-3-1b-it",
-    "rarity": "uncommon"
-  },
-  {
-    "model": "gemma-3-4b-it",
-    "rarity": "uncommon"
-  },
-  {
-    "model": "gemma-3-12b-it",
-    "rarity": "uncommon"
-  },
-  {
-    "model": "gemma-3-27b-it",
     "rarity": "uncommon"
   },
 ];

@@ -143,6 +143,12 @@ domain.avatarService = new AvatarService({
   mapService: domain.mapService,
   statService: domain.statService,
   creationService: domain.creationService,
+  imageProcessingService: infrastructure.imageProcessingService,
+  conversationManager: domain.conversationManager,
+  discordService: domain.discordService,
+  memoryService: domain.memoryService,
+  riskManagerService: domain.riskManagerService,
+  toolService: null, // placeholder
 });
 
 domain.promptService = new PromptService({

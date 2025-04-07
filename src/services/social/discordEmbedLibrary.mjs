@@ -1,10 +1,19 @@
-import { EmbedBuilder } from 'discord.js';
+import { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } from 'discord.js';
 
 function splitDescription(text) {
   if (!text) return { firstSentence: '', rest: '' };
   const match = text.match(/([^.!?]+[.!?])\s*(.*)/s);
   if (!match) return { firstSentence: text, rest: '' };
   return { firstSentence: match[1].trim(), rest: match[2].trim() };
+}
+
+function buildViewButton(url, label = 'View Details') {
+  return new ActionRowBuilder().addComponents(
+    new ButtonBuilder()
+      .setLabel(label)
+      .setStyle(ButtonStyle.Link)
+      .setURL(url)
+  );
 }
 
 /**
@@ -26,12 +35,10 @@ export function buildMiniAvatarEmbed(avatar, message = '') {
     .setThumbnail(avatar.imageUrl)
     .setFooter({ text: 'Movement Update', iconURL: avatar.imageUrl });
 
-  if (rest) {
-    embed.addFields({ name: 'More Info', value: rest, inline: false });
-  }
-  return embed;
+  const url = `${process.env.BASE_URL}/avatar.html?id=${avatar._id}`;
+  const button = buildViewButton(url);
+  return { embed, components: [button] };
 }
-
 
 /**
  * Build a sleek full avatar profile embed.
@@ -81,8 +88,9 @@ export function buildFullAvatarEmbed(avatar, options = {}) {
     .setThumbnail(avatar.imageUrl)
     .addFields(
       { name: 'Model', value: `${avatar.model} (Tier ${tier})` || 'N/A', inline: true },
+      { name: 'Summonsday', value: avatar.summonsday || 'N/A', inline: true },
     )
-    .setFooter({ text: 'RATi Avatar: ' + `${avatar.name}`, iconURL: avatar.imageUrl });
+    .setFooter({ text: `RATi Avatar: ${avatar.name}`, iconURL: avatar.imageUrl });
 
   if (avatar.stats) {
     const { strength, dexterity, constitution, intelligence, wisdom, charisma, hp } = avatar.stats;
@@ -103,30 +111,43 @@ export function buildFullAvatarEmbed(avatar, options = {}) {
     embed.addFields({ name: '🧬 Traits', value: avatar.traits, inline: false });
   }
 
-  if (options.viewDetailsUrl || avatar._id) {
-    const url = options.viewDetailsUrl || `${process.env.BASE_URL}/avatar.html?id=${avatar._id}`;
-    embed.addFields({ name: '🔗 Avatar Page', value: `[View Details](${url})`, inline: false });
+  if (rest) {
+    embed.addFields({ name: 'More Info', value: rest, inline: false });
   }
 
-  return embed;
+  const button = buildViewButton(url);
+  return { embed, components: [button] };
 }
 
 /**
- * Build a sleek location embed.
+ * Build a sleek mini location embed.
  */
-export function buildLocationEmbed(location, items = [], avatars = []) {
-  const rarityColors = {
-    legendary: '#FFD700',
-    rare: '#1E90FF',
-    uncommon: '#32CD32',
-    common: '#A9A9A9',
-    undefined: '#808080'
-  };
+export function buildMiniLocationEmbed(location) {
+  const rarityColors = { legendary: '#FFD700', rare: '#1E90FF', uncommon: '#32CD32', common: '#A9A9A9', undefined: '#808080' };
   const rarity = location.rarity || 'undefined';
   const color = rarityColors[rarity.toLowerCase()] || '#5865F2';
-
   const { firstSentence, rest } = splitDescription(location.description || 'No description.');
+  const embed = new EmbedBuilder()
+    .setColor(color)
+    .setTitle(location.name)
+    .setDescription(firstSentence)
+    .setImage(location.imageUrl)
+    .setFooter({ text: 'Location Info' });
 
+
+  const url = `${process.env.BASE_URL}/location.html?id=${location._id}`;
+  const button = buildViewButton(url);
+  return { embed, components: [button] };
+}
+
+/**
+ * Build a sleek full location embed.
+ */
+export function buildFullLocationEmbed(location, items = [], avatars = []) {
+  const rarityColors = { legendary: '#FFD700', rare: '#1E90FF', uncommon: '#32CD32', common: '#A9A9A9', undefined: '#808080' };
+  const rarity = location.rarity || 'undefined';
+  const color = rarityColors[rarity.toLowerCase()] || '#5865F2';
+  const { firstSentence, rest } = splitDescription(location.description || 'No description.');
   const embed = new EmbedBuilder()
     .setColor(color)
     .setTitle(location.name)
@@ -143,5 +164,60 @@ export function buildLocationEmbed(location, items = [], avatars = []) {
     embed.addFields({ name: 'More Info', value: rest, inline: false });
   }
 
-  return embed;
+  const url = `${process.env.BASE_URL}/location.html?id=${location._id}`;
+  const button = buildViewButton(url);
+  return { embed, components: [button] };
+}
+
+/**
+ * Build a sleek mini item embed.
+ */
+export function buildMiniItemEmbed(item) {
+  const rarityColors = { legendary: '#FFD700', rare: '#1E90FF', uncommon: '#32CD32', common: '#A9A9A9', undefined: '#808080' };
+  const rarity = item.rarity || 'undefined';
+  const color = rarityColors[rarity.toLowerCase()] || '#5865F2';
+  const { firstSentence, rest } = splitDescription(item.description || 'No description.');
+  const embed = new EmbedBuilder()
+    .setColor(color)
+    .setTitle(item.name)
+    .setThumbnail(item.imageUrl)
+    .setDescription(firstSentence)
+    .setFooter({ text: 'Item Info' });
+
+  const url = `${process.env.BASE_URL}/item.html?id=${item._id}`;
+  const button = buildViewButton(url);
+  return { embed, components: [button] };
+}
+
+/**
+ * Build a sleek full item embed.
+ */
+export function buildFullItemEmbed(item) {
+  const rarityColors = { legendary: '#FFD700', rare: '#1E90FF', uncommon: '#32CD32', common: '#A9A9A9', undefined: '#808080' };
+  const rarity = item.rarity || 'undefined';
+  const color = rarityColors[rarity.toLowerCase()] || '#5865F2';
+  const { firstSentence, rest } = splitDescription(item.description || 'No description.');
+  const embed = new EmbedBuilder()
+    .setColor(color)
+    .setTitle(item.name)
+    .setThumbnail(item.imageUrl)
+    .setDescription(firstSentence)
+    .addFields(
+      { name: 'Type', value: item.type || 'Unknown', inline: true },
+      { name: 'Rarity', value: rarity, inline: true }
+    )
+    .setFooter({ text: 'Item Info' });
+
+  if (item.properties) {
+    const props = Object.entries(item.properties).map(([k, v]) => `**${k}:** ${v}`).join('\n');
+    embed.addFields({ name: 'Properties', value: props || 'None', inline: false });
+  }
+
+  if (rest) {
+    embed.addFields({ name: 'More Info', value: rest, inline: false });
+  }
+
+  const url = `${process.env.BASE_URL}/item.html?id=${item._id}`;
+  const button = buildViewButton(url);
+  return { embed, components: [button] };
 }

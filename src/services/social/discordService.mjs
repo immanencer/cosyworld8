@@ -8,7 +8,7 @@ import {
 import { chunkMessage } from '../utils/messageChunker.mjs';
 import { processMessageLinks } from '../utils/linkProcessor.mjs';
 import models from '../ai/models.config.mjs';
-import { buildMiniAvatarEmbed, buildFullAvatarEmbed, buildLocationEmbed } from './discordEmbedLibrary.mjs';
+import { buildMiniAvatarEmbed, buildFullAvatarEmbed, buildMiniLocationEmbed } from './discordEmbedLibrary.mjs';
 
 export class DiscordService {
   constructor(services) {
@@ -216,8 +216,8 @@ export class DiscordService {
     try {
       const channel = await this.client.channels.fetch(channelId);
       const guildId = channel.guild?.id;
-      const embed = buildFullAvatarEmbed(avatar, { guildId, aiService });
-      await this.sendEmbedAsWebhook(channelId, embed, avatar.name, avatar.imageUrl);
+      const { embed, components } = buildFullAvatarEmbed(avatar, { guildId, aiService });
+      await this.sendEmbedAsWebhook(channelId, embed, avatar.name, avatar.imageUrl, components);
     } catch (error) {
       this.logger.error(`Failed to send avatar embed to ${channelId}: ${error.message}`);
     }
@@ -225,8 +225,8 @@ export class DiscordService {
 
   async sendMiniAvatarEmbed(avatar, channelId, message = '') {
     try {
-      const embed = buildMiniAvatarEmbed(avatar, message);
-      await this.sendEmbedAsWebhook(channelId, embed, avatar.name, avatar.imageUrl);
+      const { embed, components } = buildMiniAvatarEmbed(avatar, message);
+      await this.sendEmbedAsWebhook(channelId, embed, avatar.name, avatar.imageUrl, components);
     } catch (error) {
       this.logger.error(`Failed to send mini avatar embed: ${error.message}`);
     }
@@ -237,14 +237,14 @@ export class DiscordService {
       throw new Error('Invalid channel ID');
     }
     try {
-      const embed = buildLocationEmbed(location, items, avatars);
-      await this.sendEmbedAsWebhook(channelId, embed, 'Location Update', this.client.user.displayAvatarURL());
+      const { embed, components } = buildMiniLocationEmbed(location, items, avatars);
+      await this.sendEmbedAsWebhook(channelId, embed, 'Location Update', this.client.user.displayAvatarURL(), components);
     } catch (error) {
       this.logger.error(`Failed to send location embed to ${channelId}: ${error.message}`);
     }
   }
 
-  async sendEmbedAsWebhook(channelId, embed, username, avatarURL) {
+  async sendEmbedAsWebhook(channelId, embed, username, avatarURL, components = []) {
     try {
       if (!channelId || typeof channelId !== 'string') throw new Error('Invalid channel ID');
       if (!embed) throw new Error('Embed is required');
@@ -260,6 +260,7 @@ export class DiscordService {
         username: username ? username.slice(0, 80) : undefined,
         avatarURL,
         threadId: channel.isThread() ? channelId : undefined,
+        components,
       });
 
       this.logger.info(`Sent embed to channel ${channelId} as ${username}`);
