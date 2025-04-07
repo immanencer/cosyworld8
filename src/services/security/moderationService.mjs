@@ -125,7 +125,7 @@ Respond ONLY with one of: low, medium, high, and a brief reason explaining the r
           this.logger.error(`Error fetching roles for tagging: ${err.message}`);
         }
 
-        const replyText = `${roleMentions} ${userProfile} -# ${emoji} [${reason}] \n`;
+        const replyText = `${roleMentions}\n${userProfile ? `> ${userProfile}\n` : ''} \n -# ${emoji} [${reason}] \n`;
         await message.reply(replyText);
       }
 

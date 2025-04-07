@@ -14,7 +14,6 @@ export class AvatarService extends BasicService {
     this.mapService = services.mapService;
     this.aiService = services.aiService;
     this.schedulingService = services.schedulingService;
-    this.avatarService = services.avatarService;
     this.conversationManager = services.conversationManager;
     this.statService = services.statService;
 
@@ -46,7 +45,7 @@ export class AvatarService extends BasicService {
   }
 
   async generateReflections() {
-    const avatars = (await this.avatarService.getActiveAvatars()).slice(0, 3);
+    const avatars = (await this.getActiveAvatars()).slice(0, 3);
     if (avatars.length === 0) {
       this.logger.info('No active avatars found for reflection generation.');
       return;
