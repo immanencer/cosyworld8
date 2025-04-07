@@ -53,8 +53,7 @@ export class XSocialTool extends BasicTool {
             return cached.data;
         }
 
-        const client = await this.getMongoClient();
-        const db = client.db(process.env.MONGO_DB_NAME);
+        const db = this.databaseService.getDatabase();
         const auth = await db.collection('x_auth').findOne({ avatarId: avatar._id.toString() });
         if (!auth) return { timeline: [], notifications: [], userId: null };
 
@@ -182,8 +181,7 @@ Only output the JSON object, no commentary.`.trim();
                 params = ['auto'];
             }
 
-            const client = await this.getMongoClient();
-            const db = client.db(process.env.MONGO_DB_NAME);
+            const db = this.databaseService.getDatabase();
             const authRecord = await db.collection('x_auth').findOne({ avatarId: avatar._id.toString() });
             const encryptedToken = authRecord?.accessToken;
             if (!encryptedToken) return '❌ X authorization required. Please connect your account.';

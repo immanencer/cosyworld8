@@ -4,7 +4,7 @@ import { request } from 'https';
 import { request as httpRequest } from 'http';
 
 export class S3Service {
-  constructor(configService, logger) {
+  constructor({ configService, logger }) {
     this.configService = configService;
     this.logger = logger;
 

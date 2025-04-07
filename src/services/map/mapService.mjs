@@ -140,13 +140,6 @@ export class MapService extends BasicService {
       const updatedAvatar = await this.getAvatarById(currentAvatar._id);
       if (!updatedAvatar) throw new Error(`Updated avatar not found: ${currentAvatar._id}`);
 
-      if (actualPreviousLocationId && actualPreviousLocationId !== newLocationId) {
-        await this.discordService.sendAsWebhook(
-          actualPreviousLocationId,
-          `*${updatedAvatar.name} has departed to <#${newLocationId}>*`,
-          updatedAvatar
-        );
-      }
 
       if (sendProfile) {
         await this.discordService.sendAvatarEmbed(updatedAvatar, newLocationId, this.aiService);

@@ -166,7 +166,7 @@ Respond ONLY with one of: low, medium, high, and a brief reason explaining the r
 
   async moderateBacklogIfNeeded(channel) {
     try {
-      const messages = await channel.messages.fetch({ limit: 100 });
+      const messages = await channel.messages.fetch({ limit: 5 });
       const unmoderated = messages.filter(m =>
         !m.reactions.cache.some(r => ['✅', '⚠️', '🚨'].includes(r.emoji.name))
       );

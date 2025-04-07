@@ -140,10 +140,17 @@ export class DecisionMaker extends BasicService {
   }
 
   /** Main decision logic for whether to respond */
-  async shouldRespond(channel, avatar) {
+  async shouldRespond(channel, avatar, triggerMessage = null) {
     if (!channel?.id) return false;
     if (!avatar?.id) {
       avatar.id = `${avatar._id.toString()}`;
+    }
+
+    // Force response if avatar explicitly mentioned in the triggering message
+    if (triggerMessage && this._isMentioned(triggerMessage, avatar)) {
+      this._updateAttention(avatar.id, 30);
+      this._updateConversation(channel.id, avatar.id);
+      return true;
     }
 
     const state = this._getAttentionState(avatar.id);
@@ -212,7 +219,9 @@ export class DecisionMaker extends BasicService {
   /** Check if the avatar is mentioned in the message */
   _isMentioned(message, avatar) {
     const content = message.content.toLowerCase();
-    return content.includes(avatar.name.toLowerCase()) || (avatar.emoji && content.includes(avatar.emoji));
+    return content.includes(avatar.name.toLowerCase())
+     || (avatar.emoji && content.includes(avatar.emoji)
+     || (content.includes(avatar.name.split(' ')[0].toLowerCase())));
   }
 
   /** Evaluate response necessity using AI and conversation context */

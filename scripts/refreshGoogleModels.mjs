@@ -36,7 +36,7 @@ async function fetchGoogleModelsFromAPI(apiKey) {
     const response = await fetch(`${endpoint}?key=${apiKey}`);
     const data = await response.json();
     return data.models
-      .filter(model => model.name.includes('gemini'))
+      .filter(model => !model.name.includes('embedding'))
       .map(model => ({
         model: model.name.replace('models/', ''),
         rarity: assignRarity(model.name)

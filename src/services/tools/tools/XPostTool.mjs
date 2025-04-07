@@ -82,8 +82,7 @@ export class XPostTool extends BasicTool {
             return '❌ Please include a message to post.';
         }
 
-        const client = await this.getMongoClient();
-        const db = client.db(process.env.MONGO_DB_NAME);
+        const db = this.databaseService.getDatabase();
         const messageText = params.join(' ');
         const charCount = messageText.length;
         let xStatus = false;

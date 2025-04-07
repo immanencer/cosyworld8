@@ -101,6 +101,7 @@ domain.mapService = new MapService({
   logger: infrastructure.logger,
   databaseService: infrastructure.databaseService,
   configService: infrastructure.configService,
+  discordService: domain.discordService,
 });
 
 domain.itemService = new ItemService({
@@ -141,6 +142,7 @@ domain.avatarService = new AvatarService({
   schedulingService: infrastructure.schedulingService,
   mapService: domain.mapService,
   statService: domain.statService,
+  creationService: domain.creationService,
 });
 
 domain.promptService = new PromptService({
@@ -225,6 +227,7 @@ domain.toolService = new ToolService({
   aiService: domain.aiService,
   itemService: domain.itemService,
   riskManagerService: domain.riskManagerService,
+  statService: domain.statService,
 });
 
 domain.messageHandler = new MessageHandler({

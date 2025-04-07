@@ -6,6 +6,7 @@ export class ItemService extends BasicService {
     super(services);
     this.configService = services.configService;
     this.databaseService = services.databaseService;
+    this.creationService = services.creationService;
     this.discordService = services.discordService;
 
     this.client = this.discordService.client;

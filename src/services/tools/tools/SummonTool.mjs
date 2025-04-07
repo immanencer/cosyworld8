@@ -84,9 +84,18 @@ export class SummonTool extends BasicTool {
       // Check for existing avatar
       const existingAvatar = await this.avatarService.getAvatarByName(avatarName);
       if (existingAvatar) {
+        // Check if avatar imageUrl is missing or blank, regenerate if needed
+        if (!existingAvatar.imageUrl || typeof existingAvatar.imageUrl !== 'string' || existingAvatar.imageUrl.trim() === '') {
+          this.logger.info(`Avatar ${existingAvatar.name} (${existingAvatar._id}) has no imageUrl. Generating new image.`);
+          const newImageUrl = await this.avatarService.generateAvatarImage(existingAvatar.description);
+          existingAvatar.imageUrl = newImageUrl;
+          await this.avatarService.updateAvatar(existingAvatar);
+        }
         await this.discordService.reactToMessage(message, existingAvatar.emoji || '🔮');
         setTimeout(async () => {
           await this.discordService.sendAvatarEmbed(existingAvatar, message.channel.id, this.aiService);
+          // Ensure avatar has correct channelId before response
+          existingAvatar.channelId = message.channel.id;
           await this.conversationManager.sendResponse(message.channel, existingAvatar);
         }, 1000);
         return `-# ${this.emoji} [ ${existingAvatar.name} has been summoned to this location. ]`;
@@ -157,6 +166,8 @@ export class SummonTool extends BasicTool {
         await this.discordService.sendAsWebhook(message.channel.id, createdAvatar.imageUrl, createdAvatar);
         await this.discordService.sendAsWebhook(message.channel.id, intro, createdAvatar);
         await this.discordService.sendAvatarEmbed(createdAvatar, message.channel.id, this.aiService);
+        // Ensure avatar has correct channelId before response
+        createdAvatar.channelId = message.channel.id;
         await this.conversationManager.sendResponse(message.channel, avatar);
         await this.discordService.reactToMessage(message, createdAvatar.emoji || '🔮');
         setTimeout(() => this.conversationManager.sendResponse(message.channel, createdAvatar), 3000);

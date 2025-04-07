@@ -319,18 +319,25 @@ If already suitable, return as is. If it needs editing, revise it while preservi
   async getLocationByChannelId(channelId) {
     this.ensureDbConnection();
 
+    if (!channelId || typeof channelId !== 'string' || channelId.trim() === '') {
+      throw new Error('Invalid channelId provided');
+    }
+
     let location = await this.db.collection('locations').findOne({ channelId });
     if (!location) {
-      // Fetch the channel from Discord
-      const channel = await this.client.channels.fetch(channelId);
+      let channel;
+      try {
+        channel = await this.client.channels.fetch(channelId);
+      } catch (err) {
+        console.warn(`Channel fetch failed for ID ${channelId}: ${err.message}`);
+        throw new Error(`Channel with ID ${channelId} not found or inaccessible`);
+      }
       if (!channel) {
         throw new Error(`Channel with ID ${channelId} not found`);
       }
 
-      // Use the channel name as the base
       let locationName = channel.name;
 
-      // Refine the name with AI for a fantasy setting (optional)
       const cleanLocationName = await this.aiService.chat(
         [
           { role: 'system', content: 'You are an expert editor.' },
@@ -340,9 +347,8 @@ If already suitable, return as is. If it needs editing, revise it while preservi
           }
         ],
         { model: STRUCTURED_MODEL }
-      ).catch(() => locationName.slice(0, 80)); // Fallback to original name if AI fails
+      ).catch(() => locationName.slice(0, 80));
 
-      // Generate a description
       const description = await this.aiService.chat(
         [
           { role: 'system', content: 'Generate a brief, atmospheric description of this fantasy location.' },
@@ -351,10 +357,8 @@ If already suitable, return as is. If it needs editing, revise it while preservi
         { model: STRUCTURED_MODEL }
       );
 
-      // Generate an image
       const imageUrl = await this.generateLocationImage(cleanLocationName, description);
 
-      // Create the location document
       location = {
         name: cleanLocationName,
         description,
@@ -364,16 +368,17 @@ If already suitable, return as is. If it needs editing, revise it while preservi
         parentId: channel.isThread() ? channel.parentId : null,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
-        lastSummaryUpdate: null, // Initialize for ambiance tracking
+        lastSummaryUpdate: null,
         version: '1.0.0'
       };
 
       await this.db.collection('locations').insertOne(location);
 
-      // Optionally post the description and image to the channel
       await this.discordService.sendLocationEmbed(location, [], [], channelId);
-      await this.discordService.sendAsWebhook(channelId, description, 
-        { name: cleanLocationName, imageUrl });
+      await this.discordService.sendAsWebhook(channelId, description, {
+        name: cleanLocationName,
+        imageUrl
+      });
     }
     return location;
   }

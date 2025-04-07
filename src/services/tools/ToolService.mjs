@@ -10,14 +10,14 @@ import { ItemTool } from './tools/ItemTool.mjs';
 import { ThinkTool } from './tools/ThinkTool.mjs';
 import { SummonTool } from './tools/SummonTool.mjs';
 import { BreedTool } from './tools/BreedTool.mjs';
-import e from 'express';
 
 export class ToolService extends BasicService {
   constructor(services) {
-    super(services);
-    
+    super(arguments);
+    this.services = services;
     this.databaseService = services.databaseService;
     this.configService = services.configService;
+    this.memoryService = services.memoryService;
 
     this.db = this.databaseService.getDatabase();
 

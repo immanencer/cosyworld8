@@ -16,6 +16,7 @@ export class AvatarService extends BasicService {
     this.schedulingService = services.schedulingService;
     this.conversationManager = services.conversationManager;
     this.statService = services.statService;
+    this.creationService = services.creationService;
 
     this.db = this.databaseService.getDatabase();
     this.channelAvatars = new Map(); // channelId -> Set of avatarIds

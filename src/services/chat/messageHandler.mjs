@@ -232,8 +232,8 @@ export class MessageHandler extends BasicService {
         message
       );
       await Promise.all(
-        avatarsToConsider.slice(0, 3).map(async (avatar) => {
-          const shouldRespond = await this.decisionMaker.shouldRespond(channel, avatar, this.client);
+        avatarsToConsider.slice(0, Math.floor(Math.random(2,6))).map(async (avatar) => {
+          const shouldRespond = await this.decisionMaker.shouldRespond(channel, avatar, message);
           if (shouldRespond) {
             await this.conversationManager.sendResponse(channel, avatar);
           }
