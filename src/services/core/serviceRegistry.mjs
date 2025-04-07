@@ -198,6 +198,7 @@ domain.channelManager.locationService = domain.locationService;
 domain.mapService.locationService = domain.locationService;
 
 domain.moderationService = new ModerationService({
+  aiService: domain.aiService,
   logger: infrastructure.logger,
   databaseService: infrastructure.databaseService,
   toolService: null, // patched later

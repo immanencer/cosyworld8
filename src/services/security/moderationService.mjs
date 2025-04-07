@@ -5,6 +5,7 @@ export class ModerationService extends BasicService {
     super(services);
     this.services = services;
     this.logger = services.logger;
+    this.aiService = services.aiService;
     this.databaseService = services.databaseService;
     this.toolService = services.toolService;
     this.riskManagerService = services.riskManagerService;
