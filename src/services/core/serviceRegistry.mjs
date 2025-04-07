@@ -144,7 +144,7 @@ domain.avatarService = new AvatarService({
   statService: domain.statService,
   creationService: domain.creationService,
   imageProcessingService: infrastructure.imageProcessingService,
-  conversationManager: domain.conversationManager,
+  conversationManager: null,
   discordService: domain.discordService,
   memoryService: domain.memoryService,
   riskManagerService: domain.riskManagerService,
@@ -202,6 +202,7 @@ domain.locationService = new LocationService({
   mapService: domain.mapService,
 });
 
+domain.avatarService.conversationManager = domain.conversationManager;
 domain.channelManager.locationService = domain.locationService;
 domain.mapService.locationService = domain.locationService;
 

@@ -93,7 +93,7 @@ export class SummonTool extends BasicTool {
         }
         await this.discordService.reactToMessage(message, existingAvatar.emoji || '🔮');
         setTimeout(async () => {
-          await this.discordService.sendAvatarEmbed(existingAvatar, message.channel.id, this.aiService);
+          await this.discordService.sendMiniAvatarEmbed(existingAvatar, message.channel.id, this.aiService);
           // Ensure avatar has correct channelId before response
           existingAvatar.channelId = message.channel.id;
           await this.conversationManager.sendResponse(message.channel, existingAvatar);
@@ -123,9 +123,11 @@ export class SummonTool extends BasicTool {
       const stats = this.statService.generateStatsFromDate(creationDate);
 
       // Prepare avatar creation data
-      const prompt = summonPrompt
-        ? `${summonPrompt}\n\n${content}\n\nStats: ${JSON.stringify(stats)}`
-        : `${content}\n\nStats: ${JSON.stringify(stats)}`;
+      const prompt = (summonPrompt
+        ? `Avatar Stats: ${JSON.stringify(stats)} \n\n${summonPrompt}`
+        : `Avatar Stats: ${JSON.stringify(stats)}`) + 
+        `\n\nDesign an avatar with the above stats based on this message from ${message.author.displayName || message.author.displayName}:
+        \n\n\t${content}`; 
       const avatarData = {
         prompt,
         channelId: message.channel.id

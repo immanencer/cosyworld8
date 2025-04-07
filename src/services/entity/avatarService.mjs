@@ -531,6 +531,14 @@ export class AvatarService extends BasicService {
    */
   async createAvatar(data) {
     const avatarDetails = await this.generateAvatarDetails(data.prompt, data.guildId);
+    
+    // Check if an avatar with the same name already exists, if it does, return it.
+    const existingAvatar = await this.getAvatarByName(avatarDetails.name);
+    if (existingAvatar) {
+      this.logger.info(`Avatar with name "${avatarDetails.name}" already exists. Returning existing avatar.`);
+      return existingAvatar;
+    }
+    
     const imageUrl = await this.generateAvatarImage(avatarDetails.description);
 
 
