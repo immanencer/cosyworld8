@@ -7,7 +7,7 @@ import stringSimilarity from 'string-similarity';
 export class OpenRouterAIService extends BasicService {
   constructor(services) {
     super(services);
-    this.configService = container.configService;
+    this.configService = services.configService;
 
     
     this.model = this.configService.config.ai.openrouter.defaultModel || 'openai/gpt-4o-mini';
