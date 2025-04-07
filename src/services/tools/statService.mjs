@@ -1,4 +1,4 @@
-export class StatGenerationService {
+export class StatService {
   /**
    * Generates stats based on the creation date using d20 rolls with advantage/disadvantage per zodiac sign.
    * @param {Date|string} creationDate - The date the avatar was created.

@@ -23,6 +23,7 @@ export class MessageHandler extends BasicService {
     this.conversationManager = services.conversationManager;
     this.riskManagerService = services.riskManagerService;
     this.moderationService = services.moderationService;
+    this.toolService = services.toolService;
 
     this.client = this.discordService.client;
     this.started = false;

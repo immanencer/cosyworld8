@@ -32,6 +32,7 @@ export function buildMiniAvatarEmbed(avatar, message = '') {
   return embed;
 }
 
+
 /**
  * Build a sleek full avatar profile embed.
  * @param {Object} avatar - The avatar object
@@ -72,6 +73,7 @@ export function buildFullAvatarEmbed(avatar, options = {}) {
 
   const { firstSentence, rest } = splitDescription(avatar.short_description || avatar.description || 'No description.');
 
+  const url = options.viewDetailsUrl || `${process.env.BASE_URL}/avatar.html?id=${avatar._id}`;
   const embed = new EmbedBuilder()
     .setColor(color)
     .setTitle(`${avatar.emoji || ''} ${avatar.name}`)
@@ -80,7 +82,7 @@ export function buildFullAvatarEmbed(avatar, options = {}) {
     .addFields(
       { name: 'Model', value: `${avatar.model} (Tier ${tier})` || 'N/A', inline: true },
     )
-    .setFooter({ text: 'RATi Avatar Profile', iconURL: avatar.imageUrl });
+    .setFooter({ text: 'RATi Avatar: ' + `${avatar.name}`, iconURL: avatar.imageUrl });
 
   if (avatar.stats) {
     const { strength, dexterity, constitution, intelligence, wisdom, charisma, hp } = avatar.stats;

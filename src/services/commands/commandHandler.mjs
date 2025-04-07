@@ -6,7 +6,7 @@ export async function handleCommands(message, services, avatar) {
   const guildConfig = await services.configService.getGuildConfig(message.guildId);
 
   if (services.toolService) {
-    services.toolService.applyGuildToolEmojiOverrides(guildConfig);
+    //services.toolService.applyGuildToolEmojiOverrides(guildConfig);
   }
 
   const toolEmojis = services.toolService

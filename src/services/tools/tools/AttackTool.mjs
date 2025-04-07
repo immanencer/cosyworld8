@@ -7,7 +7,7 @@ export class AttackTool extends BasicTool {
     this.configService = services.configService;
     this.avatarService = services.avatarService;
     this.databaseService = services.databaseService;
-    this.statGenerationService = services.statGenerationService;
+    this.statService = services.statService;
     this.mapService = services.mapService;
     this.conversationManager = services.conversationManager;
 
@@ -53,7 +53,7 @@ export class AttackTool extends BasicTool {
       return `-# ⚰️ [ **${targetAvatar.name}** is already dead! Have some *respect* for the fallen. ]`;
     }
 
-    // Get or create stats for attacker and target using MapService and StatGenerationService
+    // Get or create stats for attacker and target using MapService and StatService
     const attackerStats = await this.avatarService.getOrCreateStats(attackerAvatar);
     const targetStats = await this.avatarService.getOrCreateStats(targetAvatar);
 
@@ -104,7 +104,7 @@ export class AttackTool extends BasicTool {
     }
 
     // Reset stats upon knockout
-    const newStats = services.statGenerationService.generateStatsFromDate(targetAvatar.createdAt);
+    const newStats = services.statService.generateStatsFromDate(targetAvatar.createdAt);
     newStats.avatarId = targetAvatar._id;
     await this.avatarService.updateAvatarStats(targetAvatar, newStats);
 

@@ -1,5 +1,5 @@
 import { MongoClient } from 'mongodb';
-import { StatGenerationService } from '../statGenerationService.mjs';
+import { StatService } from '../statService.mjs';
 
 // Recommended: Ensure proper indexes, e.g. { authorUsername: 1 } 
 // in the "messages" collection to speed up the countDocuments query.
@@ -66,7 +66,7 @@ async function updateAvatarScores() {
 
           // Generate stats if none exist
           const finalStats = stats 
-            || new StatGenerationService().generateStatsFromDate(avatar.createdAt || new Date());
+            || new StatService().generateStatsFromDate(avatar.createdAt || new Date());
 
           // Calculate score
           const score = Math.max(

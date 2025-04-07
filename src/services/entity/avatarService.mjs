@@ -16,6 +16,7 @@ export class AvatarService extends BasicService {
     this.schedulingService = services.schedulingService;
     this.avatarService = services.avatarService;
     this.conversationManager = services.conversationManager;
+    this.statService = services.statService;
 
     this.db = this.databaseService.getDatabase();
     this.channelAvatars = new Map(); // channelId -> Set of avatarIds
@@ -113,8 +114,8 @@ export class AvatarService extends BasicService {
 
   async getOrCreateStats(avatar) {
     let stats = avatar.stats || (await this.getAvatarStats(avatar._id));  
-    if (!stats || !this.statGenerationService.validateStats(stats)) {
-      stats = this.statGenerationService.generateStatsFromDate(avatar?.createdAt || new Date());
+    if (!stats || !this.statService.validateStats(stats)) {
+      stats = this.statService.generateStatsFromDate(avatar?.createdAt || new Date());
       await this.updateAvatarStats(avatar, stats);
       avatar.stats = stats;
       await this.updateAvatar(avatar);
@@ -773,7 +774,7 @@ export class AvatarService extends BasicService {
       
       // Generate stats for the avatar
       const creationDate = new Date();
-      const stats = this.statGenerationService.generateStatsFromDate(creationDate);
+      const stats = this.statService.generateStatsFromDate(creationDate);
 
       // Prepare avatar creation data
       const prompt = `Stats: ${JSON.stringify(stats)}\n\n${summonPrompt}`;

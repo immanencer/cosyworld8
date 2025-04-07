@@ -6,7 +6,7 @@ import { AIService } from '../ai/aiService.mjs';
 import { AvatarService } from '../entity/avatarService.mjs';
 import { ToolService } from '../tools/ToolService.mjs';
 import { MapService } from '../map/mapService.mjs';
-import { StatGenerationService } from '../tools/statGenerationService.mjs';
+import { StatService } from '../tools/statService.mjs';
 import { DiscordService } from '../social/discordService.mjs';
 import { MessageHandler } from '../chat/messageHandler.mjs';
 import { ChannelManager } from '../chat/channelManager.mjs';
@@ -110,7 +110,7 @@ domain.itemService = new ItemService({
   discordService: domain.discordService,
 });
 
-domain.statGenerationService = new StatGenerationService({
+domain.statService = new StatService({
   logger: infrastructure.logger,
   databaseService: infrastructure.databaseService,
   configService: infrastructure.configService,
@@ -140,6 +140,7 @@ domain.avatarService = new AvatarService({
   aiService: domain.aiService,
   schedulingService: infrastructure.schedulingService,
   mapService: domain.mapService,
+  statService: domain.statService,
 });
 
 domain.promptService = new PromptService({
@@ -172,6 +173,7 @@ domain.conversationManager = new ConversationManager({
 });
 
 domain.channelManager = new ChannelManager({
+  logger: infrastructure.logger,
   databaseService: infrastructure.databaseService,
   discordService: domain.discordService,
   schedulingService: infrastructure.schedulingService,
@@ -202,6 +204,28 @@ domain.moderationService = new ModerationService({
   riskManagerService: domain.riskManagerService,
 });
 
+
+domain.toolService = new ToolService({
+  logger: infrastructure.logger,
+  discordService: domain.discordService,
+  databaseService: infrastructure.databaseService,
+  configService: infrastructure.configService,
+  spamControlService: domain.spamControlService,
+  avatarService: domain.avatarService,
+  schedulingService: infrastructure.schedulingService,
+  decisionMaker: domain.decisionMaker,
+  conversationManager: domain.conversationManager,
+  channelManager: domain.channelManager,
+  creationService: domain.creationService,
+  promptService: domain.promptService,
+  memoryService: domain.memoryService,
+  locationService: domain.locationService,
+  mapService: domain.mapService,
+  aiService: domain.aiService,
+  itemService: domain.itemService,
+  riskManagerService: domain.riskManagerService,
+});
+
 domain.messageHandler = new MessageHandler({
   logger: infrastructure.logger,
   discordService: domain.discordService,
@@ -223,27 +247,7 @@ domain.messageHandler = new MessageHandler({
   itemService: domain.itemService,
   riskManagerService: domain.riskManagerService,
   moderationService: domain.moderationService,
-});
-
-domain.toolService = new ToolService({
-  logger: infrastructure.logger,
-  discordService: domain.discordService,
-  databaseService: infrastructure.databaseService,
-  configService: infrastructure.configService,
-  spamControlService: domain.spamControlService,
-  avatarService: domain.avatarService,
-  schedulingService: infrastructure.schedulingService,
-  decisionMaker: domain.decisionMaker,
-  conversationManager: domain.conversationManager,
-  channelManager: domain.channelManager,
-  creationService: domain.creationService,
-  promptService: domain.promptService,
-  memoryService: domain.memoryService,
-  locationService: domain.locationService,
-  mapService: domain.mapService,
-  aiService: domain.aiService,
-  itemService: domain.itemService,
-  riskManagerService: domain.riskManagerService,
+  toolService: domain.toolService,
 });
 
 domain.promptService.toolService = domain.toolService;

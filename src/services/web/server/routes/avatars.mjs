@@ -9,7 +9,7 @@ import { ObjectId } from 'mongodb';
 
 
 import { thumbnailService } from '../services/thumbnailService.mjs';
-import { StatGenerationService } from '../../../tools/statGenerationService.mjs';
+import { StatService } from '../../../tools/statService.mjs';
 import { NFTMintingService } from '../../../blockchain/nftMintService.mjs';
 
 const router = express.Router();
@@ -492,7 +492,7 @@ export default function avatarRoutes(db) {
       // If no dungeon stats exist, generate and upsert
       let dungeonStats = existingStats;
       if (!existingStats) {
-        const statService = new StatGenerationService();
+        const statService = new StatService();
         const avatar = await db.collection('avatars').findOne({ _id: avatarId });
 
         // Example: generate stats from creation date
@@ -537,7 +537,7 @@ export default function avatarRoutes(db) {
         return res.status(404).json({ error: 'Avatar not found' });
       }
 
-      const statService = new StatGenerationService();
+      const statService = new StatService();
 
       // Check if createdAt exists and is valid
       if (!avatar.createdAt) {

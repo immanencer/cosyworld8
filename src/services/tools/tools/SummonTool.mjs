@@ -12,7 +12,7 @@ export class SummonTool extends BasicTool {
     this.configService = services.configService;
     this.databaseService = services.databaseService;
     this.aiService = services.aiService;
-    this.statGenerationService = services.statGenerationService;
+    this.statService = services.statService;
 
     this.db = this.databaseService.getDatabase(); // Assumes this always returns a valid database object
   
@@ -111,7 +111,7 @@ export class SummonTool extends BasicTool {
       }
       // Generate stats for the avatar
       const creationDate = new Date();
-      const stats = this.statGenerationService.generateStatsFromDate(creationDate);
+      const stats = this.statService.generateStatsFromDate(creationDate);
 
       // Prepare avatar creation data
       const prompt = summonPrompt
