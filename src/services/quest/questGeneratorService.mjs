@@ -1,17 +1,18 @@
-import { BasicService } from "../basicService.mjs";
+import { BasicService } from '../foundation/basicService.mjs';
 export class QuestGeneratorService extends BasicService {
   constructor(services) {
-    super(services, [
-      'aiService',
-      'itemService',
-      'questService'
-    ]);
+    super(services);
+    
+    this.aiService = services.aiService;
+    this.itemService = services.itemService;
+    this.questService = services.questService;
+    this.databaseService = services.databaseService;
   }
   // Don't call any other services in the constructor.
   // Async initialization is done in the initialize method.
   async initializeServices() {
     await super.initializeServices();
-    this.db = await this.services.databaseService.getDatabase();
+    this.db = await this.databaseService.getDatabase();
   }
 
   async generateQuest() {

@@ -10,32 +10,19 @@ import { ItemTool } from './tools/ItemTool.mjs';
 import { ThinkTool } from './tools/ThinkTool.mjs';
 import { SummonTool } from './tools/SummonTool.mjs';
 import { BreedTool } from './tools/BreedTool.mjs';
+import e from 'express';
 
 export class ToolService extends BasicService {
-  /**
-   * Constructs a new ToolService instance for managing tools and actions.
-   * @param {Object} client - The Discord client instance.
-   * @param {Object} logger - Logging interface.
-   * @param {Object} avatarService - Service for avatar operations.
-   * @param {import('mongodb').Db} db - MongoDB database connection.
-   * @param {Object} services - Additional services (e.g., mapService, itemService).
-   */
   constructor(services) {
-    super(services, [
-      'locationService',
-      'avatarService',
-      'itemService',
-      'discordService',
-      'databaseService',
-      'configService',
-      'mapService',
-      'memoryService',
-    ]);
-    this.client = this.discordService.client;
-    this.db = this.databaseService.getDatabase();
+    super(services);
     
+    this.databaseService = services.databaseService;
+    this.configService = services.configService;
+
+    this.db = this.databaseService.getDatabase();
+
     // Tools & Logging
-    this.ActionLog = new ActionLog(services.logger);
+    this.ActionLog = new ActionLog(this.logger);
     this.tools = new Map();
     this.toolEmojis = new Map();
 
@@ -68,8 +55,10 @@ export class ToolService extends BasicService {
       this.toolEmojis.set(emoji, toolName);
     });
 
-    this.creationTool = new CreationTool(this.services);
+    this.creationTool = new CreationTool({ logger: this.logger, databaseService: this.databaseService, configService: this.configService });
+  }
 
+  async initialize() {
     // Event listener for avatar movements
     this.client.on('avatarMoved', ({ avatarId, newChannelId, temporary }) => {
       this.logger.debug(`Avatar ${avatarId} moved to ${newChannelId}${temporary ? ' (temporary)' : ''}`);

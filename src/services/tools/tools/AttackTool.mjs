@@ -2,14 +2,16 @@ import { BasicTool } from '../BasicTool.mjs';
 
 export class AttackTool extends BasicTool {
   constructor(services) {
-    super(services, [
-      'configService',
-      'avatarService',
-      'databaseService',
-      'statGenerationService',
-      'mapService',
-      'conversationManager',
-    ]);
+    super(services);
+
+    this.configService = services.configService;
+    this.avatarService = services.avatarService;
+    this.databaseService = services.databaseService;
+    this.statGenerationService = services.statGenerationService;
+    this.mapService = services.mapService;
+    this.conversationManager = services.conversationManager;
+
+
     this.name = 'attack';
     this.parameters = '<target>';
     this.description = 'Attacks the specified avatar';

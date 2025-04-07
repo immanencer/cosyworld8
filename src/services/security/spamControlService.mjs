@@ -1,16 +1,16 @@
-import { BasicService } from "../foundation/basicService.mjs";
-
-export class SpamControlService extends BasicService {
+export class SpamControlService {
   /**
-   * @param {Db} db - The connected MongoDB database instance.
-   * @param {Object} logger - Your logger instance.
+   * @param {Object} dependencies - Explicit dependencies.
+   * @param {Object} dependencies.logger - Your logger instance.
+   * @param {Object} dependencies.databaseService - The database service instance.
    * @param {Object} [options] - Optional configuration overrides.
    * @param {number} [options.spamThreshold=5] - Max messages allowed in the time window.
    * @param {number} [options.spamTimeWindow=10000] - Time window in ms (default 10 seconds).
    * @param {number} [options.basePenalty=10000] - Base penalty in ms (default 10 seconds).
    */
-  constructor(services, options = {}) {
-    super(services, ["databaseService", "logger"]);
+  constructor({ logger, databaseService }, options = {}) {
+    this.logger = logger;
+    this.databaseService = databaseService;
     this.spamThreshold = options.spamThreshold || 5;
     this.spamTimeWindow = options.spamTimeWindow || 10 * 1000;
     this.basePenalty = options.basePenalty || 10 * 1000;

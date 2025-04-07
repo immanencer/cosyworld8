@@ -49,7 +49,7 @@ async function fetchGoogleModelsFromAPI(apiKey) {
 
 async function refreshGoogleModels() {
   console.log('[INFO] Updating Google AI model configuration...');
-  const outputPath = path.join(process.cwd(), 'src', 'models.google.config.mjs');
+  const outputPath = path.join(process.cwd(), 'src', 'services', 'ai', 'models.google.config.mjs');
 
   const apiKey = process.env.GOOGLE_API_KEY;
   let models = defaultModels;

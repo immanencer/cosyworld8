@@ -2,23 +2,27 @@ import { BasicTool } from '../BasicTool.mjs';
 
 export class SummonTool extends BasicTool {
   constructor(services) {
-    super(services, [
-      'discordService',
-      'mapService',
-      'conversationManager',
-      'avatarService',
-      'configService',
-      'databaseService',
-      'aiService',
-      'statGenerationService',
-    ]);
+    super(services);
+
+
+    this.discordService = services.discordService;
+    this.mapService = services.mapService;
+    this.conversationManager = services.conversationManager;
+    this.avatarService = services.avatarService;
+    this.configService = services.configService;
+    this.databaseService = services.databaseService;
+    this.aiService = services.aiService;
+    this.statGenerationService = services.statGenerationService;
+
+    this.db = this.databaseService.getDatabase(); // Assumes this always returns a valid database object
+  
+
     this.name = 'summon';
     this.description = 'Summons a new avatar';
     this.emoji = '🔮'; // Default emoji
     this.DAILY_SUMMON_LIMIT = 16;
     this.replyNotification = true;
     this.cooldownMs = 10 * 1000; // 1 minute cooldown
-    this.db = this.databaseService.getDatabase(); // Assumes this always returns a valid database object
   }
 
   /**

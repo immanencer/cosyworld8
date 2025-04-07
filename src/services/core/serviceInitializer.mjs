@@ -1,5 +1,5 @@
 // serviceInitializer.mjs
-import { container } from './serviceRegistry.mjs';
+import { services } from './serviceRegistry.mjs';
 
 /**
  * Validates the environment variables and sets defaults or exits as needed.
@@ -42,144 +42,64 @@ async function validateEnvironment(logger) {
 export async function initializeServices(logger) {
   await validateEnvironment(logger);
 
-  const services = { logger };
-
   try {
-    services.basic = container.resolve('basic');
-    logger.info('Basic Service resolved.');
-
-    services.schedulingService = container.resolve('schedulingService');
-    logger.info('Scheduling Service resolved.');
-  } catch (err) {
-    logger.warn(`Failed to resolve BasicService: ${err.message}`);
-  }
-
-  try {
-    services.mcpClientService = container.resolve('mcpClientService');
-    logger.info('MCPClientService resolved.');
-  } catch (err) {
-    logger.warn(`Failed to resolve MCPClientService: ${err.message}`);
-  }
-
-  try {
-    services.s3Service = container.resolve('s3Service');
-    logger.info('S3Service resolved.');
-  } catch (err) {
-    logger.warn(`Failed to resolve S3Service: ${err.message}`);
-  }
-
-  try {
-    services.arweaveService = container.resolve('arweaveService');
-    logger.info('ArweaveService resolved.');
-  } catch (err) {
-    logger.warn(`Failed to resolve ArweaveService: ${err.message}`);
-  }
-
-  try {
-    services.databaseService = container.resolve('databaseService');
-    logger.info('DatabaseService resolved.');
     await services.databaseService.connect();
-    const db = services.databaseService.getDatabase();
-    if (!db && process.env.NODE_ENV !== 'development' && process.env.NODE_ENV !== 'test') {
-      throw new Error('Database connection failed in production mode.');
-    }
+    logger.info('DatabaseService connected.');
   } catch (err) {
-    logger.error(`Failed to initialize DatabaseService: ${err.message}`);
+    logger.error(`Failed to connect DatabaseService: ${err.message}`);
     throw err;
   }
 
   try {
-    services.configService = container.resolve('configService');
-    logger.info('ConfigService resolved.');
     services.configService.validate();
+    logger.info('ConfigService validated.');
   } catch (err) {
-    logger.error(`Failed to initialize ConfigService: ${err.message}`);
+    logger.error(`Failed to validate ConfigService: ${err.message}`);
     throw err;
   }
 
   try {
-    services.discordService = container.resolve('discordService');
-    logger.info('DiscordService resolved.');
     await services.discordService.initialize();
+    logger.info('DiscordService initialized.');
   } catch (err) {
     logger.error(`Failed to initialize DiscordService: ${err.message}`);
     throw err;
   }
 
   try {
-    services.webService = container.resolve('webService');
-    logger.info('WebService resolved.');
     await services.webService.start();
+    logger.info('WebService started.');
   } catch (err) {
     logger.warn(`Failed to start WebService: ${err.message}`);
   }
 
-  const serviceNames = [
-    'aiService',
-    'riskManagerService',
-    'imageProcessingService',
-    'spamControlService',
-    'statGenerationService',
-    'creationService',
-    'channelManager',
-    'memoryService',
-    'itemService',
-    'decisionMaker',
-    'mapService',
-    'avatarService',
-    'conversationManager',
-    'locationService',
-    'toolService',
-    'promptService',
-    'messageHandler'
-  ];
-
-  for (const name of serviceNames) {
-    try {
-      services[name] = container.resolve(name);
-      logger.info(`${name} resolved.`);
-    } catch (err) {
-      logger.warn(`Failed to resolve ${name}: ${err.message}`);
-    }
-  }
-
-  try {
-    await services.mapService?.initializeDatabase();
-  } catch {}
-
-  try {
-    await services.avatarService?.initializeDatabase();
-  } catch {}
-
   try {
     services.messageHandler?.start();
-  } catch {}
-
-  try {
-    services.basicService = container.resolve('basicService');
-    await services.basicService.initializeServices();
-  } catch {}
-
-  try {
-    await services.avatarService?.updateAllArweavePrompts();
-    logger.info('Arweave prompts updated.');
-  } catch (error) {
-    logger.warn(`Failed to update Arweave prompts: ${error.message}`);
+    logger.info('MessageHandler started.');
+  } catch (err) {
+    logger.warn(`Failed to start MessageHandler: ${err.message}`);
   }
 
-  return {
-    discordService: services.discordService,
-    databaseService: services.databaseService,
-    aiService: services.aiService,
-    avatarService: services.avatarService,
-    spamControlService: services.spamControlService,
-    imageProcessingService: services.imageProcessingService,
-    configService: services.configService,
-    mapService: services.mapService,
-    toolService: services.toolService,
-    logger: services.logger,
-    webService: services.webService,
-    s3Service: services.s3Service,
-    riskManagerService: services.riskManagerService,
-  };
+  try {
+    await services.avatarService?.initializeServices();
+    logger.info('AvatarService initialized.');
+  } catch (err) {
+    logger.warn(`Failed to initialize AvatarService: ${err.message}`);
+  }
+
+  try {
+    await services.channelManager?.initializeServices();
+    logger.info('ChannelManager initialized.');
+  } catch (err) {
+    logger.warn(`Failed to initialize ChannelManager: ${err.message}`);
+  }
+
+  try {
+    await services.schedulingService?.start();
+    logger.info('SchedulingService started.');
+  } catch (err) {
+    logger.warn(`Failed to start SchedulingService: ${err.message}`);
+  }
+
+  return services;
 }

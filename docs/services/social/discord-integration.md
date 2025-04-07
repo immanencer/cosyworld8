@@ -38,8 +38,8 @@ The `DiscordService` class extends `BasicService` and manages the core Discord.j
 
 ```javascript
 export class DiscordService extends BasicService {
-  constructor(services) {
-    super(services, [
+  constructor(container) {
+    super(container, [
       'logger',
       'configService',
       'databaseService',
@@ -76,8 +76,8 @@ The `ConversationManager` handles conversations between users and avatars:
 
 ```javascript
 export class ConversationManager extends BasicService {
-  constructor(services) {
-    super(services, [
+  constructor(container) {
+    super(container, [
       'discordService',
       'avatarService',
       'aiService',

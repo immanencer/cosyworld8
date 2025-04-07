@@ -1,18 +1,20 @@
 import { BasicTool } from '../BasicTool.mjs';
-import { buildMiniAvatarEmbed } from '../../discordEmbedLibrary.mjs';
+import { buildMiniAvatarEmbed } from '../../social/discordEmbedLibrary.mjs';
 export class MoveTool extends BasicTool {
   /**
    * Constructs a new MoveTool.
    * @param {Object} services - The services container
    */
   constructor(services) {
-    super(services, [
-      'avatarService',
-      'mapService',
-      'locationService',
-      'discordService',
-      'conversationManager',
-    ]);
+    super(services);
+
+    this.avatarService = services.avatarService;
+    this.mapService = services.mapService;
+    this.locationService = services.locationService;
+    this.discordService = services.discordService;
+    this.conversationManager = services.conversationManager;
+    
+    
     this.name = 'move';
     this.description = 'Move to the location specified, creating it if it does not exist.';
     this.emoji = '🏃‍♂️';
@@ -27,7 +29,7 @@ export class MoveTool extends BasicTool {
    */
   async sendMiniAvatarCard(avatar, channelId, message = '') {
     try {
-      const client = this.services.client;
+      const client = this.discordService.client;
       if (!client) {
         this.logger?.error('No Discord client available');
         return;
@@ -60,7 +62,7 @@ export class MoveTool extends BasicTool {
    */
   async getOrCreateWebhook(channel) {
     try {
-      const client = this.services.client;
+      const client = this.discordService.client;
       if (!client) {
         this.logger?.error('No Discord client available');
         return null;

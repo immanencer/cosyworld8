@@ -15,8 +15,8 @@ The service extends BasicService and requires multiple dependencies to construct
 
 ```javascript
 export class PromptService extends BasicService {
-  constructor(services) {
-    super(services, [
+  constructor(container) {
+    super(container, [
       "avatarService",
       "memoryService",
       "toolService",

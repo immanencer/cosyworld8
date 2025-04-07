@@ -7,8 +7,12 @@ const DAILY_RESET_INTERVAL = 24 * 60 * 60 * 1000; // 24 hours in ms
 
 export class DecisionMaker extends BasicService {
   constructor(services) {
-    super(services, ['aiService', 'discordService', 'configService', 'logger']);
-
+    super(services);
+    this.aiService = services.aiService;
+    this.discordService = services.discordService;
+    this.configService = services.configService;
+    
+    
     this.model = this.configService.getAIConfig().decisionMakerModel;
 
     // Configurable constants with defaults

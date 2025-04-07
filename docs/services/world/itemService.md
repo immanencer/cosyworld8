@@ -16,8 +16,8 @@ The ItemService extends BasicService and uses both database and blockchain stora
 
 ```javascript
 export class ItemService extends BasicService {
-  constructor(services) {
-    super(services, [
+  constructor(container) {
+    super(container, [
       'databaseService',
       'aiService',
       'configService',

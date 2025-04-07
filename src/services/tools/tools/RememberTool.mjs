@@ -2,13 +2,17 @@ import { BasicTool } from '../BasicTool.mjs';
 
 export class RememberTool extends BasicTool {
   constructor(services) {
-    super(services, [
-      'aiService',
-      'avatarService',
-      'memoryService',
-      'discordService',
-      'mcpClientService',
-    ]);
+    super(services);
+
+    this.avatarService = services.avatarService;
+    this.memoryService = services.memoryService;
+    this.aiService = services.aiService;
+    this.discordService = services.discordService;
+    this.mcpClientService = services.mcpClientService;
+    this.promptService = services.promptService;
+    this.databaseService = services.databaseService;
+    
+    
     this.name = 'remember';
     this.description = 'Generates a memory from the current context and stores it in persistent memory.';
     this.emoji = '🧠';
@@ -62,7 +66,7 @@ export class RememberTool extends BasicTool {
 
     let lastNarrative = '';
     try {
-      lastNarrative = (await this.services.promptService.getLastNarrative(avatar, this.services.databaseService.getDatabase()))?.content || '';
+      lastNarrative = (await this.promptService.getLastNarrative(avatar, this.databaseService.getDatabase()))?.content || '';
     } catch {}
 
     const combinedContext = `Knowledge Graph:\n${kgContext}\n\nLatest narrative:\n${lastNarrative}\n\nRecent conversation:\n${context}`;
@@ -77,7 +81,7 @@ export class RememberTool extends BasicTool {
     await this.memoryService.updateKnowledgeGraph(avatar._id, formattedMemory);
 
     if (avatar.innerMonologueChannel) {
-      await this.services.discordService.sendAsWebhook(
+      await this.discordService.sendAsWebhook(
         avatar.innerMonologueChannel,
         `-# [🧠 Memory Generated]\n${formattedMemory}`,
         avatar

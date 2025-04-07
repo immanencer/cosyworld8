@@ -15,8 +15,8 @@ The S3Service extends BasicService and uses the AWS SDK to interact with S3-comp
 
 ```javascript
 export class S3Service extends BasicService {
-  constructor(services) {
-    super(services, [
+  constructor(container) {
+    super(container, [
       'configService',
       'logger',
     ]);

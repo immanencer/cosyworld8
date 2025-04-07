@@ -1,8 +1,9 @@
 import { BasicService } from '../foundation/basicService.mjs';
 export class BasicTool extends BasicService {
 
-  constructor(services, requiredServices) { 
-    super(services, requiredServices);
+  constructor(services) { 
+    super(services);
+
     this.replyNotification = false;
     this.cooldownMs = 60 * 60 * 1000; // default 1 hour cooldown
   }

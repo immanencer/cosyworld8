@@ -1,14 +1,22 @@
-import { BasicService } from '../foundation/basicService.mjs';
-import initializeApp from './web/server/app.mjs';
+import initializeApp from './server/app.mjs';
 
-export class WebService extends BasicService {
+export class WebService {
   constructor(services) {
-    super(services);
+    this.logger = services.logger;
+    this.configService = services.configService;
+    this.databaseService = services.databaseService;
+    this.discordService = services.discordService;
   }
+
   async start() {
     try {
       this.logger.info('Starting WebService...');
-      await initializeApp(this.services); // Ensure the app is initialized
+      await initializeApp({
+        logger: this.logger,
+        databaseService: this.databaseService,
+        configService: this.configService,
+        discordService: this.discordService,
+      });
       this.logger.info('WebService started successfully.');
     } catch (error) {
       this.logger.error('Failed to start WebService:', error);

@@ -7,20 +7,15 @@ import { encrypt, decrypt } from '../../utils/encryption.mjs'; // Placeholder fo
 let mongoClient = null;
 
 export class XPostTool extends BasicTool {
-    constructor() {
+    constructor(services) {
         super(services);
+        this.databaseService = services.databaseService;
+        this.toolService = services.toolService;
+
+        
         this.emoji = '🐦';
         this.name = 'post';
         this.description = 'Post a relevant message to X/Twitter with preview option.';
-    }
-
-    // Initialize MongoClient singleton
-    async getMongoClient() {
-        if (!mongoClient) {
-            mongoClient = new MongoClient(process.env.MONGO_URI);
-            await mongoClient.connect();
-        }
-        return mongoClient;
     }
 
     async refreshAccessToken(db, auth) {
@@ -61,8 +56,7 @@ export class XPostTool extends BasicTool {
     }
 
     async isAuthorized(avatar) {
-        const client = await this.getMongoClient();
-        const db = client.db(process.env.MONGO_DB_NAME);
+        const db = this.databnaseService.getDatabase();
 
         try {
             const auth = await db.collection('x_auth').findOne({ avatarId: avatar._id.toString() });

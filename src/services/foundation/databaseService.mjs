@@ -3,12 +3,13 @@ import { MongoClient, ObjectId } from 'mongodb';
 export class DatabaseService {
   static instance = null;
 
-  constructor(logger) {
+  constructor({ logger, configService }) {
     if (DatabaseService.instance) {
       return DatabaseService.instance;
     }
 
     this.logger = logger;
+    this.configService = configService;
     this.dbClient = null;
     this.db = null;
     this.connected = false;
@@ -184,17 +185,6 @@ export class DatabaseService {
   }
 
   getDatabase() {
-    if (!this.connected || !this.db) {
-      this.logger.warn('Database is not connected. Retrying connection...');
-      // Schedule a connection attempt but don't wait for it
-      this.connect().catch(err => {
-        this.logger.error(`Failed to reconnect to database: ${err.message}`);
-      });
-
-      // Return the database object even if not fully initialized yet
-      // This helps avoid null reference errors in some cases
-      return this.db || null;
-    }
     return this.db;
   }
 

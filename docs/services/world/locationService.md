@@ -16,8 +16,8 @@ The LocationService extends BasicService and uses both database and blockchain s
 
 ```javascript
 export class LocationService extends BasicService {
-  constructor(services) {
-    super(services, [
+  constructor(container) {
+    super(container, [
       'databaseService',
       'discordService',
       'aiService',

@@ -4,13 +4,14 @@ import { SummonTool } from './SummonTool.mjs';
 
 export class BreedTool extends BasicTool {
   constructor(services) {
-    super(services, [
-      'avatarService',
-      'memoryService',
-      'configService',
-      'databaseService',
-      'discordService',
-    ]);
+    super(services);
+
+    this.configService = services.configService;
+    this.avatarService = services.avatarService;
+    this.databaseService = services.databaseService;
+    this.discordService = services.discordService;
+    this.memoryService = services.memoryService;
+
     this.name = 'breed';
     this.description = 'Breeds two avatars together';
     this.emoji = '🏹';

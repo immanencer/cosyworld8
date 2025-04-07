@@ -2,17 +2,17 @@ import { BasicService } from "../foundation/basicService.mjs";
 
 export class PromptService extends BasicService {
   constructor(services) {
-    super(services, [
-      "avatarService",
-      "memoryService",
-      "toolService",
-      "imageProcessingService",
-      "itemService",
-      "discordService",
-      "mapService",
-      "databaseService",
-      "configService",
-    ]);
+    super(services);
+    this.databaseService = services.databaseService;
+    this.discordService = services.discordService;
+    this.configService = services.configService;
+    this.mapService = services.mapService;
+    this.toolService = services.toolService;
+    this.itemService = services.itemService;
+    this.memoryService = services.memoryService;
+    this.imageProcessingService = services.imageProcessingService;
+
+    
 
     this.client = this.discordService.client;
     this.db = this.databaseService.getDatabase();

@@ -28,6 +28,7 @@ This document contains all documentation for the CosyWorld project.
 - [X (Twitter) Integration](#x-twitter-integration)
 - [Telegram Integration (Coming Soon)](#telegram-integration-coming-soon)
 - [Discord Integration](#discord-integration)
+- [Scheduling Service](#scheduling-service)
 - [S3 Service](#s3-service)
 - [Quest Generator Service](#quest-generator-service)
 - [S3 Service](#s3-service)
@@ -41,9 +42,12 @@ This document contains all documentation for the CosyWorld project.
 - [Basic Service](#basic-service)
 - [Memory Service](#memory-service)
 - [Avatar Service](#avatar-service)
+- [Service Registry](#service-registry)
+- [Service Initializer](#service-initializer)
 - [Prompt Service](#prompt-service)
 - [Memory Service](#memory-service)
 - [Database Service](#database-service)
+- [Service Container](#service-container)
 - [Basic Service](#basic-service)
 - [Avatar Service](#avatar-service)
 - [AI Service](#ai-service)
@@ -121,6 +125,7 @@ Welcome to the CosyWorld developer hub. This guide covers everything from high-l
   - [Action Log](services/tools/actionLog.md)
   - [Tool Implementations](services/tools/implementations.md)
 - **Media Services**
+  - [Image Processing](services/media/imageProcessingService.md)
   - [S3 Storage](services/media/s3Service.md)
 - **Web Services**
   - [Web API](services/web/webService.md)
@@ -928,7 +933,7 @@ CosyWorld is a modular, service-oriented AI ecosystem enabling persistent, evolv
 
 #### Challenges
 
-- Complex service initialization, risk of circular dependencies
+- Complex service initialization, risk of circular dependencies (IN PROGRESS)
 - Inconsistent error handling/logging
 - Duplicated prompt logic
 - Limited automated testing
@@ -940,8 +945,9 @@ CosyWorld is a modular, service-oriented AI ecosystem enabling persistent, evolv
 #### Recommendations
 
 #### Architecture
-- Implement **ServiceContainer** with dependency graph
-- Automate dependency validation
+- ✅ Implement **ServiceContainer** with dependency graph 
+- ✅ Organize services into functional folders
+- ⏳ Automate dependency validation
 
 #### Error Handling
 - Centralize with **ErrorHandlingService**
@@ -1021,8 +1027,8 @@ The QuestGeneratorService extends BasicService and uses AI to create contextuall
 
 ```javascript
 export class QuestGeneratorService extends BasicService {
-  constructor(services) {
-    super(services, [
+  constructor(container) {
+    super(container, [
       'databaseService',
       'aiService',
       'avatarService',
@@ -1110,8 +1116,8 @@ The LocationService extends BasicService and uses both database and blockchain s
 
 ```javascript
 export class LocationService extends BasicService {
-  constructor(services) {
-    super(services, [
+  constructor(container) {
+    super(container, [
       'databaseService',
       'discordService',
       'aiService',
@@ -1300,8 +1306,8 @@ The ItemService extends BasicService and uses both database and blockchain stora
 
 ```javascript
 export class ItemService extends BasicService {
-  constructor(services) {
-    super(services, [
+  constructor(container) {
+    super(container, [
       'databaseService',
       'aiService',
       'configService',
@@ -1487,8 +1493,8 @@ The WebService extends BasicService and uses Express.js to create an HTTP server
 
 ```javascript
 export class WebService extends BasicService {
-  constructor(services) {
-    super(services, [
+  constructor(container) {
+    super(container, [
       'configService',
       'logger',
       'databaseService',
@@ -1593,8 +1599,8 @@ The ToolService extends BasicService and initializes with a suite of specialized
 
 ```javascript
 export class ToolService extends BasicService {
-  constructor(services) {
-    super(services, [
+  constructor(container) {
+    super(container, [
       'locationService',
       'avatarService',
       'itemService',
@@ -2181,8 +2187,8 @@ flowchart TD
 ```javascript
 // Planned implementation for TelegramService
 export class TelegramService extends BasicService {
-  constructor(services) {
-    super(services, [
+  constructor(container) {
+    super(container, [
       'logger',
       'configService',
       'databaseService',
@@ -2364,8 +2370,8 @@ The `DiscordService` class extends `BasicService` and manages the core Discord.j
 
 ```javascript
 export class DiscordService extends BasicService {
-  constructor(services) {
-    super(services, [
+  constructor(container) {
+    super(container, [
       'logger',
       'configService',
       'databaseService',
@@ -2402,8 +2408,8 @@ The `ConversationManager` handles conversations between users and avatars:
 
 ```javascript
 export class ConversationManager extends BasicService {
-  constructor(services) {
-    super(services, [
+  constructor(container) {
+    super(container, [
       'discordService',
       'avatarService',
       'aiService',
@@ -2545,6 +2551,100 @@ The Discord integration provides the core communication infrastructure for Moons
 
 
 
+## Document: services/scheduler/scheduler.md
+
+#### Scheduling Service
+
+#### Overview
+The SchedulingService manages all periodic tasks in the system, providing a unified interface for adding, starting, and stopping scheduled tasks. It ensures that background operations run at appropriate intervals.
+
+#### Functionality
+- **Task Management**: Add, start, and stop scheduled periodic tasks
+- **Interval Management**: Configure execution intervals for tasks
+- **Error Handling**: Gracefully handle task execution errors
+- **Centralized Scheduling**: Single service for all system scheduling needs
+
+#### Implementation
+The SchedulingService extends BasicService and uses JavaScript's setInterval for scheduling. It maintains an internal list of active intervals for proper cleanup.
+
+```javascript
+export class SchedulingService extends BasicService {
+  constructor(container) {
+    super(container, ['channelManager', 'avatarService']);
+    this.intervals = [];
+    this.logger.info('[SchedulingService] Initialized');
+  }
+
+  /**
+   * Adds a named periodic task.
+   * @param {string} name - Task name for logging.
+   * @param {Function} fn - Async function to execute periodically.
+   * @param {number} intervalMs - Interval in milliseconds.
+   */
+  addTask(name, fn, intervalMs) {
+    const interval = setInterval(fn, intervalMs);
+    this.intervals.push(interval);
+    this.logger.info(`[SchedulingService] Task '${name}' added with interval ${intervalMs}ms`);
+  }
+
+  /** Starts all periodic tasks. */
+  start() {
+    this.logger.info('[SchedulingService] Starting scheduled tasks');
+
+    this.addTask(
+      'ambientResponses',
+      async () => {
+        try {
+          await this.channelManager.triggerAmbientResponses();
+        } catch (err) {
+          this.logger.warn(`[SchedulingService] Ambient response error: ${err.message}`);
+        }
+      },
+      30 * 60 * 1000 // every 30 minutes
+    );
+
+    this.addTask(
+      'generateReflections',
+      async () => {
+        try {
+          await this.avatarService.generateReflections();
+        } catch (err) {
+          this.logger.warn(`[SchedulingService] Reflection generation error: ${err.message}`);
+        }
+      },
+      60 * 60 * 1000 // every hour
+    );
+  }
+
+  /** Stops all periodic tasks. */
+  stop() {
+    this.intervals.forEach(clearInterval);
+    this.logger.info('[SchedulingService] Stopped all scheduled tasks');
+  }
+}
+```
+
+#### Usage
+The SchedulingService is used to centralize all recurring tasks that were previously scattered across various services:
+
+```javascript
+// In ServiceInitializer:
+services.schedulingService = container.resolve('schedulingService');
+services.schedulingService.start();
+
+// To stop all tasks during shutdown:
+services.schedulingService.stop();
+```
+
+#### Dependencies
+- BasicService
+- ChannelManager (for ambient responses)
+- AvatarService (for generating reflections)
+
+---
+
+
+
 ## Document: services/s3/s3Service.md
 
 #### S3 Service
@@ -2564,8 +2664,8 @@ The S3Service extends BasicService and uses the AWS SDK to interact with S3-comp
 
 ```javascript
 export class S3Service extends BasicService {
-  constructor(services) {
-    super(services, [
+  constructor(container) {
+    super(container, [
       'configService',
       'logger',
     ]);
@@ -2653,8 +2753,8 @@ The QuestGeneratorService extends BasicService and uses AI to create contextuall
 
 ```javascript
 export class QuestGeneratorService extends BasicService {
-  constructor(services) {
-    super(services, [
+  constructor(container) {
+    super(container, [
       'databaseService',
       'aiService',
       'avatarService',
@@ -2741,8 +2841,8 @@ The S3Service extends BasicService and uses the AWS SDK to interact with S3-comp
 
 ```javascript
 export class S3Service extends BasicService {
-  constructor(services) {
-    super(services, [
+  constructor(container) {
+    super(container, [
       'configService',
       'logger',
     ]);
@@ -2811,6 +2911,217 @@ The service uses a structured key format to organize files:
 
 
 
+## Document: services/media/imageProcessingService.md
+
+#### Image Processing Service
+
+#### Overview
+The Image Processing Service manages image operations throughout the CosyWorld system. It handles image fetching, conversion to base64 for AI processing, extraction of images from Discord messages, and generation of image descriptions using AI vision capabilities.
+
+#### Functionality
+- **Image Fetching**: Retrieves images from URLs and converts them to base64 format
+- **Image Description**: Generates detailed descriptions of images using AI vision capabilities
+- **Discord Integration**: Extracts images from Discord message attachments and embeds
+- **Error Handling**: Provides robust error handling for network and processing failures
+- **MIME Type Detection**: Validates and preserves image format information
+
+#### Implementation
+The service implements several key methods for image handling:
+
+#### Fetching Images
+Retrieves images from URLs and converts to base64 format for processing:
+
+```javascript
+async fetchImageAsBase64(url) {
+  try {
+    const response = await fetch(url);
+    
+    if (!response.ok) {
+      throw new Error(`Failed to fetch image: ${response.status} ${response.statusText}`);
+    }
+    
+    const contentType = response.headers.get('content-type');
+    if (!contentType || !contentType.startsWith('image/')) {
+      throw new Error(`URL doesn't point to an image: ${contentType}`);
+    }
+    
+    const buffer = await response.arrayBuffer();
+    return {
+      data: Buffer.from(buffer).toString('base64'),
+      mimeType: contentType
+    };
+  } catch (error) {
+    this.logger.error(`Error fetching image from URL: ${error.message}`);
+    throw error;
+  }
+}
+```
+
+#### Generating Image Descriptions
+Uses AI vision capabilities to describe image content:
+
+```javascript
+async getImageDescription(imageBase64, mimeType) {
+  try {
+    // Use AI service to get a description of the image
+    const response = await this.aiService.chat([
+      {
+        role: "system",
+        content: "You are an AI that provides concise, detailed descriptions of images. Focus on the main subjects, actions, setting, and important visual elements. Keep descriptions under 100 words."
+      },
+      {
+        role: "user",
+        content: [
+          { type: "text", text: "Describe this image in detail:" },
+          { type: "image_url", image_url: { url: `data:${mimeType};base64,${imageBase64}` } }
+        ]
+      }
+    ]);
+    
+    return response || "No description available";
+  } catch (error) {
+    this.logger.error(`Failed to get image description: ${error.message}`);
+    return "Error generating image description";
+  }
+}
+```
+
+#### Extracting Images from Discord Messages
+Processes Discord messages to extract all image content:
+
+```javascript
+async extractImagesFromMessage(message) {
+  const images = [];
+  
+  try {
+    // Process attachments
+    if (message.attachments && message.attachments.size > 0) {
+      for (const [_, attachment] of message.attachments) {
+        if (attachment.contentType && attachment.contentType.startsWith('image/')) {
+          // Process image attachment...
+        }
+      }
+    }
+    
+    // Process embeds that may contain images
+    if (message.embeds && message.embeds.length > 0) {
+      for (const embed of message.embeds) {
+        // Process embed images and thumbnails...
+      }
+    }
+    
+    // Process URLs in message content that might be images
+    const urlRegex = /(https?:\/\/[^\s]+\.(jpg|jpeg|png|gif|webp))/gi;
+    const matches = message.content.match(urlRegex);
+    
+    if (matches) {
+      // Process image URLs...
+    }
+    
+    return images;
+  } catch (error) {
+    this.logger.error(`Error extracting images from message: ${error.message}`);
+    return [];
+  }
+}
+```
+
+#### Dependencies
+- **Logger**: For error tracking and debugging
+- **AI Service**: For generating image descriptions using vision capabilities
+
+#### Usage Examples
+
+#### Processing an Image URL
+
+```javascript
+const imageService = new ImageProcessingService(logger, aiService);
+
+// Fetch and convert an image
+try {
+  const imageData = await imageService.fetchImageAsBase64('https://example.com/image.jpg');
+  console.log(`Image fetched, MIME type: ${imageData.mimeType}`);
+  
+  // Generate a description of the image
+  const description = await imageService.getImageDescription(
+    imageData.data, 
+    imageData.mimeType
+  );
+  
+  console.log(`Image description: ${description}`);
+} catch (error) {
+  console.error(`Failed to process image: ${error.message}`);
+}
+```
+
+#### Handling Discord Message with Images
+
+```javascript
+// When a message is received
+client.on('messageCreate', async (message) => {
+  // Skip non-image messages quickly
+  if (!message.attachments.size && !message.embeds.length && !message.content.match(/\.(jpg|jpeg|png|gif|webp)/i)) {
+    return;
+  }
+  
+  const imageService = new ImageProcessingService(logger, aiService);
+  const images = await imageService.extractImagesFromMessage(message);
+  
+  if (images.length > 0) {
+    console.log(`Found ${images.length} images in the message`);
+    
+    // Process each image
+    for (const image of images) {
+      const description = await imageService.getImageDescription(
+        image.base64,
+        image.mimeType
+      );
+      
+      // Use the description
+      await message.reply(`I see: ${description}`);
+    }
+  }
+});
+```
+
+#### Integration Points
+The Image Processing Service integrates with several system components:
+
+1. **Discord Service**: For extracting images from Discord messages
+2. **AI Service**: For generating image descriptions
+3. **Avatar Service**: For avatar image processing
+4. **Location Service**: For location image generation and processing
+5. **S3 Service**: For storing and retrieving processed images
+
+#### Error Handling
+The service includes robust error handling:
+
+1. **URL Validation**: Ensures URLs point to valid images
+2. **Network Error Handling**: Handles failed fetch requests
+3. **MIME Type Validation**: Verifies content is actually an image
+4. **Graceful Degradation**: Returns fallback values when image processing fails
+
+#### Future Improvements
+
+#### Enhanced Image Analysis
+- Add object detection capabilities for more precise image understanding
+- Implement facial recognition for avatar-related features
+- Add scene classification for more detailed environmental descriptions
+
+#### Performance Optimizations
+- Implement caching for frequently accessed images
+- Add parallel processing for multiple images
+- Optimize base64 encoding/decoding for large images
+
+#### Additional Formats
+- Add support for SVG and other vector formats
+- Add animated GIF analysis capabilities
+- Implement video thumbnail extraction
+
+---
+
+
+
 ## Document: services/location/locationService.md
 
 #### Location Service
@@ -2830,8 +3141,8 @@ The LocationService extends BasicService and uses the database to persist locati
 
 ```javascript
 export class LocationService extends BasicService {
-  constructor(services) {
-    super(services, [
+  constructor(container) {
+    super(container, [
       'databaseService',
       'discordService',
       'aiService',
@@ -2918,8 +3229,8 @@ The ItemService extends BasicService, using database and blockchain storage, and
 
 ```javascript
 export class ItemService extends BasicService {
-  constructor(services) {
-    super(services, [
+  constructor(container) {
+    super(container, [
       'databaseService', 'aiService', 'configService', 'arweaveService', 'nftMintService'
     ]);
     this.db = this.databaseService.getDatabase();
@@ -3234,8 +3545,8 @@ The ConfigService extends the BasicService class and maintains multiple configur
 
 ```javascript
 export class ConfigService extends BasicService {
-  constructor(services) {
-    super(services, ['databaseService']);
+  constructor(container) {
+    super(container, ['databaseService']);
     this.db = this.databaseService.getDatabase();
     
     // Initialize global configuration with defaults from environment variables
@@ -3411,6 +3722,7 @@ The BasicService serves as the foundation class for all services in the system. 
 #### Implementation
 The BasicService uses a constructor-based dependency injection pattern where services are passed in and registered. It enforces requirements for dependencies and provides a standard method to initialize dependent services.
 
+#### Original Implementation
 ```javascript
 export class BasicService {
   constructor(services = {}, requiredServices = []) {
@@ -3444,13 +3756,48 @@ export class BasicService {
 }
 ```
 
+#### Enhanced Implementation (basicService)
+The enhanced version provides better logging, more graceful dependency handling, and consistent shutdown capabilities:
+
+```javascript
+export class BasicService {
+  constructor(services = {}, requiredServices = []) {
+    this.services = services;
+    this.logger = services.logger || console;
+
+    this.logger.warn(`[BasicService] Constructed ${this.constructor.name}`);
+
+    this.registerServices(requiredServices);
+  }
+
+  registerServices(requiredServices = []) {
+    requiredServices.forEach(dep => {
+      if (!this.services[dep]) {
+        this.logger.warn(`[BasicService] Missing dependency '${dep}' in ${this.constructor.name}`);
+      } else {
+        this[dep] = this.services[dep];
+        this.logger.warn(`[BasicService] Registered dependency '${dep}' in ${this.constructor.name}`);
+      }
+    });
+  }
+
+  async initializeServices() {
+    this.logger.warn(`[BasicService] initializeServices called for ${this.constructor.name}`);
+  }
+
+  async shutdown() {
+    this.logger.warn(`[BasicService] shutdown called for ${this.constructor.name}`);
+  }
+}
+```
+
 #### Usage
 All service classes should extend BasicService and call the parent constructor with their dependencies. The `requiredServices` array specifies which services must be present for this service to function correctly.
 
 ```javascript
 export class MyService extends BasicService {
-  constructor(services) {
-    super(services, ['databaseService', 'configService']);
+  constructor(container) {
+    super(container, ['databaseService', 'configService']);
     
     // Additional initialization...
   }
@@ -3483,8 +3830,8 @@ The MemoryService extends BasicService and uses the database to store memory rec
 
 ```javascript
 export class MemoryService extends BasicService {
-  constructor(services) {
-    super(services, [
+  constructor(container) {
+    super(container, [
       'databaseService',
       'aiService',
       'avatarService',
@@ -3563,10 +3910,11 @@ The AvatarService extends BasicService and works with both traditional databases
 
 ```javascript
 export class AvatarService extends BasicService {
-  constructor(services) {
-    super(services, [
+  constructor(container) {
+    super(container, [
       'databaseService',
       'aiService',
+      'imageProcessingService',
       'configService',
     ]);
     
@@ -3679,6 +4027,7 @@ Avatars exhibit autonomous behaviors based on:
 #### Dependencies
 - DatabaseService: For traditional persistence of avatar data
 - AIService: For generating personalities and traits
+- ImageProcessingService: For avatar images
 - ConfigService: For avatar-related settings
 - NFTMintService: For on-chain avatar minting
 - ArweaveService: For permanent metadata storage
@@ -3690,6 +4039,135 @@ The AvatarService provides several blockchain-related features:
 - **Evolution Processing**: Implementing the burn-to-upgrade process
 - **Cross-Platform Identity**: Maintaining consistent representation across platforms
 - **Cryptographic Signatures**: Verifying authenticity of avatar data and transitions
+
+---
+
+
+
+## Document: services/core/serviceRegistry.md
+
+#### Service Registry
+
+#### Overview
+The ServiceRegistry configures the Container with all available services in the system. It acts as the central configuration point for service registration, defining how services are created and their lifecycle options.
+
+#### Functionality
+- **Service Configuration**: Defines all available services
+- **Dependency Management**: Configures service creation with container-based dependency injection
+- **Shared Container**: Exports a configured container instance for the entire application
+
+#### Implementation
+The ServiceRegistry imports the Container and all service classes that need to be registered. It then creates a container instance and registers each service with its factory function and options.
+
+```javascript
+import { Container } from './container.mjs';
+import { BasicService } from '../foundation/basicService.mjs';
+import { SchedulingService } from '../scheduler/scheduler.mjs';
+
+const container = new Container();
+
+// Register logger
+container.register('logger', () => console);
+
+// Register BasicService as a test service
+container.register('basic', (c) => new BasicService(c));
+// Register SchedulingService
+container.register('schedulingService', (c) => new SchedulingService(c));
+
+export { container };
+```
+
+#### Usage
+The ServiceRegistry exports a pre-configured container that can be imported by other modules to resolve services:
+
+```javascript
+import { container } from './serviceRegistry.mjs';
+
+// Resolve a service
+const schedulingService = container.resolve('schedulingService');
+```
+
+The ServiceInitializer also uses the registry to access services during the application startup process.
+
+#### Dependencies
+- Container
+- All service classes that need to be registered
+
+---
+
+
+
+## Document: services/core/serviceInitializer.md
+
+#### Service Initializer
+
+#### Overview
+The ServiceInitializer is responsible for bootstrapping the entire application by initializing all services in the correct order, handling dependencies, and ensuring proper startup of the system.
+
+#### Functionality
+- **Environment Validation**: Validates required environment variables
+- **Service Instantiation**: Creates service instances in dependency order
+- **Initialization Sequencing**: Manages the startup sequence of services
+- **Error Handling**: Handles initialization failures gracefully
+- **Container Integration**: Uses the service container for modern DI patterns
+
+#### Implementation
+The ServiceInitializer exports an async function that creates and initializes all services:
+
+1. Validates environment variables
+2. Creates a services object with a logger
+3. Resolves container-based services (BasicService, SchedulingService)
+4. Initializes each service in the correct order
+5. Connects services to external systems (databases, APIs)
+6. Returns a subset of services needed by the application
+
+```javascript
+export async function initializeServices(logger) {
+  // Validate environment variables
+  await validateEnvironment(logger);
+
+  // Initialize services object with logger
+  const services = { logger };
+
+  // Resolve container-based services
+  try {
+    services.basic = container.resolve('basic');
+    services.schedulingService = container.resolve('schedulingService');
+  } catch (err) {
+    logger.warn(`Failed to resolve container services: ${err.message}`);
+  }
+
+  // Initialize services in dependency order
+  services.databaseService = new DatabaseService(logger);
+  await services.databaseService.connect();
+  
+  // Initialize more services...
+  
+  return {
+    // Return subset of services needed by the application
+    discordService: services.discordService,
+    databaseService: services.databaseService,
+    // ...other services
+  };
+}
+```
+
+#### Usage
+The ServiceInitializer is used in the main application entry point to boot the system:
+
+```javascript
+import { logger } from "./services/foundation/logger.mjs";
+import { initializeServices } from "./services/core/serviceInitializer.mjs";
+
+async function main() {
+  const services = await initializeServices(logger);
+  logger.info("✅ Application services initialized");
+}
+```
+
+#### Dependencies
+- Container and ServiceRegistry
+- All service classes used in the application
 
 ---
 
@@ -3714,11 +4192,12 @@ The service extends BasicService and requires multiple dependencies to construct
 
 ```javascript
 export class PromptService extends BasicService {
-  constructor(services) {
-    super(services, [
+  constructor(container) {
+    super(container, [
       "avatarService",
       "memoryService",
       "toolService",
+      "imageProcessingService",
       "itemService",
       "discordService",
       "mapService",
@@ -3767,6 +4246,7 @@ The service includes several helper methods that gather and format specific type
 - AvatarService: For avatar data
 - MemoryService: For retrieving memories
 - ToolService: For available commands and actions
+- ImageProcessingService: For handling image content
 - ItemService: For inventory and item information
 - DiscordService: For channel and message access
 - MapService: For location context
@@ -3796,8 +4276,8 @@ The MemoryService extends BasicService and uses the database to store memory rec
 
 ```javascript
 export class MemoryService extends BasicService {
-  constructor(services) {
-    super(services, [
+  constructor(container) {
+    super(container, [
       'databaseService',
       'aiService',
       'avatarService',
@@ -3933,6 +4413,69 @@ The service automatically creates and maintains several key collections:
 
 
 
+## Document: services/core/container.md
+
+#### Service Container
+
+#### Overview
+The Container service implements the Service Locator pattern for the CosyWorld system. It provides a central registry for all services and manages their lifecycle, including dependency resolution and singleton instances.
+
+#### Functionality
+- **Service Registration**: Register service factories with options
+- **Dependency Resolution**: Automatically resolves registered services
+- **Singleton Management**: Manages singleton instances of services
+- **Lazy Initialization**: Services are only instantiated when needed
+
+#### Implementation
+The Container is implemented as a class with methods to register and resolve services. Service factories are functions that receive the container instance to resolve their dependencies.
+
+```javascript
+export class Container {
+  constructor() {
+    this.registry = new Map();
+    this.singletons = new Map();
+  }
+
+  register(name, factory, options = { singleton: true }) {
+    this.registry.set(name, { factory, options });
+  }
+
+  resolve(name) {
+    if (this.singletons.has(name)) {
+      return this.singletons.get(name);
+    }
+    const entry = this.registry.get(name);
+    if (!entry) throw new Error(`Service '${name}' not registered`);
+    const instance = entry.factory(this);
+    if (entry.options.singleton) {
+      this.singletons.set(name, instance);
+    }
+    return instance;
+  }
+}
+```
+
+#### Usage
+The Container is used by the ServiceRegistry to configure the system's services and by the ServiceInitializer to resolve and initialize them.
+
+```javascript
+// Registering a service
+container.register('logger', () => console);
+
+// Registering a service with dependencies
+container.register('myService', (c) => new MyService(c.resolve('logger')));
+
+// Resolving a service
+const myService = container.resolve('myService');
+```
+
+#### Dependencies
+- None (foundational service)
+
+---
+
+
+
 ## Document: services/core/basicService.md
 
 #### Basic Service
@@ -3987,8 +4530,8 @@ All service classes should extend BasicService and call the parent constructor w
 
 ```javascript
 export class MyService extends BasicService {
-  constructor(services) {
-    super(services, ['databaseService', 'configService']);
+  constructor(container) {
+    super(container, ['databaseService', 'configService']);
     
     // Additional initialization...
   }
@@ -4022,10 +4565,11 @@ The AvatarService extends BasicService and works closely with the database to pe
 
 ```javascript
 export class AvatarService extends BasicService {
-  constructor(services) {
-    super(services, [
+  constructor(container) {
+    super(container, [
       'databaseService',
       'aiService',
+      'imageProcessingService',
       'configService',
     ]);
     
@@ -4170,8 +4714,8 @@ The ConversationManager extends BasicService and requires several dependencies f
 
 ```javascript
 export class ConversationManager extends BasicService {
-  constructor(services) {
-    super(services, [
+  constructor(container) {
+    super(container, [
       'discordService',
       'avatarService',
       'aiService',
@@ -4250,8 +4794,8 @@ The ConversationManager extends BasicService and requires several dependencies f
 
 ```javascript
 export class ConversationManager extends BasicService {
-  constructor(services) {
-    super(services, [
+  constructor(container) {
+    super(container, [
       'discordService',
       'avatarService',
       'aiService',
@@ -4634,10 +5178,11 @@ The PromptService extends the BasicService class and integrates with multiple ot
 
 ```javascript
 constructor(services) {
-  super(services, [
+  super(container, [
     "avatarService",
     "memoryService",
     "toolService",
+    "imageProcessingService",
     "itemService",
     "discordService",
     "mapService",
@@ -5891,7 +6436,9 @@ This document outlines the prioritized roadmap for CosyWorld development based o
 #### Immediate Concerns
 - Add proper error handling throughout the codebase
 - Fix duplicate message handling in the Discord service
-- Resolve CreationService duplicate initialization in serviceInitializer.mjs
+- ✅ Resolve CreationService duplicate initialization in serviceInitializer.mjs
+- ✅ Organize services into appropriate folders
+- ✅ Implement service container and registry
 - Implement proper logging throughout all services
 
 #### Long-term Improvements

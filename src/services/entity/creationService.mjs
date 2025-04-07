@@ -5,12 +5,15 @@ import { SchemaValidator } from '../utils/schemaValidator.mjs';
 
 export class CreationService extends BasicService {
   constructor(services) {
-    super(services, [
-      'aiService',
-      'databaseService',
-      'configService',
-      's3Service',
-    ]);
+    super(services);
+
+    this.aiService = services.aiService;
+    this.configService = services.configService;
+    this.s3Service = services.s3Service;
+    this.databaseService = services.databaseService;
+
+    
+
     this.db = this.databaseService.getDatabase();
     this.replicate = new Replicate({ auth: process.env.REPLICATE_API_TOKEN });
     this.schemaValidator = new SchemaValidator();

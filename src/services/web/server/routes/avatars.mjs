@@ -10,7 +10,7 @@ import { ObjectId } from 'mongodb';
 
 import { thumbnailService } from '../services/thumbnailService.mjs';
 import { StatGenerationService } from '../../../tools/statGenerationService.mjs';
-import { NFTMintingService } from '../../../nftMintService.mjs';
+import { NFTMintingService } from '../../../blockchain/nftMintService.mjs';
 
 const router = express.Router();
 

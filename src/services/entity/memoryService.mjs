@@ -2,13 +2,15 @@ import { BasicService } from '../foundation/basicService.mjs';
 
 export class MemoryService extends BasicService {
   constructor(services) {
-    super(services, [
-      'discordService',
-      'databaseService',
-      'configService',
-      'creationService',
-      'mcpClientService'
-    ]);
+ 
+    super(services);
+    this.logger = services.logger;
+    this.mcpClientService = services.mcpClientService;
+    this.creationService = services.creationService;
+    this.databaseService = services.databaseService;
+    this.discordService = services.discordService;
+
+
     this.db = this.databaseService.getDatabase();
     this.client = this.discordService.client;
     

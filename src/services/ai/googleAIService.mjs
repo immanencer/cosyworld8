@@ -1,11 +1,14 @@
 import { BasicService } from '../foundation/basicService.mjs';
 import { GoogleGenerativeAI } from '@google/generative-ai';
-import models from '../models.google.config.mjs';
+import models from './models.google.config.mjs';
 import stringSimilarity from 'string-similarity';
 
 export class GoogleAIService extends BasicService {
   constructor(services) {
-    super(services, ['configService']);
+    super(services)
+    
+    this.configService = services.configService;
+    
     const config = this.configService.config.ai.google;
     this.apiKey = config.apiKey || process.env.GOOGLE_API_KEY;
 

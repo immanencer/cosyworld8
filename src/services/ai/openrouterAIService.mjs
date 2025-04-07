@@ -1,14 +1,15 @@
 import { BasicService } from '../foundation/basicService.mjs';
 
 import OpenAI from 'openai';
-import models from '../models.config.mjs';
+import models from './models.config.mjs';
 import stringSimilarity from 'string-similarity';
 
 export class OpenRouterAIService extends BasicService {
   constructor(services) {
-    super(services, [
-      'configService',
-    ]);
+    super(services);
+    this.configService = container.configService;
+
+    
     this.model = this.configService.config.ai.openrouter.defaultModel || 'openai/gpt-4o-mini';
     this.structured_model = this.configService.config.ai.openrouter.structured_model || 'openai/gpt-4o';
     this.openai = new OpenAI({

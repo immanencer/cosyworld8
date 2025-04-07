@@ -15,8 +15,8 @@ The QuestGeneratorService extends BasicService and uses AI to create contextuall
 
 ```javascript
 export class QuestGeneratorService extends BasicService {
-  constructor(services) {
-    super(services, [
+  constructor(container) {
+    super(container, [
       'databaseService',
       'aiService',
       'avatarService',

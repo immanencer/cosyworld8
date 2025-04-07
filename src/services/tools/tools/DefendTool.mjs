@@ -2,11 +2,11 @@ import { BasicTool } from '../BasicTool.mjs';
 
 export class DefendTool extends BasicTool {
   constructor(services) {
-    super(services, [
-      'configService',
-      'avatarService',
-      'databaseService',
-    ]);
+    super(services);
+    this.configService = services.configService;
+    this.avatarService = services.avatarService;
+
+
     this.name = 'defend';
     this.description = 'Take a defensive stance';
     this.emoji = '🛡️';

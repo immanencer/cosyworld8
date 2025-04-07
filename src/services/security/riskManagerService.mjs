@@ -1,8 +1,8 @@
-import { BasicService } from '../foundation/basicService.mjs';
-
-export class RiskManagerService extends BasicService {
-  constructor(services) {
-    super(services, ['databaseService', 'aiService']);
+export class RiskManagerService {
+  constructor({ logger, databaseService, aiService }) {
+    this.logger = logger;
+    this.databaseService = databaseService;
+    this.aiService = aiService;
     this.db = this.databaseService.getDatabase();
   }
 
@@ -69,7 +69,7 @@ export class RiskManagerService extends BasicService {
       const contents = recentHighRisk.map(m => m.content).join('\n');
       const prompt = `Given the following high-risk messages, generate a single regex pattern that would match similar risky content.\n\nMessages:\n${contents}\n\nRespond ONLY with a valid JavaScript regex pattern string, no explanation.`;
 
-      const regexPattern = await this.services.aiService.generateText(prompt);
+      const regexPattern = await this.aiService.generateText(prompt);
 
       // Save the new dynamic regex
       await this.db.collection('moderation_config').updateOne(

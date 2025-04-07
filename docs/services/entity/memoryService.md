@@ -15,8 +15,8 @@ The MemoryService extends BasicService and uses the database to store memory rec
 
 ```javascript
 export class MemoryService extends BasicService {
-  constructor(services) {
-    super(services, [
+  constructor(container) {
+    super(container, [
       'databaseService',
       'aiService',
       'avatarService',

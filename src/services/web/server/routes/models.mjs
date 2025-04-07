@@ -1,5 +1,5 @@
 import express from 'express';
-import modelsConfig from '../../../../models.config.mjs';
+import modelsConfig from '../../../ai/models.config.mjs';
 
 export default function (db) {
   const router = express.Router();

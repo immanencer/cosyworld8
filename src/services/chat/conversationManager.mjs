@@ -1,17 +1,21 @@
 import { response } from 'express';
-import { BasicService } from '../foundation/basicService.mjs';
 import { handleCommands } from '../commands/commandHandler.mjs';
+import { BasicService } from '../foundation/basicService.mjs';
 
 const GUILD_NAME = process.env.GUILD_NAME || 'The Guild';
 
 export class ConversationManager extends BasicService {
   constructor(services) {
-    super(services, [
-      'configService',
-      'discordService',
-      'avatarService',
-      'aiService',
-    ]);
+    super(services);
+    this.services = services;
+    this.logger = services.logger;
+    this.databaseService = services.databaseService;
+    this.aiService = services.aiService;
+    this.discordService = services.discordService;
+    this.avatarService = services.avatarService;
+    this.memoryService = services.memoryService;
+    this.promptService = services.promptService;
+    this.configService = services.configService;
 
     this.GLOBAL_NARRATIVE_COOLDOWN = 60 * 60 * 1000; // 1 hour
     this.lastGlobalNarrativeTime = 0;
@@ -21,7 +25,7 @@ export class ConversationManager extends BasicService {
     this.channelResponders = new Map();
     this.requiredPermissions = ['ViewChannel', 'SendMessages', 'ReadMessageHistory', 'ManageWebhooks'];
    
-    this.db = services.databaseService.getDatabase();
+    this.db = this.databaseService.getDatabase();
   }
 
   async checkChannelPermissions(channel) {
@@ -60,7 +64,7 @@ export class ConversationManager extends BasicService {
       }
 
       const kgContext = await this.memoryService.queryKnowledgeGraph(avatar._id);
-      const chatMessages = await this.services.promptService.getNarrativeChatMessages(avatar);
+      const chatMessages = await this.promptService.getNarrativeChatMessages(avatar);
 
       // Inject KG context into user prompt
       if (chatMessages && chatMessages.length > 0) {
@@ -81,7 +85,7 @@ ${userMsg.content}`;
 
       await this.memoryService.storeNarrative(avatar._id, narrative);
       avatar = await this.memoryService.updateNarrativeHistory(avatar, narrative);
-      avatar.prompt = await this.services.promptService.getFullSystemPrompt(avatar, this.db);
+      avatar.prompt = await this.promptService.getFullSystemPrompt(avatar, this.db);
       avatar.dynamicPrompt = narrative;
       await this.avatarService.updateAvatar(avatar);
       this.lastGlobalNarrativeTime = Date.now();
@@ -287,7 +291,7 @@ ${userMsg.content}`;
       }
       const channelHistory = await this.getChannelContext(channel.id, 50);
       const channelSummary = await this.getChannelSummary(avatar._id, channel.id);
-      let chatMessages = await this.services.promptService.getResponseChatMessages(avatar, channel, channelHistory, channelSummary, this.db);
+      let chatMessages = await this.promptService.getResponseChatMessages(avatar, channel, channelHistory, channelSummary, this.db);
       let userContent = chatMessages.find(msg => msg.role === 'user').content;
       if (this.aiService.supportsMultimodal && imagePromptParts.length > 0) {
         userContent = [...imagePromptParts, { type: 'text', text: userContent }];

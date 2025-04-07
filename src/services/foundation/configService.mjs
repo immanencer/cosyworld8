@@ -2,8 +2,6 @@ import path from 'path';
 import fs from 'fs/promises';
 import { fileURLToPath } from 'url';
 
-import { BasicService } from '../foundation/basicService.mjs';
-
 import dotenv from 'dotenv';
 dotenv.config();
 
@@ -11,20 +9,19 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const CONFIG_DIR = path.resolve(__dirname, '../config');
 
-export class ConfigService extends BasicService {
-  constructor(services) {
-    super(services, [ 'databaseService' ]);
-    this.db = this.databaseService.getDatabase();
+export class ConfigService {
+  constructor({ logger }) {
+    this.logger = logger;
+
     // Initialize global configuration with defaults from environment variables
     this.config = {
       prompt: {
         summon: process.env.SUMMON_PROMPT || "Create a twisted avatar, a servant of dark V.A.L.I.S.",
         introduction: process.env.INTRODUCTION_PROMPT || "You've just arrived. Introduce yourself."
-      
       },
       ai: {
         google: {
-          apiKey:  process.env.GOOGLE_API_KEY || process.env.GOOGLE_AI_API_KEY,
+          apiKey: process.env.GOOGLE_API_KEY || process.env.GOOGLE_AI_API_KEY,
           model: process.env.GOOGLE_AI_MODEL || 'gemini-2.0-flash-001',
           decisionMakerModel: process.env.GOOGLE_AI_DECISION_MAKER_MODEL || 'gemini-2.0-flash-lite-001',
           structuredModel: process.env.GOOGLE_AI_STRUCTURED_MODEL || 'gemini-2.0-flash-001',
@@ -68,7 +65,7 @@ export class ConfigService extends BasicService {
       },
       webhooks: {}
     };
-    
+
     this.guildConfigCache = new Map(); // Cache for guild configurations
   }
 
@@ -98,7 +95,6 @@ export class ConfigService extends BasicService {
     console.warn(`Unknown AI service: ${service}. Defaulting to openrouter.`);
     return this.config.ai.openrouter;
   }
-
 
   // Load global configuration from JSON files
   async loadConfig() {

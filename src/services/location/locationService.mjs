@@ -13,18 +13,19 @@ export class LocationService extends BasicService {
    * @param {Object} [aiService=null] - Optional AI service (defaults to OpenRouterService if not provided).
    */
   constructor(services) {
-    super(services, [
-      'aiService',
-      'discordService',
-      'databaseService',
-      'creationService',
-      'itemService',
-      'avatarService',
-      'channelManager',
-      'conversationManager',
-      'mapService',
-    ]);
+    super(services)
 
+    this.aiService = services.aiService;
+    this.discordService = services.discordService;
+    this.databaseService = services.databaseService;
+    this.creationService = services.creationService;
+    this.itemService = services.itemService;
+    this.avatarService = services.avatarService;
+    this.channelManager = services.channelManager;
+    this.conversationManager = services.conversationManager;
+    this.mapService = services.mapService;
+
+    
     this.client = this.discordService.client;
     this.db = this.databaseService.getDatabase(); 
 
@@ -437,7 +438,7 @@ If already suitable, return as is. If it needs editing, revise it while preservi
    */
   async generateLocationSummary(locationId) {
     try {
-      const channelHistory = await this.services.conversationManager?.getChannelContext(locationId, 50);
+      const channelHistory = await this.conversationManager.getChannelContext(locationId, 50);
       if (!channelHistory) {
         console.warn('No message data found for location ID', locationId);
         return;

@@ -31,6 +31,7 @@ async function initializeApp(services) {
 
     // Core services
     app.locals.services = services;
+    await services.databaseService.connect();
     const db = await services.databaseService.getDatabase();
     logger.info('Database connected and services initialized');
 

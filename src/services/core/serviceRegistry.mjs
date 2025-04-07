@@ -1,5 +1,3 @@
-import { Container } from './container.mjs';
-import { BasicService } from '../foundation/basicService2.mjs';
 import { SchedulingService } from '../scheduler/scheduler.mjs';
 import { DatabaseService } from '../foundation/databaseService.mjs';
 import { ConfigService } from '../foundation/configService.mjs';
@@ -25,48 +23,237 @@ import { ArweaveService } from '../arweave/arweaveService.mjs';
 import { MCPClientService } from '../mcp/MCPClientService.mjs';
 import { RiskManagerService } from '../security/riskManagerService.mjs';
 import { ImageProcessingService } from '../media/imageProcessingService.mjs';
+import { ModerationService } from '../security/moderationService.mjs';
 
-const container = new Container();
+// Infrastructure layer
+const infrastructure = {};
 
-// Register logger
-container.register('logger', () => console);
+infrastructure.logger = console;
 
-// Register BasicService as a test service
-container.register('basic', (c) => new BasicService(c));
-// Register SchedulingService
-container.register('schedulingService', (c) => new SchedulingService(c));
+infrastructure.configService = new ConfigService({ logger: infrastructure.logger });
 
-// Register core services
-container.register('databaseService', (c) => new DatabaseService(c));
-container.register('configService', (c) => new ConfigService(c));
-container.register('discordService', (c) => new DiscordService(c));
-container.register('webService', (c) => new WebService(c));
-container.register('mcpClientService', (c) => new MCPClientService(c));
-container.register('s3Service', (c) => new S3Service(c));
-container.register('arweaveService', (c) => new ArweaveService(c));
-container.register('imageProcessingService', (c) => new ImageProcessingService(c));
+infrastructure.databaseService = new DatabaseService({
+  logger: infrastructure.logger,
+  configService: infrastructure.configService,
+});
 
-// Register AI and security
-container.register('aiService', (c) => new AIService(c));
-container.register('riskManagerService', (c) => new RiskManagerService(c));
-container.register('spamControlService', (c) => new SpamControlService(c));
+await infrastructure.databaseService.connect();
 
-// Register utility and domain services
-container.register('statGenerationService', (c) => new StatGenerationService(c));
-container.register('creationService', (c) => new CreationService(c));
-container.register('channelManager', (c) => new ChannelManager(c));
-container.register('memoryService', (c) => new MemoryService(c));
-container.register('itemService', (c) => new ItemService(c));
-container.register('decisionMaker', (c) => new DecisionMaker(c));
-container.register('mapService', (c) => new MapService(c));
-container.register('avatarService', (c) => new AvatarService(c));
-container.register('conversationManager', (c) => new ConversationManager(c));
-container.register('locationService', (c) => new LocationService(c));
-container.register('toolService', (c) => new ToolService(c));
-container.register('promptService', (c) => new PromptService(c));
-container.register('messageHandler', (c) => new MessageHandler(c));
+infrastructure.configService.db = infrastructure.databaseService.getDatabase();
+infrastructure.configService.databaseService = infrastructure.databaseService;
 
-// Register BasicService again under 'basicService' alias for compatibility
-container.register('basicService', (c) => new BasicService(c));
+infrastructure.schedulingService = new SchedulingService({ logger: infrastructure.logger });
 
-export { container };
+infrastructure.s3Service = new S3Service({
+  logger: infrastructure.logger,
+  configService: infrastructure.configService,
+});
+
+infrastructure.arweaveService = new ArweaveService({
+  logger: infrastructure.logger,
+  configService: infrastructure.configService,
+});
+
+infrastructure.imageProcessingService = new ImageProcessingService({
+  logger: infrastructure.logger,
+  configService: infrastructure.configService,
+});
+
+// Domain layer
+const domain = {};
+
+domain.discordService = new DiscordService({
+  logger: infrastructure.logger,
+  configService: infrastructure.configService,
+  databaseService: infrastructure.databaseService,
+});
+
+domain.webService = new WebService({
+  logger: infrastructure.logger,
+  configService: infrastructure.configService,
+  databaseService: infrastructure.databaseService,
+  discordService: domain.discordService,
+});
+
+domain.mcpClientService = new MCPClientService({
+  logger: infrastructure.logger,
+  configService: infrastructure.configService,
+});
+
+domain.aiService = new AIService({
+  logger: infrastructure.logger,
+  configService: infrastructure.configService,
+});
+
+domain.riskManagerService = new RiskManagerService({
+  logger: infrastructure.logger,
+  databaseService: infrastructure.databaseService,
+  configService: infrastructure.configService,
+});
+
+domain.spamControlService = new SpamControlService({
+  logger: infrastructure.logger,
+  databaseService: infrastructure.databaseService,
+  configService: infrastructure.configService,
+});
+
+domain.mapService = new MapService({
+  logger: infrastructure.logger,
+  databaseService: infrastructure.databaseService,
+  configService: infrastructure.configService,
+});
+
+domain.itemService = new ItemService({
+  logger: infrastructure.logger,
+  databaseService: infrastructure.databaseService,
+  configService: infrastructure.configService,
+  discordService: domain.discordService,
+});
+
+domain.statGenerationService = new StatGenerationService({
+  logger: infrastructure.logger,
+  databaseService: infrastructure.databaseService,
+  configService: infrastructure.configService,
+});
+
+domain.creationService = new CreationService({
+  logger: infrastructure.logger,
+  aiService: domain.aiService,
+  databaseService: infrastructure.databaseService,
+  configService: infrastructure.configService,
+  s3Service: infrastructure.s3Service,
+});
+
+domain.memoryService = new MemoryService({
+  logger: infrastructure.logger,
+  configService: infrastructure.configService,
+  databaseService: infrastructure.databaseService,
+  discordService: domain.discordService,
+  creationService: domain.creationService,
+  mcpClientService: domain.mcpClientService,
+});
+
+domain.avatarService = new AvatarService({
+  logger: infrastructure.logger,
+  databaseService: infrastructure.databaseService,
+  configService: infrastructure.configService,
+  aiService: domain.aiService,
+  schedulingService: infrastructure.schedulingService,
+  mapService: domain.mapService,
+});
+
+domain.promptService = new PromptService({
+  logger: infrastructure.logger,
+  discordService: domain.discordService,
+  databaseService: infrastructure.databaseService,
+  configService: infrastructure.configService,
+  mapService: domain.mapService,
+  toolService: null, // placeholder
+  itemService: domain.itemService,
+  memoryService: domain.memoryService,
+});
+
+domain.decisionMaker = new DecisionMaker({
+  logger: infrastructure.logger,
+  aiService: domain.aiService,
+  discordService: domain.discordService,
+  configService: infrastructure.configService,
+});
+
+domain.conversationManager = new ConversationManager({
+  logger: infrastructure.logger,
+  databaseService: infrastructure.databaseService,
+  aiService: domain.aiService,
+  discordService: domain.discordService,
+  avatarService: domain.avatarService,
+  memoryService: domain.memoryService,
+  promptService: domain.promptService,
+  configService: infrastructure.configService,
+});
+
+domain.channelManager = new ChannelManager({
+  databaseService: infrastructure.databaseService,
+  discordService: domain.discordService,
+  schedulingService: infrastructure.schedulingService,
+  mapService: domain.mapService,
+  conversationManager: domain.conversationManager,
+});
+
+domain.locationService = new LocationService({
+  logger: infrastructure.logger,
+  aiService: domain.aiService,
+  discordService: domain.discordService,
+  databaseService: infrastructure.databaseService,
+  creationService: domain.creationService,
+  itemService: domain.itemService,
+  avatarService: domain.avatarService,
+  channelManager: domain.channelManager,
+  conversationManager: domain.conversationManager,
+  mapService: domain.mapService,
+});
+
+domain.channelManager.locationService = domain.locationService;
+domain.mapService.locationService = domain.locationService;
+
+domain.moderationService = new ModerationService({
+  logger: infrastructure.logger,
+  databaseService: infrastructure.databaseService,
+  toolService: null, // patched later
+  riskManagerService: domain.riskManagerService,
+});
+
+domain.messageHandler = new MessageHandler({
+  logger: infrastructure.logger,
+  discordService: domain.discordService,
+  databaseService: infrastructure.databaseService,
+  configService: infrastructure.configService,
+  spamControlService: domain.spamControlService,
+  avatarService: domain.avatarService,
+  toolService: null, // patched later
+  schedulingService: infrastructure.schedulingService,
+  decisionMaker: domain.decisionMaker,
+  conversationManager: domain.conversationManager,
+  channelManager: domain.channelManager,
+  creationService: domain.creationService,
+  promptService: domain.promptService,
+  memoryService: domain.memoryService,
+  locationService: domain.locationService,
+  mapService: domain.mapService,
+  aiService: domain.aiService,
+  itemService: domain.itemService,
+  riskManagerService: domain.riskManagerService,
+  moderationService: domain.moderationService,
+});
+
+domain.toolService = new ToolService({
+  logger: infrastructure.logger,
+  discordService: domain.discordService,
+  databaseService: infrastructure.databaseService,
+  configService: infrastructure.configService,
+  spamControlService: domain.spamControlService,
+  avatarService: domain.avatarService,
+  schedulingService: infrastructure.schedulingService,
+  decisionMaker: domain.decisionMaker,
+  conversationManager: domain.conversationManager,
+  channelManager: domain.channelManager,
+  creationService: domain.creationService,
+  promptService: domain.promptService,
+  memoryService: domain.memoryService,
+  locationService: domain.locationService,
+  mapService: domain.mapService,
+  aiService: domain.aiService,
+  itemService: domain.itemService,
+  riskManagerService: domain.riskManagerService,
+});
+
+domain.promptService.toolService = domain.toolService;
+domain.messageHandler.toolService = domain.toolService;
+domain.moderationService.toolService = domain.toolService;
+
+// Compose services object
+const services = {
+  ...infrastructure,
+  ...domain,
+};
+
+export { services };

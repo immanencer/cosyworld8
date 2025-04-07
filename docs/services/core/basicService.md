@@ -50,8 +50,8 @@ All service classes should extend BasicService and call the parent constructor w
 
 ```javascript
 export class MyService extends BasicService {
-  constructor(services) {
-    super(services, ['databaseService', 'configService']);
+  constructor(container) {
+    super(container, ['databaseService', 'configService']);
     
     // Additional initialization...
   }

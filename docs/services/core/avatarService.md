@@ -16,8 +16,8 @@ The AvatarService extends BasicService and works closely with the database to pe
 
 ```javascript
 export class AvatarService extends BasicService {
-  constructor(services) {
-    super(services, [
+  constructor(container) {
+    super(container, [
       'databaseService',
       'aiService',
       'imageProcessingService',

@@ -7,17 +7,16 @@ import {
 } from 'discord.js';
 import { chunkMessage } from '../utils/messageChunker.mjs';
 import { processMessageLinks } from '../utils/linkProcessor.mjs';
-import models from '../../models.config.mjs';
-import { BasicService } from '../foundation/basicService.mjs';
+import models from '../ai/models.config.mjs';
 import { buildMiniAvatarEmbed, buildFullAvatarEmbed, buildLocationEmbed } from './discordEmbedLibrary.mjs';
 
-export class DiscordService extends BasicService {
+export class DiscordService {
   constructor(services) {
-    super(services, [
-      'logger',
-      'configService',
-      'databaseService',
-    ]);
+    this.logger = services.logger;
+    this.configService = services.configService;
+    this.databaseService = services.databaseService;
+    
+    this.db = this.databaseService.getDatabase();
     this.webhookCache = new Map();
     this.client = new Client({
       intents: [
@@ -28,7 +27,6 @@ export class DiscordService extends BasicService {
       ],
       partials: [Partials.Message, Partials.Channel, Partials.Reaction],
     });
-    this.db = services.databaseService.getDatabase();
     this.setupEventListeners();
 
     this.messageCache = new Map(); // Initialize message cache

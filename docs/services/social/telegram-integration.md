@@ -65,8 +65,8 @@ flowchart TD
 ```javascript
 // Planned implementation for TelegramService
 export class TelegramService extends BasicService {
-  constructor(services) {
-    super(services, [
+  constructor(container) {
+    super(container, [
       'logger',
       'configService',
       'databaseService',

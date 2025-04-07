@@ -1,0 +1,157 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Scheduling Service - CosyWorld Documentation</title>
+  <!-- Mermaid script for diagram rendering -->
+  <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      mermaid.initialize({ 
+        startOnLoad: true,
+        theme: 'dark',
+        securityLevel: 'loose'
+      });
+    });
+  </script>
+  <style>
+    body { 
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; 
+      line-height: 1.6;
+      color: #333;
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 1rem;
+      display: flex;
+    }
+    nav {
+      width: 250px;
+      padding-right: 2rem;
+      flex-shrink: 0;
+    }
+    main {
+      flex-grow: 1;
+    }
+    code {
+      background: #f5f5f5;
+      padding: 0.2em 0.4em;
+      border-radius: 3px;
+      font-family: SFMono-Regular, Consolas, Liberation Mono, Menlo, monospace;
+      font-size: 85%;
+    }
+    pre {
+      background: #f5f5f5;
+      padding: 1rem;
+      border-radius: 5px;
+      overflow: auto;
+    }
+    pre code {
+      background: none;
+      padding: 0;
+    }
+    a { color: #0366d6; text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    h1, h2, h3, h4 { margin-top: 1.5em; margin-bottom: 0.5em; }
+    h1 { border-bottom: 1px solid #eaecef; padding-bottom: 0.3em; }
+    nav ul { list-style-type: none; padding-left: 1.2em; }
+    nav > ul { padding-left: 0; }
+    .section-title { 
+      font-weight: bold; 
+      margin-top: 1em;
+      color: #24292e;
+    }
+    /* Mermaid diagram styling */
+    .mermaid {
+      margin: 1rem 0;
+    }
+  </style>
+</head>
+<body>
+  <nav><ul><li><a href="../../index.html">Home</a></li><li><span class="section-title">Overview</span><ul><li><a href="../../overview/03-system-diagram.html">System Diagram</a></li><li><a href="../../overview/02-system-overview.html">CosyWorld System Overview</a></li><li><a href="../../overview/01-introduction.html">CosyWorld Introduction</a></li></ul></li><li><span class="section-title">Systems</span><ul><li><a href="../../systems/06-rati-avatar-system.html">RATi Avatar System</a></li><li><a href="../../systems/05-intelligence-system.html">Intelligence System</a></li><li><a href="../../systems/04-action-system.html">Action System</a></li></ul></li><li><span class="section-title">Services</span><ul><li><a href="../../services/x-authentication.html">X (Twitter) Authentication and Integration</a></li><li><a href="../../services/architecture-report.html">CosyWorld Architecture Report</a></li><li><span class="section-title">World</span><ul><li><a href="../../services/world/questGeneratorService.html">Quest Generator Service</a></li><li><a href="../../services/world/locationService.html">Location Service</a></li><li><a href="../../services/world/itemService.html">Item Service</a></li></ul></li><li><span class="section-title">Web</span><ul><li><a href="../../services/web/webService.html">Web Service</a></li></ul></li><li><span class="section-title">Tools</span><ul><li><a href="../../services/tools/toolService.html">Tool Service</a></li></ul></li><li><span class="section-title">Social</span><ul><li><a href="../../services/social/x-integration.html">X (Twitter) Integration</a></li><li><a href="../../services/social/telegram-integration.html">Telegram Integration (Coming Soon)</a></li><li><a href="../../services/social/discord-integration.html">Discord Integration</a></li></ul></li><li><span class="section-title">Scheduler</span><ul><li><a href="../../services/scheduler/scheduler.html">Scheduling Service</a></li></ul></li><li><span class="section-title">S3</span><ul><li><a href="../../services/s3/s3Service.html">S3 Service</a></li></ul></li><li><span class="section-title">Quest</span><ul><li><a href="../../services/quest/questGeneratorService.html">Quest Generator Service</a></li></ul></li><li><span class="section-title">Media</span><ul><li><a href="../../services/media/s3Service.html">S3 Service</a></li><li><a href="../../services/media/imageProcessingService.html">Image Processing Service</a></li></ul></li><li><span class="section-title">Location</span><ul><li><a href="../../services/location/locationService.html">Location Service</a></li></ul></li><li><span class="section-title">Item</span><ul><li><a href="../../services/item/itemService.html">Item Service</a></li></ul></li><li><span class="section-title">Integration</span><ul><li><a href="../../services/integration/x-authentication.html">X (Twitter) Authentication and Integration</a></li></ul></li><li><span class="section-title">Foundation</span><ul><li><a href="../../services/foundation/logger.html">Logger Service</a></li><li><a href="../../services/foundation/databaseService.html">Database Service</a></li><li><a href="../../services/foundation/configService.html">Config Service</a></li><li><a href="../../services/foundation/basicService.html">Basic Service</a></li></ul></li><li><span class="section-title">Entity</span><ul><li><a href="../../services/entity/memoryService.html">Memory Service</a></li><li><a href="../../services/entity/avatarService.html">Avatar Service</a></li></ul></li><li><span class="section-title">Core</span><ul><li><a href="../../services/core/serviceRegistry.html">Service Registry</a></li><li><a href="../../services/core/serviceInitializer.html">Service Initializer</a></li><li><a href="../../services/core/promptService.html">Prompt Service</a></li><li><a href="../../services/core/memoryService.html">Memory Service</a></li><li><a href="../../services/core/databaseService.html">Database Service</a></li><li><a href="../../services/core/container.html">Service Container</a></li><li><a href="../../services/core/basicService.html">Basic Service</a></li><li><a href="../../services/core/avatarService.html">Avatar Service</a></li><li><a href="../../services/core/aiService.html">AI Service</a></li></ul></li><li><span class="section-title">Communication</span><ul><li><a href="../../services/communication/conversationManager.html">Conversation Manager</a></li></ul></li><li><span class="section-title">Chat</span><ul><li><a href="../../services/chat/conversationManager.html">Conversation Manager</a></li></ul></li><li><span class="section-title">Blockchain</span><ul><li><a href="../../services/blockchain/tokenService.html">Token Service</a></li></ul></li><li><span class="section-title">Ai</span><ul><li><a href="../../services/ai/replicateService.html">Replicate Service</a></li><li><a href="../../services/ai/promptService.html">Prompt Service</a></li><li><a href="../../services/ai/openrouterAIService.html">OpenRouter AI Service</a></li><li><a href="../../services/ai/ollamaService.html">Ollama Service</a></li><li><a href="../../services/ai/googleAIService.html">Google AI Service</a></li><li><a href="../../services/ai/aiService.html">AI Service</a></li></ul></li></ul></li><li><span class="section-title">Deployment</span><ul><li><a href="../../deployment/08-future-work.html">Future Work Priorities</a></li><li><a href="../../deployment/07-deployment.html">CosyWorld Deployment Guide</a></li></ul></li></ul></nav>
+  <main><h1>Scheduling Service</h1>
+<h2>Overview</h2>
+<p>The SchedulingService manages all periodic tasks in the system, providing a unified interface for adding, starting, and stopping scheduled tasks. It ensures that background operations run at appropriate intervals.</p>
+<h2>Functionality</h2>
+<ul>
+<li><strong>Task Management</strong>: Add, start, and stop scheduled periodic tasks</li>
+<li><strong>Interval Management</strong>: Configure execution intervals for tasks</li>
+<li><strong>Error Handling</strong>: Gracefully handle task execution errors</li>
+<li><strong>Centralized Scheduling</strong>: Single service for all system scheduling needs</li>
+</ul>
+<h2>Implementation</h2>
+<p>The SchedulingService extends BasicService and uses JavaScript’s setInterval for scheduling. It maintains an internal list of active intervals for proper cleanup.</p>
+<pre><code class="language-javascript">export class SchedulingService extends BasicService {
+  constructor(container) {
+    super(container, ['channelManager', 'avatarService']);
+    this.intervals = [];
+    this.logger.info('[SchedulingService] Initialized');
+  }
+
+  /**
+   * Adds a named periodic task.
+   * @param {string} name - Task name for logging.
+   * @param {Function} fn - Async function to execute periodically.
+   * @param {number} intervalMs - Interval in milliseconds.
+   */
+  addTask(name, fn, intervalMs) {
+    const interval = setInterval(fn, intervalMs);
+    this.intervals.push(interval);
+    this.logger.info(`[SchedulingService] Task '${name}' added with interval ${intervalMs}ms`);
+  }
+
+  /** Starts all periodic tasks. */
+  start() {
+    this.logger.info('[SchedulingService] Starting scheduled tasks');
+
+    this.addTask(
+      'ambientResponses',
+      async () =&gt; {
+        try {
+          await this.channelManager.triggerAmbientResponses();
+        } catch (err) {
+          this.logger.warn(`[SchedulingService] Ambient response error: ${err.message}`);
+        }
+      },
+      30 * 60 * 1000 // every 30 minutes
+    );
+
+    this.addTask(
+      'generateReflections',
+      async () =&gt; {
+        try {
+          await this.avatarService.generateReflections();
+        } catch (err) {
+          this.logger.warn(`[SchedulingService] Reflection generation error: ${err.message}`);
+        }
+      },
+      60 * 60 * 1000 // every hour
+    );
+  }
+
+  /** Stops all periodic tasks. */
+  stop() {
+    this.intervals.forEach(clearInterval);
+    this.logger.info('[SchedulingService] Stopped all scheduled tasks');
+  }
+}
+</code></pre>
+<h2>Usage</h2>
+<p>The SchedulingService is used to centralize all recurring tasks that were previously scattered across various services:</p>
+<pre><code class="language-javascript">// In ServiceInitializer:
+services.schedulingService = container.resolve('schedulingService');
+services.schedulingService.start();
+
+// To stop all tasks during shutdown:
+services.schedulingService.stop();
+</code></pre>
+<h2>Dependencies</h2>
+<ul>
+<li>BasicService</li>
+<li>ChannelManager (for ambient responses)</li>
+<li>AvatarService (for generating reflections)</li>
+</ul>
+</main>
+</body>
+</html>

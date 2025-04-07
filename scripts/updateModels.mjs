@@ -16,7 +16,7 @@ const CONFIG = {
 };
 
 // Import existing models config to preserve rarities
-import existingModels from '../src/models.config.mjs';
+import existingModels from '../src/services/ai/models.config.mjs';
 
 /**
  * Helper function to format cost values dynamically.

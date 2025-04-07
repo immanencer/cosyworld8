@@ -16,13 +16,7 @@ export const logger = winston.createLogger({
     json() // File format stays clean
   ),
   transports: [
-    new winston.transports.Console({
-      format: combine(
-        colorize(),
-        timestamp({ format: 'HH:mm:ss' }),
-        consoleFormat
-      )
-    }),
+    new winston.transports.Console(),
     new winston.transports.File({ filename: 'app.log' })
   ],
 });

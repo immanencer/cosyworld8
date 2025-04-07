@@ -2,7 +2,7 @@ import express from 'express';
 import crypto from 'crypto';
 import { TwitterApi } from 'twitter-api-v2';
 import { encrypt } from '../../../utils/encryption.mjs';
-import { refreshAccessToken, verifyWalletSignature } from '../../../xService.mjs';
+import { refreshAccessToken, verifyWalletSignature } from '../../../social/xService.mjs';
 
 const DEFAULT_TOKEN_EXPIRY = 7200; // 2 hours in seconds
 const AUTH_SESSION_TIMEOUT = 10 * 60 * 1000; // 10 minutes in milliseconds

@@ -3,16 +3,15 @@ import { BasicService } from '../foundation/basicService.mjs'; // Assuming Basic
 
 export class ItemService extends BasicService {
   constructor(services) {
-    super(services, [
-      'aiService',
-      'databaseService',
-      'configService',
-      's3Service',
-      'creationService',
-      'discordService'
-    ]);
+    super(services);
+    this.configService = services.configService;
+    this.databaseService = services.databaseService;
+    this.discordService = services.discordService;
+
     this.client = this.discordService.client;
     this.db = this.databaseService.getDatabase();
+    
+    
     this.itemCreationLimit = 8; // Hardcoded as 'options' was undefined
     this.schemaValidator = new SchemaValidator();
     this.CURRENT_SCHEMA_VERSION = '1.0.0';

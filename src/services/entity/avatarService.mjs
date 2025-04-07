@@ -1,22 +1,22 @@
-// services/avatar_generation_service.mjs
+// Description: AvatarService class for managing avatars in the game.
+import { BasicService } from '../foundation/basicService.mjs';
+
 import Replicate from 'replicate';
 import process from 'process';
 import Fuse from 'fuse.js';
 import { toObjectId } from '../utils/toObjectId.mjs';
 
-import { BasicService } from '../foundation/basicService.mjs';
-
 export class AvatarService extends BasicService {
   constructor(services) {
-    super(services, [
-      'databaseService',
-      'statGenerationService',
-      'aiService',
-      'configService',
-      'mapService',
-      'creationService',
-      'schedulingService',
-    ]);
+    super(services);
+    this.databaseService = services.databaseService;
+    this.configService = services.configService;
+    this.mapService = services.mapService;
+    this.aiService = services.aiService;
+    this.schedulingService = services.schedulingService;
+    this.avatarService = services.avatarService;
+    this.conversationManager = services.conversationManager;
+
     this.db = this.databaseService.getDatabase();
     this.channelAvatars = new Map(); // channelId -> Set of avatarIds
     this.avatarActivityCount = new Map(); // avatarId -> activity count
@@ -45,7 +45,7 @@ export class AvatarService extends BasicService {
   }
 
   async generateReflections() {
-    const avatars = (await this.services.avatarService.getActiveAvatars()).slice(0, 3);
+    const avatars = (await this.avatarService.getActiveAvatars()).slice(0, 3);
     if (avatars.length === 0) {
       this.logger.info('No active avatars found for reflection generation.');
       return;
@@ -53,7 +53,7 @@ export class AvatarService extends BasicService {
 
     await Promise.all(
       avatars.map(async (avatar) => {
-        await this.services.conversationManager.generateNarrative(avatar);
+        await this.conversationManager.generateNarrative(avatar);
       })
     );
     this.logger.info('Reflections generated for active avatars.');

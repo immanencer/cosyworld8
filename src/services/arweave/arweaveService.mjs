@@ -1,4 +1,4 @@
-import { BasicService } from "../basicService.mjs";
+import { BasicService } from '../foundation/basicService.mjs';
 import pkg from 'arweave';
 const { Arweave } = pkg;
 
@@ -6,6 +6,8 @@ const { Arweave } = pkg;
 export class ArweaveService extends BasicService {
     constructor(services) {
         super(services);
+        this.configService = services.configService;
+        this.databaseService = services.databaseService;
         this.arweave = null;
     }
     

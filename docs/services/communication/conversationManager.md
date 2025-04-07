@@ -15,8 +15,8 @@ The ConversationManager extends BasicService and requires several dependencies f
 
 ```javascript
 export class ConversationManager extends BasicService {
-  constructor(services) {
-    super(services, [
+  constructor(container) {
+    super(container, [
       'discordService',
       'avatarService',
       'aiService',

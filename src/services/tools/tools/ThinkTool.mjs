@@ -2,12 +2,16 @@ import { BasicTool } from '../BasicTool.mjs';
 
 export class ThinkTool extends BasicTool {
   constructor(services) {
-    super(services, [
-      'aiService',
-      'memoryService',
-      'discordService',
-      'mcpClientService',
-    ]);
+    super(services);
+
+    this.aiService = services.aiService;
+    this.memoryService = services.memoryService;
+    this.discordService = services.discordService;
+    this.mcpClientService = services.mcpClientService;
+    this.promptService = services.promptService;
+    this.databaseService = services.databaseService;
+
+
     this.name = 'think';
     this.description = 'Take a moment to reflect on a message or conversation, updating your thoughts and memories.';
     this.emoji = '💭';
@@ -112,7 +116,7 @@ export class ThinkTool extends BasicTool {
       const mcpMemory = await this.fetchMemoryFromMCP(avatar);
       let lastNarrative = '';
       try {
-        lastNarrative = (await this.services.promptService.getLastNarrative(avatar, this.services.databaseService.getDatabase()))?.content || '';
+        lastNarrative = (await this.promptService.getLastNarrative(avatar, this.databaseService.getDatabase()))?.content || '';
       } catch {}
 
       const reflectionPrompt = `Based on this conversation:\n${context}\n\nLatest narrative:\n${lastNarrative}\n\nAnd your current memory:\n${mcpMemory}\nYou are about to respond to the message: "${messageToRespondTo}". Reflect in detail on the context, think carefully about the conversation and analyze its meaning.`;

@@ -9,26 +9,21 @@ const statusCache = new Map(); // avatarId -> { timestamp, data }
 
 export class XSocialTool extends BasicTool {
     constructor(services) {
-        super(services, [
-            'avatarService',
-            'databaseService',
-            'aiService',
-            'memoryService',
-            'conversationManager',
-        ]);
+        super(services);
+        this.databaseService = services.databaseService;
+        this.avatarService = services.avatarService;
+        this.aiService = services.aiService;
+        this.memoryService = services.memoryService;
+        this.conversationManager = services.conversationManager;
+        this.promptService = services.promptService;
+        this.creationService = services.creationService;
+        
         this.replyNotification = true;
         this.emoji = '🐦';
         this.name = 'x';
         this.description = 'Manage X social interactions (post, reply, quote, follow, like, repost, block) using avatar context.';
     }
 
-    async getMongoClient() {
-        if (!mongoClient) {
-            mongoClient = new MongoClient(process.env.MONGO_URI);
-            await mongoClient.connect();
-        }
-        return mongoClient;
-    }
 
     async refreshAccessToken(db, auth) {
         const client = new TwitterApi({ clientId: process.env.X_CLIENT_ID, clientSecret: process.env.X_CLIENT_SECRET });
@@ -42,8 +37,7 @@ export class XSocialTool extends BasicTool {
     }
 
     async isAuthorized(avatar) {
-        const client = await this.getMongoClient();
-        const db = client.db(process.env.MONGO_DB_NAME);
+        const db = this.databaseService.getDatabase();
         const auth = await db.collection('x_auth').findOne({ avatarId: avatar._id.toString() });
         if (!auth?.accessToken) return false;
         if (new Date() >= new Date(auth.expiresAt) && auth.refreshToken) {
@@ -115,7 +109,7 @@ export class XSocialTool extends BasicTool {
 
     async generateSocialActions(avatar, context, timeline, notifications, userId) {
         const memories = await this.memoryService.getMemories(avatar._id, 20);
-        const systemPrompt = await this.services.promptService.getBasicSystemPrompt(avatar);
+        const systemPrompt = await this.promptService.getBasicSystemPrompt(avatar);
 
         const prompt = `
 ${systemPrompt}
@@ -174,7 +168,7 @@ Only output the JSON object, no commentary.`.trim();
             }
         };
 
-        const actions = await this.services.creationService.executePipeline({
+        const actions = await this.creationService.executePipeline({
             prompt,
             schema
         });

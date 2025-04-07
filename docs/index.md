@@ -17,6 +17,10 @@ Welcome to the CosyWorld developer hub. This guide covers everything from high-l
 - [Intelligence System](systems/05-intelligence-system.md)
 
 ### Services
+- **Core Infrastructure**
+  - [Service Container](services/core/container.md)
+  - [Service Registry](services/core/serviceRegistry.md)
+  - [Service Initializer](services/core/serviceInitializer.md)
 - **Foundation**
   - [Basic Service](services/foundation/basicService.md)
   - [Database Service](services/foundation/databaseService.md)
@@ -33,20 +37,19 @@ Welcome to the CosyWorld developer hub. This guide covers everything from high-l
   - [Avatar Service](services/entity/avatarService.md)
   - [Memory Service](services/entity/memoryService.md)
   - [Creation Service](services/entity/creationService.md)
-- **Communication**
-  - [Conversation Manager](services/communication/conversationManager.md)
-  - [Channel Manager](services/communication/channelManager.md)
-  - [Message Handler](services/communication/messageHandler.md)
-  - [Decision Maker](services/communication/decisionMaker.md)
-  - [Scheduling Service](services/communication/schedulingService.md)
-  - [Command Handler](services/communication/commandHandler.md)
-  - [Spam Control](services/communication/spamControlService.md)
+- **Chat**
+  - [Conversation Manager](services/chat/conversationManager.md)
+  - [Channel Manager](services/chat/channelManager.md)
+  - [Message Handler](services/chat/messageHandler.md)
+  - [Decision Maker](services/chat/decisionMaker.md)
+  - [Command Handler](services/commands/commandHandler.md)
+- **Scheduling**
+  - [Scheduler Service](services/scheduler/scheduler.md)
 - **World Services**
   - [Location Service](services/world/locationService.md)
   - [Map Service](services/world/mapService.md)
   - [Item Service](services/world/itemService.md)
   - [Quest Generator](services/world/questGeneratorService.md)
-  - [Quest Service](services/world/questService.md)
 - **Tool System**
   - [Tool Service](services/tools/toolService.md)
   - [Basic Tool](services/tools/basicTool.md)
@@ -54,7 +57,7 @@ Welcome to the CosyWorld developer hub. This guide covers everything from high-l
   - [Tool Implementations](services/tools/implementations.md)
 - **Media Services**
   - [Image Processing](services/media/imageProcessingService.md)
-  - [S3 Storage](services/media/s3Service.md)
+  - [S3 Storage](services/s3/s3Service.md)
 - **Web Services**
   - [Web API](services/web/webService.md)
   - [Auth](services/web/authService.md)
@@ -67,6 +70,10 @@ Welcome to the CosyWorld developer hub. This guide covers everything from high-l
   - [Token Service](services/blockchain/tokenService.md)
   - [NFT Minting](services/blockchain/nftMintService.md)
   - [Crossmint](services/blockchain/crossmintService.md)
+- **Security**
+  - [Key Service](services/security/keyService.md)
+  - [Risk Manager](services/security/riskManagerService.md)
+  - [Spam Control](services/security/spamControlService.md)
 
 ### Deployment
 - [Deployment Guide](deployment/07-deployment.md)
@@ -86,7 +93,7 @@ Generate the HTML docs with:
 npm run docs
 ```
 
-Output is in `docs/build`.
+Output is in `dist/docs`.
 
 ---
 

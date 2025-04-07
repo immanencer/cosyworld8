@@ -1,10 +1,9 @@
 // aiService.mjs
-
 import { GoogleAIService } from "./googleAIService.mjs";
 import { OpenRouterAIService } from "./openrouterAIService.mjs";
 import { OllamaService } from "./ollamaService.mjs";
 
-let AIService;
+let AIService = OpenRouterAIService;
 
 switch (process.env.AI_SERVICE) {
     case 'google':

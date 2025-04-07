@@ -1,6 +1,6 @@
 
 import express from 'express';
-import { TokenService } from '../../../tokenService.mjs';
+import { TokenService } from '../../../blockchain/tokenService.mjs';
 import { ObjectId } from 'mongodb';
 import { processImage } from '../../../utils/processImage.mjs';
 import { PublicKey } from '@solana/web3.js';

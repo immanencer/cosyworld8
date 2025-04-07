@@ -3,18 +3,16 @@ import { BasicService } from '../foundation/basicService.mjs';
 import { toObjectId } from '../utils/toObjectId.mjs';
 
 export class MapService extends BasicService {
-  /**
-   * Constructs a new MapService instance for managing dungeon state.
-   * @param {Object} services - Service instances to manage.
-   **/
   constructor(services) {
-    super(services, [
-      'discordService',
-      'databaseService',
-      'configService',
-      'aiService',
-    ]);
-    this.client = this.discordService.client;
+    super(services);
+
+    this.databaseService = services.databaseService;
+    this.configService = services.configService;
+    this.discordService = services.discordService;
+    this.locationService = services.locationService;
+    
+    
+    this.client = this.discordService?.client;
     this.db = this.databaseService.getDatabase();
     const mongoConfig = this.configService.config.mongo;
 
@@ -179,7 +177,7 @@ export class MapService extends BasicService {
     const db = this.ensureDb();
 
     // Fetch location details
-    const location = await this.services.locationService?.getLocationByChannelId(locationId);
+    const location = await this.locationService.getLocationByChannelId(locationId);
     if (!location) {
       throw new Error(`Location with ID "${locationId}" not found.`);
     }
