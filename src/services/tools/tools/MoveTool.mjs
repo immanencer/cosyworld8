@@ -151,6 +151,9 @@ export class MoveTool extends BasicTool {
         return `Failed to move: Avatar location update failed.`
       }
 
+      // Ensure avatar's position is updated in the mapService
+      await this.mapService.updateAvatarPosition(updatedAvatar, newLocation.channel.id, currentLocationId);
+
       // 6. Send a mini card to the departure channel if we have one
       if (currentLocationId) {
         try {

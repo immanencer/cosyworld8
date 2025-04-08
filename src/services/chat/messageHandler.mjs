@@ -1,5 +1,6 @@
 import { BasicService } from "../foundation/basicService.mjs";
 import { handleCommands } from "../commands/commandHandler.mjs";
+
 /**
  * Handles Discord messages by processing commands, managing avatars, generating responses,
  * and performing structured content moderation.
@@ -227,12 +228,16 @@ export class MessageHandler extends BasicService {
         return;
       }
       const allAvatars = await this.avatarService.getAvatarsInChannel(channelId);
+      if (!allAvatars || allAvatars.length === 0) {
+        this.logger.debug(`No avatars found in channel ${channelId}.`);
+        return;
+      }
       const avatarsToConsider = this.decisionMaker.selectAvatarsToConsider(
         allAvatars,
         message
-      );
+      ).slice(0, 5);
       await Promise.all(
-        avatarsToConsider.slice(0, Math.floor(Math.random(2,6))).map(async (avatar) => {
+        avatarsToConsider.map(async (avatar) => {
           const shouldRespond = await this.decisionMaker.shouldRespond(channel, avatar, message);
           if (shouldRespond) {
             await this.conversationManager.sendResponse(channel, avatar);

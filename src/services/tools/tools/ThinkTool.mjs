@@ -11,7 +11,6 @@ export class ThinkTool extends BasicTool {
     this.promptService = services.promptService;
     this.databaseService = services.databaseService;
 
-
     this.name = 'think';
     this.description = 'Take a moment to reflect on a message or conversation, updating your thoughts and memories.';
     this.emoji = '💭';
@@ -32,13 +31,12 @@ export class ThinkTool extends BasicTool {
 
   async fetchMemoryFromMCP(avatar) {
     try {
-      const client = this.mcpClientService?.clients?.get('memory');
-      if (!client) return '';
-      const result = await client.callTool({
+      const tools = this.mcpClientService.getTools('memory');
+      if (!tools.find(t => t.name === 'open_nodes')) return '';
+      const entityName = avatar._id.toString();
+      const result = await this.mcpClientService.callTool('memory', {
         name: 'open_nodes',
-        arguments: {
-          names: [avatar.name.replace(/\s+/g, '_')]
-        }
+        arguments: { names: [entityName] }
       });
       const entities = result?.entities || [];
       const observations = entities.flatMap(e => e.observations || []);
@@ -51,23 +49,20 @@ export class ThinkTool extends BasicTool {
 
   async storeReflectionInMCP(avatar, reflection) {
     try {
-      const client = this.mcpClientService?.clients?.get('memory');
-      if (!client) return;
-      const entityName = avatar.name.replace(/\s+/g, '_');
+      const entityName = avatar._id.toString();
+      const tools = this.mcpClientService.getTools('memory');
+      if (!tools.find(t => t.name === 'add_observations')) return;
       try {
-        await client.callTool({
+        await this.mcpClientService.callTool('memory', {
           name: 'add_observations',
           arguments: {
-            observations: [{
-              entityName,
-              contents: [reflection]
-            }]
+            observations: [{ entityName, contents: [reflection] }]
           }
         });
       } catch (err) {
-        if (err.message?.includes('not found')) {
+        if (err.message?.includes('not found') && tools.find(t => t.name === 'create_entities')) {
           this.logger?.warn(`MCP entity ${entityName} not found. Creating entity.`);
-          await client.callTool({
+          await this.mcpClientService.callTool('memory', {
             name: 'create_entities',
             arguments: {
               entities: [{
@@ -81,14 +76,10 @@ export class ThinkTool extends BasicTool {
               }]
             }
           });
-          // Retry adding observation
-          await client.callTool({
+          await this.mcpClientService.callTool('memory', {
             name: 'add_observations',
             arguments: {
-              observations: [{
-                entityName,
-                contents: [reflection]
-              }]
+              observations: [{ entityName, contents: [reflection] }]
             }
           });
         } else {

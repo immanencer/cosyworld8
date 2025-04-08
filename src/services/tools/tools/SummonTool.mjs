@@ -89,13 +89,13 @@ export class SummonTool extends BasicTool {
           this.logger.info(`Avatar ${existingAvatar.name} (${existingAvatar._id}) has no imageUrl. Generating new image.`);
           const newImageUrl = await this.avatarService.generateAvatarImage(existingAvatar.description);
           existingAvatar.imageUrl = newImageUrl;
-          await this.avatarService.updateAvatar(existingAvatar);
         }
+        await this.mapService.updateAvatarPosition(existingAvatar, message.channel.id);
+        await this.avatarService.updateAvatar(existingAvatar);
+
         await this.discordService.reactToMessage(message, existingAvatar.emoji || '🔮');
         setTimeout(async () => {
-          await this.discordService.sendMiniAvatarEmbed(existingAvatar, message.channel.id, this.aiService);
-          // Ensure avatar has correct channelId before response
-          existingAvatar.channelId = message.channel.id;
+          await this.discordService.sendMiniAvatarEmbed(existingAvatar, message.channel.id);
           await this.conversationManager.sendResponse(message.channel, existingAvatar);
         }, 1000);
         return `-# ${this.emoji} [ ${existingAvatar.name} has been summoned to this location. ]`;
@@ -137,6 +137,9 @@ export class SummonTool extends BasicTool {
       const createdAvatar = await this.avatarService.createAvatar(avatarData);
       createdAvatar.stats = stats;
       createdAvatar.createdAt = creationDate;
+      createdAvatar.channelId = message.channel.id;
+      await this.avatarService.updateAvatar(createdAvatar);
+
       if (!createdAvatar || !createdAvatar.name) {
         await this.discordService.replyToMessage(message, 'Failed to create avatar. Try a more detailed description.');
         return '-# [ Failed to create avatar. The description may be too vague. ]';
@@ -158,6 +161,9 @@ export class SummonTool extends BasicTool {
 
       // Initialize avatar and react
       await this.avatarService.initializeAvatar(createdAvatar, message.channel.id);
+
+      // Ensure avatar's position is updated in the mapService
+      await this.mapService.updateAvatarPosition(createdAvatar, message.channel.id);
 
       // Track summon if not breeding
       if (!breed) await this.trackSummon(message.author.id);

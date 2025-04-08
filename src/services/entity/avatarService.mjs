@@ -43,6 +43,9 @@ export class AvatarService extends BasicService {
       },
       5 * 60 * 1000 // every 5 minutes
     );
+
+    this.generateReflections();
+    this.logger.info('AvatarService initialized');
   }
 
   async generateReflections() {

@@ -8,7 +8,7 @@ import {
 import { chunkMessage } from '../utils/messageChunker.mjs';
 import { processMessageLinks } from '../utils/linkProcessor.mjs';
 import models from '../ai/models.config.mjs';
-import { buildMiniAvatarEmbed, buildFullAvatarEmbed, buildMiniLocationEmbed } from './discordEmbedLibrary.mjs';
+import { buildMiniAvatarEmbed, buildFullAvatarEmbed, buildMiniLocationEmbed, buildFullItemEmbed, buildFullLocationEmbed } from './discordEmbedLibrary.mjs';
 
 export class DiscordService {
   constructor(services) {
@@ -70,6 +70,46 @@ export class DiscordService {
         await this.db.collection('connected_guilds').deleteOne({ id: guild.id });
       } catch (error) {
         this.logger.error(`Failed to remove guild ${guild.id} from database: ${error.message}`);
+      }
+    });
+
+    this.client.on('interactionCreate', async interaction => {
+      try {
+        if (!interaction.isButton()) return;
+        const { customId } = interaction;
+        if (!customId.startsWith('view_full_')) return;
+
+        await interaction.deferReply({ ephemeral: true });
+
+        const parts = customId.split('_');
+        const type = parts[2];
+        const id = parts.slice(3).join('_');
+
+        let embedData;
+        if (type === 'avatar') {
+          const avatar = await this.db.collection('avatars').findOne({ _id: id });
+          if (!avatar) return interaction.editReply('Avatar not found.');
+          embedData = buildFullAvatarEmbed(avatar);
+        } else if (type === 'item') {
+          const item = await this.db.collection('items').findOne({ _id: id });
+          if (!item) return interaction.editReply('Item not found.');
+          embedData = buildFullItemEmbed(item);
+        } else if (type === 'location') {
+          const location = await this.db.collection('locations').findOne({ _id: id });
+          if (!location) return interaction.editReply('Location not found.');
+          embedData = buildFullLocationEmbed(location);
+        } else {
+          return interaction.editReply('Unknown profile type.');
+        }
+
+        await interaction.editReply({ embeds: [embedData.embed], components: embedData.components || [] });
+      } catch (error) {
+        this.logger.error('Interaction handler error: ' + error.message);
+        if (interaction.deferred || interaction.replied) {
+          await interaction.editReply('Failed to load profile.');
+        } else {
+          await interaction.reply({ content: 'Failed to load profile.', ephemeral: true });
+        }
       }
     });
   }

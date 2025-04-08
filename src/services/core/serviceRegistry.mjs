@@ -24,6 +24,7 @@ import { MCPClientService } from '../mcp/MCPClientService.mjs';
 import { RiskManagerService } from '../security/riskManagerService.mjs';
 import { ImageProcessingService } from '../media/imageProcessingService.mjs';
 import { ModerationService } from '../security/moderationService.mjs';
+import { channel } from 'node:diagnostics_channel';
 
 // Infrastructure layer
 const infrastructure = {};
@@ -42,7 +43,9 @@ await infrastructure.databaseService.connect();
 infrastructure.configService.db = infrastructure.databaseService.getDatabase();
 infrastructure.configService.databaseService = infrastructure.databaseService;
 
-infrastructure.schedulingService = new SchedulingService({ logger: infrastructure.logger });
+infrastructure.schedulingService = new SchedulingService({ 
+  logger: infrastructure.logger
+});
 
 infrastructure.s3Service = new S3Service({
   logger: infrastructure.logger,

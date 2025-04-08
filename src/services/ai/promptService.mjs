@@ -41,7 +41,7 @@ You are ${avatar.name}.
 ${avatar.personality}
 ${avatar.dynamicPersonality}
 ${lastNarrative ? lastNarrative.content : ''}
-Location: ${location.name || 'Unknown'} - ${location.description || 'No description available'}
+Location: ${location.name} - ${location.description}
   `.trim();
   }
 

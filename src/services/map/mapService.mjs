@@ -111,21 +111,25 @@ export class MapService extends BasicService {
   }
 
   async updateAvatarPosition(currentAvatar, newLocationId, previousLocationId = null, sendProfile = false) {
+    
     const db = this.ensureDb();
     const session = await this.db.client.startSession();
-
+    
     if (!currentAvatar._id) {
       throw new Error('Current avatar has no ID');
     }
 
-    try {
-      const actualPreviousLocationId = previousLocationId || currentAvatar?.channelId;
+    try {    
 
-      if (actualPreviousLocationId === newLocationId) return currentAvatar;
+      const positions = db.collection('dungeon_positions');
+      
+      const actualPreviousLocationId = (await positions.findOne(
+        { avatarId: currentAvatar._id },
+        { projection: { locationId: 1 } }
+      ));
 
-      this.logger.info(`Moving avatar ${currentAvatar._id} from ${actualPreviousLocationId || 'unknown'} to ${newLocationId}`);
       await session.withTransaction(async () => {
-        await db.collection('dungeon_positions').updateOne(
+        await positions.updateOne(
           { avatarId: currentAvatar._id },
           { $set: { locationId: newLocationId, lastMoved: new Date() } },
           { upsert: true, session }
@@ -158,6 +162,29 @@ export class MapService extends BasicService {
       throw error;
     } finally {
       await session.endSession();
+    }
+  }
+
+  async getAvatarPosition(avatarId) {
+    // First check if the avatar is in the cache
+    let avatarPosition = this.client.avatarPositionsCache.get(avatarId);
+    if (avatarPosition) {
+      return avatarPosition;
+    }
+    // If not in cache, fetch from the database
+    const db = this.ensureDb();
+    const objectId = toObjectId(avatarId);
+    avatarPosition = await db.collection(this.DUNGEON_POSITIONS_COLLECTION).findOne({ avatarId: objectId });
+
+    // if not in DUNGONE_POSITIONS_COLLECTION, check in AVATARS_COLLECTION[channelId]
+    if (!avatarPosition) {
+      const avatar = await db.collection(this.AVATARS_COLLECTION).findOne({ _id: objectId });
+      if (avatar) {
+        avatarPosition = {
+          locationId: avatar.channelId,
+          avatarId: objectId,
+        };
+      }
     }
   }
 

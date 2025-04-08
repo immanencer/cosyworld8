@@ -27,8 +27,9 @@ export class ChannelManager extends BasicService {
           this.logger.warn(`[ChannelManager] Error in ambient response task: ${err.message}`);
         }
       },
-      60 * 60 * 1000 // every 60 seconds
+      60 * 60 * 1000 // every hour
     );
+    this.triggerAmbientResponses();
   }
 
   async triggerAmbientResponses() {

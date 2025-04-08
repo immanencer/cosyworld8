@@ -2,19 +2,15 @@ import { BasicService } from '../foundation/basicService.mjs';
 
 export class MemoryService extends BasicService {
   constructor(services) {
- 
     super(services);
     this.logger = services.logger;
     this.mcpClientService = services.mcpClientService;
     this.creationService = services.creationService;
     this.databaseService = services.databaseService;
     this.discordService = services.discordService;
-
-
     this.db = this.databaseService.getDatabase();
     this.client = this.discordService.client;
-    
-    this.lastEntitySync = new Map(); // avatarId -> timestamp
+    this.lastEntitySync = new Map();
   }
 
   async addMemory(avatarId, memory) {
@@ -63,14 +59,15 @@ export class MemoryService extends BasicService {
             required: ['entities']
           };
 
-          const entities = await this.creationService.executePipeline({
+          const entitiesResult = await this.creationService.executePipeline({
             prompt: `${entityPrompt}\n\n${combinedText}`,
             schema
           });
 
-          const client = this.mcpClientService?.clients?.get('memory');
-          if (client && Array.isArray(entities) && entities.length > 0) {
-            await client.callTool({
+          const entities = entitiesResult?.entities || [];
+          const tools = this.mcpClientService.getTools('memory');
+          if (tools.find(t => t.name === 'create_entities') && Array.isArray(entities) && entities.length > 0) {
+            await this.mcpClientService.callTool('memory', {
               name: 'create_entities',
               arguments: { entities }
             });
@@ -136,9 +133,9 @@ export class MemoryService extends BasicService {
 
   async queryKnowledgeGraph(avatarId) {
     try {
-      const client = this.mcpClientService?.clients?.get('memory');
-      if (!client) return '';
-      const response = await client.callTool({
+      const tools = this.mcpClientService.getTools('memory');
+      if (!tools.find(t => t.name === 'query_observations')) return '';
+      const response = await this.mcpClientService.callTool('memory', {
         name: 'query_observations',
         arguments: {
           entityName: avatarId.toString(),
@@ -178,9 +175,9 @@ export class MemoryService extends BasicService {
         schema
       });
 
-      const client = this.mcpClientService?.clients?.get('memory');
-      if (client && Array.isArray(entities) && entities.length > 0) {
-        await client.callTool({
+      const tools = this.mcpClientService.getTools('memory');
+      if (tools.find(t => t.name === 'create_entities') && Array.isArray(entities) && entities.length > 0) {
+        await this.mcpClientService.callTool('memory', {
           name: 'create_entities',
           arguments: { entities }
         });

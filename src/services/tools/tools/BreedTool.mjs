@@ -16,6 +16,7 @@ export class BreedTool extends BasicTool {
     this.description = 'Breeds two avatars together';
     this.emoji = '🏹';
     this.replyNotification = true;
+    this.cooldownMs = 10 * 1000; // 1 minute cooldown
   }
 
   getDescription() {

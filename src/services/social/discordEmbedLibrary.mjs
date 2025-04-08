@@ -2,9 +2,16 @@ import { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } from 'disc
 
 function splitDescription(text) {
   if (!text) return { firstSentence: '', rest: '' };
-  const match = text.match(/([^.!?]+[.!?])\s*(.*)/s);
-  if (!match) return { firstSentence: text, rest: '' };
-  return { firstSentence: match[1].trim(), rest: match[2].trim() };
+
+  // Match the first sentence considering ellipses, multiple punctuation, and trailing quotes/parens
+  const match = text.match(/([\s\S]*?[.!?]+(?:\.{2,}|[!?]+)?(?:['"”’)]*)\s*)([\s\S]*)/);
+
+  if (!match) return { firstSentence: text.trim(), rest: '' };
+
+  return {
+    firstSentence: match[1].trim(),
+    rest: match[2].trim()
+  };
 }
 
 function buildViewButton(url, label = 'View Details') {
@@ -13,6 +20,16 @@ function buildViewButton(url, label = 'View Details') {
       .setLabel(label)
       .setStyle(ButtonStyle.Link)
       .setURL(url)
+  );
+}
+
+function buildProfileTriggerButton(id, label = 'View Full Profile', type = 'avatar') {
+  const prefix = ['avatar', 'item', 'location'].includes(type) ? type : 'avatar';
+  return new ActionRowBuilder().addComponents(
+    new ButtonBuilder()
+      .setCustomId(`view_full_${prefix}_${id}`)
+      .setLabel(label)
+      .setStyle(ButtonStyle.Primary)
   );
 }
 
@@ -35,8 +52,7 @@ export function buildMiniAvatarEmbed(avatar, message = '') {
     .setThumbnail(avatar.imageUrl)
     .setFooter({ text: 'Movement Update', iconURL: avatar.imageUrl });
 
-  const url = `${process.env.BASE_URL}/avatar.html?id=${avatar._id}`;
-  const button = buildViewButton(url);
+  const button = buildProfileTriggerButton(avatar._id);
   return { embed, components: [button] };
 }
 
@@ -134,9 +150,7 @@ export function buildMiniLocationEmbed(location) {
     .setImage(location.imageUrl)
     .setFooter({ text: 'Location Info' });
 
-
-  const url = `${process.env.BASE_URL}/location.html?id=${location._id}`;
-  const button = buildViewButton(url);
+  const button = buildProfileTriggerButton(location._id, 'View Full Location', 'location');
   return { embed, components: [button] };
 }
 
@@ -184,8 +198,7 @@ export function buildMiniItemEmbed(item) {
     .setDescription(firstSentence)
     .setFooter({ text: 'Item Info' });
 
-  const url = `${process.env.BASE_URL}/item.html?id=${item._id}`;
-  const button = buildViewButton(url);
+  const button = buildProfileTriggerButton(item._id, 'View Full Item', 'item');
   return { embed, components: [button] };
 }
 

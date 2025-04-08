@@ -36,18 +36,13 @@ export class RememberTool extends BasicTool {
 
   async storeMemoryInMCP(avatar, memoryText) {
     try {
-      const client = this.mcpClientService?.clients?.get('memory');
-      if (!client) {
-        this.logger?.warn('No MCP memory server connected');
-        return;
-      }
-      await client.callTool({
+      const tools = this.mcpClientService.getTools('memory');
+      if (!tools.find(t => t.name === 'add_observations')) return;
+      const entityName = avatar._id.toString();
+      await this.mcpClientService.callTool('memory', {
         name: 'add_observations',
         arguments: {
-          observations: [{
-            entityName: avatar.name.replace(/\s+/g, '_'),
-            contents: [memoryText]
-          }]
+          observations: [{ entityName, contents: [memoryText] }]
         }
       });
     } catch (err) {

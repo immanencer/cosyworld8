@@ -28,30 +28,6 @@ export class SchedulingService extends BasicService {
   /** Starts all periodic tasks. */
   start() {
     this.logger.info('[SchedulingService] Starting scheduled tasks');
-
-    this.addTask(
-      'ambientResponses',
-      async () => {
-        try {
-          await this.channelManager.triggerAmbientResponses();
-        } catch (err) {
-          this.logger.warn(`[SchedulingService] Ambient response error: ${err.message}`);
-        }
-      },
-      30 * 60 * 1000 // every 60 seconds
-    );
-
-    this.addTask(
-      'generateReflections',
-      async () => {
-        try {
-          await this.avatarService.generateReflections();
-        } catch (err) {
-          this.logger.warn(`[SchedulingService] Reflection generation error: ${err.message}`);
-        }
-      },
-      60 * 60 * 1000 // every 5 minutes
-    );
   }
 
   /** Stops all periodic tasks. */
