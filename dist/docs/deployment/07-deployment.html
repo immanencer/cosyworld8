@@ -1,0 +1,143 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CosyWorld Deployment Guide - CosyWorld Documentation</title>
+  <!-- Mermaid script for diagram rendering -->
+  <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      mermaid.initialize({ 
+        startOnLoad: true,
+        theme: 'dark',
+        securityLevel: 'loose'
+      });
+    });
+  </script>
+  <style>
+    body { 
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; 
+      line-height: 1.6;
+      color: #333;
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 1rem;
+      display: flex;
+    }
+    nav {
+      width: 250px;
+      padding-right: 2rem;
+      flex-shrink: 0;
+    }
+    main {
+      flex-grow: 1;
+    }
+    code {
+      background: #f5f5f5;
+      padding: 0.2em 0.4em;
+      border-radius: 3px;
+      font-family: SFMono-Regular, Consolas, Liberation Mono, Menlo, monospace;
+      font-size: 85%;
+    }
+    pre {
+      background: #f5f5f5;
+      padding: 1rem;
+      border-radius: 5px;
+      overflow: auto;
+    }
+    pre code {
+      background: none;
+      padding: 0;
+    }
+    a { color: #0366d6; text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    h1, h2, h3, h4 { margin-top: 1.5em; margin-bottom: 0.5em; }
+    h1 { border-bottom: 1px solid #eaecef; padding-bottom: 0.3em; }
+    nav ul { list-style-type: none; padding-left: 1.2em; }
+    nav > ul { padding-left: 0; }
+    .section-title { 
+      font-weight: bold; 
+      margin-top: 1em;
+      color: #24292e;
+    }
+    /* Mermaid diagram styling */
+    .mermaid {
+      margin: 1rem 0;
+    }
+  </style>
+</head>
+<body>
+  <nav><ul><li><a href="../index.html">Home</a></li><li><span class="section-title">Overview</span><ul><li><a href="../overview/03-system-diagram.html">System Diagram</a></li><li><a href="../overview/02-system-overview.html">CosyWorld System Overview</a></li><li><a href="../overview/01-introduction.html">CosyWorld Introduction</a></li></ul></li><li><span class="section-title">Systems</span><ul><li><a href="../systems/06-rati-avatar-system.html">RATi Avatar System</a></li><li><a href="../systems/05-intelligence-system.html">Intelligence System</a></li><li><a href="../systems/04-action-system.html">Action System</a></li></ul></li><li><span class="section-title">Services</span><ul><li><a href="../services/x-authentication.html">X (Twitter) Authentication and Integration</a></li><li><a href="../services/architecture-report.html">CosyWorld Architecture Report</a></li><li><span class="section-title">World</span><ul><li><a href="../services/world/questGeneratorService.html">Quest Generator Service</a></li><li><a href="../services/world/locationService.html">Location Service</a></li><li><a href="../services/world/itemService.html">Item Service</a></li></ul></li><li><span class="section-title">Web</span><ul><li><a href="../services/web/webService.html">Web Service</a></li></ul></li><li><span class="section-title">Tools</span><ul><li><a href="../services/tools/toolService.html">Tool Service</a></li></ul></li><li><span class="section-title">Social</span><ul><li><a href="../services/social/x-integration.html">X (Twitter) Integration</a></li><li><a href="../services/social/telegram-integration.html">Telegram Integration (Coming Soon)</a></li><li><a href="../services/social/discord-integration.html">Discord Integration</a></li></ul></li><li><span class="section-title">Scheduler</span><ul><li><a href="../services/scheduler/scheduler.html">Scheduling Service</a></li></ul></li><li><span class="section-title">S3</span><ul><li><a href="../services/s3/s3Service.html">S3 Service</a></li></ul></li><li><span class="section-title">Quest</span><ul><li><a href="../services/quest/questGeneratorService.html">Quest Generator Service</a></li></ul></li><li><span class="section-title">Media</span><ul><li><a href="../services/media/s3Service.html">S3 Service</a></li><li><a href="../services/media/imageProcessingService.html">Image Processing Service</a></li></ul></li><li><span class="section-title">Location</span><ul><li><a href="../services/location/locationService.html">Location Service</a></li></ul></li><li><span class="section-title">Item</span><ul><li><a href="../services/item/itemService.html">Item Service</a></li></ul></li><li><span class="section-title">Integration</span><ul><li><a href="../services/integration/x-authentication.html">X (Twitter) Authentication and Integration</a></li></ul></li><li><span class="section-title">Foundation</span><ul><li><a href="../services/foundation/logger.html">Logger Service</a></li><li><a href="../services/foundation/databaseService.html">Database Service</a></li><li><a href="../services/foundation/configService.html">Config Service</a></li><li><a href="../services/foundation/basicService.html">Basic Service</a></li></ul></li><li><span class="section-title">Entity</span><ul><li><a href="../services/entity/memoryService.html">Memory Service</a></li><li><a href="../services/entity/avatarService.html">Avatar Service</a></li></ul></li><li><span class="section-title">Core</span><ul><li><a href="../services/core/serviceRegistry.html">Service Registry</a></li><li><a href="../services/core/serviceInitializer.html">Service Initializer</a></li><li><a href="../services/core/promptService.html">Prompt Service</a></li><li><a href="../services/core/memoryService.html">Memory Service</a></li><li><a href="../services/core/databaseService.html">Database Service</a></li><li><a href="../services/core/container.html">Service Container</a></li><li><a href="../services/core/basicService.html">Basic Service</a></li><li><a href="../services/core/avatarService.html">Avatar Service</a></li><li><a href="../services/core/aiService.html">AI Service</a></li></ul></li><li><span class="section-title">Communication</span><ul><li><a href="../services/communication/conversationManager.html">Conversation Manager</a></li></ul></li><li><span class="section-title">Chat</span><ul><li><a href="../services/chat/conversationManager.html">Conversation Manager</a></li></ul></li><li><span class="section-title">Blockchain</span><ul><li><a href="../services/blockchain/tokenService.html">Token Service</a></li></ul></li><li><span class="section-title">Ai</span><ul><li><a href="../services/ai/replicateService.html">Replicate Service</a></li><li><a href="../services/ai/promptService.html">Prompt Service</a></li><li><a href="../services/ai/openrouterAIService.html">OpenRouter AI Service</a></li><li><a href="../services/ai/ollamaService.html">Ollama Service</a></li><li><a href="../services/ai/googleAIService.html">Google AI Service</a></li><li><a href="../services/ai/aiService.html">AI Service</a></li></ul></li></ul></li><li><span class="section-title">Deployment</span><ul><li><a href="../deployment/08-future-work.html">Future Work Priorities</a></li><li><a href="../deployment/07-deployment.html">CosyWorld Deployment Guide</a></li></ul></li></ul></nav>
+  <main><h1>CosyWorld Deployment Guide</h1>
+<hr>
+<h2>Environment Variables</h2>
+<p>Create a <code>.env</code> file with:</p>
+<ul>
+<li><strong>Core:</strong> <code>NODE_ENV</code>, <code>API_URL</code>, <code>PUBLIC_URL</code></li>
+<li><strong>Database:</strong> <code>MONGO_URI</code>, <code>MONGO_DB_NAME</code></li>
+<li><strong>AI:</strong> <code>OPENROUTER_API_TOKEN</code>, <code>REPLICATE_API_TOKEN</code>, <code>GOOGLE_AI_API_KEY</code></li>
+<li><strong>Storage:</strong> <code>S3_API_ENDPOINT</code>, <code>S3_API_KEY</code>, <code>S3_API_SECRET</code>, <code>CLOUDFRONT_DOMAIN</code></li>
+<li><strong>Discord:</strong> <code>DISCORD_BOT_TOKEN</code></li>
+<li><strong>Performance:</strong> <code>MEMORY_CACHE_SIZE</code>, <code>MAX_CONCURRENT_REQUESTS</code></li>
+</ul>
+<hr>
+<h2>Database Setup</h2>
+<ul>
+<li>Use MongoDB 4.4+</li>
+<li>Collections: <code>avatars</code>, <code>dungeon_stats</code>, <code>dungeon_log</code>, <code>narratives</code>, <code>memories</code>, <code>messages</code>, <code>locations</code>, <code>items</code></li>
+<li>Indexes:</li>
+</ul>
+<pre><code class="language-js">db.avatars.createIndex({ avatarId: 1 }, { unique: true })
+db.memories.createIndex({ avatarId: 1, timestamp: -1 })
+db.messages.createIndex({ channelId: 1, timestamp: -1 })
+db.messages.createIndex({ messageId: 1 }, { unique: true })
+</code></pre>
+<hr>
+<h2>Server Requirements</h2>
+<ul>
+<li>Node.js 18+ LTS</li>
+<li>4+ CPU cores, 8GB+ RAM, 50GB+ SSD</li>
+<li>Set memory limit:</li>
+</ul>
+<pre><code class="language-bash">NODE_OPTIONS=&quot;--max-old-space-size=4096&quot;
+</code></pre>
+<hr>
+<h2>Production Setup</h2>
+<ul>
+<li>Use <strong>Nginx</strong> as reverse proxy</li>
+<li>Use <strong>systemd</strong> for service management</li>
+<li>Example configs in <code>/config/</code></li>
+</ul>
+<hr>
+<h2>Rate Limits</h2>
+<ul>
+<li>AI calls: 5 per avatar/min</li>
+<li>Image gen: 2 per avatar/hour</li>
+<li>Avatar creation: 3 per user/day</li>
+</ul>
+<hr>
+<h2>Monitoring</h2>
+<ul>
+<li>Logs: <code>/logs/</code> (rotated daily, 7-day retention)</li>
+<li>Health endpoints: <code>/health</code>, <code>/health/ai</code>, <code>/health/db</code></li>
+</ul>
+<hr>
+<h2>Backups</h2>
+<ul>
+<li>MongoDB dumps daily</li>
+<li><code>.env</code> backups</li>
+<li>Automate with cron</li>
+</ul>
+<hr>
+<h2>Scaling Tips</h2>
+<ul>
+<li>MongoDB replication</li>
+<li>Multiple app instances + load balancer</li>
+<li>Redis cache</li>
+<li>Containerize with Docker/Kubernetes</li>
+</ul>
+</main>
+</body>
+</html>

@@ -1,0 +1,199 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Replicate Service - CosyWorld Documentation</title>
+  <!-- Mermaid script for diagram rendering -->
+  <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      mermaid.initialize({ 
+        startOnLoad: true,
+        theme: 'dark',
+        securityLevel: 'loose'
+      });
+    });
+  </script>
+  <style>
+    body { 
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; 
+      line-height: 1.6;
+      color: #333;
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 1rem;
+      display: flex;
+    }
+    nav {
+      width: 250px;
+      padding-right: 2rem;
+      flex-shrink: 0;
+    }
+    main {
+      flex-grow: 1;
+    }
+    code {
+      background: #f5f5f5;
+      padding: 0.2em 0.4em;
+      border-radius: 3px;
+      font-family: SFMono-Regular, Consolas, Liberation Mono, Menlo, monospace;
+      font-size: 85%;
+    }
+    pre {
+      background: #f5f5f5;
+      padding: 1rem;
+      border-radius: 5px;
+      overflow: auto;
+    }
+    pre code {
+      background: none;
+      padding: 0;
+    }
+    a { color: #0366d6; text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    h1, h2, h3, h4 { margin-top: 1.5em; margin-bottom: 0.5em; }
+    h1 { border-bottom: 1px solid #eaecef; padding-bottom: 0.3em; }
+    nav ul { list-style-type: none; padding-left: 1.2em; }
+    nav > ul { padding-left: 0; }
+    .section-title { 
+      font-weight: bold; 
+      margin-top: 1em;
+      color: #24292e;
+    }
+    /* Mermaid diagram styling */
+    .mermaid {
+      margin: 1rem 0;
+    }
+  </style>
+</head>
+<body>
+  <nav><ul><li><a href="../../index.html">Home</a></li><li><span class="section-title">Overview</span><ul><li><a href="../../overview/03-system-diagram.html">System Diagram</a></li><li><a href="../../overview/02-system-overview.html">CosyWorld System Overview</a></li><li><a href="../../overview/01-introduction.html">CosyWorld Introduction</a></li></ul></li><li><span class="section-title">Systems</span><ul><li><a href="../../systems/06-rati-avatar-system.html">RATi Avatar System</a></li><li><a href="../../systems/05-intelligence-system.html">Intelligence System</a></li><li><a href="../../systems/04-action-system.html">Action System</a></li></ul></li><li><span class="section-title">Services</span><ul><li><a href="../../services/x-authentication.html">X (Twitter) Authentication and Integration</a></li><li><a href="../../services/architecture-report.html">CosyWorld Architecture Report</a></li><li><span class="section-title">World</span><ul><li><a href="../../services/world/questGeneratorService.html">Quest Generator Service</a></li><li><a href="../../services/world/locationService.html">Location Service</a></li><li><a href="../../services/world/itemService.html">Item Service</a></li></ul></li><li><span class="section-title">Web</span><ul><li><a href="../../services/web/webService.html">Web Service</a></li></ul></li><li><span class="section-title">Tools</span><ul><li><a href="../../services/tools/toolService.html">Tool Service</a></li></ul></li><li><span class="section-title">Social</span><ul><li><a href="../../services/social/x-integration.html">X (Twitter) Integration</a></li><li><a href="../../services/social/telegram-integration.html">Telegram Integration (Coming Soon)</a></li><li><a href="../../services/social/discord-integration.html">Discord Integration</a></li></ul></li><li><span class="section-title">Scheduler</span><ul><li><a href="../../services/scheduler/scheduler.html">Scheduling Service</a></li></ul></li><li><span class="section-title">S3</span><ul><li><a href="../../services/s3/s3Service.html">S3 Service</a></li></ul></li><li><span class="section-title">Quest</span><ul><li><a href="../../services/quest/questGeneratorService.html">Quest Generator Service</a></li></ul></li><li><span class="section-title">Media</span><ul><li><a href="../../services/media/s3Service.html">S3 Service</a></li><li><a href="../../services/media/imageProcessingService.html">Image Processing Service</a></li></ul></li><li><span class="section-title">Location</span><ul><li><a href="../../services/location/locationService.html">Location Service</a></li></ul></li><li><span class="section-title">Item</span><ul><li><a href="../../services/item/itemService.html">Item Service</a></li></ul></li><li><span class="section-title">Integration</span><ul><li><a href="../../services/integration/x-authentication.html">X (Twitter) Authentication and Integration</a></li></ul></li><li><span class="section-title">Foundation</span><ul><li><a href="../../services/foundation/logger.html">Logger Service</a></li><li><a href="../../services/foundation/databaseService.html">Database Service</a></li><li><a href="../../services/foundation/configService.html">Config Service</a></li><li><a href="../../services/foundation/basicService.html">Basic Service</a></li></ul></li><li><span class="section-title">Entity</span><ul><li><a href="../../services/entity/memoryService.html">Memory Service</a></li><li><a href="../../services/entity/avatarService.html">Avatar Service</a></li></ul></li><li><span class="section-title">Core</span><ul><li><a href="../../services/core/serviceRegistry.html">Service Registry</a></li><li><a href="../../services/core/serviceInitializer.html">Service Initializer</a></li><li><a href="../../services/core/promptService.html">Prompt Service</a></li><li><a href="../../services/core/memoryService.html">Memory Service</a></li><li><a href="../../services/core/databaseService.html">Database Service</a></li><li><a href="../../services/core/container.html">Service Container</a></li><li><a href="../../services/core/basicService.html">Basic Service</a></li><li><a href="../../services/core/avatarService.html">Avatar Service</a></li><li><a href="../../services/core/aiService.html">AI Service</a></li></ul></li><li><span class="section-title">Communication</span><ul><li><a href="../../services/communication/conversationManager.html">Conversation Manager</a></li></ul></li><li><span class="section-title">Chat</span><ul><li><a href="../../services/chat/conversationManager.html">Conversation Manager</a></li></ul></li><li><span class="section-title">Blockchain</span><ul><li><a href="../../services/blockchain/tokenService.html">Token Service</a></li></ul></li><li><span class="section-title">Ai</span><ul><li><a href="../../services/ai/replicateService.html">Replicate Service</a></li><li><a href="../../services/ai/promptService.html">Prompt Service</a></li><li><a href="../../services/ai/openrouterAIService.html">OpenRouter AI Service</a></li><li><a href="../../services/ai/ollamaService.html">Ollama Service</a></li><li><a href="../../services/ai/googleAIService.html">Google AI Service</a></li><li><a href="../../services/ai/aiService.html">AI Service</a></li></ul></li></ul></li><li><span class="section-title">Deployment</span><ul><li><a href="../../deployment/08-future-work.html">Future Work Priorities</a></li><li><a href="../../deployment/07-deployment.html">CosyWorld Deployment Guide</a></li></ul></li></ul></nav>
+  <main><h1>Replicate Service</h1>
+<h2>Overview</h2>
+<p>The Replicate Service provides integration with <a href="https://replicate.com">Replicate.com</a>, a platform that hosts various AI models for both text and image generation. This service enables the system to access open-source and proprietary models hosted on Replicate’s infrastructure.</p>
+<h2>Functionality</h2>
+<ul>
+<li><strong>Model Access</strong>: Connects to pre-trained models hosted on Replicate</li>
+<li><strong>Text Generation</strong>: Provides text completion capabilities with various models</li>
+<li><strong>Chat Simulation</strong>: Formats conversational history for chat-optimized models</li>
+<li><strong>Prompt Formatting</strong>: Converts message structures to model-specific prompt formats</li>
+<li><strong>Error Handling</strong>: Comprehensive error detection and recovery</li>
+</ul>
+<h2>Implementation</h2>
+<p>The Replicate Service uses the official Replicate JavaScript client to interact with the platform’s API. It handles authentication, request formatting, and response processing.</p>
+<pre><code class="language-javascript">// Example initialization
+const replicateService = new ReplicateService(process.env.REPLICATE_API_TOKEN);
+
+// Example usage
+const response = await replicateService.generateCompletion(
+  &quot;Explain the concept of virtual worlds.&quot;
+);
+</code></pre>
+<h3>Text Generation</h3>
+<p>The service can generate text completions using various models hosted on Replicate:</p>
+<pre><code class="language-javascript">async generateCompletion(prompt, options = {}) {
+  // Structure the input based on the model's requirements
+  const input = {
+    prompt,
+    ...options.input, // Additional model-specific options
+  };
+
+  // Run the model
+  const output = (await this.replicate.run(modelIdentifier, { input })).join('');
+  
+  // Process and return the result
+  return output.trim();
+}
+</code></pre>
+<h3>Chat Functionality</h3>
+<p>For conversational models, the service includes a chat method that formats message history appropriately:</p>
+<pre><code class="language-javascript">async chat(conversationHistory, options = {}) {
+  // Format the conversation history into a prompt
+  const prompt = this.formatPrompt(conversationHistory);
+  
+  // Run the model with the formatted prompt
+  const output = await this.replicate.run(this.defaultModel, { 
+    input: { prompt, ...options.input } 
+  });
+  
+  return output.trim();
+}
+</code></pre>
+<h3>Prompt Formatting</h3>
+<p>The service includes utilities to format prompts according to model requirements:</p>
+<pre><code class="language-javascript">formatPrompt(conversationHistory) {
+  const beginToken = '&lt;|begin_of_text|&gt;';
+  const endOfTextToken = '&lt;|eot_id|&gt;';
+
+  const formattedMessages = conversationHistory.map(msg =&gt; {
+    const roleTokenStart = `&lt;|start_header_id|&gt;${msg.role}&lt;|end_header_id|&gt;`;
+    return `${roleTokenStart}\n\n${msg.content}${endOfTextToken}`;
+  }).join('\n');
+
+  return `${beginToken}\n${formattedMessages}`;
+}
+</code></pre>
+<h2>Configuration</h2>
+<p>The service is configured with sensible defaults:</p>
+<ul>
+<li><strong>Default Model</strong>: <code>meta/meta-llama-3.1-405b-instruct</code> (configurable)</li>
+<li><strong>API Authentication</strong>: Uses the <code>REPLICATE_API_TOKEN</code> environment variable</li>
+</ul>
+<h2>Advantages of Using Replicate</h2>
+<ul>
+<li><strong>Model Variety</strong>: Access to a wide range of open-source and proprietary models</li>
+<li><strong>No Local Resources</strong>: Models run on Replicate’s infrastructure, reducing local hardware requirements</li>
+<li><strong>Model Versioning</strong>: Precise control over model versions for reproducibility</li>
+<li><strong>Easy Scaling</strong>: Handled by Replicate’s infrastructure</li>
+</ul>
+<h2>Supported Models</h2>
+<p>The service can work with any text generation model hosted on Replicate, including:</p>
+<ul>
+<li>LLaMA 3.1</li>
+<li>Stable LM</li>
+<li>Mixtral</li>
+<li>Many other text generation models</li>
+</ul>
+<h2>Dependencies</h2>
+<ul>
+<li>Replicate JavaScript client (<code>replicate</code>)</li>
+<li>Environment variable: <code>REPLICATE_API_TOKEN</code></li>
+<li>Logger service for error reporting</li>
+</ul>
+<h2>Usage Examples</h2>
+<h3>Simple Text Generation</h3>
+<pre><code class="language-javascript">const storyIntro = await replicateService.generateCompletion(
+  'Write the opening paragraph for a fantasy novel set in a world where magic is powered by dreams.',
+  { input: { temperature: 0.8, max_length: 300 } }
+);
+</code></pre>
+<h3>Chat Conversation</h3>
+<pre><code class="language-javascript">const conversation = [
+  { role: 'system', content: 'You are a knowledgeable historian specializing in ancient civilizations.' },
+  { role: 'user', content: 'Tell me about the daily life in ancient Mesopotamia.' },
+  { role: 'assistant', content: 'Life in ancient Mesopotamia revolved around agriculture and trade...' },
+  { role: 'user', content: 'What kind of foods did they eat?' }
+];
+
+const response = await replicateService.chat(conversation);
+</code></pre>
+<h2>Error Handling</h2>
+<p>The service includes detailed error handling and logging:</p>
+<ul>
+<li>API error detection with status codes</li>
+<li>Network error handling</li>
+<li>Input validation</li>
+<li>Response validation</li>
+<li>Detailed error logging through the logger service</li>
+</ul>
+<h2>Limitations</h2>
+<ul>
+<li>Replicate API usage is subject to rate limits and usage-based pricing</li>
+<li>Some models may have specific input format requirements</li>
+<li>Response times depend on Replicate’s infrastructure and model complexity</li>
+</ul>
+</main>
+</body>
+</html>

@@ -1,0 +1,166 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Google AI Service - CosyWorld Documentation</title>
+  <!-- Mermaid script for diagram rendering -->
+  <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      mermaid.initialize({ 
+        startOnLoad: true,
+        theme: 'dark',
+        securityLevel: 'loose'
+      });
+    });
+  </script>
+  <style>
+    body { 
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; 
+      line-height: 1.6;
+      color: #333;
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 1rem;
+      display: flex;
+    }
+    nav {
+      width: 250px;
+      padding-right: 2rem;
+      flex-shrink: 0;
+    }
+    main {
+      flex-grow: 1;
+    }
+    code {
+      background: #f5f5f5;
+      padding: 0.2em 0.4em;
+      border-radius: 3px;
+      font-family: SFMono-Regular, Consolas, Liberation Mono, Menlo, monospace;
+      font-size: 85%;
+    }
+    pre {
+      background: #f5f5f5;
+      padding: 1rem;
+      border-radius: 5px;
+      overflow: auto;
+    }
+    pre code {
+      background: none;
+      padding: 0;
+    }
+    a { color: #0366d6; text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    h1, h2, h3, h4 { margin-top: 1.5em; margin-bottom: 0.5em; }
+    h1 { border-bottom: 1px solid #eaecef; padding-bottom: 0.3em; }
+    nav ul { list-style-type: none; padding-left: 1.2em; }
+    nav > ul { padding-left: 0; }
+    .section-title { 
+      font-weight: bold; 
+      margin-top: 1em;
+      color: #24292e;
+    }
+    /* Mermaid diagram styling */
+    .mermaid {
+      margin: 1rem 0;
+    }
+  </style>
+</head>
+<body>
+  <nav><ul><li><a href="../../index.html">Home</a></li><li><span class="section-title">Overview</span><ul><li><a href="../../overview/03-system-diagram.html">System Diagram</a></li><li><a href="../../overview/02-system-overview.html">CosyWorld System Overview</a></li><li><a href="../../overview/01-introduction.html">CosyWorld Introduction</a></li></ul></li><li><span class="section-title">Systems</span><ul><li><a href="../../systems/06-rati-avatar-system.html">RATi Avatar System</a></li><li><a href="../../systems/05-intelligence-system.html">Intelligence System</a></li><li><a href="../../systems/04-action-system.html">Action System</a></li></ul></li><li><span class="section-title">Services</span><ul><li><a href="../../services/x-authentication.html">X (Twitter) Authentication and Integration</a></li><li><a href="../../services/architecture-report.html">CosyWorld Architecture Report</a></li><li><span class="section-title">World</span><ul><li><a href="../../services/world/questGeneratorService.html">Quest Generator Service</a></li><li><a href="../../services/world/locationService.html">Location Service</a></li><li><a href="../../services/world/itemService.html">Item Service</a></li></ul></li><li><span class="section-title">Web</span><ul><li><a href="../../services/web/webService.html">Web Service</a></li></ul></li><li><span class="section-title">Tools</span><ul><li><a href="../../services/tools/toolService.html">Tool Service</a></li></ul></li><li><span class="section-title">Social</span><ul><li><a href="../../services/social/x-integration.html">X (Twitter) Integration</a></li><li><a href="../../services/social/telegram-integration.html">Telegram Integration (Coming Soon)</a></li><li><a href="../../services/social/discord-integration.html">Discord Integration</a></li></ul></li><li><span class="section-title">Scheduler</span><ul><li><a href="../../services/scheduler/scheduler.html">Scheduling Service</a></li></ul></li><li><span class="section-title">S3</span><ul><li><a href="../../services/s3/s3Service.html">S3 Service</a></li></ul></li><li><span class="section-title">Quest</span><ul><li><a href="../../services/quest/questGeneratorService.html">Quest Generator Service</a></li></ul></li><li><span class="section-title">Media</span><ul><li><a href="../../services/media/s3Service.html">S3 Service</a></li><li><a href="../../services/media/imageProcessingService.html">Image Processing Service</a></li></ul></li><li><span class="section-title">Location</span><ul><li><a href="../../services/location/locationService.html">Location Service</a></li></ul></li><li><span class="section-title">Item</span><ul><li><a href="../../services/item/itemService.html">Item Service</a></li></ul></li><li><span class="section-title">Integration</span><ul><li><a href="../../services/integration/x-authentication.html">X (Twitter) Authentication and Integration</a></li></ul></li><li><span class="section-title">Foundation</span><ul><li><a href="../../services/foundation/logger.html">Logger Service</a></li><li><a href="../../services/foundation/databaseService.html">Database Service</a></li><li><a href="../../services/foundation/configService.html">Config Service</a></li><li><a href="../../services/foundation/basicService.html">Basic Service</a></li></ul></li><li><span class="section-title">Entity</span><ul><li><a href="../../services/entity/memoryService.html">Memory Service</a></li><li><a href="../../services/entity/avatarService.html">Avatar Service</a></li></ul></li><li><span class="section-title">Core</span><ul><li><a href="../../services/core/serviceRegistry.html">Service Registry</a></li><li><a href="../../services/core/serviceInitializer.html">Service Initializer</a></li><li><a href="../../services/core/promptService.html">Prompt Service</a></li><li><a href="../../services/core/memoryService.html">Memory Service</a></li><li><a href="../../services/core/databaseService.html">Database Service</a></li><li><a href="../../services/core/container.html">Service Container</a></li><li><a href="../../services/core/basicService.html">Basic Service</a></li><li><a href="../../services/core/avatarService.html">Avatar Service</a></li><li><a href="../../services/core/aiService.html">AI Service</a></li></ul></li><li><span class="section-title">Communication</span><ul><li><a href="../../services/communication/conversationManager.html">Conversation Manager</a></li></ul></li><li><span class="section-title">Chat</span><ul><li><a href="../../services/chat/conversationManager.html">Conversation Manager</a></li></ul></li><li><span class="section-title">Blockchain</span><ul><li><a href="../../services/blockchain/tokenService.html">Token Service</a></li></ul></li><li><span class="section-title">Ai</span><ul><li><a href="../../services/ai/replicateService.html">Replicate Service</a></li><li><a href="../../services/ai/promptService.html">Prompt Service</a></li><li><a href="../../services/ai/openrouterAIService.html">OpenRouter AI Service</a></li><li><a href="../../services/ai/ollamaService.html">Ollama Service</a></li><li><a href="../../services/ai/googleAIService.html">Google AI Service</a></li><li><a href="../../services/ai/aiService.html">AI Service</a></li></ul></li></ul></li><li><span class="section-title">Deployment</span><ul><li><a href="../../deployment/08-future-work.html">Future Work Priorities</a></li><li><a href="../../deployment/07-deployment.html">CosyWorld Deployment Guide</a></li></ul></li></ul></nav>
+  <main><h1>Google AI Service</h1>
+<h2>Overview</h2>
+<p>The Google AI Service provides integration with Google’s Generative AI platform, offering access to Google’s Gemini models. This service implements the common AI service interface, allowing the system to switch between AI providers seamlessly.</p>
+<h2>Functionality</h2>
+<ul>
+<li><strong>Google Gemini Model Access</strong>: Direct integration with Google’s Generative AI models</li>
+<li><strong>Multi-modal Support</strong>: Handles both text and image inputs for AI processing</li>
+<li><strong>Structured Output</strong>: Supports generating responses in structured JSON format</li>
+<li><strong>Model Selection</strong>: Includes model availability checking and fallback mechanisms</li>
+<li><strong>Random Model Selection</strong>: Supports selection of models based on rarity tiers</li>
+</ul>
+<h2>Implementation</h2>
+<p>The service is implemented as a class that connects to Google’s Generative AI API using the official SDK. It provides methods for chat completions, image analysis, and structured output generation.</p>
+<pre><code class="language-javascript">// Example initialization
+const googleAIService = new GoogleAIService({
+  defaultModel: 'gemini-2.0-flash'
+}, services);
+
+// Example chat usage
+const response = await googleAIService.chat([
+  { role: 'system', content: 'You are a helpful assistant.' },
+  { role: 'user', content: 'Tell me about the weather.' }
+]);
+</code></pre>
+<h3>Key Features</h3>
+<ul>
+<li><strong>System Instructions</strong>: Supports system prompts for context setting</li>
+<li><strong>Message Format Conversion</strong>: Translates between the system’s message format and Google’s expected format</li>
+<li><strong>Image Analysis</strong>: Processes images with text prompts for detailed analysis</li>
+<li><strong>Response Schema</strong>: Supports structured JSON output with validation schemas</li>
+</ul>
+<h2>Google API Specifics</h2>
+<p>The service handles Google’s unique API requirements:</p>
+<ul>
+<li>Converts ‘assistant’ role to ‘model’ for Google’s format</li>
+<li>Properly formats system instructions</li>
+<li>Handles multi-part message content including inline images</li>
+</ul>
+<h2>Model Configuration</h2>
+<p>The service maintains a list of available models with metadata:</p>
+<ul>
+<li>Model ID (e.g., ‘gemini-2.0-flash’)</li>
+<li>Rarity classification (common, uncommon, rare, legendary)</li>
+<li>Other model capabilities and parameters</li>
+</ul>
+<h2>Dependencies</h2>
+<ul>
+<li>Google Generative AI SDK (<code>@google/generative-ai</code>)</li>
+<li>Environment variable: <code>GOOGLE_AI_API_KEY</code></li>
+<li>Models configuration (<code>models.google.config.mjs</code>)</li>
+</ul>
+<h2>Usage Examples</h2>
+<h3>Chat Completion</h3>
+<pre><code class="language-javascript">const response = await googleAIService.chat([
+  { role: 'user', content: 'What is machine learning?' }
+], {
+  temperature: 0.5,
+  max_tokens: 500
+});
+</code></pre>
+<h3>Image Analysis</h3>
+<pre><code class="language-javascript">const analysis = await googleAIService.analyzeImage(
+  imageBase64Data,
+  'image/jpeg',
+  'Describe what you see in this image'
+);
+</code></pre>
+<h3>Structured Output</h3>
+<pre><code class="language-javascript">const itemSchema = {
+  type: 'object',
+  properties: {
+    name: { type: 'string' },
+    description: { type: 'string' },
+    rarity: { type: 'string' }
+  },
+  required: ['name', 'description', 'rarity']
+};
+
+const item = await googleAIService.chat(
+  [{ role: 'user', content: 'Create a magical sword item' }],
+  { responseSchema: googleAIService.toResponseSchema(itemSchema) }
+);
+</code></pre>
+<h2>Error Handling</h2>
+<p>The service includes robust error handling for:</p>
+<ul>
+<li>API connectivity issues</li>
+<li>Rate limiting and quotas</li>
+<li>Model unavailability</li>
+<li>Response format errors</li>
+</ul>
+</main>
+</body>
+</html>

@@ -1,0 +1,278 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Prompt Service - CosyWorld Documentation</title>
+  <!-- Mermaid script for diagram rendering -->
+  <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      mermaid.initialize({ 
+        startOnLoad: true,
+        theme: 'dark',
+        securityLevel: 'loose'
+      });
+    });
+  </script>
+  <style>
+    body { 
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; 
+      line-height: 1.6;
+      color: #333;
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 1rem;
+      display: flex;
+    }
+    nav {
+      width: 250px;
+      padding-right: 2rem;
+      flex-shrink: 0;
+    }
+    main {
+      flex-grow: 1;
+    }
+    code {
+      background: #f5f5f5;
+      padding: 0.2em 0.4em;
+      border-radius: 3px;
+      font-family: SFMono-Regular, Consolas, Liberation Mono, Menlo, monospace;
+      font-size: 85%;
+    }
+    pre {
+      background: #f5f5f5;
+      padding: 1rem;
+      border-radius: 5px;
+      overflow: auto;
+    }
+    pre code {
+      background: none;
+      padding: 0;
+    }
+    a { color: #0366d6; text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    h1, h2, h3, h4 { margin-top: 1.5em; margin-bottom: 0.5em; }
+    h1 { border-bottom: 1px solid #eaecef; padding-bottom: 0.3em; }
+    nav ul { list-style-type: none; padding-left: 1.2em; }
+    nav > ul { padding-left: 0; }
+    .section-title { 
+      font-weight: bold; 
+      margin-top: 1em;
+      color: #24292e;
+    }
+    /* Mermaid diagram styling */
+    .mermaid {
+      margin: 1rem 0;
+    }
+  </style>
+</head>
+<body>
+  <nav><ul><li><a href="../../index.html">Home</a></li><li><span class="section-title">Overview</span><ul><li><a href="../../overview/03-system-diagram.html">System Diagram</a></li><li><a href="../../overview/02-system-overview.html">CosyWorld System Overview</a></li><li><a href="../../overview/01-introduction.html">CosyWorld Introduction</a></li></ul></li><li><span class="section-title">Systems</span><ul><li><a href="../../systems/06-rati-avatar-system.html">RATi Avatar System</a></li><li><a href="../../systems/05-intelligence-system.html">Intelligence System</a></li><li><a href="../../systems/04-action-system.html">Action System</a></li></ul></li><li><span class="section-title">Services</span><ul><li><a href="../../services/x-authentication.html">X (Twitter) Authentication and Integration</a></li><li><a href="../../services/architecture-report.html">CosyWorld Architecture Report</a></li><li><span class="section-title">World</span><ul><li><a href="../../services/world/questGeneratorService.html">Quest Generator Service</a></li><li><a href="../../services/world/locationService.html">Location Service</a></li><li><a href="../../services/world/itemService.html">Item Service</a></li></ul></li><li><span class="section-title">Web</span><ul><li><a href="../../services/web/webService.html">Web Service</a></li></ul></li><li><span class="section-title">Tools</span><ul><li><a href="../../services/tools/toolService.html">Tool Service</a></li></ul></li><li><span class="section-title">Social</span><ul><li><a href="../../services/social/x-integration.html">X (Twitter) Integration</a></li><li><a href="../../services/social/telegram-integration.html">Telegram Integration (Coming Soon)</a></li><li><a href="../../services/social/discord-integration.html">Discord Integration</a></li></ul></li><li><span class="section-title">Scheduler</span><ul><li><a href="../../services/scheduler/scheduler.html">Scheduling Service</a></li></ul></li><li><span class="section-title">S3</span><ul><li><a href="../../services/s3/s3Service.html">S3 Service</a></li></ul></li><li><span class="section-title">Quest</span><ul><li><a href="../../services/quest/questGeneratorService.html">Quest Generator Service</a></li></ul></li><li><span class="section-title">Media</span><ul><li><a href="../../services/media/s3Service.html">S3 Service</a></li><li><a href="../../services/media/imageProcessingService.html">Image Processing Service</a></li></ul></li><li><span class="section-title">Location</span><ul><li><a href="../../services/location/locationService.html">Location Service</a></li></ul></li><li><span class="section-title">Item</span><ul><li><a href="../../services/item/itemService.html">Item Service</a></li></ul></li><li><span class="section-title">Integration</span><ul><li><a href="../../services/integration/x-authentication.html">X (Twitter) Authentication and Integration</a></li></ul></li><li><span class="section-title">Foundation</span><ul><li><a href="../../services/foundation/logger.html">Logger Service</a></li><li><a href="../../services/foundation/databaseService.html">Database Service</a></li><li><a href="../../services/foundation/configService.html">Config Service</a></li><li><a href="../../services/foundation/basicService.html">Basic Service</a></li></ul></li><li><span class="section-title">Entity</span><ul><li><a href="../../services/entity/memoryService.html">Memory Service</a></li><li><a href="../../services/entity/avatarService.html">Avatar Service</a></li></ul></li><li><span class="section-title">Core</span><ul><li><a href="../../services/core/serviceRegistry.html">Service Registry</a></li><li><a href="../../services/core/serviceInitializer.html">Service Initializer</a></li><li><a href="../../services/core/promptService.html">Prompt Service</a></li><li><a href="../../services/core/memoryService.html">Memory Service</a></li><li><a href="../../services/core/databaseService.html">Database Service</a></li><li><a href="../../services/core/container.html">Service Container</a></li><li><a href="../../services/core/basicService.html">Basic Service</a></li><li><a href="../../services/core/avatarService.html">Avatar Service</a></li><li><a href="../../services/core/aiService.html">AI Service</a></li></ul></li><li><span class="section-title">Communication</span><ul><li><a href="../../services/communication/conversationManager.html">Conversation Manager</a></li></ul></li><li><span class="section-title">Chat</span><ul><li><a href="../../services/chat/conversationManager.html">Conversation Manager</a></li></ul></li><li><span class="section-title">Blockchain</span><ul><li><a href="../../services/blockchain/tokenService.html">Token Service</a></li></ul></li><li><span class="section-title">Ai</span><ul><li><a href="../../services/ai/replicateService.html">Replicate Service</a></li><li><a href="../../services/ai/promptService.html">Prompt Service</a></li><li><a href="../../services/ai/openrouterAIService.html">OpenRouter AI Service</a></li><li><a href="../../services/ai/ollamaService.html">Ollama Service</a></li><li><a href="../../services/ai/googleAIService.html">Google AI Service</a></li><li><a href="../../services/ai/aiService.html">AI Service</a></li></ul></li></ul></li><li><span class="section-title">Deployment</span><ul><li><a href="../../deployment/08-future-work.html">Future Work Priorities</a></li><li><a href="../../deployment/07-deployment.html">CosyWorld Deployment Guide</a></li></ul></li></ul></nav>
+  <main><h1>Prompt Service</h1>
+<h2>Overview</h2>
+<p>The Prompt Service is responsible for constructing context-rich, structured prompts for AI interactions throughout the system. It centralizes prompt creation logic, ensuring consistent and effective communication with AI models while incorporating relevant game state, avatar information, and contextual data.</p>
+<h2>Functionality</h2>
+<ul>
+<li><strong>System Prompt Generation</strong>: Creates detailed system contexts for avatars</li>
+<li><strong>Narrative Prompt Building</strong>: Constructs prompts for avatar personality development</li>
+<li><strong>Response Prompt Creation</strong>: Builds prompts for avatar responses in conversations</li>
+<li><strong>Dungeon Context Assembly</strong>: Combines location, inventory, and available actions</li>
+<li><strong>Memory Integration</strong>: Incorporates avatar memories into prompts</li>
+<li><strong>Image Description Handling</strong>: Processes and includes image descriptions in context</li>
+</ul>
+<h2>Implementation</h2>
+<p>The PromptService extends the BasicService class and integrates with multiple other services to gather contextual information:</p>
+<pre><code class="language-javascript">constructor(services) {
+  super(container, [
+    &quot;avatarService&quot;,
+    &quot;memoryService&quot;,
+    &quot;toolService&quot;,
+    &quot;imageProcessingService&quot;,
+    &quot;itemService&quot;,
+    &quot;discordService&quot;,
+    &quot;mapService&quot;,
+    &quot;databaseService&quot;,
+    &quot;configService&quot;,
+  ]);
+  
+  this.client = this.discordService.client;
+  this.db = this.databaseService.getDatabase();
+}
+</code></pre>
+<h3>Prompt Types</h3>
+<h4>Basic System Prompt</h4>
+<p>Provides the core identity of an avatar:</p>
+<pre><code class="language-javascript">async getBasicSystemPrompt(avatar) {
+  return `You are ${avatar.name}. ${avatar.personality}`;
+}
+</code></pre>
+<h4>Full System Prompt</h4>
+<p>Extends the basic prompt with location and narrative information:</p>
+<pre><code class="language-javascript">async getFullSystemPrompt(avatar, db) {
+  const lastNarrative = await this.getLastNarrative(avatar, db);
+  const { location } = await this.mapService.getLocationAndAvatars(avatar.channelId);
+
+  return `
+You are ${avatar.name}.
+${avatar.personality}
+${avatar.dynamicPersonality}
+${lastNarrative ? lastNarrative.content : ''}
+Location: ${location.name || 'Unknown'} - ${location.description || 'No description available'}
+Last updated: ${new Date(location.updatedAt).toLocaleString() || 'Unknown'}
+  `.trim();
+}
+</code></pre>
+<h4>Narrative Prompt</h4>
+<p>Used for avatar personality development and inner reflection:</p>
+<pre><code class="language-javascript">async buildNarrativePrompt(avatar) {
+  const memories = await this.getMemories(avatar,100);
+  const recentActions = await this.getRecentActions(avatar);
+  const narrativeContent = await this.getNarrativeContent(avatar);
+  return `
+You are ${avatar.name || ''}.
+Base personality: ${avatar.personality || ''}
+Current dynamic personality: ${avatar.dynamicPersonality || 'None yet'}
+Physical description: ${avatar.description || ''}
+Recent memories:
+${memories}
+Recent actions:
+${recentActions}
+Recent thoughts and reflections:
+${narrativeContent}
+Based on all of the above context, share an updated personality that reflects your recent experiences, actions, and growth. Focus on how these events have shaped your character.
+  `.trim();
+}
+</code></pre>
+<h4>Dungeon Prompt</h4>
+<p>Provides information about available commands, location, and items:</p>
+<pre><code class="language-javascript">async buildDungeonPrompt(avatar, guildId) {
+  const commandsDescription = this.toolService.getCommandsDescription(guildId) || '';
+  const location = await this.mapService.getLocationDescription(avatar.channelId, avatar.channelName);
+  const items = await this.itemService.getItemsDescription(avatar);
+  // ... additional context gathering ...
+  
+  return `
+These commands are available in this location:
+${summonEmoji} &lt;any concept or thing&gt; - Summon an avatar to your location.
+${breedEmoji} &lt;avatar one&gt; &lt;avatar two&gt; - Breed two avatars together.
+${commandsDescription}
+${locationText}
+${selectedItemText}
+${groundItemsText}
+You can also use these items in your inventory:
+${items}
+  `.trim();
+}
+</code></pre>
+<h4>Response User Content</h4>
+<p>Formats conversation history with image descriptions for chat responses:</p>
+<pre><code class="language-javascript">async getResponseUserContent(avatar, channel, messages, channelSummary) {
+  // Format conversation history with images
+  const channelContextText = messages
+    .map(msg =&gt; {
+      const username = msg.authorUsername || 'User';
+      if (msg.content &amp;&amp; msg.imageDescription) {
+        return `${username}: ${msg.content} [Image: ${msg.imageDescription}]`;
+      }
+      // ... handle other message types ...
+    })
+    .join('\n');
+  
+  // ... assemble complete prompt ...
+  
+  return `
+Channel: #${context.channelName} in ${context.guildName}
+
+Channel summary:
+${channelSummary}
+
+Actions Available:
+${dungeonPrompt}
+
+Recent conversation history:
+${channelContextText}
+
+${avatar.name} ${avatar.emoji}:`.trim();
+}
+</code></pre>
+<h3>Message Assembly</h3>
+<p>The service provides methods to build complete message arrays for AI conversations:</p>
+<pre><code class="language-javascript">async getNarrativeChatMessages(avatar) {
+  const systemPrompt = await this.getBasicSystemPrompt(avatar);
+  const assistantContext = await this.getNarrativeAssistantContext(avatar);
+  const userPrompt = await this.buildNarrativePrompt(avatar);
+  return [
+    { role: 'system', content: systemPrompt },
+    { role: 'assistant', content: assistantContext },
+    { role: 'user', content: userPrompt }
+  ];
+}
+
+async getResponseChatMessages(avatar, channel, messages, channelSummary, db) {
+  const systemPrompt = await this.getFullSystemPrompt(avatar, db);
+  const lastNarrative = await this.getLastNarrative(avatar, db);
+  const userContent = await this.getResponseUserContent(avatar, channel, messages, channelSummary);
+  return [
+    { role: 'system', content: systemPrompt },
+    { role: 'assistant', content: lastNarrative?.content || 'No previous reflection' },
+    { role: 'user', content: userContent }
+  ];
+}
+</code></pre>
+<h2>Support Methods</h2>
+<p>The service includes several helper methods to gather contextual information:</p>
+<ul>
+<li><strong>getMemories</strong>: Retrieves avatar memories from memory service</li>
+<li><strong>getRecentActions</strong>: Gets recent actions performed by the avatar</li>
+<li><strong>getNarrativeContent</strong>: Retrieves avatar inner monologue content</li>
+<li><strong>getLastNarrative</strong>: Gets the most recent narrative reflection</li>
+<li><strong>getImageDescriptions</strong>: Processes images in messages to include descriptions</li>
+</ul>
+<h2>Dependencies</h2>
+<ul>
+<li>AvatarService - For avatar data</li>
+<li>MemoryService - For avatar memories</li>
+<li>ToolService - For action logs and command descriptions</li>
+<li>ImageProcessingService - For processing images in messages</li>
+<li>ItemService - For inventory and item information</li>
+<li>DiscordService - For channel and message access</li>
+<li>MapService - For location information</li>
+<li>DatabaseService - For narrative storage and retrieval</li>
+<li>ConfigService - For system configuration</li>
+</ul>
+<h2>Usage Examples</h2>
+<h3>Generating Narrative Chat Messages</h3>
+<pre><code class="language-javascript">// For avatar reflection/personality development
+const narrativeMessages = await promptService.getNarrativeChatMessages(avatar);
+const narrativeResponse = await aiService.chat(narrativeMessages);
+</code></pre>
+<h3>Generating Response Chat Messages</h3>
+<pre><code class="language-javascript">// For avatar responses in conversations
+const responseMessages = await promptService.getResponseChatMessages(
+  avatar, 
+  channel, 
+  recentMessages, 
+  channelSummary,
+  database
+);
+const avatarResponse = await aiService.chat(responseMessages);
+</code></pre>
+<h3>Building Custom Prompts</h3>
+<pre><code class="language-javascript">// For specific prompt use cases
+const systemPrompt = await promptService.getFullSystemPrompt(avatar, database);
+const dungeonContext = await promptService.buildDungeonPrompt(avatar, guildId);
+</code></pre>
+<h2>Integration Points</h2>
+<p>The Prompt Service integrates with:</p>
+<ul>
+<li>AI Service for prompt delivery</li>
+<li>Conversation Manager for chat context</li>
+<li>Avatar Service for personality and traits</li>
+<li>Memory Service for contextual history</li>
+<li>Map Service for environmental context</li>
+</ul>
+</main>
+</body>
+</html>
