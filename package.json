@@ -69,6 +69,7 @@
     "glob": "^10.3.10",
     "markdown-it": "^14.1.0",
     "mini-css-extract-plugin": "^2.9.2",
+    "postcss-loader": "^8.1.1",
     "rimraf": "^5.0.10",
     "style-loader": "^3.3.4",
     "webpack": "^5.98.0",

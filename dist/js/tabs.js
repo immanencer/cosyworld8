@@ -1,1 +1,0 @@
-export function initializeTabs(){const t=document.querySelectorAll("[data-tab]");t.forEach((a=>a.addEventListener("click",(()=>{return e=a.dataset.tab,(window.state||{}).activeTab=e,t.forEach((t=>t.classList.toggle("bg-blue-600",t.dataset.tab===e))),void(window.loadContent&&window.loadContent());var e}))))}
