@@ -3,10 +3,7 @@ import {
   Environment,
   MigrationDex,
   Moonshot,
-  SolanaSerializationService,
 } from '@wen-moon-ser/moonshot-sdk';
-import { Keypair } from '@solana/web3.js';
-import bs58 from 'bs58';
 import dotenv from 'dotenv';
 
 dotenv.config();

@@ -34,7 +34,8 @@ export class PromptService extends BasicService {
    */
   async getFullSystemPrompt(avatar, db) {
     const lastNarrative = await this.getLastNarrative(avatar, db);
-    const { location } = await this.mapService.getLocationAndAvatars(avatar.channelId);
+    const { location } = 
+      await this.mapService.getAvatarLocation(avatar);
 
     return `
 You are ${avatar.name}.

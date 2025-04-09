@@ -67,26 +67,12 @@ export class MapService extends BasicService {
     });
   }
 
-  async getAvatarLocation(avatarId) {
+  async getAvatarLocation(avatar) {
     const db = this.ensureDb();
-    const objectId = toObjectId(avatarId);
-    const position = await db.collection('dungeon_positions').findOne({ avatarId: objectId });
-    if (!position) return null;
+    const position = await db.collection('dungeon_positions').findOne({ avatarId: avatar._id });
+    if (!position) return { location: { name: 'Unknown Location', description: 'No description available.' } };
 
-    const location = await db.collection('locations').findOne({ channelId: position.locationId });
-    if (!location) return {
-      id: position.locationId,
-      name: 'Unknown',
-      description: 'An unknown location',
-      imageUrl: null,
-    };
-
-    return {
-      id: location.channelId,
-      name: location.name,
-      description: location.description,
-      imageUrl: location.imageUrl,
-    };
+    return await this.getLocationAndAvatars(position.locationId);
   }
 
   /**
@@ -122,7 +108,7 @@ export class MapService extends BasicService {
     try {    
 
       const positions = db.collection('dungeon_positions');
-      
+
       const actualPreviousLocationId = (await positions.findOne(
         { avatarId: currentAvatar._id },
         { projection: { locationId: 1 } }

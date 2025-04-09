@@ -4,7 +4,6 @@ export function toObjectId(id) {
     try {
       return new ObjectId(id);
     } catch (error) {
-      this.logger.error(`Invalid ID format: ${id}`);
       throw new Error(`Invalid ID: ${id}`);
     }
   }
