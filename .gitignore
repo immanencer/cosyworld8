@@ -13,3 +13,4 @@ attached_assets/*
 src/config/user.config.json
 CLAUDE.md
 rati/keys/*
+.gitignore
