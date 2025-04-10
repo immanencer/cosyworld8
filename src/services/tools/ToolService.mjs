@@ -27,7 +27,7 @@ export class ToolService extends BasicService {
     this.tools = new Map();
     this.toolEmojis = new Map();
 
-    this.toolCooldowns = new Map(); // toolName -> last execution timestamp
+    this.toolCooldowns = new Map(); // toolName -> Map(avatarId -> last execution timestamp
     this.defaultCooldownMs = 60 * 1000; // 1 hour cooldown
 
     // Initialize tools
@@ -178,8 +178,15 @@ export class ToolService extends BasicService {
     }
 
     const now = Date.now();
-    const lastUsed = this.toolCooldowns.get(toolName) || 0;
     const cooldownMs = tool.cooldownMs ?? this.defaultCooldownMs;
+
+    let avatarCooldowns = this.toolCooldowns.get(toolName);
+    if (!avatarCooldowns) {
+      avatarCooldowns = new Map();
+      this.toolCooldowns.set(toolName, avatarCooldowns);
+    }
+
+    const lastUsed = avatarCooldowns.get(avatar._id) || 0;
     if (now - lastUsed < cooldownMs) {
       const remainingMs = cooldownMs - (now - lastUsed);
       const minutes = Math.ceil(remainingMs / 60000);
@@ -189,7 +196,7 @@ export class ToolService extends BasicService {
     let result;
     try {
       result = await tool.execute(message, params, avatar);
-      this.toolCooldowns.set(toolName, now);
+      avatarCooldowns.set(avatar._id, now);
     } catch (error) {
       result = `Error executing ${toolName}: ${error.message}`;
     }

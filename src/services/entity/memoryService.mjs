@@ -28,7 +28,7 @@ export class MemoryService extends BasicService {
   async getMemories(avatarId, limit = 10, skipEntitySync = false) {
     try {
       const memories = await this.db.collection('memories')
-        .find({ $or: [ { avatarId }, { avatarId: avatarId.toString() }, { avatarId: { $exists: false } } ] })
+        .find({ $or: [ { avatarId }, { avatarId: avatarId.toString() }] })
         .sort({ timestamp: -1 })
         .limit(limit)
         .toArray();
