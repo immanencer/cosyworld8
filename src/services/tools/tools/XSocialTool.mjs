@@ -16,7 +16,7 @@ export class XSocialTool extends BasicTool {
         this.memoryService = services.memoryService;
         this.conversationManager = services.conversationManager;
         this.promptService = services.promptService;
-        this.creationService = services.creationService;
+        this.schemaService = services.schemaService;
         
         this.replyNotification = true;
         this.emoji = '🐦';
@@ -63,7 +63,7 @@ export class XSocialTool extends BasicTool {
         const userData = await v2Client.me();
         const userId = userData.data.id;
 
-        const timelineResp = await v2Client.userTimeline(userId, { max_results: 30 });
+        const timelineResp = await v2Client.homeTimeline(userId, { max_results: 30 });
         const notificationsResp = await v2Client.userMentionTimeline(userId, { max_results: 30 });
 
         const timeline = timelineResp?.data?.data?.map(t => ({
@@ -273,7 +273,7 @@ Only output the JSON object, no commentary.`.trim();
             }
         };
 
-        const actions = await this.creationService.executePipeline({
+        const actions = await this.schemaService.executePipeline({
             prompt,
             schema
         });
