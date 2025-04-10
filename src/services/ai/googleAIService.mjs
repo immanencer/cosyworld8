@@ -226,26 +226,33 @@ export class GoogleAIService extends BasicService {
 
     const modelId = options.model || this.model;
 
-    // Remove 'model' from options before spreading into generationConfig
     const { model, ...restOptions } = options;
 
-    const generativeModel = this.googleAI.getGenerativeModel({ model: modelId });
-
-    const generationConfig = {
-      ...this.defaultCompletionOptions,
-      ...restOptions,
-    };
-
-    try {
-      const result = await generativeModel.generateContent({
-        contents: [{ role: 'user', parts: [{ text: prompt }] }],
-        generationConfig,
-      });
-
-      return result.response.text();
-    } catch (error) {
-      console.error(`[${new Date().toISOString()}] Completion error:`, error.message);
-      throw error;
+    for (let attempt = 0; attempt < 3; attempt++) {
+      try {
+        const result = await this.googleAI.getGenerativeModel({ model: modelId })
+          .generateContent({
+            contents: [{ role: 'user', parts: [{ text: prompt }] }],
+            generationConfig: {
+              ...this.defaultCompletionOptions,
+              ...restOptions,
+            },
+          });
+        return result.response.text();
+      } catch (error) {
+        const retryInfo = this._parseRetryDelay(error);
+        if (retryInfo.shouldRetry && attempt < 2) {
+          console.warn(`[GoogleAIService] Quota exceeded, retrying after ${retryInfo.delayMs}ms (attempt ${attempt + 1})`);
+          await new Promise(res => setTimeout(res, retryInfo.delayMs));
+          continue;
+        }
+        if (retryInfo.isQuotaError) {
+          console.warn(`[GoogleAIService] Quota exceeded: ${error.message}`);
+          return 'Error: Google AI quota exceeded. Please try again later.';
+        }
+        console.error(`[${new Date().toISOString()}] Completion error:`, error.message);
+        throw error;
+      }
     }
   }
 
@@ -256,28 +263,23 @@ export class GoogleAIService extends BasicService {
       throw new Error("History must be a non-empty array.");
     }
   
-    // Normalize roles: convert 'assistant' -> 'model'
     const normalizedHistory = history.map(msg => ({
       ...msg,
       role: msg.role === 'assistant' ? 'model' : msg.role
     }));
   
-    // Extract the last message (user input)
     const lastMessage = normalizedHistory[normalizedHistory.length - 1];
     if (lastMessage.role !== 'user') {
       throw new Error("The last message in history must have the role 'user'.");
     }
   
-    // Pull system instructions
     const systemMessages = normalizedHistory.filter(msg => msg.role === 'system');
     const systemInstruction = systemMessages.map(msg => msg.content).join('\n');
   
-    // All but the last message, minus system messages
     let chatHistory = normalizedHistory
       .slice(0, -1)
       .filter(msg => msg.role !== 'system');
   
-    // Inject dummy user message if history is empty or invalid
     if (chatHistory.length === 0 || chatHistory[0].role !== 'user') {
       console.warn("Inserting dummy user message to satisfy Google chat constraints.");
       chatHistory.unshift({
@@ -286,13 +288,11 @@ export class GoogleAIService extends BasicService {
       });
     }
   
-    // Format messages for Gemini
     const formattedHistory = chatHistory.map(msg => ({
       role: msg.role,
       parts: [{ text: msg.content }]
     }));
   
-    // Select model
     let modelId = options.model || this.model;
     if (!this.modelIsAvailable(modelId)) {
       console.warn(`Model "${modelId}" not available, selecting fallback.`);
@@ -301,17 +301,15 @@ export class GoogleAIService extends BasicService {
   
     const generativeModel = this.googleAI.getGenerativeModel({ model: modelId });
   
-    // Generation config
     const generationConfig = {
       temperature: options.temperature ?? 0.7,
       maxOutputTokens: options.maxOutputTokens ?? 1500,
       topP: options.topP ?? 0.95,
       topK: options.topK ?? 40,
       responseMimeType: options.schema ? 'application/json' : 'text/plain',
-        ...(options.schema && { responseSchema: options.schema }),
+      ...(options.schema && { responseSchema: options.schema }),
     };
   
-    // Start chat session
     const chatSession = generativeModel.startChat({
       history: formattedHistory,
       generationConfig,
@@ -323,18 +321,53 @@ export class GoogleAIService extends BasicService {
       })
     });
   
-    try {
-      const result = await chatSession.sendMessage([
-        { text: lastMessage.content }
-      ]);
-      return result.response.text();
-    } catch (error) {
-      console.error(`[${new Date().toISOString()}] Chat error:`, error.message);
-      throw error;
+    for (let attempt = 0; attempt < 3; attempt++) {
+      try {
+        const result = await chatSession.sendMessage([
+          { text: lastMessage.content }
+        ]);
+        return result.response.text();
+      } catch (error) {
+        const retryInfo = this._parseRetryDelay(error);
+        if (retryInfo.shouldRetry && attempt < 2) {
+          console.warn(`[GoogleAIService] Quota exceeded during chat, retrying after ${retryInfo.delayMs}ms (attempt ${attempt + 1})`);
+          await new Promise(res => setTimeout(res, retryInfo.delayMs));
+          continue;
+        }
+        if (retryInfo.isQuotaError) {
+          console.warn(`[GoogleAIService] Quota exceeded during chat: ${error.message}`);
+          return '-# [ Error: Google AI quota exceeded. Please try again later. ]';
+        }
+        console.error(`[${new Date().toISOString()}] Chat error:`, error.message);
+        throw error;
+      }
     }
   }
-  
-  
+
+  _parseRetryDelay(error) {
+    let retryDelaySec = 0;
+    let isQuotaError = false;
+    let shouldRetry = false;
+
+    try {
+      const match = error.message.match(/"retryDelay":"(\d+)(s|m)"/);
+      if (match) {
+        const value = parseInt(match[1], 10);
+        const unit = match[2];
+        retryDelaySec = unit === 'm' ? value * 60 : value;
+        shouldRetry = true;
+      }
+      if (error.message.includes('429') && error.message.includes('quota')) {
+        isQuotaError = true;
+      }
+    } catch {}
+
+    return {
+      delayMs: retryDelaySec * 1000 || 5000, // default 5s if not found
+      isQuotaError,
+      shouldRetry
+    };
+  }
 
   async getModel(modelName) {
     if (!modelName) {
