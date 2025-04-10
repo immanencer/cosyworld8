@@ -123,16 +123,67 @@ export class XSocialTool extends BasicTool {
             if (!(await this.isAuthorized(avatar))) return '❌ X authorization required. Please connect your account.';
 
             if (command === 'browse') {
+                this.replyNotification = true;
+                const context = await this.conversationManager.getChannelContext(message.channel.id);
                 const { timeline, notifications, userId } = await this.getXTimelineAndNotifications(avatar);
 
-                const header = `📡 **X Timeline & Notifications**\n**Your X User ID:** ${userId}`;
+                const actions = await this.generateSocialActions(avatar, context, timeline, notifications, userId);
+                let results = [];
+                actions.actions = actions.actions.sort(() => Math.random() - 0.5).slice(0, 3);
+                const isValidId = (id) => typeof id === 'string' && /^\d+$/.test(id);
 
-                const formatTweet = (t) => `[author:${t.user}] ${t.text}`;
+                const me = await v2Client.me();
+                const myUserId = me.data.id;
 
-                const timelineText = timeline.slice(0, 10).map(formatTweet).join('\n') || 'No recent timeline posts.';
-                const notificationsText = notifications.slice(0, 10).map(formatTweet).join('\n') || 'No recent notifications.';
-
-                return `${header}\n\n**Timeline:**\n${timelineText}\n\n**Notifications:**\n${notificationsText}`;
+                for (const action of actions.actions) {
+                    const tweeturl = action.tweetId ? `[post](https://x.com/ratimics/status/${action.tweetId})` : '';
+                    try {
+                        switch (action.type) {
+                            case 'post':
+                                await v2Client.tweet(action.content);
+                                await db.collection('social_posts').insertOne({ avatarId: avatar._id, content: action.content, timestamp: new Date(), postedToX: true });
+                                results.push(`✨ Sent ${tweeturl}: "${action.content}"`);
+                                break;
+                            case 'reply':
+                                if (!isValidId(action.tweetId)) { results.push(`❌ Invalid tweetId for reply: ${action.tweetId}`); break; }
+                                await v2Client.reply(action.content, action.tweetId);
+                                results.push(`↩️ Replied to ${tweeturl}: "${action.content}"`);
+                                break;
+                            case 'quote':
+                                if (!isValidId(action.tweetId)) { results.push(`❌ Invalid tweetId for quote: ${action.tweetId}`); break; }
+                                await v2Client.tweet({ text: action.content, quote_tweet_id: action.tweetId });
+                                results.push(`📜 Quoted ${tweeturl}: "${action.content}"`);
+                                break;
+                            case 'follow':
+                                if (!isValidId(action.userId)) { results.push(`❌ Invalid userId for follow: ${action.userId}`); break; }
+                                await v2Client.follow(action.userId);
+                                results.push(`➕ Followed user ${action.userId}`);
+                                break;
+                            case 'like':
+                                if (!isValidId(action.tweetId)) { results.push(`❌ Invalid tweetId for like: ${action.tweetId}`); break; }
+                                await v2Client.like(myUserId, action.tweetId);
+                                results.push(`❤️ Liked ${tweeturl}`);
+                                break;
+                            case 'repost':
+                                if (!isValidId(action.tweetId)) { results.push(`❌ Invalid tweetId for repost: ${action.tweetId}`); break; }
+                                await v2Client.retweet(myUserId, action.tweetId);
+                                results.push(`🔄 Reposted ${tweeturl}`);
+                                break;
+                            case 'block':
+                                if (!isValidId(action.userId)) { results.push(`❌ Invalid userId for block: ${action.userId}`); break; }
+                                await v2Client.block(myUserId, action.userId);
+                                results.push(`🚫 Blocked user ${action.userId}`);
+                                break;
+                        }
+                    } catch (error) {
+                        if (action.type === 'repost') {
+                            this.logger.error(`Repost failed. Params: myUserId=${myUserId}, tweetId=${action.tweetId}`);
+                            this.logger.error(`Error stack: ${error.stack}`);
+                        }
+                        results.push(`❌ ${action.type} failed: ${error.message}`);
+                    }
+                }
+                return results.map(T => `-# [${T}]`).join('\n');
             }
 
             if (command === 'post') {
@@ -159,6 +210,75 @@ export class XSocialTool extends BasicTool {
         } catch (error) {
             return `❌ Error: ${error.message}`;
         }
+    }
+
+    async generateSocialActions(avatar, context, timeline, notifications, userId) {
+        const memories = await this.memoryService.getMemories(avatar._id, 20);
+        const systemPrompt = await this.promptService.getBasicSystemPrompt(avatar);
+
+        const prompt = `
+${systemPrompt}
+
+You are an AI social media agent managing an avatar's X (Twitter) account.
+
+Your task is to generate a list of social actions the avatar should perform next.
+
+Use the following context:
+
+Memories:
+${memories.map(m => m.content).join('\n')}
+
+Channel Context:
+${context}
+
+Recent Timeline (each tweet has isOwn=true if posted by this avatar, false otherwise):
+${JSON.stringify(timeline)}
+
+Recent Notifications (each tweet has isOwn=true if posted by this avatar, false otherwise):
+${JSON.stringify(notifications)}
+
+Avoid replying to or quoting tweets where isOwn=true (your own posts).
+
+Generate a JSON array of actions. Each action must have:
+- "type": one of post, reply, quote, follow, like, repost, block
+- "content": text for post/reply/quote (max 280 chars), or null if not applicable
+- "tweetId": the Tweet ID for reply/quote/like/repost, or null if not applicable
+- "userId": the User ID for follow/block, or null if not applicable
+
+Only output the JSON object, no commentary.`.trim();
+
+        const schema = {
+            name: 'rati-x-social-actions',
+            strict: true,
+            schema: {
+                type: "object",
+                properties: {
+                    actions: {
+                        type: "array",
+                        items: {
+                            type: "object",
+                            properties: {
+                                type: { type: "string", enum: ["post", "reply", "quote", "follow", "like", "repost", "block"] },
+                                content: { type: "string", nullable: true },
+                                tweetId: { type: "string", nullable: true },
+                                userId: { type: "string", nullable: true }
+                            },
+                            required: ["type", "content", "tweetId", "userId"],
+                            additionalProperties: false
+                        }
+                    }
+                },
+                required: ["actions"],
+                additionalProperties: false
+            }
+        };
+
+        const actions = await this.creationService.executePipeline({
+            prompt,
+            schema
+        });
+
+        return actions;
     }
 
     async getToolStatusForAvatar(avatar) {
