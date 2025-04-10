@@ -338,8 +338,8 @@ export class GoogleAIService extends BasicService {
           console.warn(`[GoogleAIService] Quota exceeded during chat: ${error.message}`);
           return '-# [ Error: Google AI quota exceeded. Please try again later. ]';
         }
-        console.error(`[${new Date().toISOString()}] Chat error:`, error.message);
-        throw error;
+        console.error(`[${new Date().toISOString()}] Google AI service error:`, error.message);
+        return `-# [ Error: ${error.message} ]`;
       }
     }
   }
