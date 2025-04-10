@@ -1,6 +1,6 @@
-import { response } from 'express';
 import { handleCommands } from '../commands/commandHandler.mjs';
 import { BasicService } from '../foundation/basicService.mjs';
+import { MapService } from '../map/mapService.mjs';
 
 const GUILD_NAME = process.env.GUILD_NAME || 'The Guild';
 
@@ -16,6 +16,7 @@ export class ConversationManager extends BasicService {
     this.memoryService = services.memoryService;
     this.promptService = services.promptService;
     this.configService = services.configService;
+    this.mapService = services.mapService;
 
     this.GLOBAL_NARRATIVE_COOLDOWN = 60 * 60 * 1000; // 1 hour
     this.lastGlobalNarrativeTime = 0;
@@ -63,17 +64,14 @@ export class ConversationManager extends BasicService {
         await this.avatarService.updateAvatar(avatar);
       }
 
-      const kgContext = await this.memoryService.queryKnowledgeGraph(avatar._id);
+      const kgContext = await this.services.knowledgeService.queryKnowledgeGraph(avatar._id);
       const chatMessages = await this.promptService.getNarrativeChatMessages(avatar);
 
       // Inject KG context into user prompt
       if (chatMessages && chatMessages.length > 0) {
         const userMsg = chatMessages.find(m => m.role === 'user');
         if (userMsg) {
-          userMsg.content = `Knowledge Graph:
-${kgContext}
-
-${userMsg.content}`;
+          userMsg.content = `Knowledge Graph:\n${kgContext}\n\n${userMsg.content}`;
         }
       }
 
@@ -91,7 +89,7 @@ ${userMsg.content}`;
       this.lastGlobalNarrativeTime = Date.now();
 
       // Update KG with new narrative
-      await this.memoryService.updateKnowledgeGraph(avatar._id, narrative);
+      await this.services.knowledgeService.updateKnowledgeGraph(avatar._id, narrative, this.services.creationService);
 
       return narrative;
     } catch (error) {
@@ -341,7 +339,14 @@ ${userMsg.content}`;
           }
           sentMessage.guildId = guild.id;
           sentMessage.channel = channel;
-          handleCommands(sentMessage, this.services, avatar);
+
+          handleCommands(sentMessage, {
+            mapService: this.mapService,
+            toolService: this.toolService,
+            avatarService: this.avatarService,
+            discordService: this.discordService,
+            configService: this.configService
+          }, avatar);
         }
       }
       this.channelLastMessage.set(channel.id, Date.now());

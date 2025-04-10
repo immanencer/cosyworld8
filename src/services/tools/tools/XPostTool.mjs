@@ -10,7 +10,6 @@ export class XPostTool extends BasicTool {
     constructor(services) {
         super(services);
         this.databaseService = services.databaseService;
-        this.toolService = services.toolService;
 
         
         this.emoji = '🐦';

@@ -43,13 +43,6 @@ export async function initializeServices(logger) {
   await validateEnvironment(logger);
 
   try {
-    await services.mcpClientService.initialize();
-    logger.info('MCPClientService initialized.');
-  } catch (err) {
-    logger.warn(`Failed to initialize MCPClientService: ${err.message}`);
-  }
-
-  try {
     await services.databaseService.connect();
     logger.info('DatabaseService connected.');
   } catch (err) {

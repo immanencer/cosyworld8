@@ -1,17 +1,13 @@
 export async function handleCommands(message, services, avatar) {
+
   const content = message.content.trim();
   if (!message.guildId) {
     throw new Error("Message does not have a guild ID.");
   }
-  const guildConfig = await services.configService.getGuildConfig(message.guildId);
+  // const guildConfig = await services.configService.getGuildConfig(message.guildId);
 
-  if (services.toolService) {
-    //services.toolService.applyGuildToolEmojiOverrides(guildConfig);
-  }
 
-  const toolEmojis = services.toolService
-    ? Array.from(services.toolService.toolEmojis.keys())
-    : [];
+  const toolEmojis = Array.from(services.toolService.toolEmojis.keys());
 
   const isToolCommand = toolEmojis.some(emoji => content.includes(emoji));
 
@@ -28,7 +24,7 @@ export async function handleCommands(message, services, avatar) {
             ? params.slice(1)
             : params;
           await services.discordService.reactToMessage(message, tool.emoji);
-          const result = await services.toolService.executeToolWithLogging(command, message, args, avatar);
+          const result = await services.toolService.executeTool(command, message, args, avatar);
           if (tool.replyNotification && result) {
             await services.discordService.sendAsWebhook(message.channel.id, result, {
               ...avatar, name: `${avatar.name} used ${tool.name} ${tool.emoji ||''}`,
@@ -41,7 +37,7 @@ export async function handleCommands(message, services, avatar) {
         }
       });
     } catch (error) {
-      services.logger.error("Error handling tool command:", error);1
+      services.logger.error("Error handling tool command:", error);
       await services.discordService.reactToMessage(message, "❌");
       await services.discordService.replyToMessage(message, `-# [There was an error processing your command: ${error.message}]`);
     }

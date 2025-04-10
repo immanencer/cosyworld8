@@ -19,12 +19,10 @@ export class MessageHandler extends BasicService {
     this.spamControlService = services.spamControlService;
     this.schedulingService = services.schedulingService;
     this.avatarService = services.avatarService;
-    this.toolService = services.toolService;
     this.decisionMaker = services.decisionMaker;
     this.conversationManager = services.conversationManager;
     this.riskManagerService = services.riskManagerService;
     this.moderationService = services.moderationService;
-    this.toolService = services.toolService;
 
     this.client = this.discordService.client;
     this.started = false;
@@ -127,8 +125,7 @@ export class MessageHandler extends BasicService {
     }
 
     // Check if the message is a command
-    const avatar = (await this.avatarService.getAvatarFromMessage(message)) ||
-      (await this.avatarService.summonUserAvatar(message)).avatar;
+    const avatar = (await this.avatarService.summonUserAvatar(message)).avatar;
     if (avatar) {
       await handleCommands(message, this.services, avatar);
     }

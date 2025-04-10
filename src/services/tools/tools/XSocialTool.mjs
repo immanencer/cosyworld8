@@ -106,79 +106,10 @@ export class XSocialTool extends BasicTool {
         return data;
     }
 
-    async generateSocialActions(avatar, context, timeline, notifications, userId) {
-        const memories = await this.memoryService.getMemories(avatar._id, 20);
-        const systemPrompt = await this.promptService.getBasicSystemPrompt(avatar);
-
-        const prompt = `
-${systemPrompt}
-
-You are an AI social media agent managing an avatar's X (Twitter) account.
-
-Your task is to generate a list of social actions the avatar should perform next.
-
-Use the following context:
-
-Memories:
-${memories.map(m => m.content).join('\n')}
-
-Channel Context:
-${context}
-
-Recent Timeline (each tweet has isOwn=true if posted by this avatar, false otherwise):
-${JSON.stringify(timeline)}
-
-Recent Notifications (each tweet has isOwn=true if posted by this avatar, false otherwise):
-${JSON.stringify(notifications)}
-
-Avoid replying to or quoting tweets where isOwn=true (your own posts).
-
-Generate a JSON array of actions. Each action must have:
-- "type": one of post, reply, quote, follow, like, repost, block
-- "content": text for post/reply/quote (max 280 chars), or null if not applicable
-- "tweetId": the Tweet ID for reply/quote/like/repost, or null if not applicable
-- "userId": the User ID for follow/block, or null if not applicable
-
-Only output the JSON object, no commentary.`.trim();
-
-        const schema = {
-            name: 'rati-x-social-actions',
-            strict: true,
-            schema: {
-                type: "object",
-                properties: {
-                    actions: {
-                        type: "array",
-                        items: {
-                            type: "object",
-                            properties: {
-                                type: { type: "string", enum: ["post", "reply", "quote", "follow", "like", "repost", "block"] },
-                                content: { type: "string", nullable: true, description: "Text for post/reply/quote (max 280 chars) or null" },
-                                tweetId: { type: "string", nullable: true, description: "Tweet ID for reply/quote/like/repost or null" },
-                                userId: { type: "string", nullable: true, description: "User ID for follow/block or null" }
-                            },
-                            required: ["type", "content", "tweetId", "userId"],
-                            additionalProperties: false,
-                        }
-                    }
-                },
-                required: ["actions"],
-                additionalProperties: false,
-            }
-        };
-
-        const actions = await this.creationService.executePipeline({
-            prompt,
-            schema
-        });
-
-        return actions;
-    }
-
     async execute(message, params, avatar) {
         try {
             if (!params.length) {
-                params = ['auto'];
+                params = ['browse'];
             }
 
             const db = this.databaseService.getDatabase();
@@ -191,11 +122,10 @@ Only output the JSON object, no commentary.`.trim();
 
             if (!(await this.isAuthorized(avatar))) return '❌ X authorization required. Please connect your account.';
 
-            if (command === 'status') {
-                this.replyNotification = false;
+            if (command === 'browse') {
                 const { timeline, notifications, userId } = await this.getXTimelineAndNotifications(avatar);
 
-                const header = `📡 **X Status**\n**Your X User ID:** ${userId}`;
+                const header = `📡 **X Timeline & Notifications**\n**Your X User ID:** ${userId}`;
 
                 const formatTweet = (t) => `[author:${t.user}] ${t.text}`;
 
@@ -206,8 +136,8 @@ Only output the JSON object, no commentary.`.trim();
             }
 
             if (command === 'post') {
-                this.replyNotification = true;
                 const content = params.slice(1).join(' ');
+                if (!content) return '❌ Please provide content to post.';
                 if (content.length > 280) return `❌ Message too long (${content.length}/280). Trim by ${content.length - 280}.`;
                 const result = await v2Client.tweet(content);
                 if (!result) return '-# [ ❌ Failed to post to X. ]';
@@ -217,98 +147,7 @@ Only output the JSON object, no commentary.`.trim();
                 return `-# ✨ [ Posted to X. ]\n>${content} \n-# [view post](${tweetUrl})`;
             }
 
-            if (command === 'auto') {
-                this.replyNotification = true;
-                const context = await this.conversationManager.getChannelContext(message.channel.id);
-                const { timeline, notifications, userId } = await this.getXTimelineAndNotifications(avatar);
-
-                const actions = await this.generateSocialActions(avatar, context, timeline, notifications, userId);
-                let results = [];
-                // shuffle actions
-                actions.actions = actions.actions.sort(() => Math.random() - 0.5);
-                // limit to 2 actions
-                actions.actions = actions.actions.slice(0, 2);
-                const isValidId = (id) => typeof id === 'string' && /^\d+$/.test(id);
-
-                for (let i = 0; i < Math.min(2, actions.actions.length); i++) {
-                    const action = actions.actions[i];
-                    if ((['reply', 'quote', 'like', 'repost'].includes(action.type)) && !isValidId(action.tweetId)) {
-                        results.push(`❌ Invalid tweetId for ${action.type} in initial validation: ${action.tweetId}`);
-                    }
-                    if ((['follow', 'block'].includes(action.type)) && !isValidId(action.userId)) {
-                        results.push(`❌ Invalid userId for ${action.type} in initial validation: ${action.userId}`);
-                    }
-                }
-
-                const me = await v2Client.me();
-                const myUserId = me.data.id;
-
-                for (const action of actions.actions) {
-                    const tweeturl = action.tweetId ? `[post](https://x.com/ratimics/status/${action.tweetId})` : '';
-                    try {
-                        switch (action.type) {
-                            case 'post':
-                                await v2Client.tweet(action.content);
-                                await db.collection('social_posts').insertOne({ avatarId: avatar._id, content: action.content, timestamp: new Date(), postedToX: true });
-                                results.push(`✨ Sent ${tweeturl}: "${action.content}"`);
-                                break;
-                            case 'reply':
-                                if (!isValidId(action.tweetId)) {
-                                    results.push(`❌ Invalid tweetId for reply: ${action.tweetId}`);
-                                    break;
-                                }
-                                await v2Client.reply(action.content, action.tweetId);
-                                results.push(`↩️ Replied to ${tweeturl}: "${action.content}"`);
-                                break;
-                            case 'quote':
-                                if (!isValidId(action.tweetId)) {
-                                    results.push(`❌ Invalid tweetId for quote: ${action.tweetId}`);
-                                    break;
-                                }
-                                await v2Client.tweet({ text: action.content, quote_tweet_id: action.tweetId });
-                                results.push(`📜 Quoted ${tweeturl}: "${action.content}"`);
-                                break;
-                            case 'follow':
-                                if (!isValidId(action.userId)) {
-                                    results.push(`❌ Invalid userId for follow: ${action.userId}`);
-                                    break;
-                                }
-                                await v2Client.follow(action.userId);
-                                results.push(`➕ Followed user ${action.userId}`);
-                                break;
-                            case 'like':
-                                if (!isValidId(action.tweetId)) {
-                                    results.push(`❌ Invalid tweetId for like: ${action.tweetId}`);
-                                    break;
-                                }
-                                await v2Client.like(myUserId, action.tweetId);
-                                results.push(`❤️ Liked ${tweeturl}`);
-                                break;
-                            case 'repost':
-                                if (!isValidId(action.tweetId)) {
-                                    results.push(`❌ Invalid tweetId for repost: ${action.tweetId}`);
-                                    break;
-                                }
-                                await v2Client.retweet(myUserId, action.tweetId);
-                                results.push(`🔄 Reposted ${tweeturl}`);
-                                break;
-                            case 'block':
-                                if (!isValidId(action.userId)) {
-                                    results.push(`❌ Invalid userId for block: ${action.userId}`);
-                                    break;
-                                }
-                                await v2Client.block(myUserId, action.userId);
-                                results.push(`🚫 Blocked user ${action.userId}`);
-                                break;
-                        }
-                    } catch (error) {
-                        results.push(`❌ ${action.type} failed: ${error.message}`);
-                    }
-                }
-                return results.map(T => `-# [${T}]`).join('\n');
-            }
-
-            return '❌ Unknown command. Use: status, post <message>, or auto';
+            return '❌ Unknown command. Use: browse or post <message>';
         } catch (error) {
             return `❌ Error: ${error.message}`;
         }
@@ -333,11 +172,11 @@ Only output the JSON object, no commentary.`.trim();
     }
 
     getDescription() {
-        return 'Manage X interactions: status (timeline/notifications), post <message>, auto (AI-driven actions).';
+        return 'Manage X interactions: browse timeline/notifications or post a message.';
     }
 
     async getSyntax() {
-        return `${this.emoji} [status|post <message>|auto]`;
+        return `${this.emoji} [browse|post <message>]`;
     }
 
     async close() {

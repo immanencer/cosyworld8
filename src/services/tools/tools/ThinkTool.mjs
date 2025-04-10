@@ -7,7 +7,6 @@ export class ThinkTool extends BasicTool {
     this.aiService = services.aiService;
     this.memoryService = services.memoryService;
     this.discordService = services.discordService;
-    this.mcpClientService = services.mcpClientService;
     this.promptService = services.promptService;
     this.databaseService = services.databaseService;
 
@@ -29,68 +28,6 @@ export class ThinkTool extends BasicTool {
     return messages.map(m => `${m.author.username}: ${m.content}`).join('\n');
   }
 
-  async fetchMemoryFromMCP(avatar) {
-    try {
-      const tools = this.mcpClientService.getTools('memory');
-      if (!tools.find(t => t.name === 'open_nodes')) return '';
-      const entityName = avatar._id.toString();
-      const result = await this.mcpClientService.callTool('memory', {
-        name: 'open_nodes',
-        arguments: { names: [entityName] }
-      });
-      const entities = result?.entities || [];
-      const observations = entities.flatMap(e => e.observations || []);
-      return observations.join('\n');
-    } catch (err) {
-      this.logger?.warn(`Failed to fetch MCP memory: ${err.message}`);
-      return '';
-    }
-  }
-
-  async storeReflectionInMCP(avatar, reflection) {
-    try {
-      const entityName = avatar._id.toString();
-      const tools = this.mcpClientService.getTools('memory');
-      if (!tools.find(t => t.name === 'add_observations')) return;
-      try {
-        await this.mcpClientService.callTool('memory', {
-          name: 'add_observations',
-          arguments: {
-            observations: [{ entityName, contents: [reflection] }]
-          }
-        });
-      } catch (err) {
-        if (err.message?.includes('not found') && tools.find(t => t.name === 'create_entities')) {
-          this.logger?.warn(`MCP entity ${entityName} not found. Creating entity.`);
-          await this.mcpClientService.callTool('memory', {
-            name: 'create_entities',
-            arguments: {
-              entities: [{
-                name: entityName,
-                entityType: 'person',
-                observations: [
-                  `Name: ${avatar.name}`,
-                  `Persona: ${avatar.personality || ''}`,
-                  `Created: ${(new Date()).toISOString()}`
-                ]
-              }]
-            }
-          });
-          await this.mcpClientService.callTool('memory', {
-            name: 'add_observations',
-            arguments: {
-              observations: [{ entityName, contents: [reflection] }]
-            }
-          });
-        } else {
-          throw err;
-        }
-      }
-    } catch (err) {
-      this.logger?.warn(`Failed to store reflection in MCP: ${err.message}`);
-    }
-  }
-
   async execute(message, params, avatar) {
     try {
       let messageToRespondTo;
@@ -104,13 +41,12 @@ export class ThinkTool extends BasicTool {
       }
 
       const context = await this.getChannelContext(message.channel);
-      const mcpMemory = await this.fetchMemoryFromMCP(avatar);
       let lastNarrative = '';
       try {
         lastNarrative = (await this.promptService.getLastNarrative(avatar, this.databaseService.getDatabase()))?.content || '';
       } catch {}
 
-      const reflectionPrompt = `Based on this conversation:\n${context}\n\nLatest narrative:\n${lastNarrative}\n\nAnd your current memory:\n${mcpMemory}\nYou are about to respond to the message: "${messageToRespondTo}". Reflect in detail on the context, think carefully about the conversation and analyze its meaning.`;
+      const reflectionPrompt = `Based on this conversation:\n${context}\n\nLatest narrative:\n${lastNarrative}\nYou are about to respond to the message: "${messageToRespondTo}". Reflect in detail on the context, think carefully about the conversation and analyze its meaning.`;
 
       const reflection = await this.aiService.chat([
         {
@@ -132,7 +68,37 @@ export class ThinkTool extends BasicTool {
       });
 
       await this.memoryService.addMemory(avatar._id, reflection);
-      await this.storeReflectionInMCP(avatar, reflection);
+
+      // Extract knowledge points from reflection
+      try {
+        const schema = {
+          name: 'KnowledgeExtraction',
+          description: 'Extract key knowledge points from a reflection',
+          schema: {
+            type: 'object',
+            properties: {
+              knowledge: {
+                type: 'array',
+                items: { type: 'string' },
+                description: 'List of knowledge points or facts learned'
+              }
+            },
+            required: ['knowledge'],
+            additionalProperties: false
+          }
+        };
+
+        const prompt = `Extract a concise list of key knowledge points or facts from the following reflection. Each should be a standalone fact or insight.\n\nReflection:\n${reflection}`;
+
+        const result = await this.services.creationService.executePipeline({ prompt, schema });
+        if (result?.knowledge?.length) {
+          for (const knowledge of result.knowledge) {
+            await this.services.knowledgeService.addKnowledgeTriple(avatar._id, 'knows', knowledge);
+          }
+        }
+      } catch (kgError) {
+        console.error('Knowledge extraction failed:', kgError);
+      }
 
       if (avatar.innerMonologueChannel) {
         await this.discordService.sendAsWebhook(

@@ -10,10 +10,11 @@ import { ItemTool } from './tools/ItemTool.mjs';
 import { ThinkTool } from './tools/ThinkTool.mjs';
 import { SummonTool } from './tools/SummonTool.mjs';
 import { BreedTool } from './tools/BreedTool.mjs';
+import { ForumTool } from './ForumTool.mjs';
 
 export class ToolService extends BasicService {
   constructor(services) {
-    super(arguments);
+    super(services);
     this.services = services;
     this.databaseService = services.databaseService;
     this.configService = services.configService;
@@ -41,6 +42,7 @@ export class ToolService extends BasicService {
       x: XPostTool,
       item: ItemTool,
       respond: ThinkTool,
+      forum: ForumTool,
     };
 
     Object.entries(toolClasses).forEach(([name, ToolClass]) => {
@@ -56,6 +58,13 @@ export class ToolService extends BasicService {
     });
 
     this.creationTool = new CreationTool({ logger: this.logger, databaseService: this.databaseService, configService: this.configService });
+  }
+
+  registerTool(tool) {
+    if (tool?.name) {
+      this.tools.set(tool.name, tool);
+      if (tool.emoji) this.toolEmojis.set(tool.emoji, tool.name);
+    }
   }
 
   async initialize() {
@@ -75,8 +84,10 @@ export class ToolService extends BasicService {
   extractToolCommands(text) {
     if (!text) return { commands: [], cleanText: text || '', commandLines: [] };
 
-    const emojis = Array.from(this.toolEmojis.keys());
-    const pattern = new RegExp(`(${emojis.join('|')})(?:\s*(.*))?`, 'g');
+    const emojis = Array.from(this.toolEmojis.keys()).map(e => e.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
+    if (emojis.length === 0) return { commands: [], cleanText: text, commandLines: [] };
+
+    const pattern = new RegExp(`(^|\s)(${emojis.join('|')})(?:\s+([^\n]*))?`, 'g');
 
     const commands = [];
     const commandLines = [];
@@ -84,14 +95,14 @@ export class ToolService extends BasicService {
 
     let match;
     while ((match = pattern.exec(text)) !== null) {
-      const emoji = match[1];
-      const paramsString = match[2] || '';
+      const emoji = match[2];
+      const paramsString = match[3] || '';
       const toolName = this.toolEmojis.get(emoji);
       const fullMatch = match[0];
 
       const params = paramsString.trim() ? paramsString.trim().split(/\s+/) : [];
       commands.push({ command: toolName, emoji, params });
-      commandLines.push(fullMatch);
+      commandLines.push(fullMatch.trim());
     }
 
     return { commands, cleanText, commandLines };
@@ -146,12 +157,23 @@ export class ToolService extends BasicService {
    * @param {Object} message - The Discord message object
    * @param {string[]} params - The command parameters
    * @param {Object} avatar - The avatar performing the action
+   * @param {Object} guildConfig - The guild configuration
    * @returns {Promise<string>} The tool's response
    */
-  async executeToolWithLogging(toolName, message, params, avatar) {
+  async executeTool(toolName, message, params, avatar, guildConfig = {}) {
     const tool = this.tools.get(toolName);
     if (!tool) {
       return `Tool '${toolName}' not found.`;
+    }
+
+    // ForumTool restriction logic
+    if (tool.name === 'forum') {
+      if (!guildConfig?.enableForumTool) {
+        return 'Forum tool is disabled for this server.';
+      }
+      if (guildConfig.forumToolChannelId && message.channel.id !== guildConfig.forumToolChannelId) {
+        return 'Forum tool can only be used in the designated channel.';
+      }
     }
 
     const now = Date.now();

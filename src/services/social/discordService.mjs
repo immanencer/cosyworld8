@@ -5,6 +5,7 @@ import {
   Partials,
   WebhookClient,
 } from 'discord.js';
+import { ObjectId } from 'mongodb';
 import { chunkMessage } from '../utils/messageChunker.mjs';
 import { processMessageLinks } from '../utils/linkProcessor.mjs';
 import models from '../ai/models.config.mjs';
@@ -83,7 +84,7 @@ export class DiscordService {
 
         const parts = customId.split('_');
         const type = parts[2];
-        const id = parts.slice(3).join('_');
+        const id = ObjectId.createFromHexString(parts.slice(3).join('_'));
 
         let embedData;
         if (type === 'avatar') {

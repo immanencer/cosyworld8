@@ -7,7 +7,6 @@ export class PromptService extends BasicService {
     this.discordService = services.discordService;
     this.configService = services.configService;
     this.mapService = services.mapService;
-    this.toolService = services.toolService;
     this.itemService = services.itemService;
     this.memoryService = services.memoryService;
     this.imageProcessingService = services.imageProcessingService;

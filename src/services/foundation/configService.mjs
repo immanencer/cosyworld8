@@ -162,7 +162,9 @@ export class ConfigService {
         combat: true,
         itemCreation: true
       },
-      viewDetailsEnabled: true
+      viewDetailsEnabled: true,
+      enableForumTool: false, // ForumTool disabled by default
+      forumToolChannelId: null // Optional channel restriction
     };
   }
 

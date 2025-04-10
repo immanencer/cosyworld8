@@ -7,7 +7,6 @@ export class ModerationService extends BasicService {
     this.logger = services.logger;
     this.aiService = services.aiService;
     this.databaseService = services.databaseService;
-    this.toolService = services.toolService;
     this.riskManagerService = services.riskManagerService;
 
     this.staticModerationRegexes = [

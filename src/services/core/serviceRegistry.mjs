@@ -20,11 +20,13 @@ import { CreationService } from '../entity/creationService.mjs';
 import { S3Service } from '../s3/s3Service.mjs';
 import { LocationService } from '../location/locationService.mjs';
 import { ArweaveService } from '../arweave/arweaveService.mjs';
-import { MCPClientService } from '../mcp/MCPClientService.mjs';
 import { RiskManagerService } from '../security/riskManagerService.mjs';
 import { ImageProcessingService } from '../media/imageProcessingService.mjs';
 import { ModerationService } from '../security/moderationService.mjs';
-import { channel } from 'node:diagnostics_channel';
+import { KnowledgeService } from '../entity/knowledgeService.mjs';
+
+// Client Services
+import { OneirocomForumService } from '../oneirocom/OneirocomForumService.mjs';
 
 // Infrastructure layer
 const infrastructure = {};
@@ -59,7 +61,7 @@ infrastructure.arweaveService = new ArweaveService({
 
 infrastructure.imageProcessingService = new ImageProcessingService({
   logger: infrastructure.logger,
-  configService: infrastructure.configService,
+  aiService: infrastructure.aiService,
 });
 
 // Domain layer
@@ -78,7 +80,7 @@ domain.webService = new WebService({
   discordService: domain.discordService,
 });
 
-domain.mcpClientService = new MCPClientService({
+domain.forumClientServiceService = new OneirocomForumService({
   logger: infrastructure.logger,
   configService: infrastructure.configService,
 });
@@ -134,7 +136,13 @@ domain.memoryService = new MemoryService({
   databaseService: infrastructure.databaseService,
   discordService: domain.discordService,
   creationService: domain.creationService,
-  mcpClientService: domain.mcpClientService,
+  forumClientServiceService: domain.forumClientServiceService,
+});
+
+domain.knowledgeService = new KnowledgeService({
+  logger: infrastructure.logger,
+  databaseService: infrastructure.databaseService,
+  creationService: domain.creationService,
 });
 
 domain.avatarService = new AvatarService({
@@ -147,11 +155,9 @@ domain.avatarService = new AvatarService({
   statService: domain.statService,
   creationService: domain.creationService,
   imageProcessingService: infrastructure.imageProcessingService,
-  conversationManager: null,
   discordService: domain.discordService,
   memoryService: domain.memoryService,
-  riskManagerService: domain.riskManagerService,
-  toolService: null, // placeholder
+  riskManagerService: domain.riskManagerService
 });
 
 domain.promptService = new PromptService({
@@ -160,7 +166,6 @@ domain.promptService = new PromptService({
   databaseService: infrastructure.databaseService,
   configService: infrastructure.configService,
   mapService: domain.mapService,
-  toolService: null, // placeholder
   itemService: domain.itemService,
   memoryService: domain.memoryService,
 });
@@ -181,6 +186,8 @@ domain.conversationManager = new ConversationManager({
   memoryService: domain.memoryService,
   promptService: domain.promptService,
   configService: infrastructure.configService,
+  knowledgeService: domain.knowledgeService,
+  mapService: domain.mapService,
 });
 
 domain.channelManager = new ChannelManager({
@@ -213,7 +220,6 @@ domain.moderationService = new ModerationService({
   aiService: domain.aiService,
   logger: infrastructure.logger,
   databaseService: infrastructure.databaseService,
-  toolService: null, // patched later
   riskManagerService: domain.riskManagerService,
 });
 
@@ -238,6 +244,7 @@ domain.toolService = new ToolService({
   itemService: domain.itemService,
   riskManagerService: domain.riskManagerService,
   statService: domain.statService,
+  knowledgeService: domain.knowledgeService,
 });
 
 domain.messageHandler = new MessageHandler({
@@ -247,7 +254,6 @@ domain.messageHandler = new MessageHandler({
   configService: infrastructure.configService,
   spamControlService: domain.spamControlService,
   avatarService: domain.avatarService,
-  toolService: null, // patched later
   schedulingService: infrastructure.schedulingService,
   decisionMaker: domain.decisionMaker,
   conversationManager: domain.conversationManager,
@@ -260,13 +266,13 @@ domain.messageHandler = new MessageHandler({
   aiService: domain.aiService,
   itemService: domain.itemService,
   riskManagerService: domain.riskManagerService,
-  moderationService: domain.moderationService,
-  toolService: domain.toolService,
+  moderationService: domain.moderationService
 });
 
 domain.promptService.toolService = domain.toolService;
 domain.messageHandler.toolService = domain.toolService;
 domain.moderationService.toolService = domain.toolService;
+domain.conversationManager.toolService = domain.toolService;
 
 // Compose services object
 const services = {
