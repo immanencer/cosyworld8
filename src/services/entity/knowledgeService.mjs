@@ -5,7 +5,7 @@ export class KnowledgeService extends BasicService {
     super(services);
     this.logger = services.logger;
     this.databaseService = services.databaseService;
-    this.creationService = services.creationService;
+    this.schemaService = services.schemaService;
     
     this.db = this.databaseService.getDatabase();
   }
@@ -59,7 +59,7 @@ export class KnowledgeService extends BasicService {
 
       const prompt = `Extract a concise list of key knowledge points or facts from the following narrative. Each should be a standalone fact or insight.\n\nNarrative:\n${narrative}`;
 
-      const result = await this.creationService.executePipeline({ prompt, schema });
+      const result = await this.schemaService.executePipeline({ prompt, schema });
       if (result?.knowledge?.length) {
         for (const knowledge of result.knowledge) {
           await this.addKnowledgeTriple(avatarId, 'knows', knowledge);

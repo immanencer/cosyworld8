@@ -18,7 +18,7 @@ export class LocationService extends BasicService {
     this.aiService = services.aiService;
     this.discordService = services.discordService;
     this.databaseService = services.databaseService;
-    this.creationService = services.creationService;
+    this.schemaService = services.schemaService;
     this.itemService = services.itemService;
     this.avatarService = services.avatarService;
     this.channelManager = services.channelManager;
@@ -78,7 +78,7 @@ export class LocationService extends BasicService {
    * @returns {Promise<string>} - The uploaded image URL.
    */
   async generateLocationImage(locationName, description) {
-    return await this.creationService.generateImage(`${locationName}: ${description} Overhead RPG Map Style`, '16:9'); // Use CreationService
+    return await this.schemaService.generateImage(`${locationName}: ${description} Overhead RPG Map Style`, '16:9'); // Use SchemaService
   }
 
   /**
@@ -161,7 +161,7 @@ export class LocationService extends BasicService {
         additionalProperties: false,
       }};
 
-      const response = await this.creationService.executePipeline({ prompt, schema });
+      const response = await this.schemaService.executePipeline({ prompt, schema });
       return response.description || `A mysterious aura surrounds ${locationName}, but words fail to capture it.`;
     } catch (error) {
       console.error('Error generating location description:', error);

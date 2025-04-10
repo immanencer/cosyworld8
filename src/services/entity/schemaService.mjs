@@ -3,7 +3,7 @@ import Replicate from 'replicate';
 import { BasicService } from '../foundation/basicService.mjs';
 import { SchemaValidator } from '../utils/schemaValidator.mjs';
 
-export class CreationService extends BasicService {
+export class SchemaService extends BasicService {
   constructor(services) {
     super(services);
 

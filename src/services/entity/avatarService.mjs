@@ -16,7 +16,7 @@ export class AvatarService extends BasicService {
     this.schedulingService = services.schedulingService;
     this.conversationManager = services.conversationManager;
     this.statService = services.statService;
-    this.creationService = services.creationService;
+    this.schemaService = services.schemaService;
 
     this.db = this.databaseService.getDatabase();
     this.channelAvatars = new Map(); // channelId -> Set of avatarIds
@@ -57,7 +57,11 @@ export class AvatarService extends BasicService {
 
     await Promise.all(
       avatars.map(async (avatar) => {
-        await this.conversationManager.generateNarrative(avatar);
+        try {
+          await this.conversationManager.generateNarrative(avatar);
+        } catch (error) {
+          this.logger.error(`Error generating reflection for avatar ${avatar.name}: ${error.message}`);
+        }
       })
     );
     this.logger.info('Reflections generated for active avatars.');
@@ -446,7 +450,7 @@ export class AvatarService extends BasicService {
       }
     };
 
-    return await this.creationService.executePipeline({ prompt, schema });
+    return await this.schemaService.executePipeline({ prompt, schema });
   }
 
   /**
@@ -455,7 +459,7 @@ export class AvatarService extends BasicService {
    * @returns {string|null} - The local filename of the generated image.
    */
   async generateAvatarImage(prompt) {
-    return await this.creationService.generateImage(prompt, '1:1'); // Use CreationService for image generation
+    return await this.schemaService.generateImage(prompt, '1:1'); // Use SchemaService for image generation
   }
 
   /**

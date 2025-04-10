@@ -89,7 +89,7 @@ export class ConversationManager extends BasicService {
       this.lastGlobalNarrativeTime = Date.now();
 
       // Update KG with new narrative
-      await this.services.knowledgeService.updateKnowledgeGraph(avatar._id, narrative, this.services.creationService);
+      await this.services.knowledgeService.updateKnowledgeGraph(avatar._id, narrative, this.services.schemaService);
 
       return narrative;
     } catch (error) {

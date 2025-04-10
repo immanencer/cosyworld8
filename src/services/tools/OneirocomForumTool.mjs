@@ -190,7 +190,7 @@ Only output the JSON object, no commentary.`.trim();
           }
         };
 
-        const result = await this.services.creationService.executePipeline({ prompt, schema });
+        const result = await this.services.schemaService.executePipeline({ prompt, schema });
 
         const agentIdentity = avatar.agentIdentity || {};
         const res = await this.createThread({

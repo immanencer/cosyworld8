@@ -16,7 +16,7 @@ import { ItemService } from '../item/itemService.mjs';
 import { PromptService } from '../ai/promptService.mjs';
 import { MemoryService } from '../entity/memoryService.mjs';
 import { WebService } from '../web/webService.mjs';
-import { CreationService } from '../entity/creationService.mjs';
+import { SchemaService } from '../entity/schemaService.mjs';
 import { S3Service } from '../s3/s3Service.mjs';
 import { LocationService } from '../location/locationService.mjs';
 import { ArweaveService } from '../arweave/arweaveService.mjs';
@@ -122,7 +122,7 @@ domain.statService = new StatService({
   configService: infrastructure.configService,
 });
 
-domain.creationService = new CreationService({
+domain.schemaService = new SchemaService({
   logger: infrastructure.logger,
   aiService: domain.aiService,
   databaseService: infrastructure.databaseService,
@@ -135,14 +135,14 @@ domain.memoryService = new MemoryService({
   configService: infrastructure.configService,
   databaseService: infrastructure.databaseService,
   discordService: domain.discordService,
-  creationService: domain.creationService,
+  schemaService: domain.schemaService,
   forumClientServiceService: domain.forumClientServiceService,
 });
 
 domain.knowledgeService = new KnowledgeService({
   logger: infrastructure.logger,
   databaseService: infrastructure.databaseService,
-  creationService: domain.creationService,
+  schemaService: domain.schemaService,
 });
 
 domain.avatarService = new AvatarService({
@@ -153,7 +153,7 @@ domain.avatarService = new AvatarService({
   schedulingService: infrastructure.schedulingService,
   mapService: domain.mapService,
   statService: domain.statService,
-  creationService: domain.creationService,
+  schemaService: domain.schemaService,
   imageProcessingService: infrastructure.imageProcessingService,
   discordService: domain.discordService,
   memoryService: domain.memoryService,
@@ -204,7 +204,7 @@ domain.locationService = new LocationService({
   aiService: domain.aiService,
   discordService: domain.discordService,
   databaseService: infrastructure.databaseService,
-  creationService: domain.creationService,
+  schemaService: domain.schemaService,
   itemService: domain.itemService,
   avatarService: domain.avatarService,
   channelManager: domain.channelManager,
@@ -235,7 +235,7 @@ domain.toolService = new ToolService({
   decisionMaker: domain.decisionMaker,
   conversationManager: domain.conversationManager,
   channelManager: domain.channelManager,
-  creationService: domain.creationService,
+  schemaService: domain.schemaService,
   promptService: domain.promptService,
   memoryService: domain.memoryService,
   locationService: domain.locationService,
@@ -258,7 +258,7 @@ domain.messageHandler = new MessageHandler({
   decisionMaker: domain.decisionMaker,
   conversationManager: domain.conversationManager,
   channelManager: domain.channelManager,
-  creationService: domain.creationService,
+  schemaService: domain.schemaService,
   promptService: domain.promptService,
   memoryService: domain.memoryService,
   locationService: domain.locationService,

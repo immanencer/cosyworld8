@@ -90,7 +90,7 @@ export class ThinkTool extends BasicTool {
 
         const prompt = `Extract a concise list of key knowledge points or facts from the following reflection. Each should be a standalone fact or insight.\n\nReflection:\n${reflection}`;
 
-        const result = await this.services.creationService.executePipeline({ prompt, schema });
+        const result = await this.services.schemaService.executePipeline({ prompt, schema });
         if (result?.knowledge?.length) {
           for (const knowledge of result.knowledge) {
             await this.services.knowledgeService.addKnowledgeTriple(avatar._id, 'knows', knowledge);

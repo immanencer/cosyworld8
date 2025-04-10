@@ -4,7 +4,7 @@ export class MemoryService extends BasicService {
   constructor(services) {
     super(services);
     this.logger = services.logger;
-    this.creationService = services.creationService;
+    this.schemaService = services.schemaService;
     this.databaseService = services.databaseService;
     this.discordService = services.discordService;
     this.db = this.databaseService.getDatabase();

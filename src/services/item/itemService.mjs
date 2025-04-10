@@ -6,7 +6,7 @@ export class ItemService extends BasicService {
     super(services);
     this.configService = services.configService;
     this.databaseService = services.databaseService;
-    this.creationService = services.creationService;
+    this.schemaService = services.schemaService;
     this.discordService = services.discordService;
 
     this.client = this.discordService.client;
@@ -44,12 +44,12 @@ export class ItemService extends BasicService {
     }
   }
 
-  /** Generates an item image using CreationService. */
+  /** Generates an item image using SchemaService. */
   async generateItemImage(itemName, description) {
-    return await this.creationService.generateImage(`${itemName}: ${description}`, '1:1');
+    return await this.schemaService.generateImage(`${itemName}: ${description}`, '1:1');
   }
 
-  /** Generates detailed item data using CreationService's pipeline. */
+  /** Generates detailed item data using SchemaService's pipeline. */
   async generateItemDetails(itemName, description) {
     const prompt = `Generate a JSON object for an item with the following details:
 Name: "${itemName}"
@@ -71,12 +71,12 @@ Include fields: name, description, type, rarity, properties.`;
         additionalProperties: false,
       }
     };
-    return await this.creationService.executePipeline({ prompt, schema });
+    return await this.schemaService.executePipeline({ prompt, schema });
   }
 
-  /** Determines item rarity using CreationService. */
+  /** Determines item rarity using SchemaService. */
   async determineItemRarity() {
-    return this.creationService.determineRarity();
+    return this.schemaService.determineRarity();
   }
 
   /** Normalizes item type to an allowed value. */
@@ -128,7 +128,7 @@ Return a JSON object with keys: name, description, type, rarity, properties.`;
 
     let itemData;
     try {
-      itemData = await this.creationService.executePipeline({ prompt, schema: itemSchema });
+      itemData = await this.schemaService.executePipeline({ prompt, schema: itemSchema });
     } catch (error) {
       console.error('Error generating item data:', error);
       return null;
@@ -327,7 +327,7 @@ Return a JSON object with keys: name, description, type, rarity, properties.`;
 
     let itemData;
     try {
-      itemData = await this.creationService.executePipeline({ prompt, schema: itemSchema });
+      itemData = await this.schemaService.executePipeline({ prompt, schema: itemSchema });
     } catch (e) {
       console.error('Error generating crafted item data:', e);
       return null;

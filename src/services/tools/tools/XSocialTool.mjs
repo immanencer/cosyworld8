@@ -63,8 +63,8 @@ export class XSocialTool extends BasicTool {
         const userData = await v2Client.me();
         const userId = userData.data.id;
 
-        const timelineResp = await v2Client.homeTimeline(userId, { max_results: 30 });
-        const notificationsResp = await v2Client.userMentionTimeline(userId, { max_results: 30 });
+        const timelineResp = await v2Client.homeTimeline({ max_results: 30 });
+        const notificationsResp = await v2Client.userMentionTimeline(userId, { max_results: 10 });
 
         const timeline = timelineResp?.data?.data?.map(t => ({
             id: t.id,

@@ -18,23 +18,21 @@ export class ChannelManager extends BasicService {
 
   async initializeServices() {
     this.logger.info('[ChannelManager] Registering ambient response periodic task');
-    this.schedulingService.addTask(
-      'triggerAmbientResponses',
-      async () => {
-        try {
-          await this.triggerAmbientResponses();
-        } catch (err) {
-          this.logger.warn(`[ChannelManager] Error in ambient response task: ${err.message}`);
-        }
-      },
-      60 * 60 * 1000 // every hour
-    );
-    this.triggerAmbientResponses();
+
+    const ambientTask = async() => {
+      try {
+        await this.triggerAmbientResponses();
+      } catch (err) {
+        this.logger.warn(`[ChannelManager] Error in ambient response task: ${err.message}`);
+      }
+    }
+    this.schedulingService.addTask( 'triggerAmbientResponses', ambientTask, 60 * 60 * 1000 );
+    ambientTask();
   }
 
   async triggerAmbientResponses() {
     this.logger.info('[ChannelManager] Triggering ambient responses');
-
+    
     const activeChannels = await this.getMostRecentActiveChannels(3);
     for (const channel of activeChannels) {
       // Ensure location exists
