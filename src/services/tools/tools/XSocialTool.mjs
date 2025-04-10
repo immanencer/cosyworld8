@@ -136,9 +136,17 @@ export class XSocialTool extends BasicTool {
             }
 
             if (command === 'post') {
-                const content = params.slice(1).join(' ');
+                let content = params.slice(1).join(' ');
                 if (!content) return '❌ Please provide content to post.';
+
+                // Remove XML/HTML-like tags
+                content = content.replace(/<[^>]*>/g, '');
+                // Remove URLs
+                content = content.replace(/https?:\/\/\S+/gi, '');
+
+                if (!content.trim()) return '❌ Content is empty after filtering.';
                 if (content.length > 280) return `❌ Message too long (${content.length}/280). Trim by ${content.length - 280}.`;
+
                 const result = await v2Client.tweet(content);
                 if (!result) return '-# [ ❌ Failed to post to X. ]';
                 const tweetId = result.data.id;
