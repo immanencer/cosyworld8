@@ -341,6 +341,7 @@ export class ConversationManager extends BasicService {
           sentMessage.channel = channel;
 
           handleCommands(sentMessage, {
+            logger: this.logger,
             mapService: this.mapService,
             toolService: this.toolService,
             avatarService: this.avatarService,

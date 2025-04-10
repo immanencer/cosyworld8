@@ -11,7 +11,6 @@
                 "dev"
             ],
             "envFile": "${workspaceFolder}/.env",
-            "console": "externalTerminal"
         },
         {
             "type": "chrome",

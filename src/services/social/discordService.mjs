@@ -80,7 +80,7 @@ export class DiscordService {
         const { customId } = interaction;
         if (!customId.startsWith('view_full_')) return;
 
-        await interaction.deferReply({ ephemeral: true });
+        await interaction.deferReply({ flags: 64 });
 
         const parts = customId.split('_');
         const type = parts[2];
@@ -106,10 +106,14 @@ export class DiscordService {
         await interaction.editReply({ embeds: [embedData.embed], components: embedData.components || [] });
       } catch (error) {
         this.logger.error('Interaction handler error: ' + error.message);
-        if (interaction.deferred || interaction.replied) {
-          await interaction.editReply('Failed to load profile.');
-        } else {
-          await interaction.reply({ content: 'Failed to load profile.', ephemeral: true });
+        try {
+          if (interaction.deferred || interaction.replied) {
+            await interaction.editReply('Failed to load profile.');
+          } else {
+            await interaction.reply({ content: 'Failed to load profile.', flags: 64 });
+          }
+        } catch (err) {
+          this.logger.error('Failed to send error reply: ' + err.message);
         }
       }
     });

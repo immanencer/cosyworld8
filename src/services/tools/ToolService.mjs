@@ -10,7 +10,7 @@ import { ItemTool } from './tools/ItemTool.mjs';
 import { ThinkTool } from './tools/ThinkTool.mjs';
 import { SummonTool } from './tools/SummonTool.mjs';
 import { BreedTool } from './tools/BreedTool.mjs';
-import { ForumTool } from './ForumTool.mjs';
+import { OneirocomForumTool as ForumTool } from './OneirocomForumTool.mjs';
 
 export class ToolService extends BasicService {
   constructor(services) {
@@ -87,7 +87,7 @@ export class ToolService extends BasicService {
     const emojis = Array.from(this.toolEmojis.keys()).map(e => e.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
     if (emojis.length === 0) return { commands: [], cleanText: text, commandLines: [] };
 
-    const pattern = new RegExp(`(^|\s)(${emojis.join('|')})(?:\s+([^\n]*))?`, 'g');
+    const pattern = new RegExp(`(^|\\s)(${emojis.join('|')})(?:\\s+([^\n]*))?`, 'g');
 
     const commands = [];
     const commandLines = [];
@@ -96,11 +96,12 @@ export class ToolService extends BasicService {
     let match;
     while ((match = pattern.exec(text)) !== null) {
       const emoji = match[2];
-      const paramsString = match[3] || '';
+      const startIndex = match.index + match[1].length + emoji.length;
+      const restOfLine = text.slice(startIndex).split('\n')[0].trim();
       const toolName = this.toolEmojis.get(emoji);
       const fullMatch = match[0];
 
-      const params = paramsString.trim() ? paramsString.trim().split(/\s+/) : [];
+      const params = restOfLine ? restOfLine.split(/\s+/) : [];
       commands.push({ command: toolName, emoji, params });
       commandLines.push(fullMatch.trim());
     }

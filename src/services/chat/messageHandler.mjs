@@ -23,6 +23,7 @@ export class MessageHandler extends BasicService {
     this.conversationManager = services.conversationManager;
     this.riskManagerService = services.riskManagerService;
     this.moderationService = services.moderationService;
+    this.mapService = services.mapService;
 
     this.client = this.discordService.client;
     this.started = false;
@@ -127,7 +128,13 @@ export class MessageHandler extends BasicService {
     // Check if the message is a command
     const avatar = (await this.avatarService.summonUserAvatar(message)).avatar;
     if (avatar) {
-      await handleCommands(message, this.services, avatar);
+      await handleCommands(message, {
+        loggger: this.logger,
+        toolService: this.toolService,
+        discordService: this.discordService,
+        mapService: this.mapService,
+        configService: this.configService,
+      }, avatar);
     }
 
     const channelId = message.channel.id;

@@ -144,7 +144,7 @@ export class XSocialTool extends BasicTool {
                 const tweetId = result.data.id;
                 const tweetUrl = `https://x.com/ratimics/status/${tweetId}`;
                 await db.collection('social_posts').insertOne({ avatarId: avatar._id, content, timestamp: new Date(), postedToX: true, tweetId });
-                return `-# ✨ [ Posted to X. ]\n>${content} \n-# [view post](${tweetUrl})`;
+                return `-# ✨ [ [Posted to X](${tweetUrl}) ] `;
             }
 
             return '❌ Unknown command. Use: browse or post <message>';

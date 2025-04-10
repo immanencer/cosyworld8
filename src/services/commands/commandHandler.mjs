@@ -1,4 +1,10 @@
-export async function handleCommands(message, services, avatar) {
+export async function handleCommands(message, services = {
+  logger: null,
+  toolService: null,
+  discordService: null,
+  mapService: null,
+  configService: null,
+}, avatar) {
 
   const content = message.content.trim();
   if (!message.guildId) {

@@ -128,12 +128,12 @@ function createRouter(db) {
   router.get('/avatars/:id', asyncHandler(async (req, res) => {
     let id;
     try {
-      id = new ObjectId(req.params.id);
+      id = ObjectId.createFromHexString(req.params.id);
     } catch (err) {
       return res.status(400).json({ error: 'Invalid ID format' });
     }
 
-    const avatar = await db.avatars.findOne({ _id: id });
+    const avatar = await db.collection('avatars').findOne({ _id: id });
     if (!avatar) {
       return res.status(404).json({ error: 'Avatar not found' });
     }

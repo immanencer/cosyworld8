@@ -266,7 +266,8 @@ domain.messageHandler = new MessageHandler({
   aiService: domain.aiService,
   itemService: domain.itemService,
   riskManagerService: domain.riskManagerService,
-  moderationService: domain.moderationService
+  moderationService: domain.moderationService,
+  mapService: domain.mapService,
 });
 
 domain.promptService.toolService = domain.toolService;

@@ -21,71 +21,6 @@ export class MoveTool extends BasicTool {
   }
 
   /**
-   * Sends a mini avatar card to the specified channel
-   * @param {Object} avatar - The avatar object
-   * @param {string} channelId - The channel ID to send the mini card to
-   * @param {string} message - Optional message to include with the mini card
-   * @returns {Promise<void>}
-   */
-  async sendMiniAvatarCard(avatar, channelId, message = '') {
-    try {
-      const client = this.discordService.client;
-      if (!client) {
-        this.logger?.error('No Discord client available');
-        return;
-      }
-
-      const channel = await client.channels.fetch(channelId);
-      if (!channel) return;
-
-      const embed = buildMiniAvatarEmbed(avatar, message);
-
-      const webhook = await this.getOrCreateWebhook(channel);
-      if (webhook) {
-        await webhook.send({
-          embeds: [embed],
-          username: avatar.name,
-          avatarURL: avatar.imageUrl
-        });
-      } else {
-        await channel.send({ embeds: [embed] });
-      }
-    } catch (error) {
-      this.logger?.error(`Error sending mini avatar card: ${error.message}`);
-    }
-  }
-
-  /**
-   * Gets or creates a webhook for a channel
-   * @param {Object} channel - The Discord channel
-   * @returns {Promise<Object|null>} - Webhook object or null
-   */
-  async getOrCreateWebhook(channel) {
-    try {
-      const client = this.discordService.client;
-      if (!client) {
-        this.logger?.error('No Discord client available');
-        return null;
-      }
-      
-      const webhooks = await channel.fetchWebhooks();
-      let webhook = webhooks.find(wh => wh.owner.id === client.user.id);
-
-      if (!webhook) {
-        webhook = await channel.createWebhook({
-          name: 'Movement Webhook',
-          avatar: client.user.displayAvatarURL()
-        });
-      }
-
-      return webhook;
-    } catch (error) {
-      this.logger?.error(`Error getting/creating webhook: ${error.message}`);
-      return null;
-    }
-  }
-
-  /**
    * Executes the move command.
    * @param {Object} message - The original Discord message.
    * @param {string[]} params - The command parameters (location name, etc.).
@@ -94,14 +29,11 @@ export class MoveTool extends BasicTool {
    */
   async execute(message, params, avatar) {
     
-    if (!this.locationService) {
-      return 'LocationService not available';
-    }
     
     // Get the destination
     const destination = params.join(' ');
     if (!destination) {
-      return 'You need to specify a destination!';
+      return '-# 🏃‍♂️ [ You need to specify a destination! ]';
     }
 
     try {
@@ -116,27 +48,12 @@ export class MoveTool extends BasicTool {
         message.channel
       );
       if (!newLocation) {
-        return 'Failed to find or create that location!';
+        return '-# 🏃‍♂️ [ Failed to find or create that location!';
       }
 
       // 3. If the avatar is already in that location, bail early
       if (currentLocationId === newLocation.channel.id) {
-        return "You're already there!";
-      }
-
-      // 4. Generate a departure message for display to the user
-      let userFacingDepartureMessage = '';
-      if (currentLocation?.channel) {
-        try {
-          userFacingDepartureMessage = await this.locationService.generateDepartureMessage(
-            avatar,
-            currentLocation,
-            newLocation
-          );
-        } catch (error) {
-          console.error('Error generating departure message:', error);
-          userFacingDepartureMessage = `${avatar.name} sets off to ${newLocation.name}...`;
-        }
+        return "-# 🏃‍♂️ [ You're already there!";
       }
 
       // 5. Update the avatar's position in the database
@@ -148,7 +65,7 @@ export class MoveTool extends BasicTool {
      );
 
       if (!updatedAvatar) {
-        return `Failed to move: Avatar location update failed.`
+        return `-# 🏃‍♂️ [ Failed to move: Avatar location update failed.`
       }
 
       // Ensure avatar's position is updated in the mapService
@@ -158,33 +75,31 @@ export class MoveTool extends BasicTool {
       if (currentLocationId) {
         try {
           const departureMessage = `${avatar.name} has departed to <#${newLocation.channel.id}>`;
-          await this.sendMiniAvatarCard(avatar, currentLocationId, departureMessage);
-          this.logger.debug(`Sent mini card for ${avatar.name} to departure location ${currentLocationId}`);
+          await this.discordService.sendMiniAvatarEmbed(avatar, currentLocationId, departureMessage);
+          this.logger?.debug?.(`Sent mini card for ${avatar.name} to departure location ${currentLocationId}`);
         } catch (miniCardError) {
-          this.logger.error(`Error sending mini card: ${miniCardError.message}`);
+          this.logger?.error?.(`Error sending mini card: ${miniCardError.message}`);
         }
       }
 
       // 7. Instead of sending full profile embed to new location, send mini embed only
       try {
         const arrivalMessage = `${avatar.name} has arrived.`;
-        await this.sendMiniAvatarCard(updatedAvatar, newLocation.channel.id, arrivalMessage);
-        this.logger.debug(`Sent mini arrival card for ${updatedAvatar.name} to ${newLocation.channel.id}`);
+        await this.discordService.sendMiniAvatarEmbed(updatedAvatar, newLocation.channel.id, arrivalMessage);
+        this.logger?.debug?.(`Sent mini arrival card for ${updatedAvatar.name} to ${newLocation.channel.id}`);
       } catch (miniCardError) {
-        this.logger.error(`Error sending arrival mini card: ${miniCardError.message}`);
+        this.logger?.error?.(`Error sending arrival mini card: ${miniCardError.message}`);
       }
 
-      // 8. Optionally, you can trigger conversation or other logic here
+      // 8. Trigger conversation response immediately after arrival
       try {
-        setTimeout(async () => {
-          await this.conversationManager.sendResponse(newLocation.channel.id, updatedAvatar);
-        }, 1000);
+        await this.conversationManager.sendResponse(newLocation.channel.id, updatedAvatar);
       } catch (error) {
         console.error('Error sending arrival message:', error);
       }
 
       // 9. Return success message
-      return userFacingDepartureMessage || `${avatar.name} moved to ${newLocation.channel.name}!`;
+      return `-# 🏃‍♂️ [ ${avatar.name} moved to ${newLocation.channel.name}! ]`;
     } catch (error) {
       console.error('Error in MoveTool execute:', error);
       return `-# [Failed to move: ${error.message}]`;
