@@ -259,6 +259,15 @@ ${recentActionsText}
     ];
   }
 
+  /**
+   * Get or update a summary for a user based on their message history.
+   * Now delegated to userProfileService.
+   */
+  async getOrUpdateUserProfileSummary(userId) {
+    if (!this.userProfileService) throw new Error('userProfileService not initialized');
+    return this.userProfileService.summarizeInteractionsIfNeeded(userId);
+  }
+
   // Existing helper methods (unchanged unless noted)
   async getMemories(avatar, count = 10) {
     const memoryRecords = await this.memoryService.getMemories(avatar._id, count);

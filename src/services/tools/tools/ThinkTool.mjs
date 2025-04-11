@@ -77,13 +77,13 @@ export class ThinkTool extends BasicTool {
           schema: {
             type: 'object',
             properties: {
-              knowledge: {
+              knowledge_points: {
                 type: 'array',
                 items: { type: 'string' },
                 description: 'List of knowledge points or facts learned'
               }
             },
-            required: ['knowledge'],
+            required: ['knowledge_points'],
             additionalProperties: false
           }
         };
@@ -91,6 +91,7 @@ export class ThinkTool extends BasicTool {
         const prompt = `Extract a concise list of key knowledge points or facts from the following reflection. Each should be a standalone fact or insight.\n\nReflection:\n${reflection}`;
 
         const result = await this.services.schemaService.executePipeline({ prompt, schema });
+        result.knowledge = result.knowledge || result.knowledge_points || [];
         if (result?.knowledge?.length) {
           for (const knowledge of result.knowledge) {
             await this.services.knowledgeService.addKnowledgeTriple(avatar._id, 'knows', knowledge);

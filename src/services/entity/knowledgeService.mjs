@@ -46,20 +46,36 @@ export class KnowledgeService extends BasicService {
         schema: {
           type: 'object',
           properties: {
-            knowledge: {
+            knowledge_points: {
               type: 'array',
               items: { type: 'string' },
-              description: 'List of knowledge points or facts learned'
+              description: 'List of knowledge or facts learned'
             }
           },
-          required: ['knowledge'],
+          required: ['knowledge_points'],
           additionalProperties: false
         }
       };
 
-      const prompt = `Extract a concise list of key knowledge points or facts from the following narrative. Each should be a standalone fact or insight.\n\nNarrative:\n${narrative}`;
+      const prompt = `Extract a concise list of key knowledge from the following narrative. 
+      Each should be a standalone fact or insight.
+      
+      Narrative:
+      ${narrative}
+
+      Please respond with a JSON object containing a list of knowledge points.
+      Example response:
+      {
+        "knowledge_points": [
+          "Fact 1",
+          "Fact 2",
+          ...
+        ]
+      }
+      `;
 
       const result = await this.schemaService.executePipeline({ prompt, schema });
+      result.knowledge = result.knowledge || result.knowledge_points || [];
       if (result?.knowledge?.length) {
         for (const knowledge of result.knowledge) {
           await this.addKnowledgeTriple(avatarId, 'knows', knowledge);

@@ -17,7 +17,7 @@ export class XSocialTool extends BasicTool {
         this.conversationManager = services.conversationManager;
         this.promptService = services.promptService;
         this.schemaService = services.schemaService;
-        
+
         this.replyNotification = true;
         this.emoji = '🐦';
         this.name = 'x';
@@ -129,13 +129,12 @@ export class XSocialTool extends BasicTool {
 
                 const actions = await this.generateSocialActions(avatar, context, timeline, notifications, userId);
                 let results = [];
-                actions.actions = actions.actions.sort(() => Math.random() - 0.5).slice(0, 3);
                 const isValidId = (id) => typeof id === 'string' && /^\d+$/.test(id);
 
                 const me = await v2Client.me();
                 const myUserId = me.data.id;
 
-                for (const action of actions.actions) {
+                for (const action of actions) {
                     const tweeturl = action.tweetId ? `[post](https://x.com/ratimics/status/${action.tweetId})` : '';
                     try {
                         switch (action.type) {
@@ -245,40 +244,39 @@ Generate a JSON array of actions. Each action must have:
 - "tweetId": the Tweet ID for reply/quote/like/repost, or null if not applicable
 - "userId": the User ID for follow/block, or null if not applicable
 
-Only output the JSON object, no commentary.`.trim();
+Only output the JSON array, no commentary.`.trim();
 
         const schema = {
             name: 'rati-x-social-actions',
             strict: true,
             schema: {
-                type: "object",
-                properties: {
-                    actions: {
-                        type: "array",
-                        items: {
-                            type: "object",
-                            properties: {
-                                type: { type: "string", enum: ["post", "reply", "quote", "follow", "like", "repost", "block"] },
-                                content: { type: "string", nullable: true },
-                                tweetId: { type: "string", nullable: true },
-                                userId: { type: "string", nullable: true }
-                            },
-                            required: ["type", "content", "tweetId", "userId"],
-                            additionalProperties: false
-                        }
-                    }
-                },
-                required: ["actions"],
-                additionalProperties: false
-            }
+
+                type: "array",
+                items: {
+                    type: "object",
+                    properties: {
+                        type: { type: "string", enum: ["post", "reply", "quote", "follow", "like", "repost", "block"] },
+                        content: { type: "string", nullable: true },
+                        tweetId: { type: "string", nullable: true },
+                        userId: { type: "string", nullable: true }
+                    },
+                    required: ["type"],
+                    additionalProperties: false
+                }
+
+            },
         };
 
-        const actions = await this.schemaService.executePipeline({
-            prompt,
-            schema
-        });
-
-        return actions;
+        try {
+            const actions = await this.schemaService.executePipeline({
+                prompt,
+                schema
+            });
+            return actions;
+        } catch (error) {
+            this.logger.error(`Error generating social actions: ${error.message}`);
+            return [];
+        }
     }
 
     async getToolStatusForAvatar(avatar) {

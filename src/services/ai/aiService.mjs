@@ -3,22 +3,22 @@ import { GoogleAIService } from "./googleAIService.mjs";
 import { OpenRouterAIService } from "./openrouterAIService.mjs";
 import { OllamaService } from "./ollamaService.mjs";
 
-let AIService = OpenRouterAIService;
+let AIServiceClass = OpenRouterAIService;
 
 switch (process.env.AI_SERVICE) {
     case 'google':
-        AIService = GoogleAIService;
+        AIServiceClass = GoogleAIService;
         break;
     case 'ollama':
-        AIService = OllamaService;
+        AIServiceClass = OllamaService;
         break;
     case 'openrouter':
-        AIService = OpenRouterAIService;
+        AIServiceClass = OpenRouterAIService;
         break;
     default:
         console.warn(`Unknown AI_SERVICE: ${process.env.AI_SERVICE}. Defaulting to OpenRouterAIService.`);
-        AIService = OpenRouterAIService;
+        AIServiceClass = OpenRouterAIService;
         break;
 }
 
-export { AIService };
+export { AIServiceClass };

@@ -89,13 +89,4 @@ export class OllamaService {
       return null;
     }
   }
-
-  async speakAsItem(item, channelId) {
-    const prompt = `
-      You are a mystical item called "${item.name}" located in a dungeon channel (ID: ${channelId}).
-      Your description is: ${item.description}.
-      Respond with only your speech as if you are the item coming to life in this channel.
-    `;
-    return await this.generateCompletion(prompt);
-  }
 }

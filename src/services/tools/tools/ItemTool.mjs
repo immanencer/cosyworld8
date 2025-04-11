@@ -27,12 +27,10 @@ export class ItemTool extends BasicTool {
       return `-# [${this.emoji} Usage: !item <use|craft|take|drop|store> [params]]`;
     }
 
-    if (!avatar.inventory || !Array.isArray(avatar.inventory)) {
-      avatar.inventory = [];
-    }
-
+    // No longer using avatar.inventory; only selectedItemId and storedItemId (item IDs)
     const subcommand = params[0].toLowerCase();
     const locationId = message.channel.id;
+    const db = this.avatarService.db;
 
     try {
       switch (subcommand) {
@@ -40,7 +38,7 @@ export class ItemTool extends BasicTool {
           if (!avatar.selectedItemId) {
             return `-# [${this.emoji} You have no selected item to use.]`;
           }
-          const item = avatar.inventory.find(i => i._id === avatar.selectedItemId);
+          const item = await db.collection('items').findOne({ _id: avatar.selectedItemId });
           if (!item) {
             return `-# [${this.emoji} Selected item not found in inventory.]`;
           }
@@ -56,11 +54,17 @@ export class ItemTool extends BasicTool {
           if (avatar.selectedItemId && avatar.storedItemId) {
             return `-# [${this.emoji} You can only hold 2 items. Use 'store' or 'drop' to free a slot.]`;
           }
-          const item = await this.itemService.takeItem(avatar, itemName, locationId);
+          let item = await this.itemService.takeItem(avatar, itemName, locationId);
           if (!item) {
-            return `-# [${this.emoji} No item named "${itemName}" found on the ground.]`;
+            // No item found at location, try to create one
+            item = await this.itemService.findOrCreateItem(itemName, locationId);
+            if (!item) {
+              return `-# [${this.emoji} No item named "${itemName}" found, and item creation failed or daily limit reached.]`;
+            }
+            // Assign the new item to the avatar
+            await this.itemService.assignItemToAvatar(avatar._id, item);
           }
-          avatar.inventory.push(item);
+          // Assign to selected or stored slot
           if (!avatar.selectedItemId) {
             avatar.selectedItemId = item._id;
           } else {
@@ -89,31 +93,37 @@ export class ItemTool extends BasicTool {
           }
         }
         case 'drop': {
-          const itemName = params.slice(1).join(' ').trim();
+          // Drop selected or named item
+          let itemId = null;
           let item = null;
+          const itemName = params.slice(1).join(' ').trim();
           if (!itemName && avatar.selectedItemId) {
-            item = avatar.inventory.find(i => i._id === avatar.selectedItemId);
+            itemId = avatar.selectedItemId;
           } else if (itemName) {
-            item = this.findClosestItem(avatar.inventory, itemName);
+            // Try to find closest match among held items
+            const heldIds = [avatar.selectedItemId, avatar.storedItemId].filter(Boolean);
+            const heldItems = heldIds.length > 0 ? await db.collection('items').find({ _id: { $in: heldIds } }).toArray() : [];
+            item = this.findClosestItem(heldItems, itemName);
+            itemId = item ? item._id : null;
           }
-          if (!item) {
+          if (!itemId) {
             return `-# [${this.emoji} No item specified or found to drop.]`;
           }
-          avatar.inventory = avatar.inventory.filter(i => i._id !== item._id);
-          if (avatar.selectedItemId === item._id) avatar.selectedItemId = null;
-          if (avatar.storedItemId === item._id) avatar.storedItemId = null;
+          // Remove from avatar
+          if (avatar.selectedItemId && avatar.selectedItemId.equals(itemId)) avatar.selectedItemId = null;
+          if (avatar.storedItemId && avatar.storedItemId.equals(itemId)) avatar.storedItemId = null;
           await this.avatarService.updateAvatar(avatar);
+          // Update item ownership/location atomically
+          item = await db.collection('items').findOne({ _id: itemId });
           await this.itemService.dropItem(avatar, item, locationId);
           return `-# [${this.emoji} You dropped ${item.name}.]`;
         }
         case 'craft': {
-          if (params.length < 3) {
-            return `-# [${this.emoji} Usage: !item craft <item1> <item2>]`;
+          if (!avatar.selectedItemId || !avatar.storedItemId) {
+            return `-# [${this.emoji} You must hold two items to craft.]`;
           }
-          const itemName1 = params[1].trim();
-          const itemName2 = params[2].trim();
-          const item1 = this.findClosestItem(avatar.inventory, itemName1);
-          const item2 = this.findClosestItem(avatar.inventory, itemName2);
+          const item1 = await db.collection('items').findOne({ _id: avatar.selectedItemId });
+          const item2 = await db.collection('items').findOne({ _id: avatar.storedItemId });
           if (!item1 || !item2) {
             return `-# [${this.emoji} You do not have the specified items in your inventory.]`;
           }
@@ -122,14 +132,10 @@ export class ItemTool extends BasicTool {
           if (!newItem) {
             return `-# [${this.emoji} Cannot craft item: daily item creation limit reached or failed to generate item.]`;
           }
-          avatar.inventory.push(newItem);
-          const inputItemIds = inputItems.map(i => i._id);
-          avatar.inventory = avatar.inventory.filter(i => !inputItemIds.includes(i._id));
-          if (inputItemIds.includes(avatar.selectedItemId)) avatar.selectedItemId = null;
-          if (inputItemIds.includes(avatar.storedItemId)) avatar.storedItemId = null;
+          // Remove both from avatar, add new crafted item
+          avatar.selectedItemId = newItem._id;
+          avatar.storedItemId = null;
           await this.avatarService.updateAvatar(avatar);
-          const db = await this.databaseService.getDatabase();
-          await db.collection('items').deleteMany({ _id: { $in: inputItemIds } });
           await this.postItemDetails(message.channel.id, newItem);
           return `-# [${this.emoji} You have crafted a new item: ${newItem.name}]`;
         }

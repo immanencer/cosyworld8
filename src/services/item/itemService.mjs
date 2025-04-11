@@ -177,7 +177,7 @@ Return a JSON object with keys: name, description, type, rarity, properties.`;
     const itemsCollection = this.ensureDbConnection().collection('items');
     const result = await itemsCollection.updateOne(
       { _id: item._id },
-      { $set: { owner: null, locationId, updatedAt: new Date().toISOString() } }
+      { $set: { owner: locationId, locationId, updatedAt: new Date().toISOString() } }
     );
     return result.modifiedCount > 0;
   }
@@ -194,10 +194,7 @@ Return a JSON object with keys: name, description, type, rarity, properties.`;
 
   /** Uses an item, leveraging aiService if available. */
   async useItem(avatar, item, channelId) {
-    if (!this.aiService || typeof this.aiService.speakAsItem !== 'function') {
-      return `The ${item.name} remains inert, its power dormant.`;
-    }
-    return await this.aiService.speakAsItem(item, channelId);
+    return `The ${item.name} remains inert, its power dormant.`;
   }
 
   /** Searches for items in a location matching a query. */
@@ -371,5 +368,14 @@ Return a JSON object with keys: name, description, type, rarity, properties.`;
   /** Returns a string of item names owned by an avatar. */
   getItemsDescription(avatar) {
     return (avatar.items || []).map(item => item.name).join(', ');
+  }
+
+  /** Initializes the database with necessary indexes. */
+  async initializeDatabase() {
+    const itemsCollection = this.db.collection('items');
+    await Promise.all([
+      itemsCollection.createIndex({ owner: 1 }),
+      itemsCollection.createIndex({ locationId: 1 })
+    ]);
   }
 }

@@ -899,4 +899,18 @@ export class AvatarService extends BasicService {
       }
     };
   }
+
+  /**
+   * Fetches the full item documents for an avatar's inventory item IDs.
+   * @param {object} avatar - The avatar object.
+   * @returns {Promise<Array>} - Array of item documents.
+   */
+  async getInventoryItems(avatar) {
+    if (!avatar || (!avatar.selectedItemId && !avatar.storedItemId)) return [];
+    const itemIds = [avatar.selectedItemId, avatar.storedItemId].filter(Boolean);
+    if (itemIds.length === 0) return [];
+    const db = this.db;
+    const items = await db.collection('items').find({ _id: { $in: itemIds.map(id => typeof id === 'string' ? toObjectId(id) : id) } }).toArray();
+    return items;
+  }
 }

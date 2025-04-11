@@ -2,7 +2,7 @@ import { SchedulingService } from '../scheduler/scheduler.mjs';
 import { DatabaseService } from '../foundation/databaseService.mjs';
 import { ConfigService } from '../foundation/configService.mjs';
 import { SpamControlService } from '../security/spamControlService.mjs';
-import { AIService } from '../ai/aiService.mjs';
+import { AIServiceClass } from '../ai/aiService2.mjs';
 import { AvatarService } from '../entity/avatarService.mjs';
 import { ToolService } from '../tools/ToolService.mjs';
 import { MapService } from '../map/mapService.mjs';
@@ -24,6 +24,7 @@ import { RiskManagerService } from '../security/riskManagerService.mjs';
 import { ImageProcessingService } from '../media/imageProcessingService.mjs';
 import { ModerationService } from '../security/moderationService.mjs';
 import { KnowledgeService } from '../entity/knowledgeService.mjs';
+import { UserProfileService } from '../userProfileService.mjs';
 
 // Client Services
 import { OneirocomForumService } from '../oneirocom/OneirocomForumService.mjs';
@@ -64,6 +65,10 @@ infrastructure.imageProcessingService = new ImageProcessingService({
   aiService: infrastructure.aiService,
 });
 
+infrastructure.userProfileService = new UserProfileService({
+  databaseService: infrastructure.databaseService
+});
+
 // Domain layer
 const domain = {};
 
@@ -85,7 +90,7 @@ domain.forumClientServiceService = new OneirocomForumService({
   configService: infrastructure.configService,
 });
 
-domain.aiService = new AIService({
+domain.aiService = new AIServiceClass({
   logger: infrastructure.logger,
   configService: infrastructure.configService,
 });
@@ -109,11 +114,20 @@ domain.mapService = new MapService({
   discordService: domain.discordService,
 });
 
+domain.schemaService = new SchemaService({
+  logger: infrastructure.logger,
+  aiService: domain.aiService,
+  databaseService: infrastructure.databaseService,
+  configService: infrastructure.configService,
+  s3Service: infrastructure.s3Service,
+});
+
 domain.itemService = new ItemService({
   logger: infrastructure.logger,
   databaseService: infrastructure.databaseService,
   configService: infrastructure.configService,
   discordService: domain.discordService,
+  schemaService: domain.schemaService,
 });
 
 domain.statService = new StatService({
@@ -122,13 +136,6 @@ domain.statService = new StatService({
   configService: infrastructure.configService,
 });
 
-domain.schemaService = new SchemaService({
-  logger: infrastructure.logger,
-  aiService: domain.aiService,
-  databaseService: infrastructure.databaseService,
-  configService: infrastructure.configService,
-  s3Service: infrastructure.s3Service,
-});
 
 domain.memoryService = new MemoryService({
   logger: infrastructure.logger,
@@ -168,6 +175,7 @@ domain.promptService = new PromptService({
   mapService: domain.mapService,
   itemService: domain.itemService,
   memoryService: domain.memoryService,
+  userProfileService: infrastructure.userProfileService,
 });
 
 domain.decisionMaker = new DecisionMaker({
