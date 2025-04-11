@@ -46,7 +46,7 @@ await infrastructure.databaseService.connect();
 infrastructure.configService.db = infrastructure.databaseService.getDatabase();
 infrastructure.configService.databaseService = infrastructure.databaseService;
 
-infrastructure.schedulingService = new SchedulingService({ 
+infrastructure.schedulingService = new SchedulingService({
   logger: infrastructure.logger
 });
 
@@ -85,10 +85,13 @@ domain.webService = new WebService({
   discordService: domain.discordService,
 });
 
-domain.forumClientServiceService = new OneirocomForumService({
-  logger: infrastructure.logger,
-  configService: infrastructure.configService,
-});
+if (process.env.ONEIROCOM_FORUM_API_KEY
+  && process.env.ONEIROCOM_FORUM_API_URI) {
+  domain.forumClientServiceService = new OneirocomForumService({
+    logger: infrastructure.logger,
+    configService: infrastructure.configService,
+  });
+}
 
 domain.aiService = new AIServiceClass({
   logger: infrastructure.logger,
@@ -143,7 +146,6 @@ domain.memoryService = new MemoryService({
   databaseService: infrastructure.databaseService,
   discordService: domain.discordService,
   schemaService: domain.schemaService,
-  forumClientServiceService: domain.forumClientServiceService,
 });
 
 domain.knowledgeService = new KnowledgeService({
@@ -253,7 +255,10 @@ domain.toolService = new ToolService({
   riskManagerService: domain.riskManagerService,
   statService: domain.statService,
   knowledgeService: domain.knowledgeService,
+  forumClientService: domain.forumClientServiceService
 });
+
+
 
 domain.messageHandler = new MessageHandler({
   logger: infrastructure.logger,

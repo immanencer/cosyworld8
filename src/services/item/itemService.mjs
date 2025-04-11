@@ -24,6 +24,7 @@ export class ItemService extends BasicService {
     return this.db;
   }
 
+
   /** Removes single and double quotes from an item name. */
   cleanItemName(name) {
     return name.replace(/['"]/g, '');
@@ -365,6 +366,8 @@ Return a JSON object with keys: name, description, type, rarity, properties.`;
     return null;
   }
 
+
+
   /** Returns a string of item names owned by an avatar. */
   getItemsDescription(avatar) {
     return (avatar.items || []).map(item => item.name).join(', ');
@@ -378,4 +381,16 @@ Return a JSON object with keys: name, description, type, rarity, properties.`;
       itemsCollection.createIndex({ locationId: 1 })
     ]);
   }
+
+    /** Retrieves an item by its ID (string or ObjectId). */
+    async getItem(id) {
+      const itemsCollection = this.ensureDbConnection().collection('items');
+      let objectId;
+      try {
+        objectId = typeof id === 'string' ? new ObjectId(id) : id;
+      } catch {
+        return null;
+      }
+      return await itemsCollection.findOne({ _id: objectId });
+    }
 }

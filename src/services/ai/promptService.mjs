@@ -101,7 +101,7 @@ Based on all of the above context, share an updated personality that reflects yo
     const location = await this.mapService.getLocationDescription(avatar.channelId, avatar.channelName);
     const items = await this.itemService.getItemsDescription(avatar);
     const locationText = location ? `You are currently in ${location.name}. ${location.description}` : `You are in ${avatar.channelName || 'a chat channel'}.`;
-    const selectedItem = avatar.selectedItemId ? avatar.inventory.find(i => i._id === avatar.selectedItemId) : null;
+    const selectedItem = avatar.selectedItemId ? this.itemService.getItem(avatar.selectedItemId): null;
     const selectedItemText = selectedItem ? `Selected item: ${selectedItem.name}` : 'No item selected.';
     const groundItems = await this.itemService.searchItems(avatar.channelId, '');
     const groundItemsText = groundItems.length > 0 ? `Items on the ground: ${groundItems.map(i => i.name).join(', ')}` : 'There are no items on the ground.';
