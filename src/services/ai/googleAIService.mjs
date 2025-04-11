@@ -196,31 +196,6 @@ export class GoogleAIService extends BasicService {
     );
   }
 
-  async selectRandomModel() {
-    const rarityRanges = [
-      { rarity: 'common', min: 1, max: 12 },
-      { rarity: 'uncommon', min: 13, max: 17 },
-      { rarity: 'rare', min: 18, max: 19 },
-      { rarity: 'legendary', min: 20, max: 20 },
-    ];
-
-    const roll = Math.ceil(Math.random() * 20);
-    const selectedRarity = rarityRanges.find(range => roll >= range.min && roll <= range.max)?.rarity;
-
-    const availableModels = this.modelConfig.filter(model => model.rarity === selectedRarity);
-
-    if (availableModels.length > 0) {
-      const randomIndex = Math.floor(Math.random() * availableModels.length);
-      return availableModels[randomIndex].model;
-    }
-    return this.model;
-  }
-
-  modelIsAvailable(model) {
-    if (!model) return false;
-    return this.modelConfig.some(m => m.model === model.replace(':online', ''));
-  }
-
   async generateCompletion(prompt, options = {}) {
     if (!this.googleAI) throw new Error("Google AI client not initialized.");
 
@@ -369,6 +344,31 @@ export class GoogleAIService extends BasicService {
     };
   }
 
+  async selectRandomModel() {
+    const rarityRanges = [
+      { rarity: 'common', min: 1, max: 12 },
+      { rarity: 'uncommon', min: 13, max: 17 },
+      { rarity: 'rare', min: 18, max: 19 },
+      { rarity: 'legendary', min: 20, max: 20 },
+    ];
+
+    const roll = Math.ceil(Math.random() * 20);
+    const selectedRarity = rarityRanges.find(range => roll >= range.min && roll <= range.max)?.rarity;
+
+    const availableModels = this.modelConfig.filter(model => model.rarity === selectedRarity);
+
+    if (availableModels.length > 0) {
+      const randomIndex = Math.floor(Math.random() * availableModels.length);
+      return availableModels[randomIndex].model;
+    }
+    return this.model;
+  }
+
+  modelIsAvailable(model) {
+    if (!model) return false;
+    return this.modelConfig.some(m => m.model === model.replace(':online', ''));
+  }
+  
   async getModel(modelName) {
     if (!modelName) {
       console.warn('No model name provided for retrieval.');
@@ -391,28 +391,6 @@ export class GoogleAIService extends BasicService {
 
     console.warn(`No close match found for model: "${modelName}", defaulting to random model.`);
     return await this.selectRandomModel();
-  }
-
-  async speakAsItem(item, channelId) {
-    if (!item || !item.name || !item.description) {
-      console.warn("Invalid item:", item);
-      return "The item glitches silently.";
-    }
-
-    const prompt = `
-      You are a mystical item called "${item.name}".
-      Description: ${item.description}.
-      You're in a channel (ID: ${channelId}).
-      Generate a short (10–30 words), immersive phrase of what the item would say or sound like.
-      Do not use quotation marks or identify yourself explicitly.
-    `;
-
-    try {
-      const response = await this.chat(null, prompt, { temperature: 0.8, maxOutputTokens: 60 });
-      return response?.trim() || `The ${item.name} remains eerily silent.`;
-    } catch {
-      return `The ${item.name} remains unnervingly silent.`;
-    }
   }
   
 }

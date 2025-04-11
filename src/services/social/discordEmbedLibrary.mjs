@@ -37,7 +37,7 @@ function buildProfileTriggerButton(id, label = 'View Full Profile', type = 'avat
  * Build a sleek mini avatar embed for movement or notifications.
  */
 export function buildMiniAvatarEmbed(avatar, message = '') {
-  const text = message || `${avatar.name} is on the move!`;
+  const text = message || `${avatar.name} has arrived!`;
 
   // Split into sentences
   const sentences = text.match(/[^.!?]+[.!?]+/g) || [text];

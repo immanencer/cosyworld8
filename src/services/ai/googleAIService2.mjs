@@ -1,6 +1,7 @@
 import { BaseAIService } from './baseAIService.mjs';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import models from './models.google.config.mjs';
+import stringSimilarity from 'string-similarity';
 
 export class GoogleAIService2 extends BaseAIService {
   constructor(services) {
@@ -231,4 +232,54 @@ export class GoogleAIService2 extends BaseAIService {
       }
     }
   }
+
+
+    async selectRandomModel() {
+      const rarityRanges = [
+        { rarity: 'common', min: 1, max: 12 },
+        { rarity: 'uncommon', min: 13, max: 17 },
+        { rarity: 'rare', min: 18, max: 19 },
+        { rarity: 'legendary', min: 20, max: 20 },
+      ];
+  
+      const roll = Math.ceil(Math.random() * 20);
+      const selectedRarity = rarityRanges.find(range => roll >= range.min && roll <= range.max)?.rarity;
+  
+      const availableModels = this.modelConfig.filter(model => model.rarity === selectedRarity);
+  
+      if (availableModels.length > 0) {
+        const randomIndex = Math.floor(Math.random() * availableModels.length);
+        return availableModels[randomIndex].model;
+      }
+      return this.model;
+    }
+  
+    modelIsAvailable(model) {
+      if (!model) return false;
+      return this.modelConfig.some(m => m.model === model.replace(':online', ''));
+    }
+    
+    async getModel(modelName) {
+      if (!modelName) {
+        console.warn('No model name provided for retrieval.');
+        return await this.selectRandomModel();
+      }
+  
+      modelName = modelName.replace(/:online$/, '').trim();
+      const modelNames = this.modelConfig.map(model => model.model);
+  
+      if (modelNames.includes(modelName)) {
+        return modelName;
+      }
+  
+      const { bestMatch } = stringSimilarity.findBestMatch(modelName, modelNames);
+  
+      if (bestMatch.rating > 0.5) {
+        console.info(`Fuzzy match found: "${modelName}" -> "${bestMatch.target}" (score: ${bestMatch.rating})`);
+        return bestMatch.target;
+      }
+  
+      console.warn(`No close match found for model: "${modelName}", defaulting to random model.`);
+      return await this.selectRandomModel();
+    }
 }
