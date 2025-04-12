@@ -596,10 +596,6 @@ export default [
     "rarity": "common"
   },
   {
-    "model": "meta-llama/llama-4-maverick",
-    "rarity": "common"
-  },
-  {
     "model": "thedrummer/unslopnemo-12b",
     "rarity": "common"
   },
@@ -640,11 +636,11 @@ export default [
     "rarity": "common"
   },
   {
-    "model": "deepseek/deepseek-r1-distill-llama-70b",
+    "model": "mistralai/mistral-small",
     "rarity": "common"
   },
   {
-    "model": "mistralai/mistral-small",
+    "model": "meta-llama/llama-4-maverick",
     "rarity": "common"
   },
   {
@@ -680,7 +676,7 @@ export default [
     "rarity": "common"
   },
   {
-    "model": "meta-llama/llama-4-scout",
+    "model": "deepseek/deepseek-r1-distill-llama-70b",
     "rarity": "common"
   },
   {
@@ -708,10 +704,6 @@ export default [
     "rarity": "common"
   },
   {
-    "model": "meta-llama/llama-3.3-70b-instruct",
-    "rarity": "common"
-  },
-  {
     "model": "nvidia/llama-3.1-nemotron-70b-instruct",
     "rarity": "common"
   },
@@ -720,15 +712,15 @@ export default [
     "rarity": "common"
   },
   {
-    "model": "meta-llama/llama-3.1-70b-instruct",
-    "rarity": "common"
-  },
-  {
     "model": "mistralai/mistral-small-3.1-24b-instruct",
     "rarity": "common"
   },
   {
     "model": "aion-labs/aion-rp-llama-3.1-8b",
+    "rarity": "common"
+  },
+  {
+    "model": "meta-llama/llama-3.3-70b-instruct",
     "rarity": "common"
   },
   {
@@ -744,11 +736,19 @@ export default [
     "rarity": "common"
   },
   {
+    "model": "meta-llama/llama-3.1-70b-instruct",
+    "rarity": "common"
+  },
+  {
     "model": "mistralai/mistral-7b-instruct-v0.2",
     "rarity": "common"
   },
   {
     "model": "mistralai/mistral-7b-instruct-v0.1",
+    "rarity": "common"
+  },
+  {
+    "model": "meta-llama/llama-4-scout",
     "rarity": "common"
   },
   {
@@ -884,7 +884,7 @@ export default [
     "rarity": "common"
   },
   {
-    "model": "sao10k/l3-lunaris-8b",
+    "model": "mistralai/mistral-7b-instruct-v0.3",
     "rarity": "common"
   },
   {
@@ -896,15 +896,15 @@ export default [
     "rarity": "common"
   },
   {
-    "model": "mistralai/mistral-7b-instruct-v0.3",
-    "rarity": "common"
-  },
-  {
     "model": "deepseek/deepseek-r1-distill-llama-8b",
     "rarity": "common"
   },
   {
     "model": "mistralai/ministral-3b",
+    "rarity": "common"
+  },
+  {
+    "model": "sao10k/l3-lunaris-8b",
     "rarity": "common"
   },
   {
@@ -961,10 +961,6 @@ export default [
   },
   {
     "model": "meta-llama/llama-4-scout:free",
-    "rarity": "common"
-  },
-  {
-    "model": "openrouter/quasar-alpha",
     "rarity": "common"
   },
   {
