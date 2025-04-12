@@ -69,10 +69,13 @@ export class MapService extends BasicService {
 
   async getAvatarLocation(avatar) {
     const db = this.ensureDb();
-    const position = await db.collection('dungeon_positions').findOne({ avatarId: avatar._id });
-    if (!position) return { location: { name: 'Unknown Location', description: 'No description available.' } };
-
-    return await this.getLocationAndAvatars(position.locationId);
+    const position = await db.collection('dungeon_positions').findOne({ $or: [
+      { avatarId: avatar._id }, { avatarId: avatar._id.toString() }
+    ]});
+    if (position && position.locationId) {
+      return await this.getLocationAndAvatars(position.locationId);
+    }
+    return { location: { name: 'Unknown Location', description: 'No description available.' } };
   }
 
   /**
@@ -191,7 +194,7 @@ export class MapService extends BasicService {
     // Fetch avatars in the location
     const avatarPositions = await db.collection(this.DUNGEON_POSITIONS_COLLECTION).find({ locationId }).toArray();
     const avatarIds = avatarPositions.map(pos => pos.avatarId);
-    const avatars = await db.collection(this.AVATARS_COLLECTION).find({ _id: { $in: avatarIds } }).toArray();
+    const avatars = await db.collection(this.AVATARS_COLLECTION).find({$or:[{channelId: locationId } , { _id: { $in: avatarIds } }]}).toArray();
 
     return {
       location,

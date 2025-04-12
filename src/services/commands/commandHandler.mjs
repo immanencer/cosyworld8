@@ -32,9 +32,7 @@ export async function handleCommands(message, services = {
           await services.discordService.reactToMessage(message, tool.emoji);
           const result = await services.toolService.executeTool(command, message, args, avatar);
           if (tool.replyNotification && result) {
-            await services.discordService.sendAsWebhook(message.channel.id, result, {
-              ...avatar, name: `${avatar.name} used ${tool.name} ${tool.emoji ||''}`,
-            });
+            await services.discordService.replyToMessage(message, `${avatar.name} used ${tool.name} ${tool.emoji ||''}\n${result}`);
           }
           await services.discordService.reactToMessage(message, tool.emoji);
         } else {

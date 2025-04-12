@@ -100,6 +100,10 @@ export default [
     "rarity": "rare"
   },
   {
+    "model": "x-ai/grok-3-beta",
+    "rarity": "rare"
+  },
+  {
     "model": "perplexity/sonar-pro",
     "rarity": "rare"
   },
@@ -384,15 +388,15 @@ export default [
     "rarity": "uncommon"
   },
   {
-    "model": "mancer/weaver",
-    "rarity": "uncommon"
-  },
-  {
     "model": "meta-llama/llama-3.2-90b-vision-instruct",
     "rarity": "uncommon"
   },
   {
     "model": "neversleep/noromaid-20b",
+    "rarity": "uncommon"
+  },
+  {
+    "model": "mancer/weaver",
     "rarity": "uncommon"
   },
   {
@@ -592,10 +596,6 @@ export default [
     "rarity": "common"
   },
   {
-    "model": "mistralai/mixtral-8x7b",
-    "rarity": "common"
-  },
-  {
     "model": "thedrummer/unslopnemo-12b",
     "rarity": "common"
   },
@@ -609,10 +609,6 @@ export default [
   },
   {
     "model": "jondurbin/airoboros-l2-70b",
-    "rarity": "common"
-  },
-  {
-    "model": "deepseek/deepseek-r1-distill-llama-70b",
     "rarity": "common"
   },
   {
@@ -632,7 +628,7 @@ export default [
     "rarity": "common"
   },
   {
-    "model": "meta-llama/llama-4-maverick",
+    "model": "x-ai/grok-3-mini-beta",
     "rarity": "common"
   },
   {
@@ -641,6 +637,10 @@ export default [
   },
   {
     "model": "mistralai/mistral-small",
+    "rarity": "common"
+  },
+  {
+    "model": "meta-llama/llama-4-maverick",
     "rarity": "common"
   },
   {
@@ -676,7 +676,7 @@ export default [
     "rarity": "common"
   },
   {
-    "model": "meta-llama/llama-4-scout",
+    "model": "deepseek/deepseek-r1-distill-llama-70b",
     "rarity": "common"
   },
   {
@@ -704,10 +704,6 @@ export default [
     "rarity": "common"
   },
   {
-    "model": "meta-llama/llama-3.3-70b-instruct",
-    "rarity": "common"
-  },
-  {
     "model": "nvidia/llama-3.1-nemotron-70b-instruct",
     "rarity": "common"
   },
@@ -716,15 +712,15 @@ export default [
     "rarity": "common"
   },
   {
-    "model": "meta-llama/llama-3.1-70b-instruct",
-    "rarity": "common"
-  },
-  {
     "model": "mistralai/mistral-small-3.1-24b-instruct",
     "rarity": "common"
   },
   {
     "model": "aion-labs/aion-rp-llama-3.1-8b",
+    "rarity": "common"
+  },
+  {
+    "model": "meta-llama/llama-3.3-70b-instruct",
     "rarity": "common"
   },
   {
@@ -740,11 +736,19 @@ export default [
     "rarity": "common"
   },
   {
+    "model": "meta-llama/llama-3.1-70b-instruct",
+    "rarity": "common"
+  },
+  {
     "model": "mistralai/mistral-7b-instruct-v0.2",
     "rarity": "common"
   },
   {
     "model": "mistralai/mistral-7b-instruct-v0.1",
+    "rarity": "common"
+  },
+  {
+    "model": "meta-llama/llama-4-scout",
     "rarity": "common"
   },
   {
@@ -769,6 +773,10 @@ export default [
   },
   {
     "model": "qwen/qwq-32b",
+    "rarity": "common"
+  },
+  {
+    "model": "tokyotech-llm/llama-3.1-swallow-8b-instruct-v0.3",
     "rarity": "common"
   },
   {
@@ -844,6 +852,10 @@ export default [
     "rarity": "common"
   },
   {
+    "model": "qwen/qwen-2.5-7b-instruct",
+    "rarity": "common"
+  },
+  {
     "model": "google/gemma-2-9b-it",
     "rarity": "common"
   },
@@ -872,7 +884,7 @@ export default [
     "rarity": "common"
   },
   {
-    "model": "sao10k/l3-lunaris-8b",
+    "model": "mistralai/mistral-7b-instruct-v0.3",
     "rarity": "common"
   },
   {
@@ -884,10 +896,6 @@ export default [
     "rarity": "common"
   },
   {
-    "model": "mistralai/mistral-7b-instruct-v0.3",
-    "rarity": "common"
-  },
-  {
     "model": "deepseek/deepseek-r1-distill-llama-8b",
     "rarity": "common"
   },
@@ -896,7 +904,7 @@ export default [
     "rarity": "common"
   },
   {
-    "model": "qwen/qwen-2.5-7b-instruct",
+    "model": "sao10k/l3-lunaris-8b",
     "rarity": "common"
   },
   {
@@ -928,15 +936,31 @@ export default [
     "rarity": "common"
   },
   {
+    "model": "moonshotai/kimi-vl-a3b-thinking:free",
+    "rarity": "common"
+  },
+  {
+    "model": "openrouter/optimus-alpha",
+    "rarity": "common"
+  },
+  {
+    "model": "nvidia/llama-3.1-nemotron-nano-8b-v1:free",
+    "rarity": "common"
+  },
+  {
+    "model": "nvidia/llama-3.3-nemotron-super-49b-v1:free",
+    "rarity": "common"
+  },
+  {
+    "model": "nvidia/llama-3.1-nemotron-ultra-253b-v1:free",
+    "rarity": "common"
+  },
+  {
     "model": "meta-llama/llama-4-maverick:free",
     "rarity": "common"
   },
   {
     "model": "meta-llama/llama-4-scout:free",
-    "rarity": "common"
-  },
-  {
-    "model": "openrouter/quasar-alpha",
     "rarity": "common"
   },
   {
@@ -1025,10 +1049,6 @@ export default [
   },
   {
     "model": "cognitivecomputations/dolphin3.0-mistral-24b:free",
-    "rarity": "common"
-  },
-  {
-    "model": "google/gemini-2.0-pro-exp-02-05:free",
     "rarity": "common"
   },
   {
@@ -1137,22 +1157,6 @@ export default [
   },
   {
     "model": "mistralai/mistral-7b-instruct:free",
-    "rarity": "common"
-  },
-  {
-    "model": "microsoft/phi-3-mini-128k-instruct:free",
-    "rarity": "common"
-  },
-  {
-    "model": "microsoft/phi-3-medium-128k-instruct:free",
-    "rarity": "common"
-  },
-  {
-    "model": "openchat/openchat-7b:free",
-    "rarity": "common"
-  },
-  {
-    "model": "undi95/toppy-m-7b:free",
     "rarity": "common"
   },
   {

@@ -3,7 +3,6 @@ import { aiModelService } from './aiModelService.mjs';
 
 import OpenAI from 'openai';
 import models from './models.config.mjs';
-import stringSimilarity from 'string-similarity';
 
 export class OpenRouterAIService extends BasicService {
   constructor(services) {

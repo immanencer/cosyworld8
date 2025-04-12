@@ -46,7 +46,7 @@ export const aiModelService = {
   findClosestModel(serviceName, modelName) {
     const models = this.getAllModels(serviceName);
     const names = models.map(m => m.model);
-    if (names.includes(modelName)) return modelName;
+    if (names. includes(modelName)) return modelName;
     try {
       const stringSimilarity = require('string-similarity');
       const { bestMatch } = stringSimilarity.findBestMatch(modelName, names);

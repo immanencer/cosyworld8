@@ -120,7 +120,7 @@ export class XSocialTool extends BasicTool {
             const v2Client = twitterClient.v2;
             const command = params[0].toLowerCase();
 
-            if (!(await this.isAuthorized(avatar))) return '=-# ❌ [ X authorization required. Please connect your account. ]';
+            if (!(await this.isAuthorized(avatar))) return '-# ❌ [ X authorization required. Please connect your account. ]';
 
             if (command === 'browse') {
                 this.replyNotification = true;
@@ -179,23 +179,23 @@ export class XSocialTool extends BasicTool {
                             this.logger.error(`Repost failed. Params: myUserId=${myUserId}, tweetId=${action.tweetId}`);
                             this.logger.error(`Error stack: ${error.stack}`);
                         }
-                        results.push(`❌ ${action.type} failed: ${error.message}`);
+                        results.push(`-# [ ❌ ${action.type} failed: ${error.message} ] `);
                     }
                 }
-                return results.map(T => `-# [${T}]`).join('\n');
+                return results.map(T => `-# [ ${T.replace(/\n/g,``)} ]`).join('\n');
             }
 
             if (command === 'post') {
                 let content = params.slice(1).join(' ');
-                if (!content) return '❌ Please provide content to post.';
+                if (!content) return '-# [ ❌ Please provide content to post. ]';
 
                 // Remove XML/HTML-like tags
                 content = content.replace(/<[^>]*>/g, '');
                 // Remove URLs
                 content = content.replace(/https?:\/\/\S+/gi, '');
 
-                if (!content.trim()) return '❌ Content is empty after filtering.';
-                if (content.length > 280) return `❌ Message too long (${content.length}/280). Trim by ${content.length - 280}.`;
+                if (!content.trim()) return '-# [ ❌ Content is empty after filtering. ]';
+                if (content.length > 280) return `-# [ ❌ Message too long (${content.length}/280). Trim by ${content.length - 280}. ]`;
 
                 const result = await v2Client.tweet(content);
                 if (!result) return '-# [ ❌ Failed to post to X. ]';
@@ -205,9 +205,10 @@ export class XSocialTool extends BasicTool {
                 return `-# ✨ [ [Posted to X](${tweetUrl}) ] `;
             }
 
-            return '❌ Unknown command. Use: browse or post <message>';
+            return '-# [ ❌ Unknown command. Use: browse or post <message> ]';
         } catch (error) {
-            return `❌ Error: ${error.message}`;
+            console.error(`Error in XSocialTool: ${error.message}`);
+            return `-# [ ❌ Unknown error executing command. `;
         }
     }
 
