@@ -1,4 +1,5 @@
 import { BasicService } from '../foundation/basicService.mjs';
+import { aiModelService } from './aiModelService.mjs';
 
 import OpenAI from 'openai';
 import models from './models.config.mjs';
@@ -21,6 +22,9 @@ export class OpenRouterAIService extends BasicService {
       },
     });
     this.modelConfig = models;
+
+    // Register models with aiModelService
+    aiModelService.registerModels('openrouter', models);
 
     // Default options that will be used if not overridden by the caller.
     this.defaultCompletionOptions = {
@@ -50,33 +54,11 @@ export class OpenRouterAIService extends BasicService {
   }
 
   async selectRandomModel() {
-    const rarityRanges = [
-      { rarity: 'common', min: 1, max: 12 },        // Common: 1-12 (60%)
-      { rarity: 'uncommon', min: 13, max: 17 },       // Uncommon: 13-17 (25%)
-      { rarity: 'rare', min: 18, max: 19 },           // Rare: 18-19 (10%)
-      { rarity: 'legendary', min: 20, max: 20 },      // Legendary: 20 (5%)
-    ];
-
-    // Roll a d20
-    const roll = Math.ceil(Math.random() * 20);
-
-    // Determine rarity based on the roll
-    const selectedRarity = rarityRanges.find(range => roll >= range.min && roll <= range.max)?.rarity;
-
-    // Filter models by the selected rarity
-    const availableModels = this.modelConfig.filter(model => model.rarity === selectedRarity);
-
-    // Return a random model from the selected rarity group or fallback to default
-    if (availableModels.length > 0) {
-      const randomIndex = Math.floor(Math.random() * availableModels.length);
-      return availableModels[randomIndex].model;
-    }
-    return this.model;
+    return aiModelService.getRandomModel('openrouter');
   }
 
   modelIsAvailable(model) {
-    if (!model) return false;
-    return this.modelConfig.some(m => m.model === model.replace(':online', ''));
+    return aiModelService.modelIsAvailable('openrouter', model);
   }
 
   /**
@@ -88,7 +70,6 @@ export class OpenRouterAIService extends BasicService {
  * @returns {Promise<Object>} - The parsed and validated JSON object from the model.
  */
   async generateStructuredOutput({ prompt, schema, options = {} }) {
-    this.logger.warn('UNTESTED: generateStructuredOutput() is not yet tested for OpenRouterAIService.');
     const messages = [
       { role: 'user', content: prompt }
     ];
@@ -156,9 +137,9 @@ export class OpenRouterAIService extends BasicService {
 
     // Verify that the chosen model is available. If not, fall back.
     let fallback = false;
-    if (!this.modelIsAvailable(mergedOptions.model)) {
+    if (this.model != 'openrouter/auto' && !this.modelIsAvailable(mergedOptions.model)) {
       this.logger.error('Invalid model provided to chat:', mergedOptions.model);
-      mergedOptions.model = await this.selectRandomModel();
+      mergedOptions.model = 'openrouter/auto';
       this.logger.info('Falling back to random model:', mergedOptions.model);
       fallback = true;
     }
@@ -230,48 +211,48 @@ export class OpenRouterAIService extends BasicService {
     // Normalize the model name by removing any suffixes (e.g., ":online")
     modelName = modelName.replace(/:online$/, '').trim();
 
-    // Extract all model names from the configuration
-    const modelNames = this.modelConfig.map(model => model.model);
-
-    // Check for an exact match first
-    if (modelNames.includes(modelName)) {
-      return modelName;
-    }
-
-    // Perform fuzzy search to find the closest match
-    const { bestMatch } = stringSimilarity.findBestMatch(modelName, modelNames);
-
-    // Return the closest match if the similarity score is above a threshold (e.g., 0.5)
-    if (bestMatch.rating > 0.5) {
-      this.logger.info(`Fuzzy match found: "${modelName}" -> "${bestMatch.target}" (score: ${bestMatch.rating})`);
-      return bestMatch.target;
-    }
-
-    console.warn(`No close match found for model: "${modelName}", defaulting to random model.`);
-    // If no close match is found, return null or a default model
-
-    return await this.selectRandomModel();
+    return aiModelService.findClosestModel('openrouter', modelName);
   }
 
 
   /**
    * Analyzes an image and returns a description using OpenRouter's API.
-   * @param {string} imageUrl - The URL of the image to analyze.
-   * @param {string} prompt - The prompt to use for image analysis.
-   * @param {Object} options - Additional options for the API request.
+   * Supports both image URLs and base64/mimeType input.
+   * @param {string|Buffer} imageInput - The URL of the image or base64 buffer.
+   * @param {string} [mimeType] - The mime type if using base64.
+   * @param {string} [prompt] - The prompt to use for image analysis.
+   * @param {Object} [options] - Additional options for the API request.
    * @returns {Promise<string|null>} - The description of the image or null if analysis fails.
    */
-  async analyzeImage(imageUrl, prompt = "Describe this image in detail.", options = {}) {
+  async analyzeImage(imageInput, mimeType, prompt = "Describe this image in detail.", options = {}) {
     try {
-      const messages = [
-        {
-          role: 'user',
-          content: [
-            { type: 'text', text: prompt },
-            { type: 'image_url', image_url: { url: imageUrl } },
-          ],
-        },
-      ];
+      let messages;
+      if (typeof imageInput === 'string' && (!mimeType || imageInput.startsWith('http'))) {
+        // imageInput is a URL
+        messages = [
+          {
+            role: 'user',
+            content: [
+              { type: 'text', text: prompt },
+              { type: 'image_url', image_url: { url: imageInput } },
+            ],
+          },
+        ];
+      } else if (imageInput && mimeType) {
+        // imageInput is base64 or buffer
+        messages = [
+          {
+            role: 'user',
+            content: [
+              { type: 'text', text: prompt },
+              { type: 'image_url', image_url: { url: `data:${mimeType};base64,${imageInput}` } },
+            ],
+          },
+        ];
+      } else {
+        this.logger.error('Invalid image input for analysis.');
+        return null;
+      }
 
       const response = await this.openai.chat.completions.create({
         ...this.defaultVisionOptions,
@@ -284,15 +265,15 @@ export class OpenRouterAIService extends BasicService {
         return null;
       }
 
-      return response.choices[0].message.content.trim();
+      const content = response.choices[0].message.content?.trim();
+      if (!content) {
+        this.logger.error('OpenRouter image analysis returned empty content.');
+        return null;
+      }
+      return content;
     } catch (error) {
       this.logger.error('Error analyzing image with OpenRouter:', error);
       return null;
     }
-  }
-
-  async analyzeImage(imageBase64, mimeType, prompt, options = {}) {
-    console.warn('Image analysis is not supported in OpenRouterAIService.');
-    return null;
   }
 }

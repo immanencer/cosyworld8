@@ -198,21 +198,27 @@ export class MessageHandler extends BasicService {
       const attachment = message.attachments?.find((a) =>
         a.contentType?.startsWith("image/")
       );
-      if (attachment) {
-        try {
+      try {
+        if (attachment) {
           imageDescription = await this.toolService.aiService.analyzeImage(attachment.url);
-      
-          this.logger.info(
-            `Generated image description for message ${message.id}: ${imageDescription}`
-          );
-        } catch (error) {
-          this.logger.error(`Error analyzing image for message ${message.id}: ${error.message}`);
-          imageDescription = "Image analysis failed.";
+        } else if (message.embeds?.length) {
+          // Try to analyze the first embed image if present
+          const embedImg = message.embeds.find(e => e.image?.url)?.image?.url || message.embeds.find(e => e.thumbnail?.url)?.thumbnail?.url;
+          if (embedImg) {
+            imageDescription = await this.toolService.aiService.analyzeImage(embedImg);
+          }
         }
+        if (imageDescription) {
+          this.logger.info(`Generated image description for message ${message.id}: ${imageDescription}`);
+        } else {
+          imageDescription = "Image analysis failed or returned no description.";
+        }
+      } catch (error) {
+        this.logger.error(`Error analyzing image for message ${message.id}: ${error.message}`);
+        imageDescription = "Image analysis failed.";
       }
     } else if (hasImages) {
-      this.logger.warn("AI service lacks image analysis capability; skipping.");
-      imageDescription = "Image present but not analyzed.";
+      imageDescription = "Image present but analysis method not available.";
     }
 
     message.imageDescription = imageDescription;

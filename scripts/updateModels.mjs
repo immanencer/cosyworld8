@@ -141,7 +141,7 @@ async function updateModelsConfig() {
         const prompt = parseFloat(m.pricing.prompt);
         const completion = parseFloat(m.pricing.completion);
         if (prompt < 0 || completion < 0) {
-          console.warn(`[WARN] Excluding model ${m.id} due to negative pricing.`);
+          console.warn(`[WARN] Excluding model ${m.id} from pricing calculations due to negative pricing.`);
           return false;
         }
       }

@@ -2,7 +2,7 @@ import { SchedulingService } from '../scheduler/scheduler.mjs';
 import { DatabaseService } from '../foundation/databaseService.mjs';
 import { ConfigService } from '../foundation/configService.mjs';
 import { SpamControlService } from '../security/spamControlService.mjs';
-import { AIServiceClass } from '../ai/aiService2.mjs';
+import { AIServiceClass } from '../ai/aiService.mjs';
 import { AvatarService } from '../entity/avatarService.mjs';
 import { ToolService } from '../tools/ToolService.mjs';
 import { MapService } from '../map/mapService.mjs';

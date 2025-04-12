@@ -115,12 +115,12 @@ export class XSocialTool extends BasicTool {
             const db = this.databaseService.getDatabase();
             const authRecord = await db.collection('x_auth').findOne({ avatarId: avatar._id.toString() });
             const encryptedToken = authRecord?.accessToken;
-            if (!encryptedToken) return '❌ X authorization required. Please connect your account.';
+            if (!encryptedToken) return '-# ❌ [ X authorization required. Please connect your account. ]';
             const twitterClient = new TwitterApi(decrypt(encryptedToken));
             const v2Client = twitterClient.v2;
             const command = params[0].toLowerCase();
 
-            if (!(await this.isAuthorized(avatar))) return '❌ X authorization required. Please connect your account.';
+            if (!(await this.isAuthorized(avatar))) return '=-# ❌ [ X authorization required. Please connect your account. ]';
 
             if (command === 'browse') {
                 this.replyNotification = true;
