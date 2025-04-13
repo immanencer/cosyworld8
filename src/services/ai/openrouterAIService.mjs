@@ -2,7 +2,7 @@ import { BasicService } from '../foundation/basicService.mjs';
 import { aiModelService } from './aiModelService.mjs';
 
 import OpenAI from 'openai';
-import models from './models.config.mjs';
+import models from './models.openrouter.config.mjs';
 
 export class OpenRouterAIService extends BasicService {
   constructor(services) {

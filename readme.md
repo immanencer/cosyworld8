@@ -1,19 +1,6 @@
 # CosyWorld — AI Avatar Ecosystem
 
-CosyWorld is an immersive AI-driven universe where intelligent, evolving avatars interact across Discord, Web, X (Twitter), and Telegram. It fuses cutting-edge AI models, blockchain assets, and dynamic gameplay to create a persistent, living digital world.
-
----
-
-## Why CosyWorld?
-
-- **Autonomous AI Avatars** with unique personalities, evolving memories, and emotional states
-- **RATi NFT System**: On-chain avatars, items, locations with evolution mechanics
-- **Multi-Model AI**: GPT-4, Claude, Gemini, Llama, dynamically selected by rarity
-- **Hierarchical Memory**: Short-term, long-term, emotional, vector-based retrieval
-- **Cross-Platform**: Discord bot, Web app, X integration, Telegram (planned)
-- **AI-Driven Gameplay**: Combat, social, exploration, creation, quests
-- **Blockchain Storage**: Arweave, IPFS, Solana NFTs
-- **Modular Architecture**: Extensible, testable, scalable services
+CosyWorld is an AI-driven, service-oriented platform for avatars, items, locations, and social gameplay, integrating AI, blockchain, and web technologies.
 
 ---
 
@@ -58,6 +45,50 @@ See the [Deployment Guide](docs/deployment/07-deployment.md) for production setu
 
 ---
 
+## Building & Running
+
+### Development
+
+- `npm run dev:js` — Webpack in dev mode (JS, watch)
+- `npm run dev:css` — TailwindCSS in dev mode (CSS, watch)
+- `npm run dev` — Full development server
+
+### Production
+
+- `npm run build` — Full production build (cleans, bundles JS, processes CSS, copies assets)
+- `npm run build:js` — Build JS only
+- `npm run build:css` — Build CSS only
+- `npm run clean` — Remove `/dist`
+- `npm run copy-assets` — Copy static assets
+- `npm run serve:prod` — Run server in production mode
+
+### Adding New Pages
+
+1. Create the HTML file in `/public`
+2. Add JS entry point in `webpack.config.js`
+3. Add the file to `assetsToCopy` in `/scripts/copy-assets.mjs`
+
+---
+
+## Environment Configuration
+
+- Copy `.env.example` to `.env` and fill in secrets
+- Key variables:
+  - `NODE_ENV`: `development` or `production`
+  - `API_URL`: API server URL
+  - `PUBLIC_URL`: Public app URL
+  - `ENABLE_ANALYTICS`: `true`/`false`
+
+---
+
+## Codebase Map & Service Registry
+
+**Start code exploration here:**
+
+- [`src/services/core/serviceRegistry.mjs`](src/services/core/serviceRegistry.mjs) — Central registry for all major services and their dependencies. This is the best entry point to understand how the system is wired together.
+
+---
+
 ## Documentation Map
 
 - **Overview**
@@ -86,16 +117,12 @@ See the [Deployment Guide](docs/deployment/07-deployment.md) for production setu
 
 ---
 
-## Roadmap Highlights
+## Contributing
 
-- Complete Creation Service pipeline
-- Enhance AI model integration & selection
-- Expand vector-based memory
-- Broaden platform support
-- Improve combat, quest, and social systems
-- Optimize performance & scalability
-
-See [Future Work](docs/deployment/08-future-work.md) and [System Report](SYSTEM_REPORT.md).
+- Place docs in the appropriate section
+- Use Markdown and follow naming conventions
+- Link related docs
+- Include code examples and diagrams where helpful
 
 ---
 

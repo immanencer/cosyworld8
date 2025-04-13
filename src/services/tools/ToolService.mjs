@@ -10,25 +10,45 @@ import { ItemTool } from './tools/ItemTool.mjs';
 import { ThinkTool } from './tools/ThinkTool.mjs';
 import { SummonTool } from './tools/SummonTool.mjs';
 import { BreedTool } from './tools/BreedTool.mjs';
-import { OneirocomForumTool as ForumTool } from './OneirocomForumTool.mjs';
+import { OneirocomForumTool as ForumTool } from './tools/OneirocomForumTool.mjs';
+import { CooldownService } from './CooldownService.mjs';
 
 export class ToolService extends BasicService {
+  requiredServices = [
+    "logger",
+    "discordService",
+    "databaseService",
+    "configService",
+    "spamControlService",
+    "avatarService",
+    "schedulingService",
+    "decisionMaker",
+    "conversationManager",
+    "channelManager",
+    "schemaService",
+    "promptService",
+    "memoryService",
+    "locationService",
+    "mapService",
+    "aiService",
+    "itemService",
+    "riskManagerService",
+    "statService",
+    "knowledgeService",
+    "forumClientService",
+    "battleService"
+  ];
   constructor(services) {
     super(services);
     this.services = services;
-    this.databaseService = services.databaseService;
-    this.configService = services.configService;
-    this.memoryService = services.memoryService;
-
-    this.db = this.databaseService.getDatabase();
 
     // Tools & Logging
     this.ActionLog = new ActionLog(this.logger);
     this.tools = new Map();
     this.toolEmojis = new Map();
 
-    this.toolCooldowns = new Map(); // toolName -> Map(avatarId -> last execution timestamp
-    this.defaultCooldownMs = 60 * 1000; // 1 hour cooldown
+    this.defaultCooldownMs = 60 * 60 * 1000; // 1 hour cooldown
+    this.cooldownService = services.cooldownService || new CooldownService();
 
     // Initialize tools
     const toolClasses = {
@@ -52,12 +72,10 @@ export class ToolService extends BasicService {
     });
 
     // Load emoji mappings from config
-    const configEmojis = this.configService.get('toolEmojis') || {};
+    const configEmojis = services.configService.get('toolEmojis') || {};
     Object.entries(configEmojis).forEach(([emoji, toolName]) => {
       this.toolEmojis.set(emoji, toolName);
     });
-
-    this.creationTool = new CreationTool({ logger: this.logger, databaseService: this.databaseService, configService: this.configService });
   }
 
   registerTool(tool) {
@@ -74,40 +92,40 @@ export class ToolService extends BasicService {
     });
   }
 
-  // --- Utility Methods ---
-
-  ensureDb() {
-    if (!this.db) throw new Error('Database connection unavailable');
-    return this.db;
-  }
-
   extractToolCommands(text) {
+    // Handle empty or invalid input
     if (!text) return { commands: [], cleanText: text || '', commandLines: [] };
 
+    // Prepare emojis from toolEmojis map, escaping special regex characters
     const emojis = Array.from(this.toolEmojis.keys()).map(e => e.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
     if (emojis.length === 0) return { commands: [], cleanText: text, commandLines: [] };
 
-    const pattern = new RegExp(`(^|\\s)(${emojis.join('|')})(?:\\s+([^\n]*))?`, 'g');
+    // Define the regex pattern to match commands and their parameters
+    const pattern = new RegExp(`(^|\\s)(${emojis.join('|')})(?:\\s+((?:(?!${emojis.join('|')}).)*))?`, 'g');
 
-    const commands = [];
-    const commandLines = [];
-    let cleanText = text;
-
+    let lastCommand = null;
+    let lastCommandLine = null;
     let match;
-    while ((match = pattern.exec(text)) !== null) {
-      const emoji = match[2];
-      const startIndex = match.index + match[1].length + emoji.length;
-      const restOfLine = text.slice(startIndex).split('\n')[0].trim();
-      const toolName = this.toolEmojis.get(emoji);
-      const fullMatch = match[0];
 
-      const params = restOfLine ? restOfLine.split(/\s+/) : [];
-      commands.push({ command: toolName, emoji, params });
-      commandLines.push(fullMatch.trim());
+    // Iterate through all matches in the text
+    while ((match = pattern.exec(text)) !== null) {
+        const emoji = match[2];              // The matched emoji (e.g., "🐦")
+        const paramsString = match[3] || ''; // Parameters string (e.g., "browse")
+        const params = paramsString.trim().split(/\s+/); // Split into array (e.g., ["browse"])
+        const toolName = this.toolEmojis.get(emoji);     // Get tool name (e.g., "browse" or another mapping)
+        const fullMatch = match[0];          // Full matched string (e.g., "🐦 browse")
+
+        // Update with the current match, overwriting previous ones
+        lastCommand = { command: toolName, emoji, params };
+        lastCommandLine = fullMatch.trim();
     }
 
-    return { commands, cleanText, commandLines };
-  }
+    // Prepare the result with only the last command, if any
+    const commands = lastCommand ? [lastCommand] : [];
+    const commandLines = lastCommandLine ? [lastCommandLine] : [];
+
+    return { commands, cleanText: text, commandLines };
+}
 
   applyGuildToolEmojiOverrides(guildConfig) {
     if (!guildConfig?.toolEmojis) return;
@@ -133,6 +151,12 @@ export class ToolService extends BasicService {
     const commands = [];
     for (const [name, tool] of this.tools.entries()) {
       try {
+        // Check cooldown for this avatar/tool
+        if (avatar) {
+          const cooldownMs = tool.cooldownMs ?? this.defaultCooldownMs;
+          const remaining = this.cooldownService.getRemainingCooldown(name, avatar._id, cooldownMs);
+          if (remaining > 0) continue; // Skip tools on cooldown
+        }
         if (tool.constructor.name === 'XSocialTool' && avatar) {
           const status = await tool.getToolStatusForAvatar(avatar);
           if (!status.visible) continue;
@@ -177,26 +201,17 @@ export class ToolService extends BasicService {
       }
     }
 
-    const now = Date.now();
     const cooldownMs = tool.cooldownMs ?? this.defaultCooldownMs;
-
-    let avatarCooldowns = this.toolCooldowns.get(toolName);
-    if (!avatarCooldowns) {
-      avatarCooldowns = new Map();
-      this.toolCooldowns.set(toolName, avatarCooldowns);
-    }
-
-    const lastUsed = avatarCooldowns.get(avatar._id) || 0;
-    if (now - lastUsed < cooldownMs) {
-      const remainingMs = cooldownMs - (now - lastUsed);
-      const minutes = Math.ceil(remainingMs / 60000);
+    const remaining = this.cooldownService.getRemainingCooldown(toolName, avatar._id, cooldownMs);
+    if (remaining > 0) {
+      const minutes = Math.ceil(remaining / 60000);
       return `-# [ Please wait ${minutes} more minute(s) before using '${toolName}' again. ]`;
     }
 
     let result;
     try {
       result = await tool.execute(message, params, avatar);
-      avatarCooldowns.set(avatar._id, now);
+      this.cooldownService.setUsed(toolName, avatar._id);
     } catch (error) {
       result = `Error executing ${toolName}: ${error.message}`;
     }

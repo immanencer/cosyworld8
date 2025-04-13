@@ -9,6 +9,8 @@ export class ThinkTool extends BasicTool {
     this.discordService = services.discordService;
     this.promptService = services.promptService;
     this.databaseService = services.databaseService;
+    this.knowledgeService = services.knowledgeService;
+    this.schemaService = services.schemaService;
 
     this.name = 'think';
     this.description = 'Take a moment to reflect on a message or conversation, updating your thoughts and memories.';
@@ -90,11 +92,11 @@ export class ThinkTool extends BasicTool {
 
         const prompt = `Extract a concise list of key knowledge points or facts from the following reflection. Each should be a standalone fact or insight.\n\nReflection:\n${reflection}`;
 
-        const result = await this.services.schemaService.executePipeline({ prompt, schema });
+        const result = await this.schemaService.executePipeline({ prompt, schema });
         result.knowledge = result.knowledge || result.knowledge_points || [];
         if (result?.knowledge?.length) {
           for (const knowledge of result.knowledge) {
-            await this.services.knowledgeService.addKnowledgeTriple(avatar._id, 'knows', knowledge);
+            await this.knowledgeService.addKnowledgeTriple(avatar._id, 'knows', knowledge);
           }
         }
       } catch (kgError) {

@@ -5,13 +5,20 @@ import { fileURLToPath } from 'url';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
+const capabilityMapping = {
+  'generateContent': 'text',
+  'generateImage': 'image',
+  'generateAudio': 'audio',
+  'generateVideo': 'video',
+};
+
 const defaultModels = [
-  { model: "gemini-2.0-flash", rarity: "uncommon" },
-  { model: "gemini-2.0-flash-001", rarity: "uncommon" },
-  { model: "gemini-2.0-pro", rarity: "legendary" },
-  { model: "gemini-2.0-pro-001", rarity: "legendary" },
-  { model: "gemini-1.5-pro", rarity: "rare" },
-  { model: "gemini-1.5-flash", rarity: "common" }
+  { model: "gemini-2.0-flash", rarity: "uncommon", capabilities: ["text"] },
+  { model: "gemini-2.0-flash-001", rarity: "uncommon", capabilities: ["text"] },
+  { model: "gemini-2.0-pro", rarity: "legendary", capabilities: ["text", "image"] },
+  { model: "gemini-2.0-pro-001", rarity: "legendary", capabilities: ["text", "image"] },
+  { model: "gemini-1.5-pro", rarity: "rare", capabilities: ["text", "audio"] },
+  { model: "gemini-1.5-flash", rarity: "common", capabilities: ["text"] }
 ];
 
 const rarityTiers = [
@@ -35,15 +42,10 @@ async function fetchGoogleModelsFromAPI(apiKey) {
   try {
     const response = await fetch(`${endpoint}?key=${apiKey}`);
     const data = await response.json();
-    return data.models
-      .filter(model => !model.name.includes('embedding'))
-      .map(model => ({
-        model: model.name.replace('models/', ''),
-        rarity: assignRarity(model.name)
-      }));
+    return data.models || [];
   } catch (error) {
     console.error('[WARN] Could not fetch models from Google API:', error.message);
-    return null;
+    return [];
   }
 }
 
@@ -52,26 +54,26 @@ async function refreshGoogleModels() {
   const outputPath = path.join(process.cwd(), 'src', 'services', 'ai', 'models.google.config.mjs');
 
   const apiKey = process.env.GOOGLE_API_KEY;
-  let models = defaultModels;
+  let rawModels = [];
 
   if (apiKey) {
-    const fetchedModels = await fetchGoogleModelsFromAPI(apiKey);
-    if (fetchedModels && fetchedModels.length > 0) {
-      models = fetchedModels;
-    } else {
-      console.warn('[WARN] Using fallback default models.');
+    rawModels = await fetchGoogleModelsFromAPI(apiKey);
+    if (rawModels.length === 0) {
+      console.warn('[WARN] No models fetched from Google API.');
     }
   } else {
-    console.warn('[WARN] No GOOGLE_API_KEY found in environment. Using default models.');
+    console.warn('[WARN] No GOOGLE_API_KEY found in environment.');
   }
 
-  const configContent = `export default ${JSON.stringify(models, null, 2)};\n`;
+  const configContent = `export default {
+  rawModels: ${JSON.stringify(rawModels, null, 2)}
+};\n`;
 
   try {
     await fs.writeFile(outputPath, configContent);
     console.log(`[INFO] Models configuration saved to ${outputPath}`);
-    console.log(`[INFO] Configured ${models.length} models`);
-    return models;
+    console.log(`[INFO] Configured ${rawModels.length} models`);
+    return rawModels;
   } catch (error) {
     console.error('[ERROR] Failed to write model config file:', error.message);
     return [];

@@ -16,7 +16,7 @@ const CONFIG = {
 };
 
 // Import existing models config to preserve rarities
-import existingModels from '../src/services/ai/models.config.mjs';
+import existingModels from '../src/services/ai/models.openrouter.config.mjs';
 
 /**
  * Helper function to format cost values dynamically.
@@ -217,7 +217,7 @@ async function updateModelsConfig() {
 
     // Write config file
     const configContent = `export default ${JSON.stringify(finalConfig, null, 2)};\n`;
-    const outputPath = path.join(process.cwd(), 'src', 'models.config.mjs');
+    const outputPath = path.join(process.cwd(), 'src', 'models.openrouter.config.mjs');
     await fs.writeFile(outputPath, configContent);
     console.info(`[INFO] Models config updated successfully at ${outputPath}!`);
   } catch (error) {

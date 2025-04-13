@@ -67,7 +67,14 @@ export async function initializeServices(logger) {
   }
 
   try {
-    await services.webService.start();
+    await services.webService.start({
+      logger: services.logger,
+      databaseService: services.databaseService,
+      configService: services.configService,
+      discordService: services.discordService,
+      s3Service: services.s3Service,
+      aiModelService: services.aiModelService,
+    });
     logger.info('WebService started.');
   } catch (err) {
     logger.warn(`Failed to start WebService: ${err.message}`);

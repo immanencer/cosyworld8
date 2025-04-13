@@ -23,6 +23,7 @@ export class ToolService extends BasicService {
       'databaseService',
       'configService',
       'mapService',
+      'cooldownService',
     ]);
     
     // Initialize tool registry
@@ -55,6 +56,23 @@ export class ToolService extends BasicService {
   // Methods...
 }
 ```
+
+## Cooldown Management
+
+ToolService now uses a centralized `CooldownService` to manage per-tool, per-avatar cooldowns. This ensures that:
+- Cooldown logic is reusable and consistent across the codebase.
+- Only tools that are not on cooldown for the current avatar are shown in prompts and command listings.
+- Cooldown checks and updates are handled via `CooldownService.getRemainingCooldown(toolName, avatarId, cooldownMs)` and `CooldownService.setUsed(toolName, avatarId)`.
+
+### Example Usage
+
+When generating available commands (e.g., in `getCommandsDescription`), ToolService will:
+- Check each tool's cooldown for the avatar.
+- Only include tools that are not on cooldown.
+
+When executing a tool, ToolService will:
+- Check if the tool is on cooldown for the avatar.
+- If not, execute the tool and update the cooldown via CooldownService.
 
 ### Key Methods
 
@@ -90,11 +108,11 @@ extractToolCommands(text) {
 }
 ```
 
-#### `getCommandsDescription(guildId)`
-Generates a formatted description of all available commands for a given guild, including syntax and descriptions.
+#### `getCommandsDescription(guildId, avatar)`
+Generates a formatted description of all available commands for a given guild and avatar, including syntax and descriptions. Only includes tools that are not on cooldown for the avatar.
 
-#### `processAction(message, command, params, avatar)`
-Executes a tool command with the given parameters and handles success/failure logging. If the command doesn't match a known tool, it uses the CreationTool as a fallback.
+#### `executeTool(toolName, message, params, avatar, guildConfig)`
+Executes a tool command with the given parameters, checks cooldowns using CooldownService, and handles success/failure logging. If the command doesn't match a known tool, it uses the CreationTool as a fallback.
 
 ## Available Tools
 The service manages multiple specialized tools:
@@ -120,3 +138,4 @@ The service uses the ActionLog component to record all tool usage, providing a h
 - DatabaseService: For data persistence
 - ConfigService: For system configuration
 - MapService: For spatial relationships
+- CooldownService: For managing tool cooldowns

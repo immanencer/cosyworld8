@@ -2,6 +2,10 @@
 import { BasicService } from '../foundation/basicService.mjs';
 
 export class SchedulingService extends BasicService {
+  requiredServices = [
+    'channelManager',
+    'avatarService'
+  ];
   constructor(services) {
     super(services);
       

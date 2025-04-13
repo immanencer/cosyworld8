@@ -1,4 +1,4 @@
-import { BasicTool } from './BasicTool.mjs';
+import { BasicTool } from '../BasicTool.mjs';
 
 export class OneirocomForumTool extends BasicTool {
   constructor(services) {
@@ -7,7 +7,7 @@ export class OneirocomForumTool extends BasicTool {
     this.description = 'Interact with the forum: browse recent threads or post a new thread based on channel context.';
     this.emoji = '🛰️';
 
-    this.forumService = services.forumClientServiceService;
+    this.forumService = services.forumClientService;
   }
 
   async fetchThreads({ category, threadId } = {}) {

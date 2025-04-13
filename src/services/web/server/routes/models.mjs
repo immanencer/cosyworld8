@@ -1,9 +1,9 @@
 import express from 'express';
-import modelsConfig from '../../../ai/models.config.mjs';
+import { aiModelService } from '../../../ai/aiModelService.mjs';
 
 export default function (db) {
   const router = express.Router();
-  
+
   // Utility: Validate and sanitize query parameters
   const parseQuery = (query) => ({
     page: Math.max(1, parseInt(query.page) || 1),
@@ -28,8 +28,8 @@ export default function (db) {
       const { page, limit, rarity, search } = parseQuery(req.query);
       const skip = (page - 1) * limit;
 
-      // Filter models
-      let filteredModels = [...modelsConfig];
+      // Fetch models from aiModelService
+      let filteredModels = aiModelService.getAllModels('webService');
       if (rarity) filteredModels = filteredModels.filter((m) => m.rarity.toLowerCase() === rarity);
       if (search) filteredModels = filteredModels.filter((m) => m.model.toLowerCase().includes(search));
 
@@ -49,7 +49,7 @@ export default function (db) {
           search: search || '',
         },
         metadata: {
-          availableRarities: [...new Set(models.map((m) => m.rarity))].sort(sortByRarity),
+          availableRarities: [...new Set(filteredModels.map((m) => m.rarity))].sort(sortByRarity),
         },
       });
     } catch (error) {
@@ -61,10 +61,11 @@ export default function (db) {
     }
   });
 
-
+  // Route: Fetch all model configurations
   router.get('/config', async (req, res) => {
     try {
-      res.json(modelsConfig);
+      const models = aiModelService.getAllModels('webService');
+      res.json(models);
     } catch (error) {
       console.error('Error fetching model config:', error);
       res.status(500).json({ error: 'Failed to fetch model configurations' });
@@ -75,7 +76,7 @@ export default function (db) {
   router.get('/:modelName', async (req, res) => {
     try {
       const modelName = decodeURIComponent(req.params.modelName);
-      const model = modelsConfig.find((m) => m.model === modelName);
+      const model = aiModelService.getAllModels('webService').find((m) => m.model === modelName);
 
       if (!model) {
         return res.status(404).json({ error: 'Model not found' });

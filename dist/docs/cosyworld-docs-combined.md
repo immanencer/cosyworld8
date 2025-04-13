@@ -5509,7 +5509,7 @@ The service implements a robust retry mechanism for rate limit errors:
 #### Dependencies
 - OpenAI SDK (configured for OpenRouter)
 - String similarity library for fuzzy model matching
-- Model configuration file (`models.config.mjs`)
+- Model configuration file (`models.openrouter.config.mjs`)
 - Configuration service for API keys and defaults
 
 #### Usage Examples

@@ -8,7 +8,7 @@ import {
 import { ObjectId } from 'mongodb';
 import { chunkMessage } from '../utils/messageChunker.mjs';
 import { processMessageLinks } from '../utils/linkProcessor.mjs';
-import models from '../ai/models.config.mjs';
+import models from '../ai/models.openrouter.config.mjs';
 import { buildMiniAvatarEmbed, buildFullAvatarEmbed, buildMiniLocationEmbed, buildFullItemEmbed, buildFullLocationEmbed } from './discordEmbedLibrary.mjs';
 
 export class DiscordService {

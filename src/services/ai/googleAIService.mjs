@@ -1,7 +1,8 @@
 import { BasicService } from '../foundation/basicService.mjs';
 import { GoogleGenerativeAI } from '@google/generative-ai';
-import models from './models.google.config.mjs';
+import modelsConfig from './models.google.config.mjs';
 import stringSimilarity from 'string-similarity';
+import { aiModelService } from './aiModelService.mjs';
 
 export class GoogleAIService extends BasicService {
   constructor(services) {
@@ -21,7 +22,7 @@ export class GoogleAIService extends BasicService {
     this.googleAI = new GoogleGenerativeAI(this.apiKey);
     this.model = config.defaultModel || 'gemini-2.0-flash-001';
     this.structured_model = config.structuredModel || this.model;
-    this.modelConfig = models;
+    this.rawModels = modelsConfig.rawModels;
 
     // Default options for chat and completion
     this.defaultCompletionOptions = {
@@ -50,6 +51,41 @@ export class GoogleAIService extends BasicService {
     };
 
     console.log(`[${new Date().toISOString()}] Initialized GoogleAIService with default model: ${this.model}`);
+  }
+
+  async registerSupportedModels() {
+    if (!this.rawModels || this.rawModels.length === 0) {
+      console.warn('[GoogleAIService] No raw models available to register.');
+      return;
+    }
+
+    const supportedModels = this.rawModels.filter(model => {
+      const methods = model.supportedGenerationMethods || [];
+      return methods.includes('generateContent') || methods.includes('bidiGenerateContent');
+    }).map(model => ({
+      model: model.name.replace('models/', ''),
+      rarity: this.assignRarity(model.name),
+      capabilities: model.supportedGenerationMethods,
+    }));
+
+    if (supportedModels.length === 0) {
+      console.warn('[GoogleAIService] No models with required capabilities found.');
+      return;
+    }
+
+    aiModelService.registerModels('googleAI', supportedModels);
+
+    console.info(`[GoogleAIService] Registered ${supportedModels.length} models with aiModelService.`);
+  }
+
+  assignRarity(modelName) {
+    if (modelName.includes('pro')) return 'legendary';
+    if (modelName.includes('flash')) return 'uncommon';
+    return 'common';
+  }
+
+  async initialize() {
+    await this.registerSupportedModels();
   }
 
   schemaToPromptInstructions(schema) {
@@ -345,6 +381,11 @@ export class GoogleAIService extends BasicService {
   }
 
   async selectRandomModel() {
+    if (!this.rawModels || !Array.isArray(this.rawModels)) {
+      console.warn('[GoogleAIService] rawModels is not initialized or is not an array.');
+      return this.model; // Fallback to default model
+    }
+
     const rarityRanges = [
       { rarity: 'common', min: 1, max: 12 },
       { rarity: 'uncommon', min: 13, max: 17 },
@@ -355,18 +396,26 @@ export class GoogleAIService extends BasicService {
     const roll = Math.ceil(Math.random() * 20);
     const selectedRarity = rarityRanges.find(range => roll >= range.min && roll <= range.max)?.rarity;
 
-    const availableModels = this.modelConfig.filter(model => model.rarity === selectedRarity);
+    const availableModels = this.rawModels.filter(model => model.rarity === selectedRarity);
 
     if (availableModels.length > 0) {
       const randomIndex = Math.floor(Math.random() * availableModels.length);
-      return availableModels[randomIndex].model;
+      return availableModels[randomIndex].name;
     }
+
+    console.warn('[GoogleAIService] No models found for selected rarity, falling back to default model.');
     return this.model;
   }
 
   modelIsAvailable(model) {
+    if (!this.rawModels || !Array.isArray(this.rawModels)) {
+      console.warn('[GoogleAIService] rawModels is not initialized or is not an array.');
+      return false;
+    }
+
     if (!model) return false;
-    return this.modelConfig.some(m => m.model === model.replace(':online', ''));
+
+    return this.rawModels.some(m => m.name === model.replace(':online', ''));
   }
   
   async getModel(modelName) {
@@ -391,6 +440,22 @@ export class GoogleAIService extends BasicService {
 
     console.warn(`No close match found for model: "${modelName}", defaulting to random model.`);
     return await this.selectRandomModel();
+  }
+
+  filterModelsByCapabilities(requiredCapabilities = ['text']) {
+    return this.rawModels.filter(model => {
+      const capabilities = model.supportedGenerationMethods || [];
+      return requiredCapabilities.every(cap => capabilities.includes(cap));
+    });
+  }
+
+  async getFilteredModel(requiredCapabilities = ['text']) {
+    const filteredModels = this.filterModelsByCapabilities(requiredCapabilities);
+    if (filteredModels.length > 0) {
+      return filteredModels[0].name.replace('models/', '');
+    }
+    console.warn('No models found matching required capabilities. Falling back to default model.');
+    return this.model;
   }
   
 }

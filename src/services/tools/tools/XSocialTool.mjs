@@ -207,8 +207,11 @@ export class XSocialTool extends BasicTool {
 
             return '-# [ ❌ Unknown command. Use: browse or post <message> ]';
         } catch (error) {
+            if (error.code === 401) {
+                return '-# ❌ [ X authorization required. Please connect your account. ]';
+            }
             console.error(`Error in XSocialTool: ${error.message}`);
-            return `-# [ ❌ Unknown error executing command. `;
+            return `-# [ ❌ Unknown error executing command. ]`;
         }
     }
 
@@ -241,7 +244,7 @@ Avoid replying to or quoting tweets where isOwn=true (your own posts).
 
 Generate a JSON array of actions. Each action must have:
 - "type": one of post, reply, quote, follow, like, repost, block
-- "content": text for post/reply/quote (max 280 chars), or null if not applicable
+- "content": text for post/reply/quote (max 280 chars), always include even if not applicable.
 - "tweetId": the Tweet ID for reply/quote/like/repost, or null if not applicable
 - "userId": the User ID for follow/block, or null if not applicable
 
@@ -257,7 +260,7 @@ Only output the JSON array, no commentary.`.trim();
                     type: "object",
                     properties: {
                         type: { type: "string", enum: ["post", "reply", "quote", "follow", "like", "repost", "block"] },
-                        content: { type: "string", nullable: true },
+                        content: { type: "string", nullable: false },
                         tweetId: { type: "string", nullable: true },
                         userId: { type: "string", nullable: true }
                     },

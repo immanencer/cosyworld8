@@ -38,7 +38,7 @@ export class MoveTool extends BasicTool {
 
     try {
       // 1. Get current location from the toolService
-      const currentLocation = await this.mapService.getAvatarLocation(avatar._id);
+      const currentLocation = await this.mapService.getAvatarLocation(avatar);
       const currentLocationId = currentLocation?.location?.channelId || avatar.channelId;
 
       // 2. Find or create the new location
@@ -52,14 +52,14 @@ export class MoveTool extends BasicTool {
       }
 
       // 3. If the avatar is already in that location, bail early
-      if (currentLocationId === newLocation.channel.channelId) {
+      if (currentLocationId === newLocation.channel.id) {
         return "-# 🏃‍♂️ [ You're already there!";
       }
 
       // 4. Update the avatar's position in the database (only once)
       const updatedAvatar = await this.mapService.updateAvatarPosition(
         avatar,
-        newLocation.channel.channelId,
+        newLocation.channel.id,
         currentLocationId
       );
 
@@ -70,7 +70,7 @@ export class MoveTool extends BasicTool {
       // 5. Send a mini card to the departure channel if we have one
       if (currentLocationId) {
         try {
-          const departureMessage = `${avatar.name} has departed to <#${newLocation.channel.channelId}>`;
+          const departureMessage = `${avatar.name} has departed to <#${newLocation.channel.id}>`;
           await this.discordService.sendMiniAvatarEmbed(avatar, currentLocationId, departureMessage);
           this.logger?.debug?.(`Sent mini card for ${avatar.name} to departure location ${currentLocationId}`);
         } catch (miniCardError) {
@@ -81,15 +81,15 @@ export class MoveTool extends BasicTool {
       // 6. Instead of sending full profile embed to new location, send mini embed only
       try {
         const arrivalMessage = `${avatar.name} has arrived.`;
-        await this.discordService.sendMiniAvatarEmbed(updatedAvatar, newLocation.channel.channelId, arrivalMessage);
-        this.logger?.debug?.(`Sent mini arrival card for ${updatedAvatar.name} to ${newLocation.channel.channelId}`);
+        await this.discordService.sendMiniAvatarEmbed(updatedAvatar, newLocation.channel.id, arrivalMessage);
+        this.logger?.debug?.(`Sent mini arrival card for ${updatedAvatar.name} to ${newLocation.channel.id}`);
       } catch (miniCardError) {
         this.logger?.error?.(`Error sending arrival mini card: ${miniCardError.message}`);
       }
 
       // 7. Trigger conversation response immediately after arrival
       try {
-        await this.conversationManager.sendResponse(newLocation.channel.channelId, updatedAvatar);
+        await this.conversationManager.sendResponse(newLocation.channel.id, updatedAvatar);
       } catch (error) {
         console.error('Error sending arrival message:', error);
       }

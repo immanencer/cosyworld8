@@ -5,7 +5,7 @@ export class DefendTool extends BasicTool {
     super(services);
     this.configService = services.configService;
     this.avatarService = services.avatarService;
-
+    this.battleService = services.battleService;
 
     this.name = 'defend';
     this.description = 'Take a defensive stance';
@@ -15,12 +15,8 @@ export class DefendTool extends BasicTool {
   }
 
   async execute(message, params, avatar) {
-    const avatarId = avatar._id;
-    const stats = await this.avatarService.getOrCreateStats(avatar);
-    
-    stats.isDefending = true;
-    await this.avatarService.updateAvatarStats(avatar, stats);
-    return `-# 🛡️ [ **${avatar.name}** takes a defensive stance! **AC increased by 2** until next attack. ]`;
+    // Delegate to battleService
+    return await this.battleService.defend({ avatar });
   }
 
   getDescription() {

@@ -1,4 +1,12 @@
-export class StatService {
+import { BasicService } from '../foundation/basicService.mjs';
+
+export class StatService extends BasicService {
+  constructor(services) {
+    super(services);
+    this.databaseService = services.databaseService;
+    this.configService = services.configService;
+    this.logger = services.logger;
+  }
   /**
    * Generates stats based on the creation date using d20 rolls with advantage/disadvantage per zodiac sign.
    * @param {Date|string} creationDate - The date the avatar was created.
@@ -124,5 +132,76 @@ export class StatService {
       stats[stat] >= 8 && 
       stats[stat] <= 16
     );
+  }
+
+  /**
+   * Creates a stat modifier for an avatar (e.g., damage, healing, buffs).
+   * @param {string} stat - The stat to modify (e.g., 'hp', 'strength')
+   * @param {number} value - The value to add (negative for damage/debuff)
+   * @param {object} options - { avatarId, duration (ms), source }
+   * @returns {Promise<object>} The created modifier document
+   */
+  async createModifier(stat, value, { avatarId, duration = null, source = null } = {}) {
+    if (!this.databaseService) throw new Error('StatService missing databaseService');
+    const db = this.databaseService.getDatabase();
+    const now = new Date();
+    const expiresAt = duration ? new Date(now.getTime() + duration) : null;
+    const modifier = {
+      avatarId: typeof avatarId === 'string' ? new ObjectId(avatarId) : avatarId,
+      stat,
+      value: Math.round(value), // Ensure whole number
+      createdAt: now,
+      expiresAt,
+      source,
+    };
+    await db.collection('dungeon_modifiers').insertOne(modifier);
+    return modifier;
+  }
+
+  /**
+   * Computes the effective stat value for an avatar (base + all active modifiers).
+   * @param {string|ObjectId} avatarId
+   * @param {string} stat
+   * @returns {Promise<number>} Effective stat value
+   */
+  async getEffectiveStat(avatarId, stat) {
+    if (!this.databaseService) throw new Error('StatService missing databaseService');
+    const db = this.databaseService.getDatabase();
+    const baseStats = await db.collection('dungeon_stats').findOne({ avatarId: typeof avatarId === 'string' ? new ObjectId(avatarId) : avatarId });
+    const base = baseStats?.[stat] ?? 0;
+    const now = new Date();
+    const modifiers = await db.collection('dungeon_modifiers').find({
+      avatarId: typeof avatarId === 'string' ? new ObjectId(avatarId) : avatarId,
+      stat,
+      $or: [
+        { expiresAt: null },
+        { expiresAt: { $gt: now } }
+      ]
+    }).toArray();
+    const totalMod = modifiers.reduce((sum, m) => sum + m.value, 0);
+    return base + totalMod;
+  }
+
+  /**
+   * Returns the total value of all active modifiers for a stat (e.g., total damage counters).
+   * Always rounds to whole numbers.
+   * @param {string|ObjectId} avatarId
+   * @param {string} stat
+   * @returns {Promise<number>} Sum of all active modifiers (integer)
+   */
+  async getTotalModifier(avatarId, stat) {
+    if (!this.databaseService) throw new Error('StatService missing databaseService');
+    const db = this.databaseService.getDatabase();
+    const now = new Date();
+    const modifiers = await db.collection('dungeon_modifiers').find({
+      avatarId: typeof avatarId === 'string' ? new ObjectId(avatarId) : avatarId,
+      stat,
+      $or: [
+        { expiresAt: null },
+        { expiresAt: { $gt: now } }
+      ]
+    }).toArray();
+    // Always sum as integers
+    return modifiers.reduce((sum, m) => sum + Math.round(m.value), 0);
   }
 }

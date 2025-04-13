@@ -79,6 +79,7 @@ async function saveUserConfig(config) {
 
 function createRouter(db) {
   const router = express.Router();
+  const avatarsCollection = db.collection('avatars');
 
   // ===== Avatar Routes =====
 
@@ -116,7 +117,7 @@ function createRouter(db) {
     };
 
     // Insert into database
-    const result = await db.avatars.insertOne(avatar);
+    const result = await avatarsCollection.insertOne(avatar);
 
     // Return created avatar with ID
     res.status(201).json({
@@ -182,7 +183,8 @@ function createRouter(db) {
     }
 
     // Update avatar
-    const result = await db.avatars.updateOne(
+    const avatarsCollection = db.collection('avatars');
+    const result = await avatarsCollection.updateOne(
       { _id: id },
       { $set: updateObj }
     );
@@ -192,7 +194,7 @@ function createRouter(db) {
     }
 
     // Return updated avatar
-    const updatedAvatar = await db.avatars.findOne({ _id: id });
+    const updatedAvatar = await avatarsCollection.findOne({ _id: id });
     res.json(updatedAvatar);
   }));
 
@@ -205,7 +207,7 @@ function createRouter(db) {
     }
 
     // Delete avatar
-    const result = await db.avatars.deleteOne({ _id: id });
+    const result = await avatarsCollection.deleteOne({ _id: id });
 
     if (result.deletedCount === 0) {
       return res.status(404).json({ error: 'Avatar not found' });
@@ -410,7 +412,7 @@ function createRouter(db) {
     try {
       // Get counts
       const [avatarCount, itemCount, locationCount, memoryCount] = await Promise.all([
-        db.avatars.countDocuments(),
+        avatarsCollection.countDocuments(),
         db.collection('items').countDocuments(),
         db.collection('locations').countDocuments(),
         db.memories ? db.memories.countDocuments() : 0
@@ -460,7 +462,7 @@ function createRouter(db) {
   adminRouter.get('/config', asyncHandler(async (req, res) => {
     try {
       // Get various stats from the database
-      const avatarCount = await db.avatars.countDocuments();
+      const avatarCount = await avatarsCollection.countDocuments();
       const messageCount = db.messages ? await db.messages.countDocuments() : 0;
       const locationCount = await db.collection('locations').countDocuments();
 
@@ -567,14 +569,33 @@ function createRouter(db) {
 
 
   // Upload endpoint handler
-  router.post('/upload-image', async (req, res) => {
+  router.post('/upload-image', upload.single('image'), async (req, res) => {
     try {
-      if (!req.body.image) {
-        return res.status(400).json({ error: 'No image data provided' });
+      if (!req.file) {
+        return res.status(400).json({ error: 'No image file uploaded' });
       }
 
-      const url = await handleBase64Upload(req.body.image);
-      res.json({ url });
+      // Use S3Service to upload the image
+      const s3Service = req.app.locals.services?.s3Service;
+      if (!s3Service) {
+        return res.status(500).json({ error: 'S3Service not available' });
+      }
+
+      // Save the uploaded file temporarily
+      const tempFilePath = `/tmp/${req.file.originalname}`;
+      await fs.writeFile(tempFilePath, req.file.buffer);
+
+      // Upload to S3 using the existing uploadImage method
+      const s3Url = await s3Service.uploadImage(tempFilePath);
+      if (!s3Url) {
+        return res.status(500).json({ error: 'Failed to upload image to S3' });
+      }
+
+      // Clean up the temporary file
+      await fs.unlink(tempFilePath);
+
+      // Return the S3 URL for the uploaded image
+      res.json({ url: s3Url });
     } catch (error) {
       console.error('Upload error:', error);
       res.status(500).json({ error: 'Failed to upload image' });
@@ -590,7 +611,7 @@ function createRouter(db) {
       return res.status(400).json({ error: 'Invalid ID format' });
     }
 
-    const avatar = await db.avatars.findOne({ _id: id });
+    const avatar = await avatarsCollection.findOne({ _id: id });
     if (!avatar) {
       return res.status(404).json({ error: 'Avatar not found' });
     }

@@ -1,33 +1,55 @@
+// Core infrastructure services
 import { SchedulingService } from '../scheduler/scheduler.mjs';
 import { DatabaseService } from '../foundation/databaseService.mjs';
 import { ConfigService } from '../foundation/configService.mjs';
+
+// Security and moderation services
 import { SpamControlService } from '../security/spamControlService.mjs';
+import { RiskManagerService } from '../security/riskManagerService.mjs';
+import { ModerationService } from '../security/moderationService.mjs';
+
+// AI and prompt services
 import { AIServiceClass } from '../ai/aiService.mjs';
+import { PromptService } from '../ai/promptService.mjs';
+
+// Entity and domain services
 import { AvatarService } from '../entity/avatarService.mjs';
-import { ToolService } from '../tools/ToolService.mjs';
+import { MemoryService } from '../entity/memoryService.mjs';
+import { SchemaService } from '../entity/schemaService.mjs';
+import { KnowledgeService } from '../entity/knowledgeService.mjs';
+
+// Item and stat services
+import { ItemService } from '../item/itemService.mjs';
+import { StatService } from '../battle/statService.mjs';
+import { DiceService } from '../battle/diceService.mjs';
+import { BattleService } from '../battle/battleService.mjs';
+
+// Map and location services
 import { MapService } from '../map/mapService.mjs';
-import { StatService } from '../tools/statService.mjs';
+import { LocationService } from '../location/locationService.mjs';
+
+// Media and storage services
+import { ImageProcessingService } from '../media/imageProcessingService.mjs';
+import { S3Service } from '../s3/s3Service.mjs';
+import { ArweaveService } from '../arweave/arweaveService.mjs';
+
+// Social and communication services
 import { DiscordService } from '../social/discordService.mjs';
 import { MessageHandler } from '../chat/messageHandler.mjs';
 import { ChannelManager } from '../chat/channelManager.mjs';
 import { ConversationManager } from '../chat/conversationManager.mjs';
 import { DecisionMaker } from '../chat/decisionMaker.mjs';
-import { ItemService } from '../item/itemService.mjs';
-import { PromptService } from '../ai/promptService.mjs';
-import { MemoryService } from '../entity/memoryService.mjs';
-import { WebService } from '../web/webService.mjs';
-import { SchemaService } from '../entity/schemaService.mjs';
-import { S3Service } from '../s3/s3Service.mjs';
-import { LocationService } from '../location/locationService.mjs';
-import { ArweaveService } from '../arweave/arweaveService.mjs';
-import { RiskManagerService } from '../security/riskManagerService.mjs';
-import { ImageProcessingService } from '../media/imageProcessingService.mjs';
-import { ModerationService } from '../security/moderationService.mjs';
-import { KnowledgeService } from '../entity/knowledgeService.mjs';
+
+// Tools and user profile services
+import { ToolService } from '../tools/ToolService.mjs';
 import { UserProfileService } from '../userProfileService.mjs';
+
+// Web service
+import { WebService } from '../web/webService.mjs';
 
 // Client Services
 import { OneirocomForumService } from '../oneirocom/OneirocomForumService.mjs';
+import { BasicService } from '../foundation/basicService.mjs';
 
 // Infrastructure layer
 const infrastructure = {};
@@ -78,25 +100,14 @@ domain.discordService = new DiscordService({
   databaseService: infrastructure.databaseService,
 });
 
-domain.webService = new WebService({
-  logger: infrastructure.logger,
-  configService: infrastructure.configService,
-  databaseService: infrastructure.databaseService,
-  discordService: domain.discordService,
-});
 
 if (process.env.ONEIROCOM_FORUM_API_KEY
   && process.env.ONEIROCOM_FORUM_API_URI) {
-  domain.forumClientServiceService = new OneirocomForumService({
+  domain.forumClientService = new OneirocomForumService({
     logger: infrastructure.logger,
     configService: infrastructure.configService,
   });
 }
-
-domain.aiService = new AIServiceClass({
-  logger: infrastructure.logger,
-  configService: infrastructure.configService,
-});
 
 domain.riskManagerService = new RiskManagerService({
   logger: infrastructure.logger,
@@ -107,6 +118,11 @@ domain.riskManagerService = new RiskManagerService({
 domain.spamControlService = new SpamControlService({
   logger: infrastructure.logger,
   databaseService: infrastructure.databaseService,
+  configService: infrastructure.configService,
+});
+
+domain.aiService = new AIServiceClass({
+  logger: infrastructure.logger,
   configService: infrastructure.configService,
 });
 
@@ -139,6 +155,29 @@ domain.statService = new StatService({
   configService: infrastructure.configService,
 });
 
+domain.avatarService = new AvatarService({
+  logger: infrastructure.logger,
+  databaseService: infrastructure.databaseService,
+  configService: infrastructure.configService,
+  aiService: domain.aiService,
+  schedulingService: infrastructure.schedulingService,
+  mapService: domain.mapService,
+  statService: domain.statService,
+  schemaService: domain.schemaService,
+  imageProcessingService: infrastructure.imageProcessingService,
+  discordService: domain.discordService,
+  memoryService: domain.memoryService,
+  riskManagerService: domain.riskManagerService
+});
+domain.diceService = new DiceService();
+domain.battleService = new BattleService({
+  avatarService: domain.avatarService,
+  statService: domain.statService,
+  mapService: domain.mapService,
+  diceService: domain.diceService,
+  databaseService: infrastructure.databaseService,
+  conversationManager: domain.conversationManager,
+});
 
 domain.memoryService = new MemoryService({
   logger: infrastructure.logger,
@@ -154,20 +193,6 @@ domain.knowledgeService = new KnowledgeService({
   schemaService: domain.schemaService,
 });
 
-domain.avatarService = new AvatarService({
-  logger: infrastructure.logger,
-  databaseService: infrastructure.databaseService,
-  configService: infrastructure.configService,
-  aiService: domain.aiService,
-  schedulingService: infrastructure.schedulingService,
-  mapService: domain.mapService,
-  statService: domain.statService,
-  schemaService: domain.schemaService,
-  imageProcessingService: infrastructure.imageProcessingService,
-  discordService: domain.discordService,
-  memoryService: domain.memoryService,
-  riskManagerService: domain.riskManagerService
-});
 
 domain.promptService = new PromptService({
   logger: infrastructure.logger,
@@ -255,7 +280,8 @@ domain.toolService = new ToolService({
   riskManagerService: domain.riskManagerService,
   statService: domain.statService,
   knowledgeService: domain.knowledgeService,
-  forumClientService: domain.forumClientServiceService
+  forumClientService: domain.forumClientService,
+  battleService: domain.battleService,
 });
 
 
@@ -283,15 +309,34 @@ domain.messageHandler = new MessageHandler({
   mapService: domain.mapService,
 });
 
+
 domain.promptService.toolService = domain.toolService;
 domain.messageHandler.toolService = domain.toolService;
 domain.moderationService.toolService = domain.toolService;
 domain.conversationManager.toolService = domain.toolService;
+
+// Validate service dependencies
+
+try {
+  BasicService.validateServiceDependencies({
+    ...infrastructure,
+    ...domain,
+  });
+} catch (error) {
+  infrastructure.logger.error(`[ServiceRegistry] Service dependency validation failed: ${error.message}`);
+  throw error;
+}
+
+domain.webService = new WebService({
+  ...infrastructure,
+  ...domain,
+});
 
 // Compose services object
 const services = {
   ...infrastructure,
   ...domain,
 };
+
 
 export { services };

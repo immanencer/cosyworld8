@@ -9,28 +9,46 @@ document.addEventListener("DOMContentLoaded", () => {
     currentSearch: "",
   };
 
-  // Load available models
+  // Enhance the model selector functionality
   async function loadModels() {
+    const modelSelect = document.getElementById('model-filter');
+    const avatarModelSelect = document.getElementById('avatar-model');
+
+    // Show loading indicator
+    const loadingOption = document.createElement('option');
+    loadingOption.textContent = 'Loading...';
+    loadingOption.disabled = true;
+    loadingOption.selected = true;
+    modelSelect.appendChild(loadingOption);
+    avatarModelSelect.appendChild(loadingOption.cloneNode(true));
+
     try {
       const response = await fetch('/api/models/config');
+      if (!response.ok) throw new Error(`HTTP error ${response.status}`);
+
       const data = await response.json();
-      const modelSelect = document.getElementById('model-filter');
-      const avatarModelSelect = document.getElementById('avatar-model');
-      
-      // Add models to filter select
-      Object.keys(data).forEach(model => {
+
+      // Clear existing options
+      modelSelect.innerHTML = '';
+      avatarModelSelect.innerHTML = '';
+
+      // Add default option
+      const defaultOption = document.createElement('option');
+      defaultOption.value = 'all';
+      defaultOption.textContent = 'All Models';
+      modelSelect.appendChild(defaultOption);
+
+      // Populate models
+      Object.keys(data).forEach((model) => {
         const option = document.createElement('option');
         option.value = model;
         option.textContent = model;
         modelSelect.appendChild(option);
-      });
 
-      // Add models to avatar form select
-      Object.keys(data).forEach(model => {
-        const option = document.createElement('option');
-        option.value = model;
-        option.textContent = model;
-        avatarModelSelect.appendChild(option);
+        const avatarOption = document.createElement('option');
+        avatarOption.value = model;
+        avatarOption.textContent = model;
+        avatarModelSelect.appendChild(avatarOption);
       });
 
       // Add filter listeners
@@ -41,6 +59,10 @@ document.addEventListener("DOMContentLoaded", () => {
       });
     } catch (error) {
       console.error('Error loading models:', error);
+
+      // Show error message
+      modelSelect.innerHTML = '<option disabled selected>Error loading models</option>';
+      avatarModelSelect.innerHTML = '<option disabled selected>Error loading models</option>';
     }
   }
 
@@ -380,13 +402,22 @@ elements.imageUrlInput.addEventListener("input", () => {
         body: JSON.stringify(Object.fromEntries(formData)),
       });
       if (!response.ok) throw new Error(`HTTP error ${response.status}`);
-      closeModal();
+      // Fetch the updated avatar and refresh the modal fields
+      let updatedAvatar;
+      if (avatarId) {
+        const getRes = await fetch(`/api/admin/avatars/${avatarId}`);
+        updatedAvatar = await getRes.json();
+        populateForm(updatedAvatar);
+        showNotification("Avatar updated successfully");
+      } else {
+        // For new avatar, close modal and reload list
+        closeModal();
+        loadAvatars();
+        showNotification("Avatar created successfully");
+        return;
+      }
+      // Also reload avatars list in the background
       loadAvatars();
-      showNotification(
-        avatarId
-          ? "Avatar updated successfully"
-          : "Avatar created successfully",
-      );
     } catch (error) {
       console.error("Error saving avatar:", error);
       showNotification("Failed to save avatar", "error");

@@ -119,9 +119,9 @@ Return a JSON object with keys: name, description, type, rarity, properties.`;
           description: { type: 'string' },
           type: { type: 'string', enum: ['weapon', 'armor', 'consumable', 'quest', 'key', 'artifact'] },
           rarity: { type: 'string', enum: ['common', 'uncommon', 'rare', 'epic', 'legendary'] },
-          properties: { type: 'object' }
+          traits: { type: 'array', items: { type: 'string' } }
         },
-        required: ['name', 'description', 'type', 'rarity', 'properties'],
+        required: ['name', 'description', 'type', 'rarity', 'traits'],
 
         additionalProperties: false,
       }
@@ -193,9 +193,33 @@ Return a JSON object with keys: name, description, type, rarity, properties.`;
     return success ? await itemsCollection.findOne({ _id: item._id }) : null;
   }
 
-  /** Uses an item, leveraging aiService if available. */
+  /** Uses an item, updating its memory and generating a response based on its history. */
   async useItem(avatar, item, channelId) {
-    return `The ${item.name} remains inert, its power dormant.`;
+    const itemsCollection = this.ensureDbConnection().collection('items');
+
+    // Fetch the current channel context
+    const channel = await this.discordService.client.channels.fetch(channelId);
+    const messages = await channel.messages.fetch({ limit: 10 });
+    const channelContext = messages.map(m => `${m.author.username}: ${m.content}`).join('\n');
+
+    // Update the item's memory
+    const memoryContent = `Item used by: ${avatar.name}\nLocation: ${channel.name}\nContext:\n${channelContext}`;
+    await this.memoryService.addMemory(item._id, memoryContent);
+
+    // Retrieve the item's memory history
+    const memoryHistory = await this.memoryService.getMemories(item._id, 10);
+    const memorySummary = memoryHistory.map(m => m.memory).join('\n');
+
+    // Generate a response based on the item's memory history
+    const response = await this.aiService.chat([
+      { role: 'system', content: `You are the spirit of the item ${item.name}.` },
+      { role: 'user', content: `Your memory history:\n${memorySummary}\n\nRespond as the item to acknowledge its use.` }
+    ], { model: avatar.model, max_tokens: 100 });
+
+    // Send the response as the item
+    await this.discordService.sendAsWebhook(channelId, response || `The ${item.name} glows faintly as it acknowledges its use.`, avatar);
+
+    return response;
   }
 
   /** Searches for items in a location matching a query. */
