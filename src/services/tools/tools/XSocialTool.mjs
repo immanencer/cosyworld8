@@ -155,7 +155,7 @@ export class XSocialTool extends BasicTool {
                                 break;
                             case 'follow':
                                 if (!isValidId(action.userId)) { results.push(`❌ Invalid userId for follow: ${action.userId}`); break; }
-                                await v2Client.follow(action.userId);
+                                await v2Client.follow(myUserId, action.userId);
                                 results.push(`➕ Followed user ${action.userId}`);
                                 break;
                             case 'like':
@@ -179,7 +179,7 @@ export class XSocialTool extends BasicTool {
                             this.logger.error(`Repost failed. Params: myUserId=${myUserId}, tweetId=${action.tweetId}`);
                             this.logger.error(`Error stack: ${error.stack}`);
                         }
-                        results.push(`-# [ ❌ ${action.type} failed: ${error.message} ] `);
+                        results.push(`❌ ${action.type} failed: ${error.message}`);
                     }
                 }
                 return results.map(T => `-# [ ${T.replace(/\n/g,``)} ]`).join('\n');
@@ -210,7 +210,13 @@ export class XSocialTool extends BasicTool {
             if (error.code === 401) {
                 return '-# ❌ [ X authorization required. Please connect your account. ]';
             }
+            if (error.code === 403) {
+                return `-# ❌ [ X authorization required: ${error.data.detail} ]`;
+            }
             console.error(`Error in XSocialTool: ${error.message}`);
+            if (error?.data) {
+                console.error(`Error data: ${JSON.stringify(error.data)}`);
+            }
             return `-# [ ❌ Unknown error executing command. ]`;
         }
     }
