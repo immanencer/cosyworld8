@@ -6,7 +6,6 @@ node_modules
 *.log
 images/*
 *.webp
-*.png
 logs
 *-wallet.json
 attached_assets/*
