@@ -35,7 +35,6 @@ export class ToolService extends BasicService {
     "riskManagerService",
     "statService",
     "knowledgeService",
-    "forumClientService",
     "battleService"
   ];
   constructor(services) {

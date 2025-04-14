@@ -280,7 +280,6 @@ domain.toolService = new ToolService({
   riskManagerService: domain.riskManagerService,
   statService: domain.statService,
   knowledgeService: domain.knowledgeService,
-  forumClientService: domain.forumClientService,
   battleService: domain.battleService,
 });
 
@@ -309,7 +308,9 @@ domain.messageHandler = new MessageHandler({
   mapService: domain.mapService,
 });
 
-
+if(domain.forumClientService) {
+  domain.toolService.forumClientService = domain.forumClientService;
+}
 domain.promptService.toolService = domain.toolService;
 domain.messageHandler.toolService = domain.toolService;
 domain.moderationService.toolService = domain.toolService;

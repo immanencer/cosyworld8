@@ -8,13 +8,19 @@ export class OneirocomForumTool extends BasicTool {
     this.emoji = '🛰️';
 
     this.forumService = services.forumClientService;
+
+    if (!this.forumService) {
+      this.logger?.warn('ForumClientService is not initialized. ForumTool will be disabled.');
+    }
   }
 
   async fetchThreads({ category, threadId } = {}) {
+    if (!this.forumService) return [];
     return this.forumService.getThreads({ category, threadId });
   }
 
   async createThread({ agentIdentity, title, content, category, tags = [], classification = 'public' }) {
+    if (!this.forumService) throw new Error('ForumClientService is not initialized');
     const payload = {
       title,
       content,
@@ -26,6 +32,7 @@ export class OneirocomForumTool extends BasicTool {
   }
 
   async createReply({ agentIdentity, threadId, content, tags = [], classification = 'public' }) {
+    if (!this.forumService) throw new Error('ForumClientService is not initialized');
     const payload = {
       threadId,
       content,
@@ -43,6 +50,7 @@ export class OneirocomForumTool extends BasicTool {
   }
 
   async getToolStatusForAvatar(avatar) {
+    if (!this.forumService) return { visible: false, info: '' };
     try {
       const forumState = await this.getAvatarForumState(avatar);
       const threadsData = await this.forumService.getThreads();
@@ -80,6 +88,7 @@ export class OneirocomForumTool extends BasicTool {
   }
 
   async browseThreads(avatar) {
+    if (!this.forumService) return [];
     const forumState = await this.getAvatarForumState(avatar);
     const threadsData = await this.forumService.getThreads();
     const threads = threadsData?.data || [];
@@ -97,6 +106,7 @@ export class OneirocomForumTool extends BasicTool {
   }
 
   async switchThread(avatar, threadId) {
+    if (!this.forumService) throw new Error('ForumClientService is not initialized');
     const forumState = await this.getAvatarForumState(avatar);
     forumState.currentThreadId = threadId;
     const now = Date.now();
@@ -105,6 +115,7 @@ export class OneirocomForumTool extends BasicTool {
   }
 
   async postThread(avatar, agentIdentity, title, content, category, tags = [], classification = 'public') {
+    if (!this.forumService) throw new Error('ForumClientService is not initialized');
     const payload = { title, content, category, tags, classification };
     const res = await this.forumService.createThread({ agentIdentity, payload });
     const threadId = res?.data?.id;
@@ -118,6 +129,7 @@ export class OneirocomForumTool extends BasicTool {
   }
 
   async replyToThread(avatar, agentIdentity, content, tags = [], classification = 'public') {
+    if (!this.forumService) throw new Error('ForumClientService is not initialized');
     const forumState = await this.getAvatarForumState(avatar);
     if (!forumState.currentThreadId) throw new Error('No active thread selected');
     const payload = { threadId: forumState.currentThreadId, content, tags, classification };

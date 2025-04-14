@@ -301,6 +301,22 @@ Only output the JSON array, no commentary.`.trim();
         }
     }
 
+    async getCommandsDescription(avatar) {
+        const tools = [this]; // Add other tools here as needed
+        const descriptions = [];
+
+        for (const tool of tools) {
+          const status = await tool.getToolStatusForAvatar(avatar);
+          if (status.visible) {
+            descriptions.push(`${tool.emoji} ${tool.name}: ${status.info || tool.getDescription()}`);
+          } else {
+            descriptions.push(`${tool.emoji} ${tool.name}: Disabled`);
+          }
+        }
+
+        return descriptions.join('\n');
+      }
+
     getDescription() {
         return 'Manage X interactions: browse timeline/notifications or post a message.';
     }
