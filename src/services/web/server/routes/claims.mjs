@@ -70,7 +70,7 @@ export default function(db) {
       const claim = await db.collection('avatar_claims').findOne({ avatarId: objectId });
       if (claim) {
         return res.json({
-          claimed: true,
+          claimed: claim.status === 'pending' || claim.status === 'claimed' ||  claim.status === 'minted',
           claimedBy: claim.walletAddress,
           claimedAt: claim.updatedAt,
           minted: claim.status === 'minted'
@@ -156,7 +156,7 @@ export default function(db) {
       const now = new Date();
       const claim = {
         avatarId: objectId,
-        walletAddress: walletAddress.toLowerCase(),
+        walletAddress: walletAddress,
         signature,
         message,
         createdAt: now,

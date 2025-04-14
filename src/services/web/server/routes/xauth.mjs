@@ -3,6 +3,7 @@ import crypto from 'crypto';
 import { TwitterApi } from 'twitter-api-v2';
 import { encrypt } from '../../../utils/encryption.mjs';
 import { refreshAccessToken, verifyWalletSignature } from '../../../social/xService.mjs';
+import { ObjectId } from 'mongodb';
 
 const DEFAULT_TOKEN_EXPIRY = 7200; // 2 hours in seconds
 const AUTH_SESSION_TIMEOUT = 10 * 60 * 1000; // 10 minutes in milliseconds
@@ -12,12 +13,87 @@ export default function xauthRoutes(db) {
 
     router.get('/auth-url', async (req, res) => {
         const { avatarId } = req.query;
-    
+        
+        // Check for regular headers first, then x-prefixed headers
+        const walletAddress = req.headers.walletaddress || req.headers['x-wallet-address'];
+        const signature = req.headers.signature || req.headers['x-signature'];
+        const message = req.headers.message || req.headers['x-message'];
+        
+        console.log('Received headers:', { 
+            walletAddress, 
+            signature, 
+            message,
+            'raw headers': req.headers
+        });
+        
         if (!avatarId) {
             return res.status(400).json({ error: 'Missing avatarId parameter' });
         }
     
+        if (!walletAddress || !signature || !message) {
+            return res.status(401).json({ error: 'Missing walletAddress, signature, or message in headers' });
+        }
+    
         try {
+            // Verify the signature to ensure the request is from the wallet owner
+            if (!verifyWalletSignature(message, signature, walletAddress)) {
+                console.log('Signature verification failed:', { message, signature, walletAddress });
+                return res.status(401).json({ error: 'Invalid signature' });
+            }
+            
+            console.log('Signature verification result: true', { walletAddress });
+            
+            // Check if this wallet has claimed the avatar
+            const claimRecord = await db.collection('avatar_claims').findOne({ 
+                avatarId: ObjectId.createFromHexString(avatarId), // Ensure avatarId is treated as ObjectId
+                walletAddress // Use walletAddress as is, without normalization
+            });
+
+            if (claimRecord) {
+                // Ensure the walletAddress is stored in its original case
+                await db.collection('avatar_claims').updateOne(
+                    { _id: claimRecord._id },
+                    { $set: { walletAddress } }
+                );
+            }
+            
+            console.log('Claim record check:', { 
+                found: !!claimRecord, 
+                avatarId, 
+                walletAddress: walletAddress,
+                claimRecord: claimRecord || 'Not found'
+            });
+            
+            if (!claimRecord) {
+                // Try to find the claim to check if a different wallet claimed it
+                const anyClaimRecord = await db.collection('avatar_claims').findOne({ avatarId });
+                console.log('Any claim record:', { found: !!anyClaimRecord, record: anyClaimRecord || 'None' });
+                
+                return res.status(403).json({ error: 'Unauthorized: Wallet does not match the claimer of the avatar' });
+            }
+            
+            // Initialize or get the x_auth record
+            let authRecord = await db.collection('x_auth').findOne({ avatarId });
+            
+            if (!authRecord) {
+                // Create a new record if it doesn't exist
+                await db.collection('x_auth').insertOne({
+                    avatarId,
+                    walletAddress: walletAddress,
+                    createdAt: new Date()
+                });
+                authRecord = { avatarId, walletAddress: walletAddress };
+            } else {
+                // Update the wallet address if it doesn't match
+                if (authRecord.walletAddress !== walletAddress) {
+                    await db.collection('x_auth').updateOne(
+                        { avatarId },
+                        { $set: { walletAddress: walletAddress } }
+                    );
+                    authRecord.walletAddress = walletAddress;
+                }
+            }
+    
             const state = crypto.randomBytes(16).toString('hex');
             const expiresAt = new Date(Date.now() + AUTH_SESSION_TIMEOUT);
     

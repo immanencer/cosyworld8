@@ -457,7 +457,11 @@ async function claimWithPhantom() {
     
     // Update state
     state.claimed = true;
-    
+    state.claimedBy = state.wallet.publicKey;
+
+    // Re-fetch avatar details to ensure UI reflects the latest state
+    await loadAvatarDetails(state.avatar._id);
+
     // Update UI
     updateActionButtons();
     document.getElementById("claimed-badge").classList.remove("hidden");
@@ -486,18 +490,17 @@ async function linkToX() {
     showToast("No avatar details found", "error");
     return;
   }
-  
+
   if (!state.claimed) {
     showToast("Avatar must be claimed before linking to X", "warning");
     return;
   }
-  
-  // Check if wallet is connected and matches the claimed address
+
   if (!state.wallet || state.avatar.claimedBy.toLowerCase() !== state.wallet.publicKey.toLowerCase()) {
     showToast("You must be the owner of this avatar to link with X", "warning");
     return;
   }
-  
+
   try {
     const linkButton = document.getElementById("link-to-x");
     if (linkButton) {
@@ -505,51 +508,105 @@ async function linkToX() {
       const originalText = document.getElementById("link-x-text").textContent;
       document.getElementById("link-x-text").textContent = "Initiating...";
     }
+
+    // First, verify that the wallet is connected and matches the claimed avatar
+    if (!state.wallet) {
+      showToast("Please connect your wallet first", "warning");
+      await connectWallet();
+      if (!state.wallet) return;
+    }
+
+    // Check claim status again to ensure we have accurate data
+    const claimStatusResponse = await fetch(`/api/claims/status/${state.avatar._id}`);
+    const claimStatusData = await claimStatusResponse.json();
     
-    // Request the auth URL
-    const response = await fetch(`/api/xauth/auth-url?avatarId=${state.avatar._id}`);
+    console.log("Current claim status:", claimStatusData);
     
+    if (!claimStatusData.claimed) {
+      showToast("Avatar must be claimed before linking to X", "warning");
+      return;
+    }
+
+    // Verify the wallet matches the claim
+    console.log("Wallet comparison:", {
+      connected: state.wallet.publicKey.toLowerCase(),
+      claimed: claimStatusData.claimedBy.toLowerCase(),
+      matches: state.wallet.publicKey.toLowerCase() === claimStatusData.claimedBy.toLowerCase()
+    });
+    
+    if (claimStatusData.claimedBy.toLowerCase() !== state.wallet.publicKey.toLowerCase()) {
+      showToast("You must be the owner of this avatar to link with X", "warning");
+      return;
+    }
+
+    const message = `Link X account for avatar ${state.avatar._id}`;
+    const encodedMessage = new TextEncoder().encode(message);
+    const signatureResponse = await window.phantom.solana.signMessage(encodedMessage, "utf8");
+    const signatureHex = Array.from(signatureResponse.signature)
+      .map(byte => byte.toString(16).padStart(2, "0"))
+      .join("");
+
+    // Debug headers in console
+    console.log("Debug headers:", {
+      'walletAddress': state.wallet.publicKey,
+      'signature': signatureHex,
+      'message': message
+    });
+
+    // Use fetch with explicit headers
+    const response = await fetch(`/api/xauth/auth-url?avatarId=${state.avatar._id}`, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-wallet-address': state.wallet.publicKey,
+        'x-signature': signatureHex,
+        'x-message': message
+      }
+    });
+
+    // Log raw response for debugging
+    console.log("Auth URL response status:", response.status);
+
     if (!response.ok) {
       const error = await response.json();
       throw new Error(error.error || `Error ${response.status}`);
     }
-    
+
     const data = await response.json();
-    
+
     if (!data.url) {
       throw new Error("No authentication URL returned");
     }
-    
-    // Open the X auth popup
+
     const width = 600, height = 650;
     const left = window.screen.width / 2 - width / 2;
     const top = window.screen.height / 2 - height / 2;
-    
+
     const popup = window.open(
       data.url,
       "xauth_popup",
       `width=${width},height=${height},top=${top},left=${left},resizable=yes,scrollbars=yes`
     );
-    
+
     if (!popup || popup.closed || typeof popup.closed === 'undefined') {
       throw new Error("Popup was blocked. Please allow popups for this site.");
     }
-    
-    // Listen for messages from the popup
-    window.addEventListener('message', function authMessageListener(event) {
+
+    window.addEventListener('message', async function authMessageListener(event) {
       if (event.data.type === 'X_AUTH_SUCCESS') {
         showToast("X account linked successfully!", "success");
         window.removeEventListener('message', authMessageListener);
-        
-        // Update state and UI
+
         state.xStatus.authorized = true;
         document.getElementById("link-x-text").textContent = "Reconnect to X";
+
+        await loadAvatarDetails(state.avatar._id);
       } else if (event.data.type === 'X_AUTH_ERROR') {
         showToast(`X authorization failed: ${event.data.error || 'Unknown error'}`, "error");
         window.removeEventListener('message', authMessageListener);
       }
     });
-    
+
     showToast("X authorization initiated. Please complete the process in the popup.", "info");
   } catch (error) {
     console.error("Error initiating X auth:", error);
