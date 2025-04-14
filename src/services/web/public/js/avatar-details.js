@@ -327,7 +327,7 @@ async function connectWallet() {
       
       // Check if this is the owner of the claimed avatar
       if (state.claimed && state.avatar && state.avatar.claimedBy && 
-          state.avatar.claimedBy.toLowerCase() === state.wallet.publicKey.toLowerCase()) {
+          state.avatar.claimedBy === state.wallet.publicKey) {
         updateActionButtons();
       }
     }
@@ -437,6 +437,8 @@ async function claimWithPhantom() {
       .map(byte => byte.toString(16).padStart(2, "0"))
       .join("");
     
+    console.log('Claiming avatar with:', { avatarId: state.avatar._id, walletAddress: state.wallet.publicKey, signatureHex, message });
+
     // Submit claim to backend
     const response = await fetch("/api/claims/claim", {
       method: "POST",
@@ -496,7 +498,7 @@ async function linkToX() {
     return;
   }
 
-  if (!state.wallet || state.avatar.claimedBy.toLowerCase() !== state.wallet.publicKey.toLowerCase()) {
+  if (!state.wallet || state.avatar.claimedBy !== state.wallet.publicKey) {
     showToast("You must be the owner of this avatar to link with X", "warning");
     return;
   }
@@ -529,12 +531,12 @@ async function linkToX() {
 
     // Verify the wallet matches the claim
     console.log("Wallet comparison:", {
-      connected: state.wallet.publicKey.toLowerCase(),
-      claimed: claimStatusData.claimedBy.toLowerCase(),
-      matches: state.wallet.publicKey.toLowerCase() === claimStatusData.claimedBy.toLowerCase()
+      connected: state.wallet.publicKey,
+      claimed: claimStatusData.claimedBy,
+      matches: state.wallet.publicKey === claimStatusData.claimedBy
     });
     
-    if (claimStatusData.claimedBy.toLowerCase() !== state.wallet.publicKey.toLowerCase()) {
+    if (claimStatusData.claimedBy !== state.wallet.publicKey) {
       showToast("You must be the owner of this avatar to link with X", "warning");
       return;
     }

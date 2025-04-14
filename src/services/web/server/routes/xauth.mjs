@@ -15,9 +15,9 @@ export default function xauthRoutes(db) {
         const { avatarId } = req.query;
         
         // Check for regular headers first, then x-prefixed headers
-        const walletAddress = req.headers.walletaddress || req.headers['x-wallet-address'];
-        const signature = req.headers.signature || req.headers['x-signature'];
-        const message = req.headers.message || req.headers['x-message'];
+        const walletAddress = req.headers['x-wallet-address'];
+        const signature = req.headers['x-signature'];
+        const message = req.headers['x-message'];
         
         console.log('Received headers:', { 
             walletAddress, 

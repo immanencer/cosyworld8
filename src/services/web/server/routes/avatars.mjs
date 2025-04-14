@@ -100,7 +100,7 @@ export default function avatarRoutes(db) {
             .find({ walletAddress: req.query.walletAddress })
             .toArray(),
           db.collection('avatar_claims')
-            .find({ walletAddress: req.query.walletAddress.toLowerCase() })
+            .find({ walletAddress: req.query.walletAddress })
             .toArray()
         ]);
 

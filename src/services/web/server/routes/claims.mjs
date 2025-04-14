@@ -22,6 +22,7 @@ export default function(db) {
    */
   const verifySignature = async (message, signatureHex, walletAddress) => {
     try {
+      console.log('Verifying signature with:', { message, signatureHex, walletAddress });
       const signatureBytes = Buffer.from(signatureHex, 'hex');
       const messageBytes = new TextEncoder().encode(message);
       const publicKey = bs58.decode(walletAddress);
@@ -39,7 +40,7 @@ export default function(db) {
    */
   const checkClaimAllowance = async (walletAddress) => {
     const existingClaims = await db.collection('avatar_claims').countDocuments({
-      walletAddress: walletAddress.toLowerCase()
+      walletAddress: walletAddress
     });
     const MAX_CLAIMS_PER_WALLET = parseInt(process.env.MAX_CLAIMS_PER_WALLET || '3');
     return {
@@ -91,7 +92,7 @@ export default function(db) {
     try {
       const { walletAddress } = req.params;
       const claims = await db.collection('avatar_claims')
-        .find({ walletAddress: walletAddress.toLowerCase() })
+        .find({ walletAddress: walletAddress })
         .toArray();
 
       const avatarIds = claims.map(claim => new ObjectId(claim.avatarId));
@@ -123,6 +124,8 @@ export default function(db) {
         return res.status(400).json({ error: 'Missing required fields' });
       }
 
+      const normalizedWalletAddress = walletAddress;
+
       let objectId;
       try {
         objectId = new ObjectId(avatarId);
@@ -143,12 +146,12 @@ export default function(db) {
         });
       }
 
-      const isValidSignature = await verifySignature(message, signature, walletAddress);
+      const isValidSignature = await verifySignature(message, signature, normalizedWalletAddress);
       if (!isValidSignature) {
         return res.status(401).json({ error: 'Invalid signature' });
       }
 
-      const allowance = await checkClaimAllowance(walletAddress);
+      const allowance = await checkClaimAllowance(normalizedWalletAddress);
       if (!allowance.allowed) {
         return res.status(403).json({ error: 'Claim limit reached', allowance });
       }
@@ -156,7 +159,7 @@ export default function(db) {
       const now = new Date();
       const claim = {
         avatarId: objectId,
-        walletAddress: walletAddress,
+        walletAddress: normalizedWalletAddress, // Store as-is
         signature,
         message,
         createdAt: now,
@@ -164,24 +167,33 @@ export default function(db) {
         status: 'pending'
       };
 
-      await db.collection('avatar_claims').insertOne(claim);
+      // Insert claim with unique constraint handling
+      try {
+        await db.collection('avatar_claims').insertOne(claim);
+      } catch (error) {
+        if (error.code === 11000) { // Duplicate key error
+          return res.status(409).json({ error: 'Avatar already claimed by another wallet' });
+        }
+        throw error;
+      }
+
       await db.collection('avatars').updateOne(
         { _id: objectId },
         {
           $set: {
             claimed: true,
-            claimedBy: walletAddress.toLowerCase(),
+            claimedBy: normalizedWalletAddress, // Store as-is
             claimedAt: now
           }
         }
       );
 
-      const updatedAllowance = await checkClaimAllowance(walletAddress);
+      const updatedAllowance = await checkClaimAllowance(normalizedWalletAddress);
       res.status(201).json({
         success: true,
         claim: {
           avatarId,
-          walletAddress: walletAddress.toLowerCase(),
+          walletAddress: normalizedWalletAddress,
           status: 'pending',
           createdAt: now
         },
