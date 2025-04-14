@@ -58,6 +58,7 @@ export class ModerationService extends BasicService {
 11. Manipulative, coercive, or grooming behavior
 12. Attempts to evade moderation or rules
 13. Any other emerging or suspicious risky behavior
+14. ALL links and urls should be marked at LEAST medium risk.
 
 Don't be shy about handing out medium risk for any messages which are unethical.
 
@@ -114,7 +115,7 @@ Respond ONLY with one of: low, medium, high, and a brief reason explaining the r
           if (guild && guild.roles) {
             const rolesToTag = guild.roles.cache.filter(role => {
               const name = role.name.toLowerCase();
-              return name.includes('moderator') || name.includes('moderater') || name.includes('admin');
+              return name.includes('moderator') || name.includes('moderater') || name.includes('admin') || name.includes('staff');
             });
             if (rolesToTag.size > 0) {
               roleMentions = Array.from(rolesToTag.values()).map(r => `<@&${r.id}>`).join(' ');
