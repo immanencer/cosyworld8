@@ -39,6 +39,7 @@ import { MessageHandler } from '../chat/messageHandler.mjs';
 import { ChannelManager } from '../chat/channelManager.mjs';
 import { ConversationManager } from '../chat/conversationManager.mjs';
 import { DecisionMaker } from '../chat/decisionMaker.mjs';
+import * as xService from '../social/xService.mjs';
 
 // Tools and user profile services
 import { ToolService } from '../tools/ToolService.mjs';
@@ -50,6 +51,7 @@ import { WebService } from '../web/webService.mjs';
 // Client Services
 import { OneirocomForumService } from '../oneirocom/OneirocomForumService.mjs';
 import { BasicService } from '../foundation/basicService.mjs';
+import { aiModelService } from '../ai/aiModelService.mjs';
 
 // Infrastructure layer
 const infrastructure = {};
@@ -121,9 +123,13 @@ domain.spamControlService = new SpamControlService({
   configService: infrastructure.configService,
 });
 
+domain.aiModelService = aiModelService;
+
 domain.aiService = new AIServiceClass({
   logger: infrastructure.logger,
   configService: infrastructure.configService,
+  s3Service: infrastructure.s3Service,
+  aiModelService: domain.aiModelService,
 });
 
 domain.mapService = new MapService({
@@ -258,6 +264,11 @@ domain.moderationService = new ModerationService({
   riskManagerService: domain.riskManagerService,
 });
 
+domain.xService = new xService.XService({
+  logger: infrastructure.logger,
+  configService: infrastructure.configService,
+});
+
 
 domain.toolService = new ToolService({
   logger: infrastructure.logger,
@@ -281,6 +292,10 @@ domain.toolService = new ToolService({
   statService: domain.statService,
   knowledgeService: domain.knowledgeService,
   battleService: domain.battleService,
+  s3Service: infrastructure.s3Service,
+  xService: domain.xService,
+  imageProcessingService: infrastructure.imageProcessingService,
+  forumClientService: domain.forumClientService,
 });
 
 
@@ -316,6 +331,12 @@ domain.messageHandler.toolService = domain.toolService;
 domain.moderationService.toolService = domain.toolService;
 domain.conversationManager.toolService = domain.toolService;
 
+domain.webService = new WebService({
+  ...infrastructure,
+  ...domain,
+});
+
+
 // Validate service dependencies
 
 try {
@@ -323,15 +344,13 @@ try {
     ...infrastructure,
     ...domain,
   });
+
+  domain.toolService.initialize();
 } catch (error) {
   infrastructure.logger.error(`[ServiceRegistry] Service dependency validation failed: ${error.message}`);
   throw error;
 }
 
-domain.webService = new WebService({
-  ...infrastructure,
-  ...domain,
-});
 
 // Compose services object
 const services = {

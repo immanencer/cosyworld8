@@ -1,21 +1,18 @@
 import { BasicTool } from '../BasicTool.mjs';
 
 export class SummonTool extends BasicTool {
+  requiredServices = [
+    'discordService',
+    'mapService',
+    'conversationManager',
+    'avatarService',
+    'configService',
+    'databaseService',
+    'aiService',
+    'statService'
+  ];
   constructor(services) {
     super(services);
-
-
-    this.discordService = services.discordService;
-    this.mapService = services.mapService;
-    this.conversationManager = services.conversationManager;
-    this.avatarService = services.avatarService;
-    this.configService = services.configService;
-    this.databaseService = services.databaseService;
-    this.aiService = services.aiService;
-    this.statService = services.statService;
-
-    this.db = this.databaseService.getDatabase(); // Assumes this always returns a valid database object
-  
 
     this.name = 'summon';
     this.description = 'Summons a new avatar';
@@ -31,6 +28,14 @@ export class SummonTool extends BasicTool {
    */
   getDescription() {
     return 'Summons a new avatar into existence';
+  }
+
+  /**
+   * Returns the syntax of the tool.
+   * @returns {string} The syntax.
+   */
+  async getSyntax() {
+    return `${this.emoji} <avatar name or description>`;
   }
 
   /**
@@ -59,6 +64,7 @@ export class SummonTool extends BasicTool {
    */
   async trackSummon(userId) {
     try {
+      this.db = await this.databaseService.getDatabase();
       await this.db.collection('daily_summons').insertOne({
         userId,
         timestamp: new Date(),
@@ -77,6 +83,7 @@ export class SummonTool extends BasicTool {
    */
   async execute(message, params = {}, avatar) {
     try {
+      this.db = await this.databaseService.getDatabase();
       // Parse command content (assumes a 2-character prefix like "!")
       const content = message.content.trim().substring(2).trim();
       const [avatarName] = content.split('\n').map(line => line.trim());
@@ -185,7 +192,7 @@ export class SummonTool extends BasicTool {
       this.logger.error(`Summon error: ${error.message}`);
       this.logger.debug(`${error.stack}`);
       await this.discordService.reactToMessage(message, '❌');
-      return `-# [ Failed to summon: ${error.message} ]`;
+      return `-# [ ❌ Error: Failed to summon: ${error.message} ]`;
     }
   }
 }

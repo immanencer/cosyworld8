@@ -43,7 +43,8 @@ export async function loadContent() {
           ...avatar,
           mintStatus: claimStatus.claimed && !claimStatus.minted ? 'unminted' : 'minted',
           isClaimed: claimStatus.claimed,
-          claimedBy: claimStatus.claimedBy || ''
+          claimedBy: claimStatus.claimedBy || '',
+          claimId: claimStatus._id
         };
       } catch (err) {
         console.warn(`Failed to get claim status for avatar ${avatar._id}:`, err);
@@ -57,9 +58,6 @@ export async function loadContent() {
     }));
     
     renderAvatarGrid(content, avatarsWithStatus);
-    
-    // Load user claims
-    await loadUserClaims();
   } catch (err) {
     console.error("Load Squad error:", err);
     content.innerHTML = `
@@ -117,9 +115,7 @@ function renderEmptyState(container) {
  * @param {Array} avatars - List of avatars to render
  */
 function renderAvatarGrid(container, avatars) {
-  // Import AvatarDetails component if available
   const renderAvatarCard = window.AvatarDetails?.renderAvatarCard || defaultRenderAvatarCard;
-  
   container.innerHTML = `
     <div class="max-w-7xl mx-auto px-4">
       <div class="text-center py-4">
@@ -127,17 +123,19 @@ function renderAvatarGrid(container, avatars) {
       </div>
       <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
         ${avatars.map(avatar => `
-          <div onclick="showAvatarDetails('${avatar._id}')" class="cursor-pointer relative">
+          <div class="cursor-pointer relative group">
             ${renderAvatarCard(avatar, null, avatar.isClaimed, avatar.claimedBy)}
             ${avatar.mintStatus === 'unminted' ?
-            `<div class="absolute top-2 right-2 px-2 py-1 bg-yellow-600 text-white text-xs rounded-full">
-              Unminted
-            </div>` : ''}
+              `<div class="absolute top-2 right-2 px-2 py-1 bg-yellow-600 text-white text-xs rounded-full">Unminted</div>` : ''}
+            ${!avatar.isClaimed ?
+              `<button class="absolute bottom-4 left-4 right-4 px-3 py-2 bg-primary-600 hover:bg-primary-700 text-white text-sm rounded transition opacity-90 group-hover:opacity-100" onclick="event.stopPropagation(); claimAvatar('${avatar._id}')">Claim</button>` :
+              avatar.mintStatus === 'unminted' ?
+                `<button class="absolute bottom-4 left-4 right-4 px-3 py-2 bg-green-600 hover:bg-green-700 text-white text-sm rounded transition opacity-90 group-hover:opacity-100" onclick="event.stopPropagation(); mintClaim('${avatar.claimId}')">Mint NFT</button>` :
+                `<div class="absolute bottom-4 left-4 right-4 px-3 py-2 bg-gray-700 text-white text-xs rounded text-center opacity-90 group-hover:opacity-100">Minted</div>`
+            }
           </div>
         `).join("")}
       </div>
-      <div id="claims-container" class="mt-8"></div>
-      <div id="claim-form-container" class="mt-8 hidden"></div>
     </div>
   `;
 }
@@ -170,64 +168,6 @@ function defaultRenderAvatarCard(avatar, options, isClaimed, claimedBy) {
 }
 
 /**
- * Load user claims
- * Displays information about the user's token claims
- */
-async function loadUserClaims() {
-  const container = document.getElementById("claims-container");
-  if (!container || !state.wallet) return;
-  
-  try {
-    const response = await fetch(`/api/claims?walletAddress=${state.wallet.publicKey}`);
-    const data = await response.json();
-    
-    if (!data.claims || data.claims.length === 0) {
-      container.innerHTML = '';
-      return;
-    }
-    
-    container.innerHTML = `
-      <div class="mt-8 bg-gray-800 rounded-lg p-6">
-        <h3 class="text-xl font-bold mb-4">Your Claims</h3>
-        <div class="space-y-4">
-          ${data.claims.map(claim => `
-            <div class="bg-gray-700 p-4 rounded-lg">
-              <div class="flex justify-between items-center">
-                <div>
-                  <p class="font-medium">${claim.avatarName || 'Avatar'}</p>
-                  <p class="text-sm text-gray-400">${new Date(claim.claimedAt).toLocaleString()}</p>
-                </div>
-                <div>
-                  ${claim.minted ?
-                    `<span class="px-2 py-1 bg-green-600 text-white text-sm rounded-full">Minted</span>` :
-                    `<button 
-                      onclick="mintClaim('${claim._id}')"
-                      class="px-3 py-1 bg-primary-600 hover:bg-primary-700 text-white text-sm rounded transition"
-                    >
-                      Mint Now
-                    </button>`
-                  }
-                </div>
-              </div>
-            </div>
-          `).join('')}
-        </div>
-      </div>
-    `;
-    
-    // Make mintClaim function available globally
-    window.mintClaim = mintClaim;
-  } catch (err) {
-    console.error("Load claims error:", err);
-    container.innerHTML = `
-      <div class="mt-8 bg-gray-800 rounded-lg p-6">
-        <p class="text-red-500">Failed to load claims: ${err.message}</p>
-      </div>
-    `;
-  }
-}
-
-/**
  * Mint a claim
  * @param {string} claimId - Claim ID to mint
  */
@@ -256,3 +196,20 @@ async function mintClaim(claimId) {
     showToast(`Minting failed: ${err.message}`, { type: 'error' });
   }
 }
+
+// Add claimAvatar function for claim button
+window.claimAvatar = async function(avatarId) {
+  try {
+    showToast("Claiming avatar...");
+    const response = await fetch(`/api/claims/claim/${avatarId}`, { method: 'POST' });
+    const data = await response.json();
+    if (data.success) {
+      showToast("Avatar claimed!", { type: 'success' });
+      loadContent();
+    } else {
+      throw new Error(data.error || "Claim failed");
+    }
+  } catch (err) {
+    showToast(`Claim failed: ${err.message}`, { type: 'error' });
+  }
+};

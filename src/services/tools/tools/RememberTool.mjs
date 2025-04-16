@@ -1,16 +1,24 @@
 import { BasicTool } from '../BasicTool.mjs';
 
 export class RememberTool extends BasicTool {
+  /**
+   * List of services required by this tool.
+   * @type {string[]}
+   */
+  requiredServices = [
+    'avatarService',
+    'memoryService',
+    'aiService',
+    'discordService',
+    'promptService',
+    'databaseService',
+  ];
+  /**
+   * Constructs a new RememberTool.
+   * @param {Object} services - The services container
+   */
   constructor(services) {
     super(services);
-
-    this.avatarService = services.avatarService;
-    this.memoryService = services.memoryService;
-    this.aiService = services.aiService;
-    this.discordService = services.discordService;
-    this.promptService = services.promptService;
-    this.databaseService = services.databaseService;
-    
     
     this.name = 'remember';
     this.description = 'Generates a memory from the current context and stores it in persistent memory.';
@@ -34,36 +42,41 @@ export class RememberTool extends BasicTool {
   }
 
   async execute(message, params, avatar) {
-    const context = await this.getChannelContext(message.channel);
-    const prompt = params.join(' ');
-
-    let kgContext = '';
     try {
-      const kgEntries = await this.services.knowledgeService.queryKnowledgeGraph(avatar._id);
-      kgContext = kgEntries.join('\n');
-    } catch {}
+      const context = await this.getChannelContext(message.channel);
+      const prompt = params.join(' ');
 
-    let lastNarrative = '';
-    try {
-      lastNarrative = (await this.promptService.getLastNarrative(avatar, this.databaseService.getDatabase()))?.content || '';
-    } catch {}
+      let kgContext = '';
+      try {
+        const kgEntries = await this.services.knowledgeService.queryKnowledgeGraph(avatar._id);
+        kgContext = kgEntries.join('\n');
+      } catch {}
 
-    const combinedContext = `Knowledge Graph:\n${kgContext}\n\nLatest narrative:\n${lastNarrative}\n\nRecent conversation:\n${context}`;
+      let lastNarrative = '';
+      try {
+        lastNarrative = (await this.promptService.getLastNarrative(avatar, this.databaseService.getDatabase()))?.content || '';
+      } catch {}
 
-    const memory = await this.generateMemory(combinedContext, prompt);
-    const formattedMemory = memory.trim();
+      const combinedContext = `Knowledge Graph:\n${kgContext}\n\nLatest narrative:\n${lastNarrative}\n\nRecent conversation:\n${context}`;
 
-    await this.memoryService.addMemory(avatar._id, formattedMemory);
+      const memory = await this.generateMemory(combinedContext, prompt);
+      const formattedMemory = memory.trim();
 
-    if (avatar.innerMonologueChannel) {
-      await this.discordService.sendAsWebhook(
-        avatar.innerMonologueChannel,
-        `-# [🧠 Memory Generated]\n${formattedMemory}`,
-        avatar
-      );
+      await this.memoryService.addMemory(avatar._id, formattedMemory);
+
+      if (avatar.innerMonologueChannel) {
+        await this.discordService.sendAsWebhook(
+          avatar.innerMonologueChannel,
+          `-# [🧠 Memory Generated]\n${formattedMemory}`,
+          avatar
+        );
+      }
+      this.logger?.debug(`Generated memory: ${formattedMemory}`);
+      return `-# [Memory Generated]`;
+    } catch (error) {
+      this.logger?.error('Error in RememberTool:', error);
+      return `-# [ ❌ Error: Failed to generate memory: ${error.message} ]`;
     }
-    this.logger?.debug(`Generated memory: ${formattedMemory}`);
-    return `-# [Memory Generated]`;
   }
 
   getDescription() {

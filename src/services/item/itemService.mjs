@@ -30,21 +30,6 @@ export class ItemService extends BasicService {
     return name.replace(/['"]/g, '');
   }
 
-  /** Downloads an image from a URL and returns it as a Buffer. */
-  async downloadImage(url) {
-    try {
-      const response = await fetch(url);
-      if (!response.ok) {
-        throw new Error(`Failed to download image from ${url} (status: ${response.status})`);
-      }
-      const arrayBuffer = await response.arrayBuffer();
-      return Buffer.from(arrayBuffer);
-    } catch (error) {
-      console.error('Error downloading the image:', error);
-      throw error;
-    }
-  }
-
   /** Generates an item image using SchemaService. */
   async generateItemImage(itemName, description) {
     return await this.schemaService.generateImage(`${itemName}: ${description}`, '1:1');

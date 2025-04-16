@@ -1,17 +1,18 @@
 import { BasicTool } from '../BasicTool.mjs';
 
 export class AttackTool extends BasicTool {
+  requiredServices = [
+    'configService',
+    'avatarService',
+    'databaseService',
+    'statService',
+    'mapService',
+    'conversationManager',
+    'diceService',
+    'battleService',
+  ];
   constructor(services) {
     super(services);
-
-    this.configService = services.configService;
-    this.avatarService = services.avatarService;
-    this.databaseService = services.databaseService;
-    this.statService = services.statService;
-    this.mapService = services.mapService;
-    this.conversationManager = services.conversationManager;
-    this.diceService = services.diceService;
-    this.battleService = services.battleService;
 
     this.name = 'attack';
     this.parameters = '<target>';
@@ -23,7 +24,7 @@ export class AttackTool extends BasicTool {
 
   async execute(message, params, avatar, services) {
     if (!params || !params[0]) {
-      return `-# 🤺 [ **${avatar.name}** flourishes their **+0 sword** of violence. ]`;
+      return `-# [ ❌ Error: No target specified. ]`;
     }
 
     const targetName = params.join(' ');
@@ -44,11 +45,15 @@ export class AttackTool extends BasicTool {
       return result.message;
     } catch (error) {
       this.logger.error(`Attack error: ${error.message}`);
-      return `-# ⚠️ [ Attack failed. Please try again later. ]`;
+      return `-# [ ❌ Error: Attack failed. Please try again later. ]`;
     }
   }
 
   getDescription() {
     return 'Attack another avatar';
+  }
+
+  async getSyntax() {
+    return `${this.emoji} <target>`;
   }
 }

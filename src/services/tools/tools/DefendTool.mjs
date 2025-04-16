@@ -1,11 +1,16 @@
 import { BasicTool } from '../BasicTool.mjs';
 
 export class DefendTool extends BasicTool {
+  requiredServices = [
+    'configService',
+    'avatarService',
+    'battleService',
+    'mapService',
+    'conversationManager',
+    'diceService',
+  ];
   constructor(services) {
     super(services);
-    this.configService = services.configService;
-    this.avatarService = services.avatarService;
-    this.battleService = services.battleService;
 
     this.name = 'defend';
     this.description = 'Take a defensive stance';
@@ -15,11 +20,18 @@ export class DefendTool extends BasicTool {
   }
 
   async execute(message, params, avatar) {
-    // Delegate to battleService
-    return await this.battleService.defend({ avatar });
+    try {
+      return await this.battleService.defend({ avatar });
+    } catch (error) {
+      return `-# [ ❌ Error: Failed to defend: ${error.message} ]`;
+    }
   }
 
   getDescription() {
     return 'Take a defensive stance (+2 AC until next attack)';
+  }
+
+  async getSyntax() {
+    return `${this.emoji}`;
   }
 }

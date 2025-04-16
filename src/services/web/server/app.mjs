@@ -43,7 +43,7 @@ async function initializeApp(services) {
     app.use('/api/avatars', (await import('./routes/avatars.mjs')).default(db));
     app.use('/api/tokens', (await import('./routes/tokens.mjs')).default(db));
     app.use('/api/tribes', (await import('./routes/tribes.mjs')).default(db));
-    app.use('/api/xauth', (await import('./routes/xauth.mjs')).default(db));
+    app.use('/api/xauth', (await import('./routes/xauth.mjs')).default(services));
     app.use('/api/wiki', (await import('./routes/wiki.mjs')).default(db));
     app.use('/api/social', (await import('./routes/social.mjs')).default(db));
     app.use('/api/claims', (await import('./routes/claims.mjs')).default(db));

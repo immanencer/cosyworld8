@@ -105,53 +105,36 @@ export class S3Service {
     }
   }
 
-  async downloadImage(imageUrl, savePath) {
+  async downloadImage(imageUrl) {
     try {
-      // Validate the image URL
-      if (!imageUrl.startsWith(this.CLOUDFRONT_DOMAIN)) {
-        this.logger.error(`Error: The image URL must start with your CloudFront domain (${this.CLOUDFRONT_DOMAIN})`);
-        return;
-      }
-
       const { protocol, hostname, pathname } = new URL(imageUrl);
       const httpModule = protocol === 'https:' ? request : httpRequest;
 
       return new Promise((resolve, reject) => {
         const req = httpModule({ hostname, path: pathname, method: 'GET' }, (res) => {
           if (res.statusCode === 200) {
-            // Ensure the save directory exists
-            const dir = path.dirname(savePath);
-            if (!fs.existsSync(dir)) {
-              fs.mkdirSync(dir, { recursive: true });
-            }
-
-            // Create a write stream to save the image
-            const writer = fs.createWriteStream(savePath);
-            res.pipe(writer);
-
-            writer.on('finish', () => {
-              this.logger.info(`Image downloaded successfully and saved to "${savePath}"`);
-              resolve();
-            });
-            writer.on('error', (err) => {
-              this.logger.error('Error writing the image to disk:', err.message);
-              reject(err);
+            const data = [];
+            res.on('data', chunk => data.push(chunk));
+            res.on('end', () => {
+              const buffer = Buffer.concat(data);
+              this.logger?.info(`Image downloaded successfully from "${imageUrl}"`);
+              resolve(buffer);
             });
           } else {
-            this.logger.error(`Failed to download image. Status code: ${res.statusCode}`);
+            this.logger?.error(`Failed to download image. Status code: ${res.statusCode}`);
             reject(new Error(`Failed to download image with status: ${res.statusCode}`));
           }
         });
 
         req.on('error', (error) => {
-          this.logger.error('Error downloading image:', error.message);
+          this.logger?.error('Error downloading image:', error.message);
           reject(error);
         });
 
         req.end();
       });
     } catch (error) {
-      this.logger.error('Error:', error.message);
+      this.logger?.error('Error:', error.message);
       throw error;
     }
   }

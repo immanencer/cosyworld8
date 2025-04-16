@@ -1,16 +1,16 @@
-
 import { BasicTool } from '../BasicTool.mjs';
 import { SummonTool } from './SummonTool.mjs';
 
 export class BreedTool extends BasicTool {
+  requiredServices = [
+    'avatarService',
+    'configService',
+    'discordService',
+    'memoryService',
+    'databaseService',
+  ];
   constructor(services) {
     super(services);
-
-    this.configService = services.configService;
-    this.avatarService = services.avatarService;
-    this.databaseService = services.databaseService;
-    this.discordService = services.discordService;
-    this.memoryService = services.memoryService;
 
     this.name = 'breed';
     this.description = 'Breeds two avatars together';
@@ -21,6 +21,10 @@ export class BreedTool extends BasicTool {
 
   getDescription() {
     return 'Breeds two existing avatars to create a new one';
+  }
+
+  async getSyntax() {
+    return `${this.emoji} <avatar1> <avatar2>`;
   }
 
   async getMemories(avatar, count = 10) {
@@ -77,8 +81,8 @@ export class BreedTool extends BasicTool {
       
       return `-# [ Successfully bred: ${result} ]`;
     } catch (error) {
-      console.error('Error in BreedTool:', error);
-      return `-# [ Failed to breed avatars: ${error.message} ]`;
+      this.logger?.error('Error in BreedTool:', error);
+      return `-# [ ❌ Error: Failed to breed avatars: ${error.message} ]`;
     }
   }
 }

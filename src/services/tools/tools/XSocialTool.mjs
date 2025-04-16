@@ -3,20 +3,28 @@ import { TwitterApi } from 'twitter-api-v2';
 import { MongoClient } from 'mongodb';
 import { encrypt, decrypt } from '../../utils/encryption.mjs';
 import { act } from 'react';
+import * as xService from '../../social/xService.mjs';
 
 let mongoClient = null;
 const statusCache = new Map(); // avatarId -> { timestamp, data }
 
 export class XSocialTool extends BasicTool {
-    constructor(services) {
-        super(services);
-        this.databaseService = services.databaseService;
-        this.avatarService = services.avatarService;
-        this.aiService = services.aiService;
-        this.memoryService = services.memoryService;
-        this.conversationManager = services.conversationManager;
-        this.promptService = services.promptService;
-        this.schemaService = services.schemaService;
+    /**
+     * List of services required by this tool.
+     * @type {string[]}
+     **/
+    requiredServices = [
+        'databaseService',
+        'avatarService',
+        'aiService',
+        'memoryService',
+        'conversationManager',
+        'promptService',
+        'schemaService',
+    ];
+    
+    constructor() {
+        super();
 
         this.replyNotification = true;
         this.emoji = '🐦';
@@ -38,72 +46,45 @@ export class XSocialTool extends BasicTool {
 
     async isAuthorized(avatar) {
         const db = this.databaseService.getDatabase();
-        const auth = await db.collection('x_auth').findOne({ avatarId: avatar._id.toString() });
-        if (!auth?.accessToken) return false;
-        if (new Date() >= new Date(auth.expiresAt) && auth.refreshToken) {
-            try { await this.refreshAccessToken(db, auth); return true; } catch { return false; }
-        }
-        return new Date() < new Date(auth.expiresAt);
+        return await xService.isXAuthorized(db, avatar._id.toString());
     }
 
     async getXTimelineAndNotifications(avatar) {
-        const now = Date.now();
-        const cached = statusCache.get(avatar._id.toString());
-        if (cached && (now - cached.timestamp < 5 * 60 * 1000)) {
-            return cached.data;
-        }
-
         const db = this.databaseService.getDatabase();
-        const auth = await db.collection('x_auth').findOne({ avatarId: avatar._id.toString() });
-        if (!auth) return { timeline: [], notifications: [], userId: null };
+        return await xService.getXTimelineAndNotifications(db, avatar);
+    }
 
-        const twitterClient = new TwitterApi(decrypt(auth.accessToken));
-        const v2Client = twitterClient.v2;
+    async postImageToX(avatar, imageUrl, content) {
+        const db = this.databaseService.getDatabase();
+        return await xService.postImageToX(db, avatar, imageUrl, content);
+    }
 
-        const userData = await v2Client.me();
-        const userId = userData.data.id;
+    // --- Simulated Social Feed ---
+    async simulateSocialPost(avatar, imageUrl, content) {
+        const db = this.databaseService.getDatabase();
+        const post = {
+            avatarId: avatar._id,
+            content,
+            imageUrl,
+            timestamp: new Date(),
+            postedToX: false,
+            simulated: true
+        };
+        await db.collection('simulated_social_feed').insertOne(post);
+        return `-# [ 🐦 (Simulated) ${avatar.name} posted: ${content}${imageUrl ? ` [Image](${imageUrl})` : ''} ]`;
+    }
 
-        const timelineResp = await v2Client.homeTimeline({ max_results: 30 });
-        const notificationsResp = await v2Client.userMentionTimeline(userId, { max_results: 10 });
-
-        const timeline = timelineResp?.data?.data?.map(t => ({
-            id: t.id,
-            text: t.text,
-            user: t.author_id,
-            isOwn: t.author_id === userId
-        })) || [];
-
-        const notifications = notificationsResp?.data?.data?.map(n => ({
-            id: n.id,
-            text: n.text,
-            user: n.author_id,
-            isOwn: n.author_id === userId
-        })) || [];
-
-        // Save all tweets to DB
-        const allTweets = [...timeline, ...notifications];
-        for (const tweet of allTweets) {
-            if (!tweet?.id) continue;
-            await db.collection('social_posts').updateOne(
-                { tweetId: tweet.id },
-                {
-                    $set: {
-                        tweetId: tweet.id,
-                        content: tweet.text,
-                        userId: tweet.user,
-                        isOwn: tweet.isOwn,
-                        avatarId: avatar._id,
-                        timestamp: new Date(),
-                        postedToX: tweet.isOwn
-                    }
-                },
-                { upsert: true }
-            );
-        }
-
-        const data = { timeline, notifications, userId };
-        statusCache.set(avatar._id.toString(), { timestamp: now, data });
-        return data;
+    // --- Simulate all X actions if not authorized ---
+    async simulateAction(avatar, action) {
+        const db = this.databaseService.getDatabase();
+        const entry = {
+            avatarId: avatar._id,
+            action,
+            timestamp: new Date(),
+            simulated: true
+        };
+        await db.collection('simulated_social_feed').insertOne(entry);
+        return `-# [ 🐦 (Simulated) ${avatar.name} ${action.type} ${action.content ? `: ${action.content}` : ''} ]`;
     }
 
     async execute(message, params, avatar) {
@@ -120,7 +101,17 @@ export class XSocialTool extends BasicTool {
             const v2Client = twitterClient.v2;
             const command = params[0].toLowerCase();
 
-            if (!(await this.isAuthorized(avatar))) return '-# ❌ [ X authorization required. Please connect your account. ]';
+            const authorized = await this.isAuthorized(avatar);
+            if (!authorized) {
+                // Simulate all X actions for unauthorized avatars
+                if (command === 'post') {
+                    let content = params.slice(1).join(' ');
+                    if (!content) return '-# [ ❌ Please provide content to post. ]';
+                    return await this.simulateSocialPost(avatar, null, content);
+                }
+                // Add more simulated actions as needed
+                return '-# [ 🐦 (Simulated) X action. Avatar not authorized for real X. ]';
+            }
 
             if (command === 'browse') {
                 this.replyNotification = true;

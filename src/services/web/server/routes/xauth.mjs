@@ -2,14 +2,16 @@ import express from 'express';
 import crypto from 'crypto';
 import { TwitterApi } from 'twitter-api-v2';
 import { encrypt } from '../../../utils/encryption.mjs';
-import { refreshAccessToken, verifyWalletSignature } from '../../../social/xService.mjs';
 import { ObjectId } from 'mongodb';
 
 const DEFAULT_TOKEN_EXPIRY = 7200; // 2 hours in seconds
 const AUTH_SESSION_TIMEOUT = 10 * 60 * 1000; // 10 minutes in milliseconds
 
-export default function xauthRoutes(db) {
+// Accepts a services object with xService and databaseService
+export default function xauthRoutes(services) {
     const router = express.Router();
+    const db = services.databaseService.getDatabase();
+    const xService = services.xService;
 
     router.get('/auth-url', async (req, res) => {
         const { avatarId } = req.query;
@@ -35,8 +37,8 @@ export default function xauthRoutes(db) {
         }
     
         try {
-            // Verify the signature to ensure the request is from the wallet owner
-            if (!verifyWalletSignature(message, signature, walletAddress)) {
+            // Use xService for signature verification
+            if (!xService.verifyWalletSignature(message, signature, walletAddress)) {
                 console.log('Signature verification failed:', { message, signature, walletAddress });
                 return res.status(401).json({ error: 'Invalid signature' });
             }
@@ -220,7 +222,8 @@ export default function xauthRoutes(db) {
             const now = new Date();
             if (now >= new Date(auth.expiresAt) && auth.refreshToken) {
                 try {
-                    const { expiresAt } = await refreshAccessToken(db, auth);
+                    // Use xService for token refresh
+                    const { expiresAt } = await xService.refreshAccessToken(auth);
                     return res.json({ authorized: true, expiresAt });
                 } catch (error) {
                     return res.json({ authorized: false, error: 'Token refresh failed', requiresReauth: true });
@@ -252,7 +255,8 @@ export default function xauthRoutes(db) {
             const now = new Date();
             if (now >= new Date(auth.expiresAt) && auth.refreshToken) {
                 try {
-                    const { expiresAt } = await refreshAccessToken(db, auth);
+                    // Use xService for token refresh
+                    const { expiresAt } = await xService.refreshAccessToken(auth);
                     return res.json({ authorized: true, walletAddress: auth.walletAddress, expiresAt });
                 } catch (error) {
                     return res.json({ authorized: false, error: 'Token refresh failed', requiresReauth: true });
@@ -284,7 +288,8 @@ export default function xauthRoutes(db) {
         }
 
         try {
-            if (!verifyWalletSignature(message, signature, walletAddress)) {
+            // Use xService for signature verification
+            if (!xService.verifyWalletSignature(message, signature, walletAddress)) {
                 return res.status(401).json({ error: 'Invalid signature' });
             }
 

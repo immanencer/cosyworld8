@@ -1,26 +1,36 @@
 import { BasicTool } from '../BasicTool.mjs';
 
 export class CreationTool extends BasicTool {
-  constructor(services) {
-    super(services);
-    this.aiService = services.aiService;
+  /**
+   * List of services required by this tool.
+   * @type {string[]}
+   */
+  requiredServices = [
+    'aiService'
+  ];
+
+  /**
+   * Constructs a new CreationTool.
+   **/
+  constructor() {
+    super();
     this.cache = new Map(); // Cache for generated descriptions
   }
 
   async execute(message, params, command) {
-    const cacheKey = `${command}_${params.join('_')}`;
-    
-    if (this.cache.has(cacheKey)) {
-      return this.cache.get(cacheKey);
+    try {
+      const cacheKey = `${command}_${params.join('_')}`;
+      if (this.cache.has(cacheKey)) {
+        return this.cache.get(cacheKey);
+      }
+      const prompt = this.buildPrompt(message, command, params);
+      const narrative = await this.generateNarrative(prompt);
+      this.cache.set(cacheKey, narrative);
+      return narrative;
+    } catch (error) {
+      this.logger?.error('Error in CreationTool:', error);
+      return `-# [ ❌ Error: Failed to generate narrative: ${error.message} ]`;
     }
-
-    const prompt = this.buildPrompt(message, command, params);
-    const narrative = await this.generateNarrative(prompt);
-    
-    // Cache the result
-    this.cache.set(cacheKey, narrative);
-    
-    return narrative;
   }
 
   buildPrompt(message, command, params) {

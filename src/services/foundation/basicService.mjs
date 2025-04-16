@@ -1,6 +1,6 @@
 export class BasicService {
-  constructor(services) {
-    this.logger = services?.logger || console;
+  constructor(services = { }) {
+    this.logger = services.logger || console;
     if (!this.requiredServices) {
       this.logger.warn(`[ServiceRegistry] ${this.constructor.name} has no static property requiredServices defined.`);
       this.logger.debug(`[ServiceRegistry] ${this.constructor.name} received: ${services ? JSON.stringify(Object.keys(services)) : ''}`);

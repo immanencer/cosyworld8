@@ -2,18 +2,22 @@ import { BasicTool } from '../BasicTool.mjs';
 import { buildMiniAvatarEmbed } from '../../social/discordEmbedLibrary.mjs';
 export class MoveTool extends BasicTool {
   /**
+   * List of services required by this tool.
+   * @type {string[]}
+   */
+  requiredServices = [
+    'avatarService',
+    'mapService',
+    'locationService',
+    'discordService',
+    'conversationManager',
+  ];
+  /**
    * Constructs a new MoveTool.
    * @param {Object} services - The services container
    */
-  constructor(services) {
-    super(services);
-
-    this.avatarService = services.avatarService;
-    this.mapService = services.mapService;
-    this.locationService = services.locationService;
-    this.discordService = services.discordService;
-    this.conversationManager = services.conversationManager;
-    
+  constructor() {
+    super();
     
     this.name = 'move';
     this.description = 'Move to the location specified, creating it if it does not exist.';
@@ -28,12 +32,9 @@ export class MoveTool extends BasicTool {
    * @returns {Promise<string>} A status or error message.
    */
   async execute(message, params, avatar) {
-    
-    
-    // Get the destination
     const destination = params.join(' ');
     if (!destination) {
-      return '-# 🏃‍♂️ [ You need to specify a destination! ]';
+      return '-# [ ❌ Error: You need to specify a destination! ]';
     }
 
     try {
@@ -97,8 +98,8 @@ export class MoveTool extends BasicTool {
       // 8. Return success message
       return `-# 🏃‍♂️ [ ${avatar.name} moved to ${newLocation.channel.name}! ]`;
     } catch (error) {
-      console.error('Error in MoveTool execute:', error);
-      return `-# [Failed to move: ${error.message}]`;
+      this.logger?.error('Error in MoveTool execute:', error);
+      return `-# [ ❌ Error: Failed to move: ${error.message} ]`;
     }
   }
 

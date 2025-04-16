@@ -5,13 +5,14 @@ import { DefendTool } from './tools/DefendTool.mjs';
 import { MoveTool } from './tools/MoveTool.mjs';
 import { RememberTool } from './tools/RememberTool.mjs';
 import { CreationTool } from './tools/CreationTool.mjs';
-import { XSocialTool as XPostTool } from './tools/XSocialTool.mjs';
+import { XSocialTool } from './tools/XSocialTool.mjs';
 import { ItemTool } from './tools/ItemTool.mjs';
 import { ThinkTool } from './tools/ThinkTool.mjs';
 import { SummonTool } from './tools/SummonTool.mjs';
 import { BreedTool } from './tools/BreedTool.mjs';
 import { OneirocomForumTool as ForumTool } from './tools/OneirocomForumTool.mjs';
 import { CooldownService } from './CooldownService.mjs';
+import { CameraTool } from './tools/CameraTool.mjs';
 
 export class ToolService extends BasicService {
   requiredServices = [
@@ -35,11 +36,15 @@ export class ToolService extends BasicService {
     "riskManagerService",
     "statService",
     "knowledgeService",
-    "battleService"
+    "battleService",
+    "s3Service",
+    "diceService",
+    "forumClientService",
+    "imageProcessingService",
+    "xService",
   ];
   constructor(services) {
     super(services);
-    this.services = services;
 
     // Tools & Logging
     this.ActionLog = new ActionLog(this.logger);
@@ -58,10 +63,11 @@ export class ToolService extends BasicService {
       move: MoveTool,
       remember: RememberTool,
       create: CreationTool,
-      x: XPostTool,
+      x: XSocialTool,
       item: ItemTool,
       respond: ThinkTool,
       forum: ForumTool,
+      camera: CameraTool,
     };
 
     Object.entries(toolClasses).forEach(([name, ToolClass]) => {
@@ -85,9 +91,27 @@ export class ToolService extends BasicService {
   }
 
   async initialize() {
-    // Event listener for avatar movements
-    this.client.on('avatarMoved', ({ avatarId, newChannelId, temporary }) => {
-      this.logger.debug(`Avatar ${avatarId} moved to ${newChannelId}${temporary ? ' (temporary)' : ''}`);
+
+    let tools = {};
+    for (const [name, tool] of this.tools.entries()) {
+      tools[name] = tool;
+    }
+    this.logger.info(`ToolService initialized with ${Object.keys(tools).length} tools.`);
+
+    const services = {};
+
+    for (const serviceName of this.requiredServices) {
+      const service = this[serviceName];
+      if (!service) {
+        this.logger.error(`Service '${serviceName}' is not available.`);
+        throw new Error(`Service '${serviceName}' is required but not available.`);
+      }
+      services[serviceName] = service;
+    }
+
+    BasicService.validateServiceDependencies({
+      ...tools,
+      ...services,
     });
   }
 
@@ -102,29 +126,26 @@ export class ToolService extends BasicService {
     // Define the regex pattern to match commands and their parameters
     const pattern = new RegExp(`(^|\\s)(${emojis.join('|')})(?:\\s+((?:(?!${emojis.join('|')}).)*))?`, 'g');
 
-    let lastCommand = null;
-    let lastCommandLine = null;
     let match;
+    const commands = [];
+    const commandLines = [];
+    let cleanText = text;
 
     // Iterate through all matches in the text
     while ((match = pattern.exec(text)) !== null) {
-        const emoji = match[2];              // The matched emoji (e.g., "🐦")
-        const paramsString = match[3] || ''; // Parameters string (e.g., "browse")
-        const params = paramsString.trim().split(/\s+/); // Split into array (e.g., ["browse"])
-        const toolName = this.toolEmojis.get(emoji);     // Get tool name (e.g., "browse" or another mapping)
-        const fullMatch = match[0];          // Full matched string (e.g., "🐦 browse")
-
-        // Update with the current match, overwriting previous ones
-        lastCommand = { command: toolName, emoji, params };
-        lastCommandLine = fullMatch.trim();
+      const emoji = match[2];
+      const paramsString = match[3] || '';
+      const params = paramsString.trim().split(/\s+/).filter(Boolean);
+      const toolName = this.toolEmojis.get(emoji);
+      const fullMatch = match[0];
+      commands.push({ command: toolName, emoji, params });
+      commandLines.push(fullMatch.trim());
+      // Remove the matched command from cleanText
+      cleanText = cleanText.replace(fullMatch, '').trim();
     }
 
-    // Prepare the result with only the last command, if any
-    const commands = lastCommand ? [lastCommand] : [];
-    const commandLines = lastCommandLine ? [lastCommandLine] : [];
-
-    return { commands, cleanText: text, commandLines };
-}
+    return { commands, cleanText, commandLines };
+  }
 
   applyGuildToolEmojiOverrides(guildConfig) {
     if (!guildConfig?.toolEmojis) return;

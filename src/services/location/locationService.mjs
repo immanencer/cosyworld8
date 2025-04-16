@@ -53,25 +53,6 @@ export class LocationService extends BasicService {
   }
 
   /**
-   * Downloads an image from a URL and returns the Buffer.
-   * @param {string} url - The URL to download from.
-   * @returns {Promise<Buffer>}
-   */
-  async downloadImage(url) {
-    try {
-      const response = await fetch(url);
-      if (!response.ok) {
-        throw new Error(`Failed to get '${url}' (status: ${response.status})`);
-      }
-      const arrayBuffer = await response.arrayBuffer();
-      return Buffer.from(arrayBuffer);
-    } catch (error) {
-      console.error('Error downloading the image:', error);
-      throw error;
-    }
-  }
-
-  /**
    * Generates an image for a location using Replicate and uploads it to S3.
    * @param {string} locationName - The location name used in the prompt.
    * @param {string} description - Additional descriptive text for the prompt.

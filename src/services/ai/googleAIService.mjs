@@ -3,12 +3,19 @@ import { GoogleGenerativeAI } from '@google/generative-ai';
 import modelsConfig from './models.google.config.mjs';
 import stringSimilarity from 'string-similarity';
 import { aiModelService } from './aiModelService.mjs';
+import fs from 'fs/promises';
+import path from 'path';
 
 export class GoogleAIService extends BasicService {
+  requiredServices = [
+    'configService',
+    's3Service',
+  ];
   constructor(services) {
     super(services)
     
     this.configService = services.configService;
+    this.s3Service = services.s3Service;
     
     const config = this.configService.config.ai.google;
     this.apiKey = config.apiKey || process.env.GOOGLE_API_KEY;
@@ -425,7 +432,8 @@ export class GoogleAIService extends BasicService {
     }
 
     modelName = modelName.replace(/:online$/, '').trim();
-    const modelNames = this.modelConfig.map(model => model.model);
+    // Use this.rawModels to get model names
+    const modelNames = (this.rawModels || []).map(model => model.name.replace('models/', ''));
 
     if (modelNames.includes(modelName)) {
       return modelName;
@@ -456,6 +464,169 @@ export class GoogleAIService extends BasicService {
     }
     console.warn('No models found matching required capabilities. Falling back to default model.');
     return this.model;
+  }
+
+  /**
+   * Main implementation for image generation (was generateImage).
+   * @private
+   */
+  async _generateImageImpl(prompt, avatar = null, location = null, items = [], options = {}) {
+    if (!this.googleAI) throw new Error("Google AI client not initialized.");
+    if (!this.s3Service) throw new Error("s3Service not initialized.");
+
+    // Remove aspectRatio from options and append to prompt if present
+    let aspectRatio;
+    if (options && options.aspectRatio) {
+      aspectRatio = options.aspectRatio;
+      delete options.aspectRatio;
+    }
+
+    let fullPrompt = prompt ? prompt.trim() : '';
+    if (aspectRatio) {
+      fullPrompt += `\nDesired aspect ratio: ${aspectRatio}`;
+    }
+    if (avatar) {
+      fullPrompt += `\nSubject: ${avatar.name || ''} ${avatar.emoji || ''}. Description: ${avatar.description || ''}`;
+    }
+    if (location) {
+      fullPrompt += `\nLocation: ${location.name || ''}. Description: ${location.description || ''}`;
+    }
+    if (items && items.length > 0) {
+      const itemList = items.map(item => `${item.name || ''}: ${item.description || ''}`).join('; ');
+      fullPrompt += `\nItems held: ${itemList}`;
+    }
+
+    // Retry logic: up to 3 attempts, making the prompt more explicit each time
+    let lastError = null;
+    for (let attempt = 0; attempt < 3; attempt++) {
+      let attemptPrompt = fullPrompt;
+      if (attempt > 0) {
+        attemptPrompt += `\nOnly respond with an image. Do not include any text. If you cannot generate an image, try again.`;
+      } else {
+        attemptPrompt += `\nOnly respond with an image.`;
+      }
+      try {
+        const generativeModel = this.googleAI.getGenerativeModel({ model: 'gemini-2.0-flash-exp-image-generation' });
+        // Only include supported options for image generation
+        const { temperature, maxOutputTokens, topP, topK, ...rest } = { ...this.defaultCompletionOptions, ...options };
+        const generationConfig = { temperature, maxOutputTokens, topP, topK, ...options };
+        // Remove penalty fields if present (always for image models)
+        delete generationConfig.frequencyPenalty;
+        delete generationConfig.presencePenalty;
+        const response = await generativeModel.generateContent({
+          contents: [{ role: 'user', parts: [{ text: attemptPrompt }] }],
+          generationConfig: {
+            ...generationConfig,
+            responseModalities: ['text', 'image'],
+          },
+        });
+        // Find the first image part
+        for (const part of response.response.candidates?.[0]?.content?.parts || []) {
+          if (part.inlineData) {
+            // Save base64 image to temp file
+            const buffer = Buffer.from(part.inlineData.data, 'base64');
+            await fs.mkdir('./images', { recursive: true });
+            const tempFile = `./images/gemini_${Date.now()}_${Math.floor(Math.random()*10000)}.png`;
+            await fs.writeFile(tempFile, buffer);
+            const s3url = await this.s3Service.uploadImage(tempFile);
+            await fs.unlink(tempFile);
+            return s3url;
+          }
+        }
+        // If no image, try again
+        lastError = new Error('No image generated');
+      } catch (err) {
+        lastError = err;
+        this.logger?.warn(`[GoogleAIService] Gemini image generation attempt ${attempt+1} failed: ${err.message}`);
+      }
+    }
+    this.logger?.error(`[GoogleAIService] Gemini image generation failed after retries: ${lastError?.message}`);
+    throw lastError || new Error('Image generation failed');
+  }
+
+  /**
+   * Overload to match SchemaService: generateImage(prompt, aspectRatio)
+   * Calls the main implementation with aspectRatio mapped to options.
+   * @param {string} prompt
+   * @param {string} [aspectRatio]
+   * @returns {Promise<string|Array<string>>}
+   */
+  async generateImage(prompt, aspectRatio) {
+    // If aspectRatio is not provided, call the main method as usual
+    if (aspectRatio === undefined) {
+      return await this._generateImageImpl(prompt);
+    }
+    // Map aspectRatio to options and call the main method
+    return await this._generateImageImpl(prompt, null, null, [], { aspectRatio });
+  }
+
+  /**
+   * Full-featured generateImage for avatar/location/items/options.
+   * @param {string} prompt
+   * @param {object} [avatar]
+   * @param {object} [location]
+   * @param {Array<object>} [items]
+   * @param {object} [options]
+   * @returns {Promise<string|Array<string>>}
+   */
+  async generateImageFull(prompt, avatar = null, location = null, items = [], options = {}) {
+    return await this._generateImageImpl(prompt, avatar, location, items, options);
+  }
+
+  /**
+   * Generate a composed image from up to 3 images (avatar, location, item) using Gemini's image editing.
+   * @param {object[]} images - Array of { data: base64, mimeType: string, label: string } (max 3).
+   * @param {string} prompt - Text prompt describing the desired composition.
+   * @param {object} [options] - Optional config (model, etc).
+   * @returns {Promise<string|null>} - base64 image string or null.
+   */
+  async composeImageWithGemini(images, prompt, options = {}) {
+    if (!this.googleAI) throw new Error("Google AI client not initialized.");
+    if (!this.s3Service) throw new Error("s3Service not initialized.");
+    if (!Array.isArray(images) || images.length === 0) throw new Error("At least one image is required");
+    if (images.length > 3) throw new Error("Gemini supports up to 3 images for editing/composition");
+
+    // Build a single content object with role 'user' and a parts array
+    const parts = images.map(img => ({
+      inline_data: {
+        mime_type: img.mimeType || 'image/png',
+        data: img.data,
+      }
+    }));
+    parts.push({ text: `Generate a classic polaroid of the provided image subjects, based on the following prompt (return an image directly, do not respond with text): \n\n${prompt}` });
+    const contents = [{ role: 'user', parts }];
+
+    let lastError = null;
+    for (let attempt = 0; attempt < 3; attempt++) {
+      try {
+        const generativeModel = this.googleAI.getGenerativeModel({ model: options.model || 'gemini-2.0-flash-exp-image-generation' });
+        // Remove penalty fields if present (always for image models)
+        const generationConfig = { ...this.defaultCompletionOptions, ...options, responseModalities: ['text', 'image'] };
+        delete generationConfig.frequencyPenalty;
+        delete generationConfig.presencePenalty;
+        const response = await generativeModel.generateContent({
+          contents: contents,
+          generationConfig,
+        });
+        for (const part of response.response.candidates?.[0]?.content?.parts || []) {
+          if (part.inlineData) {
+            const buffer = Buffer.from(part.inlineData.data, 'base64');
+            await fs.mkdir('./images', { recursive: true });
+            const tempFile = `./images/gemini_compose_${Date.now()}_${Math.floor(Math.random()*10000)}.png`;
+            await fs.writeFile(tempFile, buffer);
+            const s3url = await this.s3Service.uploadImage(tempFile);
+            await fs.unlink(tempFile);
+            return s3url;
+          }
+        }
+        lastError = new Error('No image generated');
+      } catch (err) {
+        lastError = err;
+        this.logger?.warn(`[GoogleAIService] Gemini compose image attempt ${attempt+1} failed: ${err.message}`);
+      }
+    }
+    this.logger?.error(`[GoogleAIService] Gemini compose image failed after retries: ${lastError?.message}`);
+    throw lastError || new Error('Image composition failed');
   }
   
 }

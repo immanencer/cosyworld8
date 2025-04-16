@@ -54,7 +54,7 @@ export class SchemaService extends BasicService {
       );
 
       const imageUrl = (output.url || output.toString)();
-      const imageBuffer = await this.downloadImage(imageUrl);
+      const imageBuffer = await this.s3Service.downloadImage(`${imageUrl}`);
       const localFilename = `./images/generated_${Date.now()}.png`;
       await fs.mkdir('./images', { recursive: true });
       await fs.writeFile(localFilename, imageBuffer);
@@ -66,11 +66,6 @@ export class SchemaService extends BasicService {
     }
   }
 
-  async downloadImage(url) {
-    const response = await fetch(url);
-    if (!response.ok) throw new Error(`Failed to download image: ${response.status}`);
-    return Buffer.from(await response.arrayBuffer());
-  }
 
   determineRarity() {
     const roll = Math.floor(Math.random() * 20) + 1;

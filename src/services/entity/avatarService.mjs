@@ -462,24 +462,6 @@ export class AvatarService extends BasicService {
     return await this.schemaService.generateImage(prompt, '1:1'); // Use SchemaService for image generation
   }
 
-  /**
-   * Downloads an image from a URL.
-   * @param {string} url - The URL of the image.
-   * @returns {Buffer} - The image buffer.
-   */
-  async downloadImage(url) {
-    try {
-      const response = await fetch(url);
-      if (!response.ok) {
-        throw new Error(`Failed to get '${url}' (${response.status})`);
-      }
-      const arrayBuffer = await response.arrayBuffer();
-      const buffer = Buffer.from(arrayBuffer);
-      return buffer;
-    } catch (error) {
-      throw new Error('Error downloading the image: ' + error.message);
-    }
-  }
 
   /**
    * Updates an avatar's details.
@@ -538,7 +520,11 @@ export class AvatarService extends BasicService {
    */
   async createAvatar(data) {
     const avatarDetails = await this.generateAvatarDetails(data.prompt, data.guildId);
-    
+    // Validate avatarDetails
+    if (!avatarDetails || !avatarDetails.name || !avatarDetails.description || !avatarDetails.personality || !avatarDetails.emoji || !avatarDetails.model) {
+      this.logger.error('createAvatar: Invalid avatarDetails generated:', avatarDetails);
+      return null;
+    }
     // Check if an avatar with the same name already exists, if it does, return it.
     const existingAvatar = await this.getAvatarByName(avatarDetails.name);
     if (existingAvatar) {

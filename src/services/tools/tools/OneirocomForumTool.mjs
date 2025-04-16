@@ -1,13 +1,15 @@
 import { BasicTool } from '../BasicTool.mjs';
 
 export class OneirocomForumTool extends BasicTool {
+  requiredServices = [
+    'avatarService',
+    'forumClientService',
+  ];
   constructor(services) {
     super(services);
     this.name = 'forum';
     this.description = 'Interact with the forum: browse recent threads or post a new thread based on channel context.';
-    this.emoji = '🛰️';
-
-    this.forumService = services.forumClientService;
+    this.emoji = '🕸️';
 
     if (!this.forumService) {
       this.logger?.warn('ForumClientService is not initialized. ForumTool will be disabled.');
@@ -139,8 +141,12 @@ export class OneirocomForumTool extends BasicTool {
     return res;
   }
 
-  async execute(message, params, avatar) {
+  async execute(message, params, avatar, guildConfig = {}) {
     try {
+      // Restriction logic moved here
+      if (guildConfig && (!guildConfig.enableForumTool || (guildConfig.forumToolChannelId && message.channel.id !== guildConfig.forumToolChannelId))) {
+        return '-# [ ❌ Error: Forum tool is disabled or not allowed in this channel. ]';
+      }
       if (!params.length) {
         params = ['browse'];
       }
@@ -216,9 +222,9 @@ Only output the JSON object, no commentary.`.trim();
         return `✨ Created forum thread: ${result.title}`;
       }
 
-      return '❌ Unknown command. Use: browse or post';
+      return '-# [ ❌ Error: Unknown command. Use: browse or post ]';
     } catch (error) {
-      return `❌ Error: ${error.message}`;
+      return `-# [ ❌ Error: ${error.message} ]`;
     }
   }
 

@@ -2,12 +2,18 @@
 import { BasicTool } from '../BasicTool.mjs';
 
 export class ItemTool extends BasicTool {
-  constructor(services) {
-    super(services);
-    this.avatarService = services.avatarService;
-    this.itemService = services.itemService;
-    this.discordService = services.discordService;
-
+  /**
+   * List of services required by this tool.
+   * @type {string[]}
+   **/
+  requiredServices = [
+    'avatarService',
+    'itemService',
+    'discordService',
+  ];
+  constructor() {
+    super();
+    
     this.name = 'item';
     this.description = 'Manage items: take, drop, use, store, or craft items. Usage: 📦 take <item>, 📦 drop <item>, 📦 use, 📦 store, or 📦 craft <item1> <item2>.';
     this.emoji = '📦';
@@ -143,8 +149,8 @@ export class ItemTool extends BasicTool {
           return `-# [${this.emoji} Invalid subcommand. Use !item <use|craft|take|drop|store> [params]]`;
       }
     } catch (error) {
-      console.error('Error in ItemTool execute:', error);
-      return `-# [${this.emoji} Failed to process item command: ${error.message}]`;
+      this.logger?.error('Error in ItemTool execute:', error);
+      return `-# [ ❌ Error: Failed to process item command: ${error.message} ]`;
     }
   }
 

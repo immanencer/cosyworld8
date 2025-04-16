@@ -1,16 +1,21 @@
 import { BasicTool } from '../BasicTool.mjs';
 
 export class ThinkTool extends BasicTool {
-  constructor(services) {
-    super(services);
-
-    this.aiService = services.aiService;
-    this.memoryService = services.memoryService;
-    this.discordService = services.discordService;
-    this.promptService = services.promptService;
-    this.databaseService = services.databaseService;
-    this.knowledgeService = services.knowledgeService;
-    this.schemaService = services.schemaService;
+  /**
+   * List of services required by this tool.
+   * @type {string[]}
+   */
+  requiredServices = [
+    'aiService',
+    'memoryService',
+    'discordService',
+    'promptService',
+    'databaseService',
+    'knowledgeService',
+    'schemaService'
+  ];
+  constructor() {
+    super();
 
     this.name = 'think';
     this.description = 'Take a moment to reflect on a message or conversation, updating your thoughts and memories.';
@@ -111,8 +116,8 @@ export class ThinkTool extends BasicTool {
 
       return '-# [ Reflection Generated ]';
     } catch (error) {
-      console.error('Error in ThinkTool:', error);
-      return `-# [Error generating reflection: ${error.message}]`;
+      this.logger?.error('Error in ThinkTool:', error);
+      return `-# [ ❌ Error: Failed to generate reflection: ${error.message} ]`;
     }
   }
 }
