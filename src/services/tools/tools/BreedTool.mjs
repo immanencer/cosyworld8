@@ -2,7 +2,7 @@ import { BasicTool } from '../BasicTool.mjs';
 import { SummonTool } from './SummonTool.mjs';
 
 export class BreedTool extends BasicTool {
-  requiredServices = [
+  static requiredServices = [
     'avatarService',
     'configService',
     'discordService',

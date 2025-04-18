@@ -9,6 +9,7 @@ export class WebService extends BasicService {
     'discordService',
     's3Service',
     'aiModelService',
+    'xService'
   ];
   constructor(services) {
     super(services)

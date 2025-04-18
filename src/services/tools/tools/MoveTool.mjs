@@ -5,7 +5,7 @@ export class MoveTool extends BasicTool {
    * List of services required by this tool.
    * @type {string[]}
    */
-  requiredServices = [
+  static requiredServices = [
     'avatarService',
     'mapService',
     'locationService',

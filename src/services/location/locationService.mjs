@@ -7,27 +7,25 @@ import { BasicService } from '../foundation/basicService.mjs';
 const STRUCTURED_MODEL = process.env.STRUCTURED_MODEL || 'openai/gpt-4o';
 
 export class LocationService extends BasicService {
+  static requiredServices = [
+    'aiService',
+    'discordService',
+    'databaseService',
+    'schemaService',
+    'itemService',
+    'avatarService',
+    'channelManager',
+    'conversationManager',
+    'mapService'
+  ];
   /**
    * Constructs a new LocationService.
    * @param {Object} discordClient - The Discord client (required).
    * @param {Object} [aiService=null] - Optional AI service (defaults to OpenRouterService if not provided).
    */
   constructor(services) {
+
     super(services)
-
-    this.aiService = services.aiService;
-    this.discordService = services.discordService;
-    this.databaseService = services.databaseService;
-    this.schemaService = services.schemaService;
-    this.itemService = services.itemService;
-    this.avatarService = services.avatarService;
-    this.channelManager = services.channelManager;
-    this.conversationManager = services.conversationManager;
-    this.mapService = services.mapService;
-
-    
-    this.client = this.discordService.client;
-    this.db = this.databaseService.getDatabase(); 
 
     // Fuzzy-search config
     this.fuseOptions = {
@@ -46,6 +44,7 @@ export class LocationService extends BasicService {
    * @private
    */
   ensureDbConnection() {
+    this.db = this.db || this.databaseService.getDatabase();
     if (!this.db) {
       throw new Error('Database not connected');
     }
@@ -308,7 +307,7 @@ If already suitable, return as is. If it needs editing, revise it while preservi
     if (!location) {
       let channel;
       try {
-        channel = await this.client.channels.fetch(channelId);
+        channel = await this.discordService.client.channels.fetch(channelId);
       } catch (err) {
         console.warn(`Channel fetch failed for ID ${channelId}: ${err.message}`);
         throw new Error(`Channel with ID ${channelId} not found or inaccessible`);

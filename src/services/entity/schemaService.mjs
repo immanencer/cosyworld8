@@ -4,17 +4,15 @@ import { BasicService } from '../foundation/basicService.mjs';
 import { SchemaValidator } from '../utils/schemaValidator.mjs';
 
 export class SchemaService extends BasicService {
-  constructor(services) {
-    super(services);
-
-    this.aiService = services.aiService;
-    this.configService = services.configService;
-    this.s3Service = services.s3Service;
-    this.databaseService = services.databaseService;
-
+  static requiredServices = [
+    'aiService',
+    'configService',
+    's3Service',
+    'databaseService'
+  ];
+  constructor() {
+    super();
     
-
-    this.db = this.databaseService.getDatabase();
     this.replicate = new Replicate({ auth: process.env.REPLICATE_API_TOKEN });
     this.schemaValidator = new SchemaValidator();
     this.rarityRanges = [

@@ -232,7 +232,7 @@ export class MessageHandler extends BasicService {
    */
   async processChannel(channelId, message) {
     try {
-      const channel = this.client.channels.cache.get(channelId);
+      const channel = this.discordService.client.channels.cache.get(channelId);
       if (!channel) {
         this.logger.error(`Channel ${channelId} not found in cache.`);
         return;

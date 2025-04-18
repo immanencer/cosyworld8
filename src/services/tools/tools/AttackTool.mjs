@@ -1,7 +1,7 @@
 import { BasicTool } from '../BasicTool.mjs';
 
 export class AttackTool extends BasicTool {
-  requiredServices = [
+  static requiredServices = [
     'configService',
     'avatarService',
     'databaseService',

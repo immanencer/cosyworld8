@@ -1,12 +1,8 @@
 import { BasicService } from '../foundation/basicService.mjs';
 
 export class StatService extends BasicService {
-  constructor(services) {
-    super(services);
-    this.databaseService = services.databaseService;
-    this.configService = services.configService;
-    this.logger = services.logger;
-  }
+  static requiredServices = ['databaseService', 'configService', 'logger'];
+  
   /**
    * Generates stats based on the creation date using d20 rolls with advantage/disadvantage per zodiac sign.
    * @param {Date|string} creationDate - The date the avatar was created.

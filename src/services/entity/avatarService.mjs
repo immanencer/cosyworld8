@@ -7,24 +7,23 @@ import Fuse from 'fuse.js';
 import { toObjectId } from '../utils/toObjectId.mjs';
 
 export class AvatarService extends BasicService {
+  static requiredServices = [
+    'databaseService',
+    'configService',
+    'mapService',
+    'aiService',
+    'schedulingService',
+    'conversationManager',
+    'statService',
+    'schemaService',
+  ];
   constructor(services) {
     super(services);
-    this.databaseService = services.databaseService;
-    this.configService = services.configService;
-    this.mapService = services.mapService;
-    this.aiService = services.aiService;
-    this.schedulingService = services.schedulingService;
-    this.conversationManager = services.conversationManager;
-    this.statService = services.statService;
-    this.schemaService = services.schemaService;
-
-    this.db = this.databaseService.getDatabase();
     this.channelAvatars = new Map(); // channelId -> Set of avatarIds
     this.avatarActivityCount = new Map(); // avatarId -> activity count
 
-    const mongoConfig = this.configService.config.mongo;
-    this.IMAGE_URL_COLLECTION = mongoConfig?.collections?.imageUrls || 'image_urls';
-    this.AVATARS_COLLECTION = mongoConfig?.collections?.avatars || 'avatars';
+    this.IMAGE_URL_COLLECTION = 'image_urls';
+    this.AVATARS_COLLECTION = 'avatars';
 
     this.prompts = null;
     this.avatarCache = [];
@@ -79,6 +78,7 @@ export class AvatarService extends BasicService {
   }
 
   async initializeDatabase() {
+    this.db = await this.databaseService.getDatabase();
     this.avatarsCollection = this.db.collection('avatars');
     this.messagesCollection = this.db.collection('messages');
     this.channelsCollection = this.db.collection('channels');
@@ -95,12 +95,14 @@ export class AvatarService extends BasicService {
   // --- Avatar Management ---
 
   async getAvatarStats(avatarId) {
+    this.db = await this.databaseService.getDatabase();
     const objectId = toObjectId(avatarId);
     const stats = await this.db.collection('dungeon_stats').findOne({ avatarId: objectId });
     return stats || { hp: 100, attack: 10, defense: 5, avatarId: objectId };
   }
 
   async updateAvatarStats(avatar, stats) {
+    this.db = await this.databaseService.getDatabase();
     stats.avatarId = avatar._id;
     await this.db.collection('dungeon_stats').updateOne(
       { avatarId: avatar._id },
@@ -165,6 +167,7 @@ export class AvatarService extends BasicService {
 
   async getAvatars(avatarIds) {
     try {
+      this.db = await this.databaseService.getDatabase();
       const avatars = await this.db.collection(this.AVATARS_COLLECTION).find({
         _id: { $in: avatarIds.map(id => new ObjectId(id)) }
       }).toArray();
@@ -249,6 +252,7 @@ export class AvatarService extends BasicService {
    */
   async getLastBredDate(avatarId) {
     try {
+      this.db = await this.databaseService.getDatabase();
       const lastOffspring = await this.db.collection(this.AVATARS_COLLECTION)
         .findOne(
           { parents: { $in: [avatarId] } },
@@ -270,6 +274,7 @@ export class AvatarService extends BasicService {
 
   async getAvatarsWithRecentMessages(limit = 100) {
     try {
+      this.db = await this.databaseService.getDatabase();
       const collection = this.db.collection('messages');
       const avatarsCollection = this.db.collection(this.AVATARS_COLLECTION);
 
@@ -310,6 +315,7 @@ export class AvatarService extends BasicService {
 
   async getAvatarByName(name, includeStatus = 'alive') {
     try {
+      this.db = await this.databaseService.getDatabase();
       const collection = this.db.collection(this.AVATARS_COLLECTION);
       const query = {
         name: { $regex: new RegExp(`^${name}$`, 'i') }
@@ -334,6 +340,7 @@ export class AvatarService extends BasicService {
 
   async fuzzyAvatarByName(query, includeStatus = 'alive', limit = 10) {
     try {
+      this.db = await this.databaseService.getDatabase();
       const collection = this.db.collection(this.AVATARS_COLLECTION);
       const filter = {};
       if (includeStatus === 'alive') {
@@ -359,6 +366,7 @@ export class AvatarService extends BasicService {
 
   async getAllAvatars(includeStatus = 'alive', limit = 100) {
     try {
+      this.db = await this.databaseService.getDatabase();
       const collection = this.db.collection(this.AVATARS_COLLECTION);
       const query = { name: { $exists: true, $ne: null } };
       if (includeStatus === 'alive') {
@@ -388,6 +396,7 @@ export class AvatarService extends BasicService {
    */
   async getAvatarById(id) {
     try {
+      this.db = await this.databaseService.getDatabase();
       const collection = this.db.collection(this.AVATARS_COLLECTION);
       // Allow string IDs by converting to ObjectId if necessary
       const avatar = await collection.findOne({ _id: typeof id === 'string' ? new ObjectId(id) : id });
@@ -469,6 +478,7 @@ export class AvatarService extends BasicService {
    * @returns {Object|null} - The updated avatar or null on failure.
    */
   async updateAvatar(avatar) {
+    this.db = await this.databaseService.getDatabase();
     if (!this.db) {
       this.logger.error('Database is not connected. Cannot update avatar.');
       return null;
@@ -550,6 +560,7 @@ export class AvatarService extends BasicService {
       status: 'alive',
     };
       
+    this.db = await this.databaseService.getDatabase();
     const result = await this.db.collection('avatars').insertOne(avatarDocument);
     return { ...avatarDocument, _id: result.insertedId };
   }
@@ -561,6 +572,7 @@ export class AvatarService extends BasicService {
    */
   async checkDailyLimit(channelId) {
     try {
+      this.db = await this.databaseService.getDatabase();
       const collection = this.db.collection(this.IMAGE_URL_COLLECTION);
       const today = new Date();
       today.setHours(0, 0, 0, 0);
@@ -599,6 +611,7 @@ export class AvatarService extends BasicService {
    */
   async insertRequestIntoMongo(prompt, imageUrl, channelId) {
     try {
+      this.db = await this.databaseService.getDatabase();
       const collection = this.db.collection(this.IMAGE_URL_COLLECTION);
       const now = new Date();
       const record = { prompt, imageUrl, channelId, date: now };
@@ -640,6 +653,7 @@ export class AvatarService extends BasicService {
    * @returns {boolean} - True if successful, false otherwise.
    */
   async regenerateAvatarImage(avatarId) {
+    this.db = await this.databaseService.getDatabase();
     if (!this.db) {
       this.logger.error('Database is not connected. Cannot regenerate avatar image.');
       return false;
@@ -689,6 +703,7 @@ export class AvatarService extends BasicService {
         throw new Error(`Failed to fetch Arweave prompt: ${response.statusText}`);
       }
       const prompt = await response.text();
+      this.db = await this.databaseService.getDatabase();
       const avatarsCollection = this.db.collection(this.AVATARS_COLLECTION);
       await avatarsCollection.updateOne(
         { _id: avatar._id },
@@ -728,6 +743,7 @@ export class AvatarService extends BasicService {
   }
 
   async updateAllArweavePrompts() {
+    this.db = await this.databaseService.getDatabase();
     if (!this.db) {
       this.logger.error('Database is not connected. Cannot update Arweave prompts.');
       return;
@@ -765,6 +781,7 @@ export class AvatarService extends BasicService {
    */
   async getOrCreateUniqueAvatarForUser(summonerId, summonPrompt, channelId) {
     try {
+      this.db = await this.databaseService.getDatabase();
       const collection = this.db.collection(this.AVATARS_COLLECTION);
       const existingAvatar = await collection.findOne({ summoner: summonerId, status: 'alive' });
       if (existingAvatar) {
@@ -895,6 +912,7 @@ export class AvatarService extends BasicService {
     if (!avatar || (!avatar.selectedItemId && !avatar.storedItemId)) return [];
     const itemIds = [avatar.selectedItemId, avatar.storedItemId].filter(Boolean);
     if (itemIds.length === 0) return [];
+    this.db = await this.databaseService.getDatabase();
     const db = this.db;
     const items = await db.collection('items').find({ _id: { $in: itemIds.map(id => typeof id === 'string' ? toObjectId(id) : id) } }).toArray();
     return items;

@@ -11,6 +11,7 @@ import { ModerationService } from '../security/moderationService.mjs';
 // AI and prompt services
 import { AIServiceClass } from '../ai/aiService.mjs';
 import { PromptService } from '../ai/promptService.mjs';
+import { ReplicateService } from '../ai/replicateService.mjs';
 
 // Entity and domain services
 import { AvatarService } from '../entity/avatarService.mjs';
@@ -93,6 +94,11 @@ infrastructure.userProfileService = new UserProfileService({
   databaseService: infrastructure.databaseService
 });
 
+infrastructure.replicateService = new ReplicateService({
+  logger: infrastructure.logger,
+  configService: infrastructure.configService,
+});
+
 // Domain layer
 const domain = {};
 
@@ -103,13 +109,11 @@ domain.discordService = new DiscordService({
 });
 
 
-if (process.env.ONEIROCOM_FORUM_API_KEY
-  && process.env.ONEIROCOM_FORUM_API_URI) {
-  domain.forumClientService = new OneirocomForumService({
-    logger: infrastructure.logger,
-    configService: infrastructure.configService,
-  });
-}
+
+domain.forumService = new OneirocomForumService({
+  logger: infrastructure.logger,
+  configService: infrastructure.configService,
+});
 
 domain.riskManagerService = new RiskManagerService({
   logger: infrastructure.logger,
@@ -295,7 +299,8 @@ domain.toolService = new ToolService({
   s3Service: infrastructure.s3Service,
   xService: domain.xService,
   imageProcessingService: infrastructure.imageProcessingService,
-  forumClientService: domain.forumClientService,
+  forumService: domain.forumService,
+  replicateService: infrastructure.replicateService,
 });
 
 
@@ -323,8 +328,8 @@ domain.messageHandler = new MessageHandler({
   mapService: domain.mapService,
 });
 
-if(domain.forumClientService) {
-  domain.toolService.forumClientService = domain.forumClientService;
+if (domain.forumService) {
+  domain.toolService.forumService = domain.forumService;
 }
 domain.promptService.toolService = domain.toolService;
 domain.messageHandler.toolService = domain.toolService;

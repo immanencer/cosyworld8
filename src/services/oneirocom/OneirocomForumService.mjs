@@ -1,10 +1,16 @@
+import { BasicService } from '../foundation/basicService.mjs';
+
 import fetch from 'node-fetch';
 import dotenv from 'dotenv';
 
 dotenv.config();
 
-export class OneirocomForumService {
+export class OneirocomForumService extends BasicService {
+  static requiredServices = [
+    'logger'
+  ];
   constructor({ apiKey, baseUrl, logger } = {}) {
+    super({ logger });
     this.apiKey = apiKey || process.env.ONEIROCOM_FORUM_API_KEY;
     if (!this.apiKey) {
       throw new Error('OneirocomForumService: API key is required');

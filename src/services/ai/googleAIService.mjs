@@ -7,7 +7,7 @@ import fs from 'fs/promises';
 import path from 'path';
 
 export class GoogleAIService extends BasicService {
-  requiredServices = [
+  static requiredServices = [
     'configService',
     's3Service',
   ];

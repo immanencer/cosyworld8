@@ -6,7 +6,7 @@ export class ItemTool extends BasicTool {
    * List of services required by this tool.
    * @type {string[]}
    **/
-  requiredServices = [
+  static requiredServices = [
     'avatarService',
     'itemService',
     'discordService',

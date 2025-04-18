@@ -3,49 +3,39 @@ import { BasicService } from '../foundation/basicService.mjs';
 import { toObjectId } from '../utils/toObjectId.mjs';
 
 export class MapService extends BasicService {
+  static requiredServices = [
+    "databaseService",
+    "configService",
+    "discordService",
+    "locationService",
+  ];
   constructor(services) {
-    super(services);
+    super();
 
-    this.databaseService = services.databaseService;
-    this.configService = services.configService;
-    this.discordService = services.discordService;
-    this.locationService = services.locationService;
-    
-    
-    this.client = this.discordService?.client;
-    this.db = this.databaseService.getDatabase();
-    const mongoConfig = this.configService.config.mongo;
-
-    this.AVATARS_COLLECTION = mongoConfig.collections.avatars || 'avatars';
-    this.LOCATIONS_COLLECTION = mongoConfig.collections.locations || 'locations';
-    this.DUNGEON_POSITIONS_COLLECTION = mongoConfig.collections.dungeonPositions || 'dungeon_positions';
-    this.DUNGEON_STATS_COLLECTION = mongoConfig.collections.dungeonStats || 'dungeon_stats';
+    this.AVATARS_COLLECTION = 'avatars';
+    this.LOCATIONS_COLLECTION = 'locations';
+    this.DUNGEON_POSITIONS_COLLECTION = 'dungeon_positions';
+    this.DUNGEON_STATS_COLLECTION = 'dungeon_stats';
   }
 
-  // --- Utility Methods ---
-
-  ensureDb() {
-    if (!this.db) throw new Error('Database connection unavailable');
-    return this.db;
-  }
 
   // --- Database Initialization ---
 
   async initializeDatabase() {
-    const db = this.ensureDb();
-    const collections = await db.listCollections().toArray();
+    this.db = await this.databaseService.getDatabase();
+    const collections = await this.db.listCollections().toArray();
     const collectionNames = collections.map(c => c.name);
 
     if (!collectionNames.includes('locations')) {
-      await db.createCollection('locations');
+      await this.db.createCollection('locations');
     }
     if (!collectionNames.includes('dungeon_positions')) {
-      await db.createCollection('dungeon_positions');
-      await db.collection('dungeon_positions').createIndex({ avatarId: 1 }, { unique: true });
+      await this.db.createCollection('dungeon_positions');
+      await this.db.collection('dungeon_positions').createIndex({ avatarId: 1 }, { unique: true });
     }
     if (!collectionNames.includes('dungeon_stats')) {
-      await db.createCollection('dungeon_stats');
-      await db.collection('dungeon_stats').createIndex({ avatarId: 1 }, { unique: true });
+      await this.db.createCollection('dungeon_stats');
+      await this.db.collection('dungeon_stats').createIndex({ avatarId: 1 }, { unique: true });
     }
     this.logger.info('Dungeon database initialized');
   }
@@ -53,23 +43,23 @@ export class MapService extends BasicService {
   // --- Location Management ---
 
   async getLocationDescription(locationId, locationName) {
-    const db = this.ensureDb();
-    const location = await db.collection('locations').findOne({
+    this.db = await this.databaseService.getDatabase();
+    const location = await this.db.collection('locations').findOne({
       $or: [{ channelId: locationId }, { name: locationName }],
     });
     return location?.description || null;
   }
 
   async findLocation(destination) {
-    const db = this.ensureDb();
-    return await db.collection('locations').findOne({
+    this.db = await this.databaseService.getDatabase();
+    return await this.db.collection('locations').findOne({
       $or: [{ id: destination }, { name: { $regex: new RegExp(destination, 'i') } }],
     });
   }
 
   async getAvatarLocation(avatar) {
-    const db = this.ensureDb();
-    const position = await db.collection('dungeon_positions').findOne({ $or: [
+    this.db = await this.databaseService.getDatabase();
+    const position = await this.db.collection('dungeon_positions').findOne({ $or: [
       { avatarId: avatar._id }, { avatarId: avatar._id.toString() }
     ]});
     if (position && position.locationId) {
@@ -101,7 +91,7 @@ export class MapService extends BasicService {
 
   async updateAvatarPosition(currentAvatar, newLocationId, previousLocationId = null, sendProfile = false) {
     
-    const db = this.ensureDb();
+    this.db = await this.databaseService.getDatabase();
     const session = await this.db.client.startSession();
     
     if (!currentAvatar._id) {
@@ -110,7 +100,7 @@ export class MapService extends BasicService {
 
     try {    
 
-      const positions = db.collection('dungeon_positions');
+      const positions = this.db.collection('dungeon_positions');
 
       const actualPreviousLocationId = (await positions.findOne(
         { avatarId: currentAvatar._id },
@@ -123,7 +113,7 @@ export class MapService extends BasicService {
           { $set: { locationId: newLocationId, lastMoved: new Date() } },
           { upsert: true, session }
         );
-        await db.collection('avatars').updateOne(
+        await this.db.collection('avatars').updateOne(
           { _id: currentAvatar._id },
           { $set: { channelId: newLocationId } },
           { session }
@@ -138,13 +128,6 @@ export class MapService extends BasicService {
         await this.discordService.sendAvatarEmbed(updatedAvatar, newLocationId, this.aiService);
       }
 
-      this.client.emit('avatarMoved', {
-        avatarId: updatedAvatar._id,
-        previousChannelId: actualPreviousLocationId,
-        newChannelId: newLocationId,
-        temporary: false,
-      });
-
       return updatedAvatar;
     } catch (error) {
       this.logger.error(`Update failed: ${error.message}`);
@@ -155,19 +138,20 @@ export class MapService extends BasicService {
   }
 
   async getAvatarPosition(avatarId) {
+    this.db = await this.databaseService.getDatabase();
     // First check if the avatar is in the cache
     let avatarPosition = this.client.avatarPositionsCache.get(avatarId);
     if (avatarPosition) {
       return avatarPosition;
     }
     // If not in cache, fetch from the database
-    const db = this.ensureDb();
+      this.db = await this.databaseService.getDatabase();
     const objectId = toObjectId(avatarId);
-    avatarPosition = await db.collection(this.DUNGEON_POSITIONS_COLLECTION).findOne({ avatarId: objectId });
+    avatarPosition = await this.db.collection(this.DUNGEON_POSITIONS_COLLECTION).findOne({ avatarId: objectId });
 
     // if not in DUNGONE_POSITIONS_COLLECTION, check in AVATARS_COLLECTION[channelId]
     if (!avatarPosition) {
-      const avatar = await db.collection(this.AVATARS_COLLECTION).findOne({ _id: objectId });
+      const avatar = await this.db.collection(this.AVATARS_COLLECTION).findOne({ _id: objectId });
       if (avatar) {
         avatarPosition = {
           locationId: avatar.channelId,
@@ -183,7 +167,7 @@ export class MapService extends BasicService {
    * @returns {Promise<Object>} - An object containing location details and avatars.
    */
   async getLocationAndAvatars(locationId) {
-    const db = this.ensureDb();
+    this.db = await this.databaseService.getDatabase();
 
     // Fetch location details
     const location = await this.locationService.getLocationByChannelId(locationId);
@@ -192,9 +176,9 @@ export class MapService extends BasicService {
     }
 
     // Fetch avatars in the location
-    const avatarPositions = await db.collection(this.DUNGEON_POSITIONS_COLLECTION).find({ locationId }).toArray();
+    const avatarPositions = await this.db.collection(this.DUNGEON_POSITIONS_COLLECTION).find({ locationId }).toArray();
     const avatarIds = avatarPositions.map(pos => pos.avatarId);
-    const avatars = await db.collection(this.AVATARS_COLLECTION).find({$or:[{channelId: locationId } , { _id: { $in: avatarIds } }]}).toArray();
+    const avatars = await this.db.collection(this.AVATARS_COLLECTION).find({$or:[{channelId: locationId } , { _id: { $in: avatarIds } }]}).toArray();
 
     return {
       location,

@@ -1,19 +1,15 @@
 import { BasicService } from '../foundation/basicService.mjs';
 
 export class MemoryService extends BasicService {
-  constructor(services) {
-    super(services);
-    this.logger = services.logger;
-    this.schemaService = services.schemaService;
-    this.databaseService = services.databaseService;
-    this.discordService = services.discordService;
-    this.db = this.databaseService.getDatabase();
-    this.client = this.discordService.client;
+  static requiredServices = ['logger', 'schemaService', 'databaseService', 'discordService'];
+  constructor() {
+    super();
     this.lastEntitySync = new Map();
   }
 
   async addMemory(avatarId, memory) {
     try {
+      this.db = await this.databaseService.getDatabase();
       await this.db.collection('memories').insertOne({
         avatarId,
         memory,
@@ -27,6 +23,7 @@ export class MemoryService extends BasicService {
 
   async getMemories(avatarId, limit = 10, skipEntitySync = false) {
     try {
+      this.db = await this.databaseService.getDatabase();
       const memories = await this.db.collection('memories')
         .find({ $or: [ { avatarId }, { avatarId: avatarId.toString() }] })
         .sort({ timestamp: -1 })
@@ -48,6 +45,7 @@ export class MemoryService extends BasicService {
 
   async storeNarrative(avatarId, content) {
     try {
+      this.db = await this.databaseService.getDatabase();
       await this.db.collection('narratives').insertOne({
         avatarId,
         content,
@@ -60,6 +58,7 @@ export class MemoryService extends BasicService {
 
   async getLastNarrative(avatarId) {
     try {
+      this.db = await this.databaseService.getDatabase();
       return await this.db.collection('narratives').findOne(
         { $or: [{ avatarId }, { avatarId: avatarId.toString() }] },
         { sort: { timestamp: -1 } }

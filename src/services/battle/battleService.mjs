@@ -4,7 +4,7 @@
 import { BasicService } from "../foundation/basicService.mjs";
 
 export class BattleService extends BasicService {
-  requiredServices = [
+  static requiredServices = [
     'avatarService',
     'statService',
     'mapService',
@@ -13,14 +13,8 @@ export class BattleService extends BasicService {
     'conversationManager'
   ];
 
-  constructor(services) {
-    super(services);
-    this.avatarService = services.avatarService;
-    this.statService = services.statService;
-    this.mapService = services.mapService;
-    this.diceService = services.diceService;
-    this.databaseService = services.databaseService;
-    this.conversationManager = services.conversationManager;
+  constructor() {
+    super();
   }
 
   async attack({ message, attacker, defender, services }) {
@@ -93,7 +87,7 @@ export class BattleService extends BasicService {
     const db = this.databaseService.getDatabase();
     await db.collection('dungeon_modifiers').deleteMany({ avatarId: targetAvatar._id, stat: 'damage' });
     // Reset stats upon knockout
-    const newStats = services.statService.generateStatsFromDate(targetAvatar.createdAt);
+    const newStats = this.statService.generateStatsFromDate(targetAvatar.createdAt);
     newStats.avatarId = targetAvatar._id;
     await this.avatarService.updateAvatarStats(targetAvatar, newStats);
     await this.avatarService.updateAvatar(targetAvatar);

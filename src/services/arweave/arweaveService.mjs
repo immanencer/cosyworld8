@@ -4,10 +4,13 @@ const { Arweave } = pkg;
 
 
 export class ArweaveService extends BasicService {
+    static requiredServices = [
+        'configService',
+        'databaseService'
+    ];
     constructor(services) {
         super(services);
-        this.configService = services.configService;
-        this.databaseService = services.databaseService;
+
         this.arweave = null;
     }
     

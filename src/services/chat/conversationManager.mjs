@@ -1,22 +1,22 @@
 import { handleCommands } from '../commands/commandHandler.mjs';
 import { BasicService } from '../foundation/basicService.mjs';
-import { MapService } from '../map/mapService.mjs';
 
 const GUILD_NAME = process.env.GUILD_NAME || 'The Guild';
 
 export class ConversationManager extends BasicService {
-  constructor(services) {
-    super(services);
-    this.services = services;
-    this.logger = services.logger;
-    this.databaseService = services.databaseService;
-    this.aiService = services.aiService;
-    this.discordService = services.discordService;
-    this.avatarService = services.avatarService;
-    this.memoryService = services.memoryService;
-    this.promptService = services.promptService;
-    this.configService = services.configService;
-    this.mapService = services.mapService;
+  static requiredServices = [
+    "databaseService",
+    "aiService",
+    "discordService",
+    "avatarService",
+    "memoryService",
+    "promptService",
+    "configService",
+    "knowledgeService",
+    "mapService"
+  ];
+  constructor() {
+    super();
 
     this.GLOBAL_NARRATIVE_COOLDOWN = 60 * 60 * 1000; // 1 hour
     this.lastGlobalNarrativeTime = 0;
@@ -25,8 +25,6 @@ export class ConversationManager extends BasicService {
     this.MAX_RESPONSES_PER_MESSAGE = 2;
     this.channelResponders = new Map();
     this.requiredPermissions = ['ViewChannel', 'SendMessages', 'ReadMessageHistory', 'ManageWebhooks'];
-   
-    this.db = this.databaseService.getDatabase();
   }
 
   async checkChannelPermissions(channel) {
@@ -52,6 +50,7 @@ export class ConversationManager extends BasicService {
 
   async generateNarrative(avatar) {
     try {
+      this.db = await this.databaseService.getDatabase();
       if (!this.db) {
         this.logger.error('DB not initialized yet. Narrative generation aborted.');
         return null;
@@ -64,7 +63,7 @@ export class ConversationManager extends BasicService {
         await this.avatarService.updateAvatar(avatar);
       }
 
-      const kgContext = await this.services.knowledgeService.queryKnowledgeGraph(avatar._id);
+      const kgContext = await this.knowledgeService.queryKnowledgeGraph(avatar._id);
       const chatMessages = await this.promptService.getNarrativeChatMessages(avatar);
 
       // Inject KG context into user prompt
@@ -89,7 +88,7 @@ export class ConversationManager extends BasicService {
       this.lastGlobalNarrativeTime = Date.now();
 
       // Update KG with new narrative
-      await this.services.knowledgeService.updateKnowledgeGraph(avatar._id, narrative, this.services.schemaService);
+      await this.knowledgeService.updateKnowledgeGraph(avatar._id, narrative);
 
       return narrative;
     } catch (error) {
@@ -109,6 +108,7 @@ export class ConversationManager extends BasicService {
   async getChannelContext(channelId, limit = 50) {
     try {
       this.logger.info(`Fetching channel context for channel ${channelId}`);
+      this.db = await this.databaseService.getDatabase();
       if (this.db) {
         try {
           const messagesCollection = this.db.collection('messages');
@@ -162,6 +162,7 @@ export class ConversationManager extends BasicService {
   }
 
   async getChannelSummary(avatarId, channelId) {
+    this.db = await this.databaseService.getDatabase();
     if (!this.db) {
       this.logger.error('DB not initialized. Cannot fetch channel summary.');
       return '';
@@ -247,6 +248,7 @@ export class ConversationManager extends BasicService {
   }
 
   async sendResponse(channel, avatar, presetResponse = null) {
+    this.db = await this.databaseService.getDatabase();
     if (!await this.checkChannelPermissions(channel)) {
       this.logger.error(`Cannot send response - missing permissions in channel ${channel.id}`);
       return null;

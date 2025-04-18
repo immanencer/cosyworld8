@@ -17,7 +17,6 @@ export class DiscordService {
     this.configService = services.configService;
     this.databaseService = services.databaseService;
     
-    this.db = this.databaseService.getDatabase();
     this.webhookCache = new Map();
     this.client = new Client({
       intents: [
@@ -65,9 +64,10 @@ export class DiscordService {
     });
 
     this.client.on('guildDelete', async guild => {
-      this.logger.info(`Left guild: ${guild.name} (${guild.id})`);
-      if (!this.db) return;
       try {
+        this.logger.info(`Left guild: ${guild.name} (${guild.id})`);
+        this.db = await this.databaseService.getDatabase();
+        if (!this.db) return;
         await this.db.collection('connected_guilds').deleteOne({ id: guild.id });
       } catch (error) {
         this.logger.error(`Failed to remove guild ${guild.id} from database: ${error.message}`);
@@ -76,6 +76,7 @@ export class DiscordService {
 
     this.client.on('interactionCreate', async interaction => {
       try {
+        this.db = await this.databaseService.getDatabase();
         if (!interaction.isButton()) return;
         const { customId } = interaction;
         if (!customId.startsWith('view_full_')) return;
@@ -122,6 +123,7 @@ export class DiscordService {
   // Utility Methods (moved from module scope to class)
 
   async updateConnectedGuilds() {
+    this.db = await this.databaseService.getDatabase();
     if (!this.db) {
       this.logger.error('Database not connected, cannot update guilds');
       return;
@@ -152,6 +154,7 @@ export class DiscordService {
   }
 
   async updateDetectedGuilds() {
+    this.db = await this.databaseService.getDatabase();
     if (!this.db) {
       this.logger.error('Database not connected, cannot update detected guilds');
       return;
@@ -332,6 +335,7 @@ export class DiscordService {
   async buildAvatarComponents(avatar) {
     const components = [];
     try {
+      this.db = await this.databaseService.getDatabase();
       const crossmintData = await this.db.collection('crossmint_dev').findOne({ avatarId: avatar._id, chain: 'base' });
       // Add button logic if needed (commented out in original)
     } catch (error) {

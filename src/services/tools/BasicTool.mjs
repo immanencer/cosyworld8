@@ -4,7 +4,7 @@ export class BasicTool extends BasicService {
   constructor(services) { 
     super(services);
 
-    this.replyNotification = false;
+    this.replyNotification = true;
     this.cooldownMs = 60 * 1000; // default 1 minute cooldown
   }
 

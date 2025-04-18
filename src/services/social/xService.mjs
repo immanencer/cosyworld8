@@ -11,34 +11,13 @@ import bs58 from 'bs58';
 import { encrypt, decrypt } from '../utils/encryption.mjs';
 
 class XService extends BasicService {
-  requiredServices = [
+  static requiredServices = [
     'databaseService',
     'configService',
   ];
   constructor() {
     super();  
   }
-
-  async isXAuthorized (avatarId) {
-    const db = this.databaseService.getDatabase();
-    const auth = await db.collection('x_auth').findOne({
-      avatarId,
-    });
-    if (!auth?.accessToken) return false;
-    if (new Date() >= new Date(auth.expiresAt) && auth.refreshToken) {
-      try {
-        await this.refreshAccessToken(auth);
-        return true;
-      } catch (error) {
-        this.logger?.error?.('Token refresh failed:', error.message, { avatarId });
-        if (error.code === 401 || error.message?.includes('invalid_grant')) {
-          await db.collection('x_auth').deleteOne({ avatarId });
-        }
-        return false;
-      }
-    }
-    return new Date() < new Date(auth.expiresAt);
-  };
 
   // --- Client-side methods (for browser, can be static or moved elsewhere if needed) ---
   async checkXAuthStatus(avatarId) {
@@ -214,6 +193,92 @@ class XService extends BasicService {
       );
     }
     return { timeline, notifications, userId };
+  }
+
+  // --- X Social Actions ---
+  async postToX(avatar, content) {
+    const db = this.databaseService.getDatabase();
+    const auth = await db.collection('x_auth').findOne({ avatarId: avatar._id.toString() });
+    if (!auth?.accessToken) return '-# [ ❌ Error: X authorization required. Please connect your account. ]';
+    const twitterClient = new TwitterApi(decrypt(auth.accessToken));
+    const v2Client = twitterClient.v2;
+    const tweetContent = content.trim().slice(0, 280);
+    const result = await v2Client.tweet(tweetContent);
+    if (!result) return '-# [ ❌ Failed to post to X. ]';
+    const tweetId = result.data.id;
+    const tweetUrl = `https://x.com/ratimics/status/${tweetId}`;
+    await db.collection('social_posts').insertOne({ avatarId: avatar._id, content: tweetContent, timestamp: new Date(), postedToX: true, tweetId });
+    return `-# ✨ [ [Posted to X](${tweetUrl}) ]`;
+  }
+
+  async replyToX(avatar, tweetId, content) {
+    const db = this.databaseService.getDatabase();
+    const auth = await db.collection('x_auth').findOne({ avatarId: avatar._id.toString() });
+    if (!auth?.accessToken) return '-# [ ❌ Error: X authorization required. Please connect your account. ]';
+    const twitterClient = new TwitterApi(decrypt(auth.accessToken));
+    const v2Client = twitterClient.v2;
+    const replyContent = content.trim().slice(0, 280);
+    const result = await v2Client.reply(replyContent, tweetId);
+    if (!result) return '-# [ ❌ Failed to reply on X. ]';
+    await db.collection('social_posts').insertOne({ avatarId: avatar._id, content: replyContent, tweetId, timestamp: new Date(), postedToX: true, type: 'reply' });
+    return `↩️ [Replied to post](https://x.com/ratimics/status/${tweetId}): "${replyContent}"`;
+  }
+
+  async quoteToX(avatar, tweetId, content) {
+    const db = this.databaseService.getDatabase();
+    const auth = await db.collection('x_auth').findOne({ avatarId: avatar._id.toString() });
+    if (!auth?.accessToken) return '-# [ ❌ Error: X authorization required. Please connect your account. ]';
+    const twitterClient = new TwitterApi(decrypt(auth.accessToken));
+    const v2Client = twitterClient.v2;
+    const quoteContent = content.trim().slice(0, 280);
+    const result = await v2Client.tweet({ text: quoteContent, quote_tweet_id: tweetId });
+    if (!result) return '-# [ ❌ Failed to quote on X. ]';
+    await db.collection('social_posts').insertOne({ avatarId: avatar._id, content: quoteContent, tweetId, timestamp: new Date(), postedToX: true, type: 'quote' });
+    return `📜 [Quoted post](https://x.com/ratimics/status/${tweetId}): "${quoteContent}"`;
+  }
+
+  async followOnX(avatar, userId) {
+    const db = this.databaseService.getDatabase();
+    const auth = await db.collection('x_auth').findOne({ avatarId: avatar._id.toString() });
+    if (!auth?.accessToken) return '-# [ ❌ Error: X authorization required. Please connect your account. ]';
+    const twitterClient = new TwitterApi(decrypt(auth.accessToken));
+    const v2Client = twitterClient.v2;
+    const me = await v2Client.me();
+    await v2Client.follow(me.data.id, userId);
+    return `➕ Followed user ${userId}`;
+  }
+
+  async likeOnX(avatar, tweetId) {
+    const db = this.databaseService.getDatabase();
+    const auth = await db.collection('x_auth').findOne({ avatarId: avatar._id.toString() });
+    if (!auth?.accessToken) return '-# [ ❌ Error: X authorization required. Please connect your account. ]';
+    const twitterClient = new TwitterApi(decrypt(auth.accessToken));
+    const v2Client = twitterClient.v2;
+    const me = await v2Client.me();
+    await v2Client.like(me.data.id, tweetId);
+    return `❤️ Liked post https://x.com/ratimics/status/${tweetId}`;
+  }
+
+  async repostOnX(avatar, tweetId) {
+    const db = this.databaseService.getDatabase();
+    const auth = await db.collection('x_auth').findOne({ avatarId: avatar._id.toString() });
+    if (!auth?.accessToken) return '-# [ ❌ Error: X authorization required. Please connect your account. ]';
+    const twitterClient = new TwitterApi(decrypt(auth.accessToken));
+    const v2Client = twitterClient.v2;
+    const me = await v2Client.me();
+    await v2Client.retweet(me.data.id, tweetId);
+    return `🔁 Reposted https://x.com/ratimics/status/${tweetId}`;
+  }
+
+  async blockOnX(avatar, userId) {
+    const db = this.databaseService.getDatabase();
+    const auth = await db.collection('x_auth').findOne({ avatarId: avatar._id.toString() });
+    if (!auth?.accessToken) return '-# [ ❌ Error: X authorization required. Please connect your account. ]';
+    const twitterClient = new TwitterApi(decrypt(auth.accessToken));
+    const v2Client = twitterClient.v2;
+    const me = await v2Client.me();
+    await v2Client.block(me.data.id, userId);
+    return `🚫 Blocked user ${userId}`;
   }
 }
 

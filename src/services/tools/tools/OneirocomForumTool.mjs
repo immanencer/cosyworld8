@@ -1,19 +1,19 @@
 import { BasicTool } from '../BasicTool.mjs';
 
 export class OneirocomForumTool extends BasicTool {
-  requiredServices = [
+  static requiredServices = [
     'avatarService',
-    'forumClientService',
+    'forumService',
+    'schemaService',
+    'conversationManager',
+    'promptService',
+    'databaseService'
   ];
   constructor(services) {
     super(services);
     this.name = 'forum';
     this.description = 'Interact with the forum: browse recent threads or post a new thread based on channel context.';
     this.emoji = '🕸️';
-
-    if (!this.forumService) {
-      this.logger?.warn('ForumClientService is not initialized. ForumTool will be disabled.');
-    }
   }
 
   async fetchThreads({ category, threadId } = {}) {
@@ -22,7 +22,7 @@ export class OneirocomForumTool extends BasicTool {
   }
 
   async createThread({ agentIdentity, title, content, category, tags = [], classification = 'public' }) {
-    if (!this.forumService) throw new Error('ForumClientService is not initialized');
+    if (!this.forumService) throw new Error('forumService is not initialized');
     const payload = {
       title,
       content,
@@ -34,7 +34,7 @@ export class OneirocomForumTool extends BasicTool {
   }
 
   async createReply({ agentIdentity, threadId, content, tags = [], classification = 'public' }) {
-    if (!this.forumService) throw new Error('ForumClientService is not initialized');
+    if (!this.forumService) throw new Error('forumService is not initialized');
     const payload = {
       threadId,
       content,
@@ -76,11 +76,24 @@ export class OneirocomForumTool extends BasicTool {
 
       if (relevantThreads.length > 0) {
         info += 'Threads with new replies:\n';
-        info += relevantThreads.map(t => `- ${t.title}`).join('\n');
+        info += relevantThreads.map(t => `- ${t.title}`).join('\n') + '\n';
+      }
+
+      // Add recent threads (up to 3, excluding already listed)
+      const relevantIds = new Set(relevantThreads.map(t => t.id));
+      const sortedThreads = threads.slice().sort((a, b) => {
+        const aTime = Math.max(...a.posts.map(p => new Date(p.timestamp).getTime()));
+        const bTime = Math.max(...b.posts.map(p => new Date(p.timestamp).getTime()));
+        return bTime - aTime;
+      });
+      const recentThreads = sortedThreads.filter(t => !relevantIds.has(t.id)).slice(0, 3);
+      if (recentThreads.length > 0) {
+        info += 'Recent Threads:\n';
+        info += recentThreads.map(t => `- ${t.title}`).join('\n');
       }
 
       return {
-        visible: !!currentThread || relevantThreads.length > 0,
+        visible: !!currentThread || relevantThreads.length > 0 || recentThreads.length > 0,
         info
       };
     } catch (err) {
@@ -95,20 +108,42 @@ export class OneirocomForumTool extends BasicTool {
     const threadsData = await this.forumService.getThreads();
     const threads = threadsData?.data || [];
 
+    // Threads avatar has posted in
     const relevantThreads = threads.filter(thread => {
       const avatarPosts = thread.posts.filter(p => p.authorId === avatar._id.toString());
       return avatarPosts.length > 0;
     });
 
-    return relevantThreads.map(t => ({
-      id: t.id,
-      title: t.title,
-      hasNew: Math.max(...t.posts.map(p => new Date(p.timestamp).getTime())) > (forumState.lastSeen[t.id] || 0)
+    // If fewer than 3, add up to 3 recent threads (excluding already shown)
+    const relevantIds = new Set(relevantThreads.map(t => t.id));
+    const sortedThreads = threads.slice().sort((a, b) => {
+      const aTime = Math.max(...a.posts.map(p => new Date(p.timestamp).getTime()));
+      const bTime = Math.max(...b.posts.map(p => new Date(p.timestamp).getTime()));
+      return bTime - aTime;
+    });
+    const recentThreads = sortedThreads.filter(t => !relevantIds.has(t.id)).slice(0, 3);
+    const combined = [...relevantThreads, ...recentThreads];
+
+    // Get avatar's basic prompt
+    const promptService = this.promptService;
+    const basicPrompt = await promptService.getBasicSystemPrompt(avatar);
+
+    return await Promise.all(combined.map(async t => {
+      // Can reply if avatar was not the last to comment
+      const lastPost = t.posts[t.posts.length - 1];
+      const canReply = lastPost && lastPost.authorId !== avatar._id.toString();
+      return {
+        id: t.id,
+        title: t.title,
+        hasNew: Math.max(...t.posts.map(p => new Date(p.timestamp).getTime())) > (forumState.lastSeen[t.id] || 0),
+        canReply,
+        avatarPrompt: basicPrompt
+      };
     }));
   }
 
   async switchThread(avatar, threadId) {
-    if (!this.forumService) throw new Error('ForumClientService is not initialized');
+    if (!this.forumService) throw new Error('forumService is not initialized');
     const forumState = await this.getAvatarForumState(avatar);
     forumState.currentThreadId = threadId;
     const now = Date.now();
@@ -117,7 +152,7 @@ export class OneirocomForumTool extends BasicTool {
   }
 
   async postThread(avatar, agentIdentity, title, content, category, tags = [], classification = 'public') {
-    if (!this.forumService) throw new Error('ForumClientService is not initialized');
+    if (!this.forumService) throw new Error('forumService is not initialized');
     const payload = { title, content, category, tags, classification };
     const res = await this.forumService.createThread({ agentIdentity, payload });
     const threadId = res?.data?.id;
@@ -131,7 +166,7 @@ export class OneirocomForumTool extends BasicTool {
   }
 
   async replyToThread(avatar, agentIdentity, content, tags = [], classification = 'public') {
-    if (!this.forumService) throw new Error('ForumClientService is not initialized');
+    if (!this.forumService) throw new Error('forumService is not initialized');
     const forumState = await this.getAvatarForumState(avatar);
     if (!forumState.currentThreadId) throw new Error('No active thread selected');
     const payload = { threadId: forumState.currentThreadId, content, tags, classification };
@@ -143,86 +178,99 @@ export class OneirocomForumTool extends BasicTool {
 
   async execute(message, params, avatar, guildConfig = {}) {
     try {
-      // Restriction logic moved here
-      if (guildConfig && (!guildConfig.enableForumTool || (guildConfig.forumToolChannelId && message.channel.id !== guildConfig.forumToolChannelId))) {
-        return '-# [ ❌ Error: Forum tool is disabled or not allowed in this channel. ]';
-      }
-      if (!params.length) {
-        params = ['browse'];
-      }
-
-      const command = params[0].toLowerCase();
-
-      if (command === 'browse') {
-        const threadsData = await this.forumService.getThreads();
-        const threads = threadsData?.data || [];
-
-        const relevantThreads = threads.filter(thread => {
-          const avatarPosts = thread.posts.filter(p => p.authorId === avatar._id.toString());
-          return avatarPosts.length > 0;
-        });
-
-        if (!relevantThreads.length) return 'No relevant forum threads found.';
-
-        const threadList = relevantThreads.slice(0, 10).map(t => `- ${t.title}`).join('\n');
-        return `📡 **Forum Threads**\n${threadList}`;
-      }
-
-      if (command === 'post') {
-        const context = await this.services.conversationManager.getChannelContext(message.channel.id);
-        const systemPrompt = await this.services.promptService.getBasicSystemPrompt(avatar);
-
-        const prompt = `
+      if (!this.forumService) return '-# [ ❌ Error: forumService is not initialized. ]';
+      // Unified auto-action: always gather threads and context, let AI choose reply or post
+      const forumState = await this.getAvatarForumState(avatar);
+      const threadsData = await this.forumService.getThreads();
+      const threads = threadsData?.data || [];
+      const promptService = this.promptService;
+      const db = this.services.databaseService?.getDatabase?.();
+      const systemPrompt = promptService ? (await promptService.getFullSystemPrompt(avatar, db)) : '';
+      const context = await this.services.conversationManager.getChannelContext(message.channel.id);
+      // Prepare thread info for AI
+      const threadInfos = threads.map(t => {
+        const lastPost = t.posts[t.posts.length - 1];
+        const canReply = lastPost && lastPost.authorId !== avatar._id.toString();
+        return {
+          id: t.id,
+          title: t.title,
+          canReply,
+          lastPostContent: lastPost?.content || '',
+          lastPostAuthor: lastPost?.authorId || '',
+          postCount: t.posts.length
+        };
+      });
+      // Compose prompt
+      const prompt = `
 ${systemPrompt}
 
 You are an AI forum agent managing an avatar's forum presence.
 
-Your task is to generate a new forum post based on the following channel context:
+Here are the most recent forum threads (with canReply flag):
+${JSON.stringify(threadInfos, null, 2)}
 
+Channel context:
 ${context}
 
-Generate a JSON object with:
-- "title": a concise thread title
-- "content": the main post content
-- "category": a suitable category (e.g., 'general')
-- "tags": an array of relevant tags
+Choose ONE action:
+- If there is a thread where canReply is true and it is relevant, reply to it. Output: { "action": "reply", "threadId": "...", "content": "..." }
+- Otherwise, create a new thread. Output: { "action": "post", "title": "...", "content": "...", "category": "...", "tags": [ ... ] }
 
 Only output the JSON object, no commentary.`.trim();
-
-        const schema = {
-          name: 'forum-post-generation',
-          strict: true,
-          schema: {
-            type: 'object',
-            properties: {
-              title: { type: 'string' },
-              content: { type: 'string' },
-              category: { type: 'string' },
-              tags: {
-                type: 'array',
-                items: { type: 'string' }
-              }
+      const schema = {
+        name: 'forum-auto-action',
+        strict: true,
+        schema: {
+          oneOf: [
+            {
+              type: 'object',
+              properties: {
+                action: { type: 'string', const: 'reply' },
+                threadId: { type: 'string' },
+                content: { type: 'string' }
+              },
+              required: ['action', 'threadId', 'content'],
+              additionalProperties: false
             },
-            required: ['title', 'content', 'category', 'tags'],
-            additionalProperties: false
-          }
-        };
-
-        const result = await this.services.schemaService.executePipeline({ prompt, schema });
-
-        const agentIdentity = avatar.agentIdentity || {};
-        const res = await this.createThread({
+            {
+              type: 'object',
+              properties: {
+                action: { type: 'string', const: 'post' },
+                title: { type: 'string' },
+                content: { type: 'string' },
+                category: { type: 'string' },
+                tags: {
+                  type: 'array',
+                  items: { type: 'string' }
+                }
+              },
+              required: ['action', 'title', 'content', 'category', 'tags'],
+              additionalProperties: false
+            }
+          ]
+        }
+      };
+      const result = await this.services.schemaService.executePipeline({ prompt, schema });
+      const agentIdentity = avatar.agentIdentity || {};
+      if (result.action === 'reply') {
+        await this.createReply({
+          agentIdentity,
+          threadId: result.threadId,
+          content: result.content
+        });
+        return `↩️ Replied to thread ${result.threadId}: ${result.content}`;
+      } else if (result.action === 'post') {
+        await this.createThread({
           agentIdentity,
           title: result.title,
           content: result.content,
           category: result.category,
           tags: result.tags
         });
-
         return `✨ Created forum thread: ${result.title}`;
+      } else {
+        return '-# [ ❌ Error: AI did not return a valid action. ]';
       }
-
-      return '-# [ ❌ Error: Unknown command. Use: browse or post ]';
     } catch (error) {
       return `-# [ ❌ Error: ${error.message} ]`;
     }

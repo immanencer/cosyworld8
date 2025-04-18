@@ -3,7 +3,6 @@ export class RiskManagerService {
     this.logger = logger;
     this.databaseService = databaseService;
     this.aiService = aiService;
-    this.db = this.databaseService.getDatabase();
   }
 
   /**
@@ -12,6 +11,7 @@ export class RiskManagerService {
    */
   async storeHighRiskMessage(data) {
     try {
+      this.db = await this.databaseService.getDatabase();
       await this.db.collection('high_risk_messages').updateOne(
         { messageId: data.messageId },
         { $set: { ...data, reviewed: false, timestamp: new Date() } },
@@ -29,6 +29,7 @@ export class RiskManagerService {
    */
   async updateMessageTags(messageId, tags) {
     try {
+      this.db = await this.databaseService.getDatabase();
       await this.db.collection('high_risk_messages').updateOne(
         { messageId },
         { $set: { tags } }
@@ -44,6 +45,7 @@ export class RiskManagerService {
    */
   async countUnreviewedHighRiskMessages() {
     try {
+      this.db = await this.databaseService.getDatabase();
       return await this.db.collection('high_risk_messages').countDocuments({ reviewed: false });
     } catch (error) {
       this.logger.error(`Error counting unreviewed high-risk messages: ${error.message}`);
@@ -57,6 +59,7 @@ export class RiskManagerService {
    */
   async updateDynamicModerationRegex() {
     try {
+      this.db = await this.databaseService.getDatabase();
       const unreviewedCount = await this.countUnreviewedHighRiskMessages();
       if (unreviewedCount < 100) return;
 
@@ -90,6 +93,7 @@ export class RiskManagerService {
    */
   async loadDynamicRegex() {
     try {
+      this.db = await this.databaseService.getDatabase();
       const doc = await this.db.collection('moderation_config').findOne({ key: 'dynamic_regex' });
       return doc?.pattern || null;
     } catch (error) {

@@ -15,7 +15,7 @@ import { CooldownService } from './CooldownService.mjs';
 import { CameraTool } from './tools/CameraTool.mjs';
 
 export class ToolService extends BasicService {
-  requiredServices = [
+  static requiredServices = [
     "logger",
     "discordService",
     "databaseService",
@@ -39,7 +39,7 @@ export class ToolService extends BasicService {
     "battleService",
     "s3Service",
     "diceService",
-    "forumClientService",
+    "forumService",
     "imageProcessingService",
     "xService",
   ];
@@ -100,7 +100,7 @@ export class ToolService extends BasicService {
 
     const services = {};
 
-    for (const serviceName of this.requiredServices) {
+    for (const serviceName of this.constructor.requiredServices) {
       const service = this[serviceName];
       if (!service) {
         this.logger.error(`Service '${serviceName}' is not available.`);
@@ -209,16 +209,6 @@ export class ToolService extends BasicService {
     const tool = this.tools.get(toolName);
     if (!tool) {
       return `Tool '${toolName}' not found.`;
-    }
-
-    // ForumTool restriction logic
-    if (tool.name === 'forum') {
-      if (!guildConfig?.enableForumTool) {
-        return 'Forum tool is disabled for this server.';
-      }
-      if (guildConfig.forumToolChannelId && message.channel.id !== guildConfig.forumToolChannelId) {
-        return 'Forum tool can only be used in the designated channel.';
-      }
     }
 
     const cooldownMs = tool.cooldownMs ?? this.defaultCooldownMs;

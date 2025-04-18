@@ -72,7 +72,7 @@ export class ChannelManager extends BasicService {
       lastActivityTimestamp: { $gte: now - this.ACTIVITY_TIMEOUT }
     }).toArray();
     const activeChannels = activeDocs
-      .map(doc => this.client.channels.cache.get(doc._id))
+      .map(doc => this.discordService.client.channels.cache.get(doc._id))
       .filter(c => c && c.isTextBased());
     return activeChannels;
   }
@@ -88,7 +88,7 @@ export class ChannelManager extends BasicService {
       .limit(limit)
       .toArray();
     const recentChannels = recentDocs
-      .map(doc => this.client.channels.cache.get(doc._id))
+      .map(doc => this.discordService.client.channels.cache.get(doc._id))
       .filter(c => c && c.isTextBased());
     return recentChannels;
   }

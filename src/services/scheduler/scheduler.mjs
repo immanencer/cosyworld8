@@ -2,16 +2,12 @@
 import { BasicService } from '../foundation/basicService.mjs';
 
 export class SchedulingService extends BasicService {
-  requiredServices = [
+  static requiredServices = [
     'channelManager',
     'avatarService'
   ];
-  constructor(services) {
-    super(services);
-      
-    this.channelManager = services.channelManager;
-    this.avatarService = services.avatarService;
-    
+  constructor() {
+    super();
 
     this.intervals = [];
     this.logger.info('[SchedulingService] Initialized');

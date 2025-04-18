@@ -1,17 +1,19 @@
 import { BasicService } from '../foundation/basicService.mjs';
 
 export class KnowledgeService extends BasicService {
-  constructor(services) {
-    super(services);
-    this.logger = services.logger;
-    this.databaseService = services.databaseService;
-    this.schemaService = services.schemaService;
-    
-    this.db = this.databaseService.getDatabase();
+  static requiredServices = [
+    'logger',
+    'schemaService',
+    'databaseService',
+  ];
+  
+  constructor() {
+    super();
   }
 
   async addKnowledgeTriple(avatarId, relation, knowledge) {
     try {
+      this.db = await this.databaseService.getDatabase();
       await this.db.collection('knowledge_graph').insertOne({
         avatarId,
         relation,
@@ -26,6 +28,7 @@ export class KnowledgeService extends BasicService {
 
   async queryKnowledgeGraph(avatarId) {
     try {
+      this.db = await this.databaseService.getDatabase();
       const triples = await this.db.collection('knowledge_graph')
         .find({ avatarId })
         .sort({ timestamp: -1 })

@@ -1,7 +1,7 @@
 import { BasicTool } from '../BasicTool.mjs';
 
 export class CameraTool extends BasicTool {
-  requiredServices = [
+  static requiredServices = [
     'aiService',
     'imageProcessingService',
     'xService',

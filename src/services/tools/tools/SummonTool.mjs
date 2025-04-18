@@ -1,7 +1,7 @@
 import { BasicTool } from '../BasicTool.mjs';
 
 export class SummonTool extends BasicTool {
-  requiredServices = [
+  static requiredServices = [
     'discordService',
     'mapService',
     'conversationManager',

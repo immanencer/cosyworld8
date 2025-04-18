@@ -1,21 +1,16 @@
 import { BasicService } from "../foundation/basicService.mjs";
 
 export class PromptService extends BasicService {
-  constructor(services) {
-    super(services);
-    this.databaseService = services.databaseService;
-    this.discordService = services.discordService;
-    this.configService = services.configService;
-    this.mapService = services.mapService;
-    this.itemService = services.itemService;
-    this.memoryService = services.memoryService;
-    this.imageProcessingService = services.imageProcessingService;
-
-    
-
-    this.client = this.discordService.client;
-    this.db = this.databaseService.getDatabase();
-  }
+  static requiredServices = [
+    'databaseService',
+    'discordService',
+    'configService',
+    'mapService',
+    'itemService',
+    'memoryService',
+    'imageProcessingService'
+  ];
+  
   /**
    * Builds the system prompt with just the avatar's basic identity.
    * @param {Object} avatar - The avatar object.
@@ -51,6 +46,7 @@ Location: ${location.name} - ${location.description}
    * @returns {Promise<string>} The assistant context.
    */
   async getNarrativeAssistantContext(avatar) {
+    this.db = await this.databaseService.getDatabase();
     const memories = await this.getMemories(avatar,100);
     const recentActions = await this.getRecentActions(avatar);
     const narrativeContent = await this.getNarrativeContent(avatar);
@@ -67,6 +63,7 @@ Location: ${location.name} - ${location.description}
    * @returns {Promise<string>} The narrative user prompt.
    */
   async buildNarrativePrompt(avatar) {
+    this.db = await this.databaseService.getDatabase();
     const memories = await this.getMemories(avatar,100);
     const recentActions = await this.getRecentActions(avatar);
     const narrativeContent = await this.getNarrativeContent(avatar);
@@ -97,6 +94,7 @@ Based on all of the above context, share an updated personality that reflects yo
    * @returns {Promise<string>} The dungeon prompt.
    */
   async buildDungeonPrompt(avatar, guildId) {
+    this.db = await this.databaseService.getDatabase();
     const commandsDescription = (await this.toolService.getCommandsDescription(guildId)) || '';
     const location = await this.mapService.getLocationDescription(avatar.channelId, avatar.channelName);
     const items = await this.itemService.getItemsDescription(avatar);
@@ -109,7 +107,7 @@ Based on all of the above context, share an updated personality that reflects yo
     let breedEmoji = '🏹';
     try {
       if (avatar.channelId) {
-        const channel = await this.client.channels.fetch(avatar.channelId);
+        const channel = await this.discordService.client.channels.fetch(avatar.channelId);
         if (channel && channel.guild && this.db) {
           const guildConfig = await this.db.collection('guild_configs').findOne({ guildId: channel.guild.id });
           if (guildConfig && guildConfig.toolEmojis) {
@@ -200,7 +198,7 @@ ${items}
     let monologueText = '';
     if (avatar.innerMonologueChannel) {
       try {
-        const channel = await this.client.channels.fetch(avatar.innerMonologueChannel);
+        const channel = await this.discordService.client.channels.fetch(avatar.innerMonologueChannel);
         const messages = await channel.messages.fetch({ limit: 10 });
         monologueText = messages
           .filter(m => !m.content.startsWith('🌪️'))
@@ -285,7 +283,7 @@ ${recentActionsText}
   async getNarrativeContent(avatar) {
     if (!avatar.innerMonologueChannel) return '';
     try {
-      const channel = await this.client.channels.fetch(avatar.innerMonologueChannel);
+      const channel = await this.discordService.client.channels.fetch(avatar.innerMonologueChannel);
       const messages = await channel.messages.fetch({ limit: 10 });
       return messages
         .filter(m => !m.content.startsWith('🌪️'))

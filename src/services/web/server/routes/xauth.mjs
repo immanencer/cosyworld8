@@ -38,7 +38,7 @@ export default function xauthRoutes(services) {
     
         try {
             // Use xService for signature verification
-            if (!xService.verifyWalletSignature(message, signature, walletAddress)) {
+            if (!services.xService.verifyWalletSignature(message, signature, walletAddress)) {
                 console.log('Signature verification failed:', { message, signature, walletAddress });
                 return res.status(401).json({ error: 'Invalid signature' });
             }
@@ -289,7 +289,7 @@ export default function xauthRoutes(services) {
 
         try {
             // Use xService for signature verification
-            if (!xService.verifyWalletSignature(message, signature, walletAddress)) {
+            if (!services.xService.verifyWalletSignature(message, signature, walletAddress)) {
                 return res.status(401).json({ error: 'Invalid signature' });
             }
 

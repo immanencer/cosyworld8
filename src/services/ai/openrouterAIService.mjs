@@ -275,4 +275,52 @@ export class OpenRouterAIService extends BasicService {
       return null;
     }
   }
+
+  /**
+   * Generate an image using the selected model. If the model is Replicate/flux-dev-lora, use ReplicateService.
+   * @param {string} prompt
+   * @param {object|array} [images] - Array of image URLs/base64 or single image. Only one is supported for Replicate; if multiple, one is chosen at random.
+   * @param {object} [options]
+   * @returns {Promise<string|null>} - The URL or base64 of the generated image.
+   */
+  async generateImage(prompt, images = [], options = {}) {
+    // Check if the selected model is Replicate/flux-dev-lora
+    const model = options.model || this.model;
+    if (model && model.includes('flux-dev-lora')) {
+      if (!this.services?.replicateService) {
+        this.logger?.error?.('ReplicateService not available in services');
+        return null;
+      }
+      // Accepts images as array or single image
+      const imageArr = Array.isArray(images) ? images : images ? [images] : [];
+      return await this.services.replicateService.generateImage(prompt, imageArr, options);
+    }
+    // Fallback to OpenRouter's own image generation (if supported)
+    // ...existing code for OpenRouter image generation (if any)...
+    this.logger?.warn?.('No image generation implemented for this model in OpenRouterAIService.');
+    return null;
+  }
+
+  /**
+   * Compose an image from multiple sources. If Replicate/flux-dev-lora, use ReplicateService.
+   * @param {array} images
+   * @param {string} prompt
+   * @param {object} [options]
+   * @returns {Promise<string|null>}
+   */
+  async composeImage(images, prompt, options = {}) {
+    const model = options.model || this.model;
+    if (model && model.includes('flux-dev-lora')) {
+      if (!this.services?.replicateService) {
+        this.logger?.error?.('ReplicateService not available in services');
+        return null;
+      }
+      // Compose: randomly pick one image, pass to Replicate
+      const imageArr = Array.isArray(images) ? images : images ? [images] : [];
+      return await this.services.replicateService.generateImage(prompt, imageArr, options);
+    }
+    // ...existing code for OpenRouter composeImage (if any)...
+    this.logger?.warn?.('No composeImage implemented for this model in OpenRouterAIService.');
+    return null;
+  }
 }

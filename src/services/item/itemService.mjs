@@ -2,28 +2,26 @@ import { SchemaValidator } from '../utils/schemaValidator.mjs';
 import { BasicService } from '../foundation/basicService.mjs'; // Assuming BasicService is imported
 
 export class ItemService extends BasicService {
-  constructor(services) {
-    super(services);
-    this.configService = services.configService;
-    this.databaseService = services.databaseService;
-    this.schemaService = services.schemaService;
-    this.discordService = services.discordService;
-
-    this.client = this.discordService.client;
-    this.db = this.databaseService.getDatabase();
-    
+  static requiredServices = [
+    'configService',
+    'databaseService',
+    'schemaService',
+    'discordService',
+    'memoryService',
+  ];
+  constructor() {
+    super();    
     
     this.itemCreationLimit = 8; // Hardcoded as 'options' was undefined
     this.schemaValidator = new SchemaValidator();
     this.CURRENT_SCHEMA_VERSION = '1.0.0';
   }
 
-  /** Ensures the database connection is active. */
   ensureDbConnection() {
-    if (!this.db) throw new Error('Database not connected');
+    this.db = this.db || this.databaseService.getDatabase();
+    if (!this.db) throw new Error('Database connection unavailable');
     return this.db;
   }
-
 
   /** Removes single and double quotes from an item name. */
   cleanItemName(name) {
@@ -51,7 +49,7 @@ Include fields: name, description, type, rarity, properties.`;
           description: { type: 'string' },
           type: { type: 'string' },
           rarity: { type: 'string' },
-          properties: { type: 'object' }
+          properties: { type: 'object', properties: {} }
         },
         required: ['name', 'description', 'type', 'rarity', 'properties'],
         additionalProperties: false,
